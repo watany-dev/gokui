@@ -226,6 +226,40 @@ func TestRun(t *testing.T) {
 		}
 	})
 
+	t.Run("inspect rejects local dir without root SKILL.md", func(t *testing.T) {
+		var stdout bytes.Buffer
+		var stderr bytes.Buffer
+
+		fixturePath := filepath.FromSlash("../../fixtures/no-root-skill")
+		code := Run([]string{"inspect", fixturePath, "--format", "json"}, &stdout, &stderr, cfg)
+		if code != 1 {
+			t.Fatalf("Run() code = %d, want 1", code)
+		}
+		if stdout.Len() != 0 {
+			t.Fatalf("stdout should be empty, got %q", stdout.String())
+		}
+		if !strings.Contains(stderr.String(), "inspect local dir must contain SKILL.md at root") {
+			t.Fatalf("stderr should include missing root SKILL.md, got %q", stderr.String())
+		}
+	})
+
+	t.Run("inspect rejects local source when path is a file", func(t *testing.T) {
+		var stdout bytes.Buffer
+		var stderr bytes.Buffer
+
+		fixturePath := filepath.FromSlash("../../fixtures/no-root-skill/README.md")
+		code := Run([]string{"inspect", fixturePath}, &stdout, &stderr, cfg)
+		if code != 1 {
+			t.Fatalf("Run() code = %d, want 1", code)
+		}
+		if stdout.Len() != 0 {
+			t.Fatalf("stdout should be empty, got %q", stdout.String())
+		}
+		if !strings.Contains(stderr.String(), "inspect local source must be a directory") {
+			t.Fatalf("stderr should include not-directory error, got %q", stderr.String())
+		}
+	})
+
 	t.Run("install command is declared but not implemented", func(t *testing.T) {
 		var stdout bytes.Buffer
 		var stderr bytes.Buffer

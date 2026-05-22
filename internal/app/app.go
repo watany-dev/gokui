@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -99,9 +100,17 @@ func runInspect(args []string, stdout io.Writer, stderr io.Writer) int {
 		return 1
 	}
 
-	if !strings.HasPrefix(input, "github:") {
+	sourceKind := detectSourceKind(input)
+
+	if sourceKind != "github-source" {
 		if _, statErr := os.Stat(input); statErr != nil {
 			_, _ = fmt.Fprintf(stderr, "inspect source not found: %s\n", input)
+			return 1
+		}
+	}
+	if sourceKind == "local-dir" {
+		if validateErr := validateLocalDirInspectSource(input); validateErr != nil {
+			_, _ = fmt.Fprintln(stderr, validateErr.Error())
 			return 1
 		}
 	}
@@ -111,7 +120,7 @@ func runInspect(args []string, stdout io.Writer, stderr io.Writer) int {
 		PreRelease:    true,
 		Source: source{
 			Input: input,
-			Kind:  detectSourceKind(input),
+			Kind:  sourceKind,
 		},
 		Decision: "PRE_RELEASE_STUB",
 		Findings: []string{},
@@ -179,4 +188,21 @@ func detectSourceKind(input string) string {
 	default:
 		return "local-dir"
 	}
+}
+
+func validateLocalDirInspectSource(input string) error {
+	info, err := os.Stat(input)
+	if err != nil {
+		return fmt.Errorf("inspect source not found: %s", input)
+	}
+	if !info.IsDir() {
+		return fmt.Errorf("inspect local source must be a directory: %s", input)
+	}
+
+	skillPath := filepath.Join(input, "SKILL.md")
+	skillInfo, skillErr := os.Stat(skillPath)
+	if skillErr != nil || skillInfo.IsDir() {
+		return fmt.Errorf("inspect local dir must contain SKILL.md at root: %s", input)
+	}
+	return nil
 }

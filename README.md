@@ -20,6 +20,8 @@ gokui is currently in early design. The repository does not yet contain a
 working release. The CLI command framework is present as pre-release stubs:
 `inspect --format json` emits a stable draft report and other MVP commands
 print "not implemented yet".
+Local directory inspect already enforces that `SKILL.md` exists at the skill
+root.
 
 The intended first release focuses on local inspection and strict Codex-targeted
 installation:
