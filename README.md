@@ -17,7 +17,8 @@ does. gokui treats all of those layers as security-relevant.
 ## Status
 
 gokui is currently in early design. The repository does not yet contain a
-working release.
+working release. The CLI command framework is present as pre-release stubs and
+prints "not implemented yet" for MVP commands other than `version`.
 
 The intended first release focuses on local inspection and strict Codex-targeted
 installation:

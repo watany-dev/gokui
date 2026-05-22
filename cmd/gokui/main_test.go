@@ -39,7 +39,7 @@ func TestRunVersionUsesBuildVars(t *testing.T) {
 func TestRunUnknownCommand(t *testing.T) {
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
-	code := run([]string{"inspect"}, &stdout, &stderr)
+	code := run([]string{"unknown-cmd"}, &stdout, &stderr)
 	if code != 1 {
 		t.Fatalf("run() code = %d, want 1", code)
 	}
@@ -48,7 +48,7 @@ func TestRunUnknownCommand(t *testing.T) {
 		t.Fatalf("stdout should be empty, got %q", stdout.String())
 	}
 
-	if !strings.Contains(stderr.String(), "unknown command: inspect") {
+	if !strings.Contains(stderr.String(), "unknown command: unknown-cmd") {
 		t.Fatalf("stderr should include unknown command, got %q", stderr.String())
 	}
 }
