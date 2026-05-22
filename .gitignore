@@ -27,6 +27,11 @@ go.work.sum
 # env file
 .env
 
+# local build/test cache
+.cache/
+.agents/
+.codex/
+
 # Editor/IDE
 # .idea/
 # .vscode/
