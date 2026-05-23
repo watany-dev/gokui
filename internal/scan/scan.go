@@ -28,10 +28,11 @@ var (
 
 	promptOverridePattern = regexp.MustCompile(`(?i)\b(?:ignore|override|bypass)\b.{0,80}\b(?:previous|prior|system|higher|earlier)\b.{0,40}\b(?:instruction|instructions|prompt|prompts)\b`)
 
-	externalBinaryPattern = regexp.MustCompile(`(?i)\bhttps?://\S+\.(?:zip|exe|msi|dmg|pkg|tar\.gz|tgz)\b`)
-	urlPattern            = regexp.MustCompile(`(?i)\bhttps?://[^\s<>"')\]]+`)
-	rawHTMLPattern        = regexp.MustCompile(`(?i)<\s*(?:script|iframe|object|embed|form|link|meta|img|svg|video|audio)\b`)
-	markdownLinkPattern   = regexp.MustCompile(`\[(?P<label>[^\]]+)\]\((?P<target>https?://[^)\s]+)\)`)
+	externalBinaryPattern  = regexp.MustCompile(`(?i)\bhttps?://\S+\.(?:zip|exe|msi|dmg|pkg|tar\.gz|tgz)\b`)
+	urlPattern             = regexp.MustCompile(`(?i)\bhttps?://[^\s<>"')\]]+`)
+	rawHTMLPattern         = regexp.MustCompile(`(?i)<\s*(?:script|iframe|object|embed|form|link|meta|img|svg|video|audio)\b`)
+	markdownLinkPattern    = regexp.MustCompile(`\[(?P<label>[^\]]+)\]\((?P<target>https?://[^)\s]+)\)`)
+	passwordArchivePattern = regexp.MustCompile(`(?i)(?:\b(?:password|passphrase|passwd|encrypted)\b.{0,80}\b(?:zip|7z|rar|archive|tar|tgz|tar\.gz)\b|\b(?:zip|7z|rar|archive|tar|tgz|tar\.gz)\b.{0,80}\b(?:password|passphrase|passwd|encrypted)\b)`)
 
 	fakePrereqPattern = regexp.MustCompile(`(?i)\b(?:required|required prerequisite|you must|before use)\b.{0,120}\b(?:download|install)\b.{0,200}\b(?:run|execute|bash|sh|powershell|chmod \+x)\b`)
 )
@@ -241,6 +242,15 @@ func scanTextFile(target scanTarget) ([]Finding, error) {
 				File:     target.Relative,
 				Line:     lineNum,
 				Summary:  "prompt override language detected",
+			})
+		}
+		if passwordArchivePattern.MatchString(line) {
+			findings = append(findings, Finding{
+				ID:       "PASSWORD_PROTECTED_ARCHIVE",
+				Severity: "high",
+				File:     target.Relative,
+				Line:     lineNum,
+				Summary:  "password-protected archive instruction detected",
 			})
 		}
 		if rawHTMLPattern.MatchString(line) {
