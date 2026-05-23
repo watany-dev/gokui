@@ -37,6 +37,7 @@ tests/CI:
 - medium-severity detection of NFKC normalization text drift with normalized rescanning
 - medium-severity detection of mixed-script filename patterns
 - high-severity detection of password-protected archive instructions
+- high-severity detection of shell/ssh/cron/launch-agent config writes
 
 This roadmap section below remains forward-looking for gaps and future phases.
 
