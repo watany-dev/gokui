@@ -88,6 +88,49 @@ jobs:
           path: coverage.out
           if-no-files-found: error
 
+  inspect-sarif:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
+        with:
+          go-version-file: go.mod
+
+      - run: go mod download
+
+      - name: Generate inspect SARIF fixture report
+        shell: bash
+        run: |
+          set +e
+          go run ./cmd/gokui inspect ./fixtures/fake-prereq-skill --format sarif > inspect-results.sarif
+          exit_code=$?
+          set -e
+          if [ "$exit_code" -ne 2 ]; then
+            echo "expected inspect exit code 2 for rejected fixture, got $exit_code" >&2
+            exit 1
+          fi
+          if [ ! -s inspect-results.sarif ]; then
+            echo "inspect SARIF output file is empty" >&2
+            exit 1
+          fi
+          grep -q '"version": "2.1.0"' inspect-results.sarif
+          grep -q '"FAKE_PREREQ_EXECUTION"' inspect-results.sarif
+
+      - name: Upload inspect SARIF artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: inspect-sarif
+          path: inspect-results.sarif
+          if-no-files-found: error
+
   vuln:
     runs-on: ubuntu-latest
     timeout-minutes: 5

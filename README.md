@@ -47,6 +47,8 @@ skill-item keys for automation-friendly parsing, including `error_code` for
 status-aware automation.
 JSON output contracts are now stability-tested across `inspect`, `fetch`,
 `install`, `update`, `lock verify`, and install metadata files.
+CI now includes a dedicated SARIF smoke job that runs `inspect --format sarif`
+against a rejected fixture and uploads the SARIF artifact for review.
 `fetch` now supports commit-pinned GitHub sources and materializes them into a
 quarantine output root via `--out`, and records `.gokui-source.json`
 provenance metadata. In JSON mode, fetch failures return `error_code` for

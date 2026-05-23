@@ -17,6 +17,7 @@ tests/CI:
 - Stable JSON output contracts for all MVP commands
 - Machine-readable `error_code` support across command failure paths
 - SARIF output for `inspect` (`--format sarif`) for CI/code scanning integration
+- CI SARIF smoke job for inspect output generation and artifact capture
 
 This roadmap section below remains forward-looking for gaps and future phases.
 
