@@ -171,6 +171,7 @@ func TestReleaseCheckDocumentationSync(t *testing.T) {
 	required := []string{
 		"make release-check",
 		"make release-check RELEASE_CHECK_VULN=0",
+		"fmt/lint/typecheck/deadcode/coverage/test/test-race/build and govulncheck",
 	}
 	for _, line := range required {
 		if !strings.Contains(readme, line) {

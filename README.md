@@ -87,7 +87,7 @@ gokui lock verify [path] [--format human|json]
 Release readiness gate:
 
 ```sh
-# Includes fmt/lint/typecheck/deadcode/coverage/test/build and govulncheck
+# Includes fmt/lint/typecheck/deadcode/coverage/test/test-race/build and govulncheck
 make release-check
 
 # Offline fallback when vulnerability DB access is unavailable

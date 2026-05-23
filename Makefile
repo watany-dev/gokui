@@ -67,7 +67,7 @@ actionlint:
 
 check: fmt-check lint typecheck deadcode coverage
 
-release-check: check test build
+release-check: check test test-race build
 ifeq ($(RELEASE_CHECK_VULN),1)
 	$(MAKE) vuln
 else
