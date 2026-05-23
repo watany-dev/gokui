@@ -1328,6 +1328,35 @@ func TestUpdateHelpers(t *testing.T) {
 		}
 	})
 
+	t.Run("ensureURLScanStableFile detects source replacement", func(t *testing.T) {
+		root := t.TempDir()
+		firstPath := filepath.Join(root, "first.md")
+		if err := os.WriteFile(firstPath, []byte("one"), 0o644); err != nil {
+			t.Fatalf("write first markdown: %v", err)
+		}
+		secondPath := filepath.Join(root, "second.md")
+		if err := os.WriteFile(secondPath, []byte("two"), 0o644); err != nil {
+			t.Fatalf("write second markdown: %v", err)
+		}
+
+		firstInfo, err := os.Lstat(firstPath)
+		if err != nil {
+			t.Fatalf("lstat first markdown: %v", err)
+		}
+		secondInfo, err := os.Lstat(secondPath)
+		if err != nil {
+			t.Fatalf("lstat second markdown: %v", err)
+		}
+
+		if err := ensureURLScanStableFile(firstInfo, firstInfo, firstPath, root); err != nil {
+			t.Fatalf("same file identity should pass, got %v", err)
+		}
+		err = ensureURLScanStableFile(firstInfo, secondInfo, secondPath, root)
+		if err == nil || !strings.Contains(err.Error(), ruleUpdateURLScanSourceChanged) {
+			t.Fatalf("expected changed-source error, got %v", err)
+		}
+	})
+
 	t.Run("collectExecutableFiles enforces max scan file count", func(t *testing.T) {
 		origLimit := updateMaxScanFiles
 		updateMaxScanFiles = 2

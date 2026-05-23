@@ -89,6 +89,7 @@ const ruleUpdateTargetSymlink = "UPDATE_TARGET_SYMLINK_DETECTED"
 const ruleUpdateTargetEntrySymlink = "UPDATE_TARGET_ENTRY_SYMLINK_DETECTED"
 const ruleUpdateURLScanSymlink = "UPDATE_URL_SCAN_SYMLINK_DETECTED"
 const ruleUpdateURLScanSpecialFile = "UPDATE_URL_SCAN_SPECIAL_FILE"
+const ruleUpdateURLScanSourceChanged = "UPDATE_URL_SCAN_SOURCE_CHANGED_DURING_READ"
 const ruleUpdateExecutableScanSymlink = "UPDATE_EXECUTABLE_SCAN_SYMLINK_DETECTED"
 const ruleUpdateExecutableScanSpecialFile = "UPDATE_EXECUTABLE_SCAN_SPECIAL_FILE"
 
@@ -607,6 +608,7 @@ func collectURLs(root string) ([]string, error) {
 		if err := ensureURLScanRegularFile(info, path, root); err != nil {
 			return err
 		}
+		previousInfo := info
 		f, err := os.Open(path)
 		if err != nil {
 			return fmt.Errorf("failed to read file for URL scan: %w", err)
@@ -617,6 +619,9 @@ func collectURLs(root string) ([]string, error) {
 			return fmt.Errorf("failed to stat file for URL scan: %w", err)
 		}
 		if err := ensureURLScanRegularFile(info, path, root); err != nil {
+			return err
+		}
+		if err := ensureURLScanStableFile(previousInfo, info, path, root); err != nil {
 			return err
 		}
 		scannedFiles++
@@ -648,6 +653,17 @@ func ensureURLScanRegularFile(info os.FileInfo, path string, root string) error 
 		path = filepath.ToSlash(rel)
 	}
 	return fmt.Errorf("%s: URL scan input contains non-regular file: %s", ruleUpdateURLScanSpecialFile, path)
+}
+
+func ensureURLScanStableFile(previous os.FileInfo, current os.FileInfo, path string, root string) error {
+	if os.SameFile(previous, current) {
+		return nil
+	}
+	rel, relErr := filepath.Rel(root, path)
+	if relErr == nil {
+		path = filepath.ToSlash(rel)
+	}
+	return fmt.Errorf("%s: URL scan source changed during read: %s", ruleUpdateURLScanSourceChanged, path)
 }
 
 func collectExecutableFiles(root string) ([]string, error) {
