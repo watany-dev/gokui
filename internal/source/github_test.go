@@ -35,6 +35,7 @@ func TestParseGitHubSource(t *testing.T) {
 			"github:owner/repo//@",
 			"github:owner/repo///abs@ref",
 			"github:owner/repo//./@ref",
+			`github:owner/repo//skills\demo@ref`,
 			"github:owner/repo//path@ 8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
 			"github:owner/repo//path@8f3c2d1a4b5c6d7e8f901234567890abcdef1234 ",
 		}
@@ -79,6 +80,12 @@ func TestNormalizeGitHubPath(t *testing.T) {
 			if _, err := normalizeGitHubPath(in); err == nil {
 				t.Fatalf("expected path error for %q", in)
 			}
+		}
+	})
+
+	t.Run("rejects backslash-separated paths", func(t *testing.T) {
+		if _, err := normalizeGitHubPath(`skills\demo`); err == nil {
+			t.Fatal("expected path error for backslash-separated path")
 		}
 	})
 }
