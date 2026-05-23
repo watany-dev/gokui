@@ -1,6 +1,10 @@
 package app
 
-import "testing"
+import (
+	"regexp"
+	"testing"
+	"testing/quick"
+)
 
 func TestInferRuleIDFromMessage(t *testing.T) {
 	cases := []struct {
@@ -47,5 +51,25 @@ func TestInferRuleIDFromMessage(t *testing.T) {
 				t.Fatalf("inferRuleIDFromMessage(%q) = %q, want %q", tc.message, got, tc.want)
 			}
 		})
+	}
+}
+
+func TestInferRuleIDFromMessageProperty(t *testing.T) {
+	pattern := regexp.MustCompile(`^[A-Z][A-Z0-9_]+$`)
+	prop := func(message string) (ok bool) {
+		defer func() {
+			if recover() != nil {
+				ok = false
+			}
+		}()
+		got := inferRuleIDFromMessage(message)
+		if got == "" {
+			return true
+		}
+		return pattern.MatchString(got)
+	}
+
+	if err := quick.Check(prop, &quick.Config{MaxCount: 500}); err != nil {
+		t.Fatalf("inferRuleIDFromMessage property failed: %v", err)
 	}
 }
