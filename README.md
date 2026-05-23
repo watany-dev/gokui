@@ -97,6 +97,8 @@ make release-check RELEASE_CHECK_VULN=0
 make release-check-offline
 ```
 
+Release execution checklist: [RELEASE.md](RELEASE.md)
+
 ## Threat Model
 
 gokui assumes that a skill bundle from another person or repository is

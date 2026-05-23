@@ -161,6 +161,33 @@ func TestUpdateStatusErrorCodeMatrixDocumentationSync(t *testing.T) {
 	}
 }
 
+func TestReleaseChecklistDocumentationSync(t *testing.T) {
+	readmeBytes, err := os.ReadFile("../../README.md")
+	if err != nil {
+		t.Fatalf("failed to read README.md: %v", err)
+	}
+	readme := string(readmeBytes)
+	if !strings.Contains(readme, "Release execution checklist: [RELEASE.md](RELEASE.md)") {
+		t.Fatal("README should link to RELEASE.md checklist")
+	}
+
+	releaseBytes, err := os.ReadFile("../../RELEASE.md")
+	if err != nil {
+		t.Fatalf("failed to read RELEASE.md: %v", err)
+	}
+	releaseDoc := string(releaseBytes)
+	required := []string{
+		"make release-check",
+		"make release-check-offline",
+		"make vuln",
+	}
+	for _, line := range required {
+		if !strings.Contains(releaseDoc, line) {
+			t.Fatalf("RELEASE.md missing checklist command: %q", line)
+		}
+	}
+}
+
 func TestReleaseCheckDocumentationSync(t *testing.T) {
 	readmeBytes, err := os.ReadFile("../../README.md")
 	if err != nil {
