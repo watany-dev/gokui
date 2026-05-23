@@ -1316,6 +1316,24 @@ func TestWriteInstallMetadataAndBuildDigestsErrors(t *testing.T) {
 		}
 	})
 
+	t.Run("buildFileDigests rejects symlink entries", func(t *testing.T) {
+		if runtime.GOOS == "windows" {
+			t.Skip("symlink permissions differ on windows")
+		}
+		root := t.TempDir()
+		target := filepath.Join(root, "target.txt")
+		if err := os.WriteFile(target, []byte("x"), 0o644); err != nil {
+			t.Fatalf("write target: %v", err)
+		}
+		if err := os.Symlink("target.txt", filepath.Join(root, "link.txt")); err != nil {
+			t.Fatalf("create symlink: %v", err)
+		}
+		_, _, err := buildFileDigestsFiltered(root, nil)
+		if err == nil || !strings.Contains(err.Error(), ruleInstallDigestSymlink) {
+			t.Fatalf("expected digest symlink error, got %v", err)
+		}
+	})
+
 	t.Run("buildFileDigests enforces max file count", func(t *testing.T) {
 		origLimit := installMaxDigestFiles
 		installMaxDigestFiles = 1

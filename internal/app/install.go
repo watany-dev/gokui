@@ -36,6 +36,7 @@ const (
 	ruleInstallSourceFileCountExceeded  = "INSTALL_SOURCE_FILE_COUNT_EXCEEDED"
 	ruleInstallSourceTotalBytesExceeded = "INSTALL_SOURCE_TOTAL_BYTES_EXCEEDED"
 	ruleInstallSourceFileTooLarge       = "INSTALL_SOURCE_FILE_TOO_LARGE"
+	ruleInstallDigestSymlink            = "INSTALL_DIGEST_SYMLINK_DETECTED"
 	ruleInstallDigestFileCountExceeded  = "INSTALL_DIGEST_FILE_COUNT_EXCEEDED"
 	ruleInstallDigestTotalBytesExceeded = "INSTALL_DIGEST_TOTAL_BYTES_EXCEEDED"
 	ruleInstallDigestFileTooLarge       = "INSTALL_DIGEST_FILE_TOO_LARGE"
@@ -800,12 +801,15 @@ func buildFileDigestsFiltered(root string, exclude map[string]struct{}) ([]lockF
 			return fmt.Errorf("failed to compute digest path: %w", err)
 		}
 		rel = filepath.ToSlash(rel)
-		if _, skip := exclude[rel]; skip {
-			return nil
-		}
-		info, err := d.Info()
+		info, err := os.Lstat(path)
 		if err != nil {
 			return fmt.Errorf("failed to stat file for digest: %w", err)
+		}
+		if info.Mode()&os.ModeSymlink != 0 {
+			return fmt.Errorf("%s: digest input contains symlink: %s", ruleInstallDigestSymlink, rel)
+		}
+		if _, skip := exclude[rel]; skip {
+			return nil
 		}
 		if info.Size() > installMaxDigestFileBytes {
 			return fmt.Errorf("%s: digest input file exceeds size limit: %s", ruleInstallDigestFileTooLarge, rel)
@@ -830,7 +834,7 @@ func buildFileDigestsFiltered(root string, exclude map[string]struct{}) ([]lockF
 		return nil
 	})
 	if err != nil {
-		return nil, "", fmt.Errorf("failed to digest installed files: %w", err)
+		return nil, "", fmt.Errorf("%w: failed to digest installed files", err)
 	}
 
 	sort.Slice(files, func(i, j int) bool {

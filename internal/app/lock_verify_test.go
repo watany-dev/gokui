@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"testing/quick"
@@ -256,6 +257,42 @@ func TestRunLockVerifyErrorPathsAndDriftKinds(t *testing.T) {
 		t.Fatalf("stdout should include lockfile-too-large rule_id, got %q", stdout.String())
 	}
 	maxLockVerifyLockFileBytes = origLimit
+
+	if runtime.GOOS != "windows" {
+		stdout.Reset()
+		stderr.Reset()
+		src := createSkillSourceForInstallTest(t, "digest-symlink-skill")
+		targetRoot := filepath.Join(t.TempDir(), "skills-digest-symlink")
+		if err := os.MkdirAll(targetRoot, 0o755); err != nil {
+			t.Fatalf("mkdir target root: %v", err)
+		}
+		report := installReport{
+			SchemaVersion: "0.1.0-draft",
+			Source:        source{Input: src, Kind: "local-dir"},
+			PolicyProfile: "strict",
+			Decision:      "PASS",
+		}
+		installedPath, _, err := installSkillAtomic(src, targetRoot, "digest-symlink-skill", report)
+		if err != nil {
+			t.Fatalf("installSkillAtomic() error = %v", err)
+		}
+		if err := os.Symlink("README.md", filepath.Join(installedPath, "link.txt")); err != nil {
+			t.Fatalf("create symlink in installed skill: %v", err)
+		}
+		code = runLockVerify([]string{installedPath, "--format", "json"}, &stdout, &stderr)
+		if code != 1 {
+			t.Fatalf("runLockVerify(digest symlink json) code = %d, want 1", code)
+		}
+		if stderr.Len() != 0 {
+			t.Fatalf("stderr should be empty for json error output, got %q", stderr.String())
+		}
+		if !strings.Contains(stdout.String(), "\"error_code\": \""+lockVerifyErrorCodeDigestFailed+"\"") {
+			t.Fatalf("stdout should include digest-failed error_code, got %q", stdout.String())
+		}
+		if !strings.Contains(stdout.String(), "\"rule_id\": \""+ruleInstallDigestSymlink+"\"") {
+			t.Fatalf("stdout should include digest symlink rule_id, got %q", stdout.String())
+		}
+	}
 
 	src := createSkillSourceForInstallTest(t, "drift-kinds-skill")
 	targetRoot := filepath.Join(t.TempDir(), "skills")
