@@ -253,7 +253,7 @@ func TestVerifyLockSourceChecks(t *testing.T) {
 
 	lock.Source.Kind = "github-source"
 	lock.Source.Type = "github"
-	lock.Source.Input = "github:org/repo/path@abc1234"
+	lock.Source.Input = "github:org/repo/path@abc1234a4b5c6d7e8f901234567890abcdef1234"
 	if ok, _ := verifyLockSource(lock); ok {
 		t.Fatal("invalid github source syntax should fail")
 	}
@@ -263,7 +263,7 @@ func TestVerifyLockSourceChecks(t *testing.T) {
 		t.Fatal("floating github ref should fail")
 	}
 
-	lock.Source.Input = "github:org/repo//skills/demo@abc1234"
+	lock.Source.Input = "github:org/repo//skills/demo@abc1234a4b5c6d7e8f901234567890abcdef1234"
 	if ok, detail := verifyLockSource(lock); !ok {
 		t.Fatalf("expected github pinned source check pass, detail=%q", detail)
 	}
@@ -316,7 +316,7 @@ func TestVerifyLockSourceMetadataCheck(t *testing.T) {
 		}
 		lock.Source = lockSource{
 			Type:  "github",
-			Input: "github:org/repo//skills/verify-source-meta@abc1234",
+			Input: "github:org/repo//skills/verify-source-meta@abc1234a4b5c6d7e8f901234567890abcdef1234",
 			Kind:  "github-source",
 		}
 		updated, err := json.MarshalIndent(lock, "", "  ")
@@ -345,9 +345,9 @@ func TestVerifyLockSourceMetadataCheck(t *testing.T) {
 		}
 		if err := writeSourceMetadata(installedPath, sourceMetadata{
 			Schema:          "gokui.source/v1",
-			SourceInput:     "github:org/repo//skills/verify-source-meta@abc1234",
+			SourceInput:     "github:org/repo//skills/verify-source-meta@abc1234a4b5c6d7e8f901234567890abcdef1234",
 			SourceKind:      "github-source",
-			ResolvedRef:     "abc1234",
+			ResolvedRef:     "abc1234a4b5c6d7e8f901234567890abcdef1234",
 			FetchedAt:       "2026-05-23T00:00:00Z",
 			SkillRootSHA256: installedRootHash,
 		}); err != nil {

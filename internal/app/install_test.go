@@ -192,7 +192,7 @@ func TestRunInstallErrorPaths(t *testing.T) {
 
 	stdout.Reset()
 	stderr.Reset()
-	code = runInstall([]string{"github:org/repo//skill@8f3c2d1", "--target", "codex", "--profile", "strict"}, &stdout, &stderr)
+	code = runInstall([]string{"github:org/repo//skill@8f3c2d1a4b5c6d7e8f901234567890abcdef1234", "--target", "codex", "--profile", "strict"}, &stdout, &stderr)
 	if code != 1 {
 		t.Fatalf("runInstall() code = %d, want 1", code)
 	}
@@ -208,7 +208,7 @@ func TestRunInstallErrorPaths(t *testing.T) {
 	fetchGitHubSkill = func(spec srcpkg.GitHubSpec) (string, func(), error) {
 		return fakeSource, nil, nil
 	}
-	code = runInstall([]string{"github:org/repo//skill@8f3c2d1", "--target", "custom:" + filepath.Join(t.TempDir(), "skills"), "--profile", "strict"}, &stdout, &stderr)
+	code = runInstall([]string{"github:org/repo//skill@8f3c2d1a4b5c6d7e8f901234567890abcdef1234", "--target", "custom:" + filepath.Join(t.TempDir(), "skills"), "--profile", "strict"}, &stdout, &stderr)
 	if code != 0 {
 		t.Fatalf("runInstall(mock github) code = %d, want 0\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
 	}
@@ -429,9 +429,9 @@ func TestInstallUsesAndValidatesSourceMetadata(t *testing.T) {
 		}
 		if err := writeSourceMetadata(src, sourceMetadata{
 			Schema:          "gokui.source/v1",
-			SourceInput:     "github:org/repo//skills/meta-skill@8f3c2d1",
+			SourceInput:     "github:org/repo//skills/meta-skill@8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
 			SourceKind:      "github-source",
-			ResolvedRef:     "8f3c2d1",
+			ResolvedRef:     "8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
 			FetchedAt:       "2026-05-23T00:00:00Z",
 			SkillRootSHA256: rootHash,
 		}); err != nil {
@@ -460,7 +460,7 @@ func TestInstallUsesAndValidatesSourceMetadata(t *testing.T) {
 		if lock.Source.Kind != "github-source" {
 			t.Fatalf("lock source kind = %q, want github-source", lock.Source.Kind)
 		}
-		if lock.Source.Input != "github:org/repo//skills/meta-skill@8f3c2d1" {
+		if lock.Source.Input != "github:org/repo//skills/meta-skill@8f3c2d1a4b5c6d7e8f901234567890abcdef1234" {
 			t.Fatalf("lock source input = %q", lock.Source.Input)
 		}
 	})
@@ -469,9 +469,9 @@ func TestInstallUsesAndValidatesSourceMetadata(t *testing.T) {
 		src := createSkillSourceForInstallTest(t, "bad-meta-skill")
 		if err := writeSourceMetadata(src, sourceMetadata{
 			Schema:          "gokui.source/v1",
-			SourceInput:     "github:org/repo//skills/bad-meta-skill@8f3c2d1",
+			SourceInput:     "github:org/repo//skills/bad-meta-skill@8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
 			SourceKind:      "github-source",
-			ResolvedRef:     "8f3c2d1",
+			ResolvedRef:     "8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
 			FetchedAt:       "2026-05-23T00:00:00Z",
 			SkillRootSHA256: strings.Repeat("0", 64),
 		}); err != nil {

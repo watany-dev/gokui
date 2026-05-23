@@ -17,11 +17,40 @@ does. gokui treats all of those layers as security-relevant.
 ## Status
 
 gokui is currently in early design. The repository does not yet contain a
-working release. The CLI command framework is present as pre-release stubs:
-`inspect --format json` emits a stable draft report and other MVP commands
-print "not implemented yet".
+working release. `inspect` now performs pre-release structural validation and
+basic markdown threat scanning, and emits a draft JSON/human report with
+`PASS`/`REJECTED` decisions. For GitHub sources, floating refs remain
+inspect-only pre-release stubs, while commit-pinned refs are fetched and
+scanned.
+`install` now supports local-dir/zip/tar sources with `--profile strict`,
+rejects high/critical findings, installs atomically to `--target codex` or
+`--target custom:/path`, writes `.gokui-report.json` and `gokui.lock`, allows
+idempotent reinstall only when provenance matches, and rejects same-name
+different-provenance installs. It also supports commit-pinned GitHub sources
+(`github:owner/repo//path@<sha>`) via safe tarball materialization.
+`lock verify` now validates installed files against `gokui.lock`, checks source
+field consistency (including strict GitHub source syntax and commit pinning),
+validates GitHub source metadata integrity, and reports drift
+(missing/changed/unexpected files).
+`update --dry-run` now re-evaluates installed skills from lockfile source
+provenance for local-dir/zip/tar sources, reports added/removed/changed files,
+risk deltas, and new URL/executable signals. For GitHub sources, commit-pinned
+refs are evaluated and floating refs are rejected.
+`fetch` now supports commit-pinned GitHub sources and materializes them into a
+quarantine output root via `--out`, and records `.gokui-source.json`
+provenance metadata.
+GitHub source syntax is now strictly validated as
+`github:owner/repo//path/to/skill@ref`; `install` requires commit-pinned refs
+for GitHub sources and rejects floating refs. `install` and `update` validate
+fetched source metadata for GitHub-origin skills.
 Local directory inspect already enforces that `SKILL.md` exists at the skill
 root.
+It also validates strict YAML frontmatter rules (no duplicate keys, anchors,
+aliases, merge keys, or custom tags), requires a valid `name` that matches the
+directory name, and enforces safety-oriented `description` checks.
+For local zip/tar inputs, inspect now performs safe archive materialization
+checks (path escape, symlink/hardlink/special entry rejection, and size/count
+limits) before applying skill validation.
 
 The intended first release focuses on local inspection and strict Codex-targeted
 installation:
@@ -62,7 +91,7 @@ confirmation remain separate layers.
 gokui separates fetching, inspection, and installation.
 
 ```sh
-gokui fetch github:org/repo//skills/pdf-helper@8f3c2d1 --out .gokui/quarantine
+gokui fetch github:org/repo//skills/pdf-helper@8f3c2d1a4b5c6d7e8f901234567890abcdef1234 --out .gokui/quarantine
 gokui inspect .gokui/quarantine/pdf-helper --format human
 gokui install .gokui/quarantine/pdf-helper --target codex --profile strict
 gokui update --target codex --dry-run
@@ -272,7 +301,7 @@ beside the installed skill.
     "type": "github",
     "repo": "org/repo",
     "path": "skills/pdf-helper",
-    "commit": "8f3c2d1...",
+    "commit": "8f3c2d1a4b5c6d7e8f901234567890abcdef1234...",
     "archive_sha256": "..."
   },
   "skill": {

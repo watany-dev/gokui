@@ -2,6 +2,8 @@ package main
 
 import (
 	"bytes"
+	"os"
+	"os/exec"
 	"strings"
 	"testing"
 )
@@ -51,4 +53,37 @@ func TestRunUnknownCommand(t *testing.T) {
 	if !strings.Contains(stderr.String(), "unknown command: unknown-cmd") {
 		t.Fatalf("stderr should include unknown command, got %q", stderr.String())
 	}
+}
+
+func TestMainEntrypointVersion(t *testing.T) {
+	cmd := exec.Command(os.Args[0], "-test.run=TestMainHelperProcess", "--", "version")
+	cmd.Env = append(os.Environ(),
+		"GO_WANT_HELPER_PROCESS=1",
+		"GO_WANT_HELPER_VERSION=v0.2.0",
+		"GO_WANT_HELPER_COMMIT=def456",
+		"GO_WANT_HELPER_DATE=2026-05-23T00:00:00Z",
+	)
+
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("helper process failed: %v\noutput=%s", err, out)
+	}
+
+	got := strings.TrimSpace(string(out))
+	want := "v0.2.0 (def456, 2026-05-23T00:00:00Z)"
+	if !strings.Contains(got, want) {
+		t.Fatalf("output = %q, want to include %q", got, want)
+	}
+}
+
+func TestMainHelperProcess(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		t.Skip("helper process only")
+	}
+
+	version = os.Getenv("GO_WANT_HELPER_VERSION")
+	commit = os.Getenv("GO_WANT_HELPER_COMMIT")
+	date = os.Getenv("GO_WANT_HELPER_DATE")
+	os.Args = []string{"gokui", "version"}
+	main()
 }

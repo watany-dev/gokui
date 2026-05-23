@@ -19,9 +19,9 @@ func TestSourceMetadataHelpers(t *testing.T) {
 		}
 		meta := sourceMetadata{
 			Schema:          "gokui.source/v1",
-			SourceInput:     "github:org/repo//skills/metadata-helper-skill@8f3c2d1",
+			SourceInput:     "github:org/repo//skills/metadata-helper-skill@8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
 			SourceKind:      "github-source",
-			ResolvedRef:     "8f3c2d1",
+			ResolvedRef:     "8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
 			FetchedAt:       "2026-05-23T00:00:00Z",
 			SkillRootSHA256: rootHash,
 		}
@@ -102,11 +102,11 @@ func TestSourceMetadataHelpers(t *testing.T) {
 			},
 			{
 				Schema:      "gokui.source/v1",
-				SourceInput: "github:org/repo//skills/x@8f3c2d1",
+				SourceInput: "github:org/repo//skills/x@8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
 			},
 			{
 				Schema:      "gokui.source/v1",
-				SourceInput: "github:org/repo/path@8f3c2d1",
+				SourceInput: "github:org/repo/path@8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
 				SourceKind:  "github-source",
 			},
 			{
@@ -116,37 +116,37 @@ func TestSourceMetadataHelpers(t *testing.T) {
 			},
 			{
 				Schema:      "gokui.source/v1",
-				SourceInput: "github:org/repo//skills/x@8f3c2d1",
+				SourceInput: "github:org/repo//skills/x@8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
 				SourceKind:  "github-source",
 				ResolvedRef: "main",
 			},
 			{
 				Schema:      "gokui.source/v1",
-				SourceInput: "github:org/repo//skills/x@8f3c2d1",
+				SourceInput: "github:org/repo//skills/x@8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
 				SourceKind:  "github-source",
 				ResolvedRef: "abcdef0",
 			},
 			{
 				Schema:          "gokui.source/v1",
-				SourceInput:     "github:org/repo//skills/x@8f3c2d1",
+				SourceInput:     "github:org/repo//skills/x@8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
 				SourceKind:      "github-source",
-				ResolvedRef:     "8f3c2d1",
+				ResolvedRef:     "8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
 				FetchedAt:       "not-a-time",
 				SkillRootSHA256: "abc",
 			},
 			{
 				Schema:          "gokui.source/v1",
-				SourceInput:     "github:org/repo//skills/x@8f3c2d1",
+				SourceInput:     "github:org/repo//skills/x@8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
 				SourceKind:      "github-source",
-				ResolvedRef:     "8f3c2d1",
+				ResolvedRef:     "8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
 				FetchedAt:       "2026-05-23T00:00:00Z",
 				SkillRootSHA256: "",
 			},
 			{
 				Schema:          "gokui.source/v1",
-				SourceInput:     "github:org/repo//skills/x@8f3c2d1",
+				SourceInput:     "github:org/repo//skills/x@8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
 				SourceKind:      "github-source",
-				ResolvedRef:     "8f3c2d1",
+				ResolvedRef:     "8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
 				FetchedAt:       "2026-05-23T00:00:00Z",
 				SkillRootSHA256: "zz",
 			},
@@ -173,9 +173,9 @@ func TestSourceMetadataHelpers(t *testing.T) {
 		}
 		if err := writeSourceMetadata(skillRoot, sourceMetadata{
 			Schema:          "gokui.source/v1",
-			SourceInput:     "github:org/repo//skills/verify-meta-skill@8f3c2d1",
+			SourceInput:     "github:org/repo//skills/verify-meta-skill@8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
 			SourceKind:      "github-source",
-			ResolvedRef:     "8f3c2d1",
+			ResolvedRef:     "8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
 			FetchedAt:       "2026-05-23T00:00:00Z",
 			SkillRootSHA256: rootHash,
 		}); err != nil {
@@ -183,14 +183,14 @@ func TestSourceMetadataHelpers(t *testing.T) {
 		}
 
 		if err := verifyInstalledSourceMetadata(skillRoot, source{
-			Input: "github:org/repo//skills/verify-meta-skill@8f3c2d1",
+			Input: "github:org/repo//skills/verify-meta-skill@8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
 			Kind:  "github-source",
 		}); err != nil {
 			t.Fatalf("verifyInstalledSourceMetadata() error = %v", err)
 		}
 
 		if err := verifyInstalledSourceMetadata(skillRoot, source{
-			Input: "github:org/repo//skills/other@8f3c2d1",
+			Input: "github:org/repo//skills/other@8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
 			Kind:  "github-source",
 		}); err == nil || !strings.Contains(err.Error(), "mismatch with lock source") {
 			t.Fatalf("expected source mismatch error, got %v", err)
@@ -200,7 +200,7 @@ func TestSourceMetadataHelpers(t *testing.T) {
 			t.Fatalf("mutate README: %v", err)
 		}
 		if err := verifyInstalledSourceMetadata(skillRoot, source{
-			Input: "github:org/repo//skills/verify-meta-skill@8f3c2d1",
+			Input: "github:org/repo//skills/verify-meta-skill@8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
 			Kind:  "github-source",
 		}); err == nil || !strings.Contains(err.Error(), "hash mismatch") {
 			t.Fatalf("expected hash mismatch error, got %v", err)
@@ -216,9 +216,9 @@ func TestSourceMetadataHelpers(t *testing.T) {
 			}
 			if err := writeSourceMetadata(lockedDir, sourceMetadata{
 				Schema:          "gokui.source/v1",
-				SourceInput:     "github:org/repo//skills/locked-skill@8f3c2d1",
+				SourceInput:     "github:org/repo//skills/locked-skill@8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
 				SourceKind:      "github-source",
-				ResolvedRef:     "8f3c2d1",
+				ResolvedRef:     "8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
 				FetchedAt:       "2026-05-23T00:00:00Z",
 				SkillRootSHA256: hash,
 			}); err != nil {
@@ -233,7 +233,7 @@ func TestSourceMetadataHelpers(t *testing.T) {
 			}
 			defer os.Chmod(blocked, 0o644)
 			if err := verifyInstalledSourceMetadata(lockedDir, source{
-				Input: "github:org/repo//skills/locked-skill@8f3c2d1",
+				Input: "github:org/repo//skills/locked-skill@8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
 				Kind:  "github-source",
 			}); err == nil {
 				t.Fatal("expected digest read error")
@@ -245,7 +245,7 @@ func TestSourceMetadataHelpers(t *testing.T) {
 			t.Fatalf("mkdir metadata dir: %v", err)
 		}
 		if err := verifyInstalledSourceMetadata(badMetaDir, source{
-			Input: "github:org/repo//skills/verify-read-error@8f3c2d1",
+			Input: "github:org/repo//skills/verify-read-error@8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
 			Kind:  "github-source",
 		}); err == nil {
 			t.Fatal("expected metadata read error")
@@ -279,9 +279,9 @@ func TestSourceMetadataHelpers(t *testing.T) {
 			}
 			if err := writeSourceMetadata(digestErrRoot, sourceMetadata{
 				Schema:          "gokui.source/v1",
-				SourceInput:     "github:org/repo//skills/resolve-digest-error@8f3c2d1",
+				SourceInput:     "github:org/repo//skills/resolve-digest-error@8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
 				SourceKind:      "github-source",
-				ResolvedRef:     "8f3c2d1",
+				ResolvedRef:     "8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
 				FetchedAt:       "2026-05-23T00:00:00Z",
 				SkillRootSHA256: hash,
 			}); err != nil {
