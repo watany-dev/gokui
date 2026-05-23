@@ -51,6 +51,7 @@ type updateSkillItem struct {
 	Source             source           `json:"source"`
 	Status             string           `json:"status"`
 	ErrorCode          string           `json:"error_code"`
+	RuleID             string           `json:"rule_id,omitempty"`
 	Decision           string           `json:"decision"`
 	Diff               updateDiff       `json:"diff"`
 	Risk               updateRisk       `json:"risk"`
@@ -320,6 +321,7 @@ func buildUpdateReport(targetRoot string) (updateReport, error) {
 			item.Status = "ERROR"
 			item.ErrorCode = updateCodeLockfileInvalid
 			item.Message = "missing or invalid lockfile"
+			item.RuleID = inferRuleIDFromMessage(item.Message)
 			skills = append(skills, item)
 			continue
 		}
@@ -333,6 +335,7 @@ func buildUpdateReport(targetRoot string) (updateReport, error) {
 			item.Status = "ERROR"
 			item.ErrorCode = updateCodeEvaluationError
 			item.Message = err.Error()
+			item.RuleID = inferRuleIDFromMessage(item.Message)
 			skills = append(skills, item)
 			continue
 		}
@@ -366,6 +369,7 @@ func evaluateUpdateSkill(item updateSkillItem, lock installLock) (updateSkillIte
 			item.Status = "ERROR"
 			item.ErrorCode = updateCodeGitHubSourceBad
 			item.Message = fmt.Sprintf("invalid github source in lockfile: %v", parseErr)
+			item.RuleID = inferRuleIDFromMessage(item.Message)
 			item.Risk = updateRisk{
 				Previous: lock.Findings,
 				Current:  lock.Findings,
@@ -376,6 +380,7 @@ func evaluateUpdateSkill(item updateSkillItem, lock installLock) (updateSkillIte
 			item.Status = "REJECTED"
 			item.ErrorCode = updateCodeGitHubRefFloating
 			item.Message = "floating github refs are not eligible for update; commit-pinned ref required"
+			item.RuleID = inferRuleIDFromMessage(item.Message)
 			item.Risk = updateRisk{
 				Previous: lock.Findings,
 				Current:  lock.Findings,
@@ -389,6 +394,7 @@ func evaluateUpdateSkill(item updateSkillItem, lock installLock) (updateSkillIte
 			item.Status = "ERROR"
 			item.ErrorCode = updateCodeSourceMetadataBad
 			item.Message = err.Error()
+			item.RuleID = inferRuleIDFromMessage(item.Message)
 			item.Risk = updateRisk{
 				Previous: lock.Findings,
 				Current:  lock.Findings,
@@ -412,6 +418,7 @@ func evaluateUpdateSkill(item updateSkillItem, lock installLock) (updateSkillIte
 		item.Status = status
 		item.ErrorCode = code
 		item.Message = message
+		item.RuleID = inferRuleIDFromMessage(item.Message)
 		item.Risk = updateRisk{
 			Previous: lock.Findings,
 			Current:  lock.Findings,
@@ -478,6 +485,7 @@ func evaluateUpdateSkill(item updateSkillItem, lock installLock) (updateSkillIte
 		item.Status = "REJECTED"
 		item.ErrorCode = updateCodePolicyRejected
 		item.Message = "fresh policy evaluation rejected update source"
+		item.RuleID = inferRuleIDFromMessage(item.Message)
 		return item, nil
 	}
 
@@ -488,12 +496,14 @@ func evaluateUpdateSkill(item updateSkillItem, lock installLock) (updateSkillIte
 		item.Status = "CHANGED"
 		item.ErrorCode = updateCodeChanged
 		item.Message = "update source differs from installed lock snapshot"
+		item.RuleID = inferRuleIDFromMessage(item.Message)
 		return item, nil
 	}
 
 	item.Status = "UP_TO_DATE"
 	item.ErrorCode = updateCodeUpToDate
 	item.Message = "no change detected against installed lock snapshot"
+	item.RuleID = inferRuleIDFromMessage(item.Message)
 	return item, nil
 }
 

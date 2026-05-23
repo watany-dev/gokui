@@ -646,6 +646,57 @@ func TestRunUpdateDryRunRejectedAndError(t *testing.T) {
 			t.Fatalf("stdout should include source-prepare error_code, got %q", stdout.String())
 		}
 	})
+
+	t.Run("github source metadata symlink is source-metadata error with rule_id", func(t *testing.T) {
+		if runtime.GOOS == "windows" {
+			t.Skip("symlink permissions differ on windows")
+		}
+
+		targetRoot := filepath.Join(t.TempDir(), "skills")
+		skillDir := filepath.Join(targetRoot, "github-meta-symlink")
+		if err := os.MkdirAll(skillDir, 0o755); err != nil {
+			t.Fatalf("mkdir skill dir: %v", err)
+		}
+		lock := installLock{
+			Schema: "gokui.lock/v1",
+			Name:   "github-meta-symlink",
+			Source: lockSource{
+				Type:  "github",
+				Input: "github:org/repo//skills/github-meta-symlink@8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
+				Kind:  "github-source",
+			},
+			Policy: lockPolicy{Profile: "strict", Decision: "pass"},
+		}
+		raw, err := json.MarshalIndent(lock, "", "  ")
+		if err != nil {
+			t.Fatalf("marshal lock: %v", err)
+		}
+		if err := os.WriteFile(filepath.Join(skillDir, installLockFile), raw, 0o644); err != nil {
+			t.Fatalf("write lock: %v", err)
+		}
+		if err := os.WriteFile(filepath.Join(skillDir, "real-source.json"), []byte("{}"), 0o644); err != nil {
+			t.Fatalf("write real source metadata: %v", err)
+		}
+		if err := os.Symlink("real-source.json", filepath.Join(skillDir, sourceMetadataFile)); err != nil {
+			t.Fatalf("create source metadata symlink: %v", err)
+		}
+
+		var stdout strings.Builder
+		var stderr strings.Builder
+		code := runUpdate([]string{"--dry-run", "--target", "custom:" + targetRoot, "--format", "json"}, &stdout, &stderr)
+		if code != 1 {
+			t.Fatalf("runUpdate(source metadata symlink) code = %d, want 1\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
+		}
+		if stderr.Len() != 0 {
+			t.Fatalf("stderr should be empty, got %q", stderr.String())
+		}
+		if !strings.Contains(stdout.String(), "\"error_code\": \""+updateCodeSourceMetadataBad+"\"") {
+			t.Fatalf("stdout should include source-metadata error_code, got %q", stdout.String())
+		}
+		if !strings.Contains(stdout.String(), "\"rule_id\": \""+ruleSourceMetadataSymlink+"\"") {
+			t.Fatalf("stdout should include source-metadata symlink rule_id, got %q", stdout.String())
+		}
+	})
 }
 
 func TestRunUpdateJSONFatalErrors(t *testing.T) {
