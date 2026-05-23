@@ -119,3 +119,44 @@ func TestREADMEStatusStatementIsConsistentWithImplementedPreRelease(t *testing.T
 		t.Fatal("README should explicitly state pre-release hardening status")
 	}
 }
+
+func TestExitCodeContractDocumentationSync(t *testing.T) {
+	readmeBytes, err := os.ReadFile("../../README.md")
+	if err != nil {
+		t.Fatalf("failed to read README.md: %v", err)
+	}
+	readme := string(readmeBytes)
+
+	rows := []string{
+		"| `gokui fetch` | fetched successfully | fatal error | n/a |",
+		"| `gokui inspect` | pass or inspect-only pre-release result | fatal error | policy rejected (`decision=REJECTED`) |",
+		"| `gokui install` | installed / already installed (matching provenance) | fatal error | policy rejected (`decision=REJECTED`) |",
+		"| `gokui update --dry-run` | no rejected or error skill items | at least one `ERROR` item | at least one `REJECTED` item and no `ERROR` items |",
+		"| `gokui lock verify` | verified | fatal error | drift detected |",
+	}
+	for _, row := range rows {
+		if !strings.Contains(readme, row) {
+			t.Fatalf("README missing exit code contract row: %q", row)
+		}
+	}
+}
+
+func TestUpdateStatusErrorCodeMatrixDocumentationSync(t *testing.T) {
+	readmeBytes, err := os.ReadFile("../../README.md")
+	if err != nil {
+		t.Fatalf("failed to read README.md: %v", err)
+	}
+	readme := string(readmeBytes)
+
+	rows := []string{
+		"| `UP_TO_DATE` | `UP_TO_DATE` |",
+		"| `CHANGED` | `SOURCE_CHANGED` |",
+		"| `REJECTED` | `POLICY_REJECTED`, `GITHUB_REF_NOT_PINNED` |",
+		"| `ERROR` | `LOCKFILE_INVALID`, `GITHUB_SOURCE_INVALID`, `SOURCE_METADATA_INVALID`, `SOURCE_PREPARE_FAILED`, `EVALUATION_ERROR` |",
+	}
+	for _, row := range rows {
+		if !strings.Contains(readme, row) {
+			t.Fatalf("README missing update status/error_code matrix row: %q", row)
+		}
+	}
+}
