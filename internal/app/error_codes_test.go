@@ -40,6 +40,7 @@ func TestAutomationErrorCodesUniqueAndFormat(t *testing.T) {
 		installErrorCodePolicyRejected,
 		installErrorCodeUnknown,
 
+		lockVerifyErrorCodeArgsInvalid,
 		lockVerifyErrorCodeReadLockfile,
 		lockVerifyErrorCodeInvalidLockfile,
 		lockVerifyErrorCodeDigestFailed,
@@ -145,6 +146,7 @@ func TestAutomationErrorCodesDocumentedInREADME(t *testing.T) {
 		installErrorCodePolicyRejected,
 		installErrorCodeUnknown,
 
+		lockVerifyErrorCodeArgsInvalid,
 		lockVerifyErrorCodeReadLockfile,
 		lockVerifyErrorCodeInvalidLockfile,
 		lockVerifyErrorCodeDigestFailed,

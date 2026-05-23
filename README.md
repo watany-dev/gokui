@@ -276,6 +276,7 @@ derived from rule-prefixed source/materialization validation errors.
 
 | error_code | Meaning |
 | --- | --- |
+| `LOCK_VERIFY_ARGS_INVALID` | CLI argument parse/validation failed |
 | `LOCKFILE_READ_FAILED` | lockfile read failed |
 | `LOCKFILE_INVALID_JSON` | lockfile JSON parse failed |
 | `FILE_DIGEST_BUILD_FAILED` | digest build failed |

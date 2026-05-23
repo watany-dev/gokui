@@ -51,6 +51,28 @@ func TestParseLockVerifyArgs(t *testing.T) {
 			t.Fatalf("expected unsupported format error, got %v", err)
 		}
 	})
+
+	t.Run("json-request and path extraction helpers", func(t *testing.T) {
+		if !lockVerifyArgsRequestJSON([]string{"--format", "json"}) {
+			t.Fatal("lockVerifyArgsRequestJSON() should detect --format json")
+		}
+		if !lockVerifyArgsRequestJSON([]string{"--format=json"}) {
+			t.Fatal("lockVerifyArgsRequestJSON() should detect --format=json")
+		}
+		if lockVerifyArgsRequestJSON([]string{"--format", "human"}) {
+			t.Fatal("lockVerifyArgsRequestJSON() should be false for human format")
+		}
+
+		if got := extractLockVerifyPathArg([]string{"./skill", "--format", "json"}); got != "./skill" {
+			t.Fatalf("extractLockVerifyPathArg() = %q, want ./skill", got)
+		}
+		if got := extractLockVerifyPathArg([]string{"--format=json", "./skill"}); got != "./skill" {
+			t.Fatalf("extractLockVerifyPathArg(equals) = %q, want ./skill", got)
+		}
+		if got := extractLockVerifyPathArg([]string{"--bad", "--format", "json"}); got != "." {
+			t.Fatalf("extractLockVerifyPathArg(default) = %q, want .", got)
+		}
+	})
 }
 
 func TestVerifyLockAndRunLockVerify(t *testing.T) {
@@ -226,6 +248,25 @@ func TestRunLockVerifyErrorPathsAndDriftKinds(t *testing.T) {
 	}
 	if !strings.Contains(stderr.String(), "missing value for --format") {
 		t.Fatalf("stderr should include parse error, got %q", stderr.String())
+	}
+
+	stdout.Reset()
+	stderr.Reset()
+	code = runLockVerify([]string{"--bad", "--format", "json"}, &stdout, &stderr)
+	if code != 1 {
+		t.Fatalf("runLockVerify(parse json error) code = %d, want 1", code)
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("stderr should be empty for json parse error output, got %q", stderr.String())
+	}
+	if !strings.Contains(stdout.String(), "\"status\": \"ERROR\"") {
+		t.Fatalf("stdout should include error status, got %q", stdout.String())
+	}
+	if !strings.Contains(stdout.String(), "\"error_code\": \""+lockVerifyErrorCodeArgsInvalid+"\"") {
+		t.Fatalf("stdout should include args-invalid error_code, got %q", stdout.String())
+	}
+	if !strings.Contains(stdout.String(), "\"skill_path\": \".\"") {
+		t.Fatalf("stdout should include default skill_path for parse error, got %q", stdout.String())
 	}
 
 	stdout.Reset()

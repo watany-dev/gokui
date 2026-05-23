@@ -67,6 +67,7 @@ const (
 )
 
 const (
+	lockVerifyErrorCodeArgsInvalid     = "LOCK_VERIFY_ARGS_INVALID"
 	lockVerifyErrorCodeReadLockfile    = "LOCKFILE_READ_FAILED"
 	lockVerifyErrorCodeInvalidLockfile = "LOCKFILE_INVALID_JSON"
 	lockVerifyErrorCodeDigestFailed    = "FILE_DIGEST_BUILD_FAILED"
@@ -80,8 +81,19 @@ type lockVerifyDriftInfo struct {
 }
 
 func runLockVerify(args []string, stdout io.Writer, stderr io.Writer) int {
+	requestedJSON := lockVerifyArgsRequestJSON(args)
 	parsed, err := parseLockVerifyArgs(args)
 	if err != nil {
+		if requestedJSON {
+			return writeLockVerifyJSONError(stdout, stderr, lockVerifyErrorReport{
+				SchemaVersion: reportSchemaVersion,
+				SkillPath:     extractLockVerifyPathArg(args),
+				Status:        "ERROR",
+				ErrorCode:     lockVerifyErrorCodeArgsInvalid,
+				Message:       err.Error(),
+				Note:          "lock verify failed before path validation",
+			})
+		}
 		_, _ = fmt.Fprintf(stderr, "%s\n\n%s\n", err.Error(), usage())
 		return 1
 	}
@@ -89,23 +101,14 @@ func runLockVerify(args []string, stdout io.Writer, stderr io.Writer) int {
 	report, verifyErr := verifyLock(parsed.Path)
 	if verifyErr != nil {
 		if parsed.Format == "json" {
-			errReport := lockVerifyErrorReport{
+			return writeLockVerifyJSONError(stdout, stderr, lockVerifyErrorReport{
 				SchemaVersion: reportSchemaVersion,
 				SkillPath:     filepath.Clean(parsed.Path),
 				Status:        "ERROR",
 				ErrorCode:     classifyLockVerifyError(verifyErr),
 				Message:       verifyErr.Error(),
 				Note:          "lock verify failed before producing drift report",
-			}
-			errReport.ErrorCode = normalizeJSONErrorCode(errReport.ErrorCode, lockVerifyErrorCodeUnknown)
-			errReport.RuleID = inferRuleIDForJSONError(errReport.Message)
-			out, err := json.MarshalIndent(errReport, "", "  ")
-			if err != nil {
-				_, _ = fmt.Fprintln(stderr, "failed to render lock verify error report")
-				return 1
-			}
-			_, _ = fmt.Fprintf(stdout, "%s\n", out)
-			return 1
+			})
 		}
 		_, _ = fmt.Fprintln(stderr, verifyErr.Error())
 		return 1
@@ -146,6 +149,36 @@ func runLockVerify(args []string, stdout io.Writer, stderr io.Writer) int {
 	return 2
 }
 
+func lockVerifyArgsRequestJSON(args []string) bool {
+	for i := 0; i < len(args); i++ {
+		if args[i] == "--format" && i+1 < len(args) && args[i+1] == "json" {
+			return true
+		}
+		if strings.HasPrefix(args[i], "--format=") && strings.TrimPrefix(args[i], "--format=") == "json" {
+			return true
+		}
+	}
+	return false
+}
+
+func extractLockVerifyPathArg(args []string) string {
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
+		if arg == "--format" {
+			i++
+			continue
+		}
+		if strings.HasPrefix(arg, "--format=") {
+			continue
+		}
+		if strings.HasPrefix(arg, "-") {
+			continue
+		}
+		return arg
+	}
+	return "."
+}
+
 func parseLockVerifyArgs(args []string) (lockVerifyArgs, error) {
 	out := lockVerifyArgs{
 		Path:   ".",
@@ -175,6 +208,21 @@ func parseLockVerifyArgs(args []string) (lockVerifyArgs, error) {
 		return lockVerifyArgs{}, fmt.Errorf("unsupported lock verify format: %s", out.Format)
 	}
 	return out, nil
+}
+
+func writeLockVerifyJSONError(stdout io.Writer, stderr io.Writer, report lockVerifyErrorReport) int {
+	report.Status = "ERROR"
+	report.ErrorCode = normalizeJSONErrorCode(report.ErrorCode, lockVerifyErrorCodeUnknown)
+	if report.RuleID == "" {
+		report.RuleID = inferRuleIDForJSONError(report.Message)
+	}
+	out, err := json.MarshalIndent(report, "", "  ")
+	if err != nil {
+		_, _ = fmt.Fprintln(stderr, "failed to render lock verify error report")
+		return 1
+	}
+	_, _ = fmt.Fprintf(stdout, "%s\n", out)
+	return 1
 }
 
 func verifyLock(skillPath string) (lockVerifyReport, error) {
