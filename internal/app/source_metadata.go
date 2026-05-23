@@ -1,14 +1,17 @@
 package app
 
 import (
+	"bytes"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
+	"github.com/watany-dev/gokui/internal/limitio"
 	srcpkg "github.com/watany-dev/gokui/internal/source"
 )
 
@@ -70,17 +73,23 @@ func readSourceMetadata(skillRoot string) (sourceMetadata, bool, error) {
 	if !linkInfo.Mode().IsRegular() {
 		return sourceMetadata{}, false, fmt.Errorf("%s: source metadata file must be a regular file: %s", ruleSourceMetadataSpecialFile, path)
 	}
-	if linkInfo.Size() > maxSourceMetadataFileBytes {
-		return sourceMetadata{}, false, fmt.Errorf("%s: source metadata exceeds size limit: %s", ruleSourceMetadataFileTooLarge, path)
-	}
 
-	raw, err := os.ReadFile(path)
+	f, err := os.Open(path)
 	if err != nil {
+		return sourceMetadata{}, false, fmt.Errorf("failed to read source metadata: %w", err)
+	}
+	defer f.Close()
+
+	var raw bytes.Buffer
+	if _, err := limitio.CopyWithStrictLimit(&raw, f, maxSourceMetadataFileBytes); err != nil {
+		if errors.Is(err, limitio.ErrSizeExceeded) {
+			return sourceMetadata{}, false, fmt.Errorf("%s: source metadata exceeds size limit: %s", ruleSourceMetadataFileTooLarge, path)
+		}
 		return sourceMetadata{}, false, fmt.Errorf("failed to read source metadata: %w", err)
 	}
 
 	var meta sourceMetadata
-	if err := json.Unmarshal(raw, &meta); err != nil {
+	if err := json.Unmarshal(raw.Bytes(), &meta); err != nil {
 		return sourceMetadata{}, false, fmt.Errorf("invalid source metadata JSON: %w", err)
 	}
 	if err := validateSourceMetadata(meta); err != nil {
