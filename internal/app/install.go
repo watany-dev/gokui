@@ -1,0 +1,556 @@
+package app
+
+import (
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
+	"fmt"
+	"io"
+	"os"
+	"path/filepath"
+	"sort"
+	"strings"
+	"time"
+
+	"github.com/watany-dev/gokui/internal/scan"
+)
+
+const (
+	installReportFile = ".gokui-report.json"
+	installLockFile   = "gokui.lock"
+)
+
+type installArgs struct {
+	Source  string
+	Target  string
+	Profile string
+}
+
+type installReport struct {
+	SchemaVersion string           `json:"schema_version"`
+	Source        source           `json:"source"`
+	PolicyProfile string           `json:"policy_profile"`
+	Decision      string           `json:"decision"`
+	Findings      []inspectFinding `json:"findings"`
+	InstalledPath string           `json:"installed_path,omitempty"`
+	Installed     bool             `json:"installed"`
+	Note          string           `json:"note"`
+}
+
+type installLock struct {
+	Schema      string             `json:"schema"`
+	Name        string             `json:"name"`
+	InstalledAt string             `json:"installed_at"`
+	Source      lockSource         `json:"source"`
+	Skill       lockSkill          `json:"skill"`
+	Policy      lockPolicy         `json:"policy"`
+	Findings    lockFindingSummary `json:"findings"`
+}
+
+type lockSource struct {
+	Type  string `json:"type"`
+	Input string `json:"input"`
+	Kind  string `json:"kind"`
+}
+
+type lockSkill struct {
+	RootSHA256 string         `json:"root_sha256"`
+	Files      []lockFileHash `json:"files"`
+}
+
+type lockFileHash struct {
+	Path   string `json:"path"`
+	SHA256 string `json:"sha256"`
+	Bytes  int64  `json:"bytes"`
+}
+
+type lockPolicy struct {
+	Profile  string `json:"profile"`
+	Decision string `json:"decision"`
+}
+
+type lockFindingSummary struct {
+	Critical int `json:"critical"`
+	High     int `json:"high"`
+	Medium   int `json:"medium"`
+	Low      int `json:"low"`
+}
+
+func runInstall(args []string, stdout io.Writer, stderr io.Writer) int {
+	parsed, err := parseInstallArgs(args)
+	if err != nil {
+		_, _ = fmt.Fprintf(stderr, "%s\n\n%s\n", err.Error(), usage())
+		return 1
+	}
+
+	if parsed.Profile != "strict" {
+		_, _ = fmt.Fprintf(stderr, "unsupported profile: %s (only strict is currently supported)\n", parsed.Profile)
+		return 1
+	}
+
+	sourceKind := detectSourceKind(parsed.Source)
+	if _, statErr := os.Stat(parsed.Source); statErr != nil {
+		if sourceKind != "github-source" {
+			_, _ = fmt.Fprintf(stderr, "install source not found: %s\n", parsed.Source)
+			return 1
+		}
+	}
+
+	skillRoot, cleanup, err := preparePolicyEvaluationSource(parsed.Source, sourceKind)
+	if cleanup != nil {
+		defer cleanup()
+	}
+	if err != nil {
+		_, _ = fmt.Fprintln(stderr, err.Error())
+		return 1
+	}
+
+	findings, decision, err := evaluateSkill(skillRoot)
+	if err != nil {
+		_, _ = fmt.Fprintln(stderr, err.Error())
+		return 1
+	}
+
+	installSource, err := resolveSourceForInstall(skillRoot, parsed.Source, sourceKind)
+	if err != nil {
+		_, _ = fmt.Fprintln(stderr, err.Error())
+		return 1
+	}
+
+	report := installReport{
+		SchemaVersion: "0.1.0-draft",
+		Source:        installSource,
+		PolicyProfile: parsed.Profile,
+		Decision:      decision,
+		Findings:      findings,
+		Installed:     false,
+		Note:          "pre-release install applies strict structural and markdown checks",
+	}
+
+	if decision == "REJECTED" {
+		_, _ = fmt.Fprintln(stdout, "gokui install report (pre-release)")
+		_, _ = fmt.Fprintf(stdout, "source: %s (%s)\n", report.Source.Input, report.Source.Kind)
+		_, _ = fmt.Fprintf(stdout, "decision: %s\n", report.Decision)
+		_, _ = fmt.Fprintf(stdout, "findings: %d\n", len(report.Findings))
+		_, _ = fmt.Fprintln(stdout, "not installed")
+		for _, finding := range report.Findings {
+			_, _ = fmt.Fprintf(stdout, "- [%s] %s %s:%d %s\n", strings.ToUpper(finding.Severity), finding.ID, finding.File, finding.Line, finding.Summary)
+		}
+		return 2
+	}
+
+	meta, metaErr := validateSkillFrontmatter(filepath.Join(skillRoot, "SKILL.md"))
+	if metaErr != nil {
+		_, _ = fmt.Fprintln(stderr, metaErr.Error())
+		return 1
+	}
+
+	targetRoot, targetErr := resolveInstallTarget(parsed.Target)
+	if targetErr != nil {
+		_, _ = fmt.Fprintln(stderr, targetErr.Error())
+		return 1
+	}
+
+	if err := os.MkdirAll(targetRoot, 0o755); err != nil {
+		_, _ = fmt.Fprintf(stderr, "failed to create install target root: %v\n", err)
+		return 1
+	}
+
+	installedPath, installResult, err := installSkillAtomic(skillRoot, targetRoot, meta.Name, report)
+	if err != nil {
+		_, _ = fmt.Fprintln(stderr, err.Error())
+		return 1
+	}
+
+	_, _ = fmt.Fprintln(stdout, "gokui install report (pre-release)")
+	_, _ = fmt.Fprintf(stdout, "source: %s (%s)\n", report.Source.Input, report.Source.Kind)
+	_, _ = fmt.Fprintf(stdout, "decision: %s\n", report.Decision)
+	_, _ = fmt.Fprintf(stdout, "findings: %d\n", len(report.Findings))
+	switch installResult {
+	case installResultInstalled:
+		_, _ = fmt.Fprintf(stdout, "installed: %s\n", installedPath)
+	case installResultAlreadyInstalled:
+		_, _ = fmt.Fprintf(stdout, "installed: %s (already installed with matching provenance)\n", installedPath)
+	default:
+		_, _ = fmt.Fprintf(stdout, "installed: %s\n", installedPath)
+	}
+	return 0
+}
+
+func parseInstallArgs(args []string) (installArgs, error) {
+	out := installArgs{Profile: "strict"}
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
+		switch {
+		case arg == "--target":
+			if i+1 >= len(args) {
+				return installArgs{}, fmt.Errorf("missing value for --target")
+			}
+			out.Target = args[i+1]
+			i++
+		case strings.HasPrefix(arg, "--target="):
+			out.Target = strings.TrimPrefix(arg, "--target=")
+		case arg == "--profile":
+			if i+1 >= len(args) {
+				return installArgs{}, fmt.Errorf("missing value for --profile")
+			}
+			out.Profile = args[i+1]
+			i++
+		case strings.HasPrefix(arg, "--profile="):
+			out.Profile = strings.TrimPrefix(arg, "--profile=")
+		case strings.HasPrefix(arg, "-"):
+			return installArgs{}, fmt.Errorf("unknown install option: %s", arg)
+		default:
+			if out.Source != "" {
+				return installArgs{}, fmt.Errorf("install accepts exactly one source")
+			}
+			out.Source = arg
+		}
+	}
+
+	if out.Source == "" {
+		return installArgs{}, fmt.Errorf("install source is required")
+	}
+	if out.Target == "" {
+		return installArgs{}, fmt.Errorf("install target is required")
+	}
+	return out, nil
+}
+
+func evaluateSkill(skillRoot string) ([]inspectFinding, string, error) {
+	scanFindings, err := scan.ScanSkillRoot(skillRoot)
+	if err != nil {
+		return nil, "", err
+	}
+
+	findings := make([]inspectFinding, 0, len(scanFindings))
+	decision := "PASS"
+	for _, finding := range scanFindings {
+		findings = append(findings, inspectFinding{
+			ID:       finding.ID,
+			Severity: finding.Severity,
+			File:     finding.File,
+			Line:     finding.Line,
+			Summary:  finding.Summary,
+		})
+		if scan.IsRejectable(finding) {
+			decision = "REJECTED"
+		}
+	}
+	return findings, decision, nil
+}
+
+func resolveInstallTarget(target string) (string, error) {
+	if target == "codex" {
+		if codexHome := strings.TrimSpace(os.Getenv("CODEX_HOME")); codexHome != "" {
+			return filepath.Join(codexHome, "skills"), nil
+		}
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return "", fmt.Errorf("failed to resolve home directory for codex target: %w", err)
+		}
+		return filepath.Join(home, ".codex", "skills"), nil
+	}
+
+	if strings.HasPrefix(target, "custom:") {
+		custom := strings.TrimSpace(strings.TrimPrefix(target, "custom:"))
+		if custom == "" {
+			return "", fmt.Errorf("custom target path is required: custom:/path/to/skills")
+		}
+		return custom, nil
+	}
+
+	return "", fmt.Errorf("unsupported install target: %s", target)
+}
+
+type installResult string
+
+const (
+	installResultInstalled        installResult = "installed"
+	installResultAlreadyInstalled installResult = "already-installed"
+)
+
+func installSkillAtomic(skillRoot string, targetRoot string, skillName string, report installReport) (string, installResult, error) {
+	finalPath := filepath.Join(targetRoot, skillName)
+
+	stagingRoot, err := os.MkdirTemp(targetRoot, ".gokui-install-*")
+	if err != nil {
+		return "", "", fmt.Errorf("failed to create install staging directory: %w", err)
+	}
+	defer os.RemoveAll(stagingRoot)
+
+	stagedSkill := filepath.Join(stagingRoot, skillName)
+	if err := copyTreeNormalized(skillRoot, stagedSkill); err != nil {
+		return "", "", err
+	}
+
+	report.InstalledPath = finalPath
+	report.Installed = true
+	if err := writeInstallMetadata(stagedSkill, report); err != nil {
+		return "", "", err
+	}
+
+	stagedLock, err := readInstallLock(filepath.Join(stagedSkill, installLockFile))
+	if err != nil {
+		return "", "", err
+	}
+
+	finalInfo, err := os.Stat(finalPath)
+	if err == nil {
+		if !finalInfo.IsDir() {
+			return "", "", fmt.Errorf("install target already contains non-directory path: %s", finalPath)
+		}
+
+		existingLock, readErr := readInstallLock(filepath.Join(finalPath, installLockFile))
+		if readErr != nil {
+			return "", "", fmt.Errorf("install target already contains skill with missing/invalid lockfile: %s", finalPath)
+		}
+		if !provenanceMatches(existingLock, stagedLock) {
+			return "", "", fmt.Errorf("install target already contains skill from different provenance: %s", finalPath)
+		}
+		return finalPath, installResultAlreadyInstalled, nil
+	}
+	if !os.IsNotExist(err) {
+		return "", "", fmt.Errorf("failed to check install target: %w", err)
+	}
+
+	if err := os.Rename(stagedSkill, finalPath); err != nil {
+		return "", "", fmt.Errorf("failed to finalize install: %w", err)
+	}
+
+	return finalPath, installResultInstalled, nil
+}
+
+func copyTreeNormalized(srcRoot string, dstRoot string) error {
+	return filepath.WalkDir(srcRoot, func(path string, d os.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+
+		rel, err := filepath.Rel(srcRoot, path)
+		if err != nil {
+			return fmt.Errorf("failed to compute install path: %w", err)
+		}
+		if rel == "." {
+			return os.MkdirAll(dstRoot, 0o755)
+		}
+
+		srcInfo, err := os.Lstat(path)
+		if err != nil {
+			return fmt.Errorf("failed to stat source file during install: %w", err)
+		}
+		if srcInfo.Mode()&os.ModeSymlink != 0 {
+			return fmt.Errorf("install source contains symlink: %s", rel)
+		}
+
+		destPath := filepath.Join(dstRoot, rel)
+		if d.IsDir() {
+			return os.MkdirAll(destPath, 0o755)
+		}
+
+		if err := os.MkdirAll(filepath.Dir(destPath), 0o755); err != nil {
+			return fmt.Errorf("failed to create install directory: %w", err)
+		}
+		return copyFileWithMode(path, destPath, 0o644)
+	})
+}
+
+func copyFileWithMode(src string, dst string, mode os.FileMode) error {
+	in, err := os.Open(src)
+	if err != nil {
+		return fmt.Errorf("failed to open source file: %w", err)
+	}
+	defer in.Close()
+
+	out, err := os.OpenFile(dst, os.O_CREATE|os.O_EXCL|os.O_WRONLY, mode)
+	if err != nil {
+		return fmt.Errorf("failed to create destination file: %w", err)
+	}
+	defer out.Close()
+
+	if _, err := io.Copy(out, in); err != nil {
+		return fmt.Errorf("failed to copy file contents: %w", err)
+	}
+	return nil
+}
+
+func writeInstallMetadata(stagedSkill string, report installReport) error {
+	reportBytes, err := json.MarshalIndent(report, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to render install report: %w", err)
+	}
+	if err := os.WriteFile(filepath.Join(stagedSkill, installReportFile), reportBytes, 0o644); err != nil {
+		return fmt.Errorf("failed to write install report: %w", err)
+	}
+
+	lock, err := buildInstallLock(stagedSkill, report)
+	if err != nil {
+		return err
+	}
+	lockBytes, err := json.MarshalIndent(lock, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to render install lockfile: %w", err)
+	}
+	if err := os.WriteFile(filepath.Join(stagedSkill, installLockFile), lockBytes, 0o644); err != nil {
+		return fmt.Errorf("failed to write install lockfile: %w", err)
+	}
+	return nil
+}
+
+func buildInstallLock(stagedSkill string, report installReport) (installLock, error) {
+	files, rootHash, err := buildFileDigestsForLock(stagedSkill)
+	if err != nil {
+		return installLock{}, err
+	}
+
+	summary := lockFindingSummary{}
+	for _, finding := range report.Findings {
+		switch finding.Severity {
+		case "critical":
+			summary.Critical++
+		case "high":
+			summary.High++
+		case "medium":
+			summary.Medium++
+		case "low":
+			summary.Low++
+		}
+	}
+
+	skillName := filepath.Base(filepath.Clean(stagedSkill))
+	return installLock{
+		Schema:      "gokui.lock/v1",
+		Name:        skillName,
+		InstalledAt: time.Now().UTC().Format(time.RFC3339),
+		Source: lockSource{
+			Type:  sourceTypeFromKind(report.Source.Kind),
+			Input: report.Source.Input,
+			Kind:  report.Source.Kind,
+		},
+		Skill: lockSkill{
+			RootSHA256: rootHash,
+			Files:      files,
+		},
+		Policy: lockPolicy{
+			Profile:  report.PolicyProfile,
+			Decision: strings.ToLower(report.Decision),
+		},
+		Findings: summary,
+	}, nil
+}
+
+func sourceTypeFromKind(kind string) string {
+	switch kind {
+	case "local-dir":
+		return "local"
+	case "zip", "tar":
+		return "archive"
+	case "github-source":
+		return "github"
+	default:
+		return "unknown"
+	}
+}
+
+func buildFileDigestsForLock(root string) ([]lockFileHash, string, error) {
+	exclude := map[string]struct{}{
+		installLockFile: {},
+	}
+	return buildFileDigestsFiltered(root, exclude)
+}
+
+func buildFileDigestsFiltered(root string, exclude map[string]struct{}) ([]lockFileHash, string, error) {
+	files := make([]lockFileHash, 0, 32)
+	err := filepath.WalkDir(root, func(path string, d os.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if d.IsDir() {
+			return nil
+		}
+
+		rel, err := filepath.Rel(root, path)
+		if err != nil {
+			return fmt.Errorf("failed to compute digest path: %w", err)
+		}
+		rel = filepath.ToSlash(rel)
+		if _, skip := exclude[rel]; skip {
+			return nil
+		}
+		sum, size, err := hashFile(path)
+		if err != nil {
+			return err
+		}
+		files = append(files, lockFileHash{
+			Path:   rel,
+			SHA256: sum,
+			Bytes:  size,
+		})
+		return nil
+	})
+	if err != nil {
+		return nil, "", fmt.Errorf("failed to digest installed files: %w", err)
+	}
+
+	sort.Slice(files, func(i, j int) bool {
+		return files[i].Path < files[j].Path
+	})
+
+	rootHasher := sha256.New()
+	for _, file := range files {
+		_, _ = io.WriteString(rootHasher, file.Path)
+		_, _ = io.WriteString(rootHasher, "\x00")
+		_, _ = io.WriteString(rootHasher, file.SHA256)
+		_, _ = io.WriteString(rootHasher, "\x00")
+	}
+	return files, hex.EncodeToString(rootHasher.Sum(nil)), nil
+}
+
+func hashFile(path string) (sum string, size int64, err error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return "", 0, fmt.Errorf("failed to open file for hashing: %w", err)
+	}
+	defer f.Close()
+
+	hasher := sha256.New()
+	n, err := io.Copy(hasher, f)
+	if err != nil {
+		return "", 0, fmt.Errorf("failed to hash file: %w", err)
+	}
+	return hex.EncodeToString(hasher.Sum(nil)), n, nil
+}
+
+func readInstallLock(path string) (installLock, error) {
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return installLock{}, fmt.Errorf("failed to read install lockfile: %s", path)
+	}
+	var lock installLock
+	if err := json.Unmarshal(raw, &lock); err != nil {
+		return installLock{}, fmt.Errorf("invalid install lockfile JSON: %s", path)
+	}
+	if lock.Schema != "gokui.lock/v1" {
+		return installLock{}, fmt.Errorf("unsupported install lockfile schema at %s: %s", path, lock.Schema)
+	}
+	return lock, nil
+}
+
+func provenanceMatches(existing installLock, incoming installLock) bool {
+	if existing.Schema != incoming.Schema {
+		return false
+	}
+	if existing.Name != incoming.Name {
+		return false
+	}
+	if existing.Source != incoming.Source {
+		return false
+	}
+	if existing.Policy.Profile != incoming.Policy.Profile {
+		return false
+	}
+	if existing.Skill.RootSHA256 != incoming.Skill.RootSHA256 {
+		return false
+	}
+	return true
+}

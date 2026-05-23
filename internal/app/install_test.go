@@ -1,0 +1,861 @@
+package app
+
+import (
+	"encoding/json"
+	"os"
+	"path/filepath"
+	"runtime"
+	"strings"
+	"testing"
+
+	srcpkg "github.com/watany-dev/gokui/internal/source"
+)
+
+func TestParseInstallArgs(t *testing.T) {
+	t.Run("parses defaults and flags", func(t *testing.T) {
+		got, err := parseInstallArgs([]string{"./skill", "--target", "codex"})
+		if err != nil {
+			t.Fatalf("parseInstallArgs() error = %v", err)
+		}
+		if got.Source != "./skill" || got.Target != "codex" || got.Profile != "strict" {
+			t.Fatalf("unexpected parse result: %+v", got)
+		}
+	})
+
+	t.Run("parses equals syntax", func(t *testing.T) {
+		got, err := parseInstallArgs([]string{"./skill", "--target=custom:/tmp/skills", "--profile=strict"})
+		if err != nil {
+			t.Fatalf("parseInstallArgs() error = %v", err)
+		}
+		if got.Target != "custom:/tmp/skills" {
+			t.Fatalf("target = %q, want %q", got.Target, "custom:/tmp/skills")
+		}
+	})
+
+	t.Run("rejects missing values and duplicates", func(t *testing.T) {
+		_, err := parseInstallArgs([]string{"./skill", "--target"})
+		if err == nil || !strings.Contains(err.Error(), "missing value for --target") {
+			t.Fatalf("expected target missing error, got %v", err)
+		}
+
+		_, err = parseInstallArgs([]string{"./skill", "--target", "codex", "--profile"})
+		if err == nil || !strings.Contains(err.Error(), "missing value for --profile") {
+			t.Fatalf("expected profile missing error, got %v", err)
+		}
+
+		_, err = parseInstallArgs([]string{"./a", "./b", "--target", "codex"})
+		if err == nil || !strings.Contains(err.Error(), "install accepts exactly one source") {
+			t.Fatalf("expected duplicate source error, got %v", err)
+		}
+	})
+}
+
+func TestResolveInstallTarget(t *testing.T) {
+	t.Run("codex target uses CODEX_HOME", func(t *testing.T) {
+		t.Setenv("CODEX_HOME", "/tmp/codex-home")
+		got, err := resolveInstallTarget("codex")
+		if err != nil {
+			t.Fatalf("resolveInstallTarget() error = %v", err)
+		}
+		if got != filepath.Join("/tmp/codex-home", "skills") {
+			t.Fatalf("target = %q", got)
+		}
+	})
+
+	t.Run("codex target uses home fallback", func(t *testing.T) {
+		t.Setenv("CODEX_HOME", "")
+		home := t.TempDir()
+		t.Setenv("HOME", home)
+		got, err := resolveInstallTarget("codex")
+		if err != nil {
+			t.Fatalf("resolveInstallTarget() error = %v", err)
+		}
+		if got != filepath.Join(home, ".codex", "skills") {
+			t.Fatalf("target = %q, want under HOME", got)
+		}
+	})
+
+	t.Run("custom target and invalid targets", func(t *testing.T) {
+		got, err := resolveInstallTarget("custom:/tmp/skills")
+		if err != nil {
+			t.Fatalf("resolveInstallTarget(custom) error = %v", err)
+		}
+		if got != "/tmp/skills" {
+			t.Fatalf("custom target = %q", got)
+		}
+
+		_, err = resolveInstallTarget("custom:")
+		if err == nil || !strings.Contains(err.Error(), "custom target path is required") {
+			t.Fatalf("expected empty custom target error, got %v", err)
+		}
+
+		_, err = resolveInstallTarget("unknown")
+		if err == nil || !strings.Contains(err.Error(), "unsupported install target") {
+			t.Fatalf("expected unsupported target error, got %v", err)
+		}
+	})
+}
+
+func TestInstallSkillAtomicWritesMetadata(t *testing.T) {
+	src := createSkillSourceForInstallTest(t, "clean-skill")
+	targetRoot := filepath.Join(t.TempDir(), "skills")
+	if err := os.MkdirAll(targetRoot, 0o755); err != nil {
+		t.Fatalf("mkdir target root: %v", err)
+	}
+
+	report := installReport{
+		SchemaVersion: "0.1.0-draft",
+		Source: source{
+			Input: src,
+			Kind:  "local-dir",
+		},
+		PolicyProfile: "strict",
+		Decision:      "PASS",
+		Findings: []inspectFinding{
+			{ID: "LOW_EXAMPLE", Severity: "low", File: "SKILL.md", Line: 1, Summary: "example"},
+		},
+		Installed: false,
+		Note:      "test",
+	}
+
+	installedPath, result, err := installSkillAtomic(src, targetRoot, "clean-skill", report)
+	if err != nil {
+		t.Fatalf("installSkillAtomic() error = %v", err)
+	}
+	if result != installResultInstalled {
+		t.Fatalf("install result = %q, want %q", result, installResultInstalled)
+	}
+	if installedPath != filepath.Join(targetRoot, "clean-skill") {
+		t.Fatalf("installed path = %q", installedPath)
+	}
+
+	reportPath := filepath.Join(installedPath, installReportFile)
+	lockPath := filepath.Join(installedPath, installLockFile)
+	if _, err := os.Stat(reportPath); err != nil {
+		t.Fatalf("expected report file: %v", err)
+	}
+	if _, err := os.Stat(lockPath); err != nil {
+		t.Fatalf("expected lock file: %v", err)
+	}
+
+	var lock installLock
+	rawLock, err := os.ReadFile(lockPath)
+	if err != nil {
+		t.Fatalf("read lock: %v", err)
+	}
+	if err := json.Unmarshal(rawLock, &lock); err != nil {
+		t.Fatalf("unmarshal lock: %v", err)
+	}
+	if lock.Schema != "gokui.lock/v1" {
+		t.Fatalf("lock schema = %q", lock.Schema)
+	}
+	if lock.Policy.Profile != "strict" {
+		t.Fatalf("lock profile = %q", lock.Policy.Profile)
+	}
+	if lock.Name != "clean-skill" {
+		t.Fatalf("lock name = %q", lock.Name)
+	}
+
+	againPath, againResult, err := installSkillAtomic(src, targetRoot, "clean-skill", report)
+	if err != nil {
+		t.Fatalf("second install should be idempotent: %v", err)
+	}
+	if againResult != installResultAlreadyInstalled {
+		t.Fatalf("second install result = %q, want %q", againResult, installResultAlreadyInstalled)
+	}
+	if againPath != installedPath {
+		t.Fatalf("second install path = %q, want %q", againPath, installedPath)
+	}
+}
+
+func TestRunInstallErrorPaths(t *testing.T) {
+	var stdout strings.Builder
+	var stderr strings.Builder
+
+	code := runInstall([]string{"../../fixtures/clean-skill", "--target", "custom:/tmp/x", "--profile", "team"}, &stdout, &stderr)
+	if code != 1 {
+		t.Fatalf("runInstall() code = %d, want 1", code)
+	}
+	if !strings.Contains(stderr.String(), "unsupported profile") {
+		t.Fatalf("stderr should include unsupported profile, got %q", stderr.String())
+	}
+
+	stdout.Reset()
+	stderr.Reset()
+	code = runInstall([]string{"github:org/repo//skill@main", "--target", "codex", "--profile", "strict"}, &stdout, &stderr)
+	if code != 1 {
+		t.Fatalf("runInstall() code = %d, want 1", code)
+	}
+	if !strings.Contains(stderr.String(), "requires a commit-pinned ref") {
+		t.Fatalf("stderr should include commit pin requirement, got %q", stderr.String())
+	}
+
+	stdout.Reset()
+	stderr.Reset()
+	code = runInstall([]string{"github:org/repo//skill@8f3c2d1", "--target", "codex", "--profile", "strict"}, &stdout, &stderr)
+	if code != 1 {
+		t.Fatalf("runInstall() code = %d, want 1", code)
+	}
+	if !strings.Contains(stderr.String(), "failed to download github archive") {
+		t.Fatalf("stderr should include github fetch error, got %q", stderr.String())
+	}
+
+	stdout.Reset()
+	stderr.Reset()
+	origFetch := fetchGitHubSkill
+	t.Cleanup(func() { fetchGitHubSkill = origFetch })
+	fakeSource := createSkillSourceForInstallTest(t, "mocked-github-skill")
+	fetchGitHubSkill = func(spec srcpkg.GitHubSpec) (string, func(), error) {
+		return fakeSource, nil, nil
+	}
+	code = runInstall([]string{"github:org/repo//skill@8f3c2d1", "--target", "custom:" + filepath.Join(t.TempDir(), "skills"), "--profile", "strict"}, &stdout, &stderr)
+	if code != 0 {
+		t.Fatalf("runInstall(mock github) code = %d, want 0\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
+	}
+
+	stdout.Reset()
+	stderr.Reset()
+	code = runInstall([]string{"./missing-source", "--target", "codex", "--profile", "strict"}, &stdout, &stderr)
+	if code != 1 {
+		t.Fatalf("runInstall() code = %d, want 1", code)
+	}
+	if !strings.Contains(stderr.String(), "install source not found") {
+		t.Fatalf("stderr should include source not found, got %q", stderr.String())
+	}
+
+	stdout.Reset()
+	stderr.Reset()
+	zipSource := filepath.Join(t.TempDir(), "clean.zip")
+	createZipArchive(t, zipSource, map[string]string{
+		"clean-skill/SKILL.md": "---\nname: clean-skill\ndescription: Use when testing install zip source.\n---\n",
+	})
+	code = runInstall([]string{zipSource, "--target", "custom:" + filepath.Join(t.TempDir(), "skills"), "--profile", "strict"}, &stdout, &stderr)
+	if code != 0 {
+		t.Fatalf("runInstall(zip) code = %d, want 0\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
+	}
+
+	stdout.Reset()
+	stderr.Reset()
+	source := createSkillSourceForInstallTest(t, "mkdir-fail-skill")
+	badTargetFile := filepath.Join(t.TempDir(), "not-a-dir")
+	if err := os.WriteFile(badTargetFile, []byte("x"), 0o644); err != nil {
+		t.Fatalf("write bad target file: %v", err)
+	}
+	code = runInstall([]string{source, "--target", "custom:" + filepath.Join(badTargetFile, "skills"), "--profile", "strict"}, &stdout, &stderr)
+	if code != 1 {
+		t.Fatalf("runInstall() code = %d, want 1", code)
+	}
+	if !strings.Contains(stderr.String(), "failed to create install target root") {
+		t.Fatalf("stderr should include mkdir target failure, got %q", stderr.String())
+	}
+
+	if runtime.GOOS != "windows" {
+		stdout.Reset()
+		stderr.Reset()
+		skillRoot := createSkillSourceForInstallTest(t, "scan-error-skill")
+		refDir := filepath.Join(skillRoot, "references")
+		if err := os.Mkdir(refDir, 0o755); err != nil {
+			t.Fatalf("mkdir references: %v", err)
+		}
+		badFile := filepath.Join(refDir, "blocked.md")
+		if err := os.WriteFile(badFile, []byte("blocked"), 0o644); err != nil {
+			t.Fatalf("write blocked file: %v", err)
+		}
+		if err := os.Chmod(badFile, 0o000); err != nil {
+			t.Fatalf("chmod blocked file: %v", err)
+		}
+		defer os.Chmod(badFile, 0o644)
+
+		code = runInstall([]string{skillRoot, "--target", "custom:" + filepath.Join(t.TempDir(), "skills"), "--profile", "strict"}, &stdout, &stderr)
+		if code != 1 {
+			t.Fatalf("runInstall() code = %d, want 1", code)
+		}
+		if !strings.Contains(stderr.String(), "failed to read scan file") {
+			t.Fatalf("stderr should include scan read error, got %q", stderr.String())
+		}
+	}
+
+	stdout.Reset()
+	stderr.Reset()
+	badArchive := filepath.Join(t.TempDir(), "bad.zip")
+	createZipArchive(t, badArchive, map[string]string{
+		"docs/readme.md": "no skill",
+	})
+	code = runInstall([]string{badArchive, "--target", "custom:" + filepath.Join(t.TempDir(), "skills2"), "--profile", "strict"}, &stdout, &stderr)
+	if code != 1 {
+		t.Fatalf("runInstall(bad archive) code = %d, want 1", code)
+	}
+	if !strings.Contains(stderr.String(), "single top-level directory") {
+		t.Fatalf("stderr should include archive validation error, got %q", stderr.String())
+	}
+}
+
+func TestInstallSkillAtomicAndCopyErrors(t *testing.T) {
+	t.Run("install fails for symlink in source tree", func(t *testing.T) {
+		if runtime.GOOS == "windows" {
+			t.Skip("symlink permissions differ on windows")
+		}
+
+		src := createSkillSourceForInstallTest(t, "symlink-skill")
+		if err := os.Symlink("SKILL.md", filepath.Join(src, "link.md")); err != nil {
+			t.Fatalf("create symlink: %v", err)
+		}
+		targetRoot := filepath.Join(t.TempDir(), "skills")
+		if err := os.MkdirAll(targetRoot, 0o755); err != nil {
+			t.Fatalf("mkdir target root: %v", err)
+		}
+		report := installReport{SchemaVersion: "0.1.0-draft", PolicyProfile: "strict", Decision: "PASS"}
+		_, _, err := installSkillAtomic(src, targetRoot, "symlink-skill", report)
+		if err == nil || !strings.Contains(err.Error(), "contains symlink") {
+			t.Fatalf("expected symlink error, got %v", err)
+		}
+	})
+
+	t.Run("install metadata write fails when report path is directory", func(t *testing.T) {
+		src := createSkillSourceForInstallTest(t, "bad-report-skill")
+		if err := os.Mkdir(filepath.Join(src, installReportFile), 0o755); err != nil {
+			t.Fatalf("mkdir colliding report path: %v", err)
+		}
+		targetRoot := filepath.Join(t.TempDir(), "skills")
+		if err := os.MkdirAll(targetRoot, 0o755); err != nil {
+			t.Fatalf("mkdir target root: %v", err)
+		}
+		report := installReport{SchemaVersion: "0.1.0-draft", PolicyProfile: "strict", Decision: "PASS"}
+		_, _, err := installSkillAtomic(src, targetRoot, "bad-report-skill", report)
+		if err == nil || !strings.Contains(err.Error(), "failed to write install report") {
+			t.Fatalf("expected report write error, got %v", err)
+		}
+	})
+
+	t.Run("copyTreeNormalized fails for missing source", func(t *testing.T) {
+		err := copyTreeNormalized(filepath.Join(t.TempDir(), "missing"), filepath.Join(t.TempDir(), "dst"))
+		if err == nil {
+			t.Fatal("expected walk error")
+		}
+	})
+
+	t.Run("install fails when target root is not a directory path", func(t *testing.T) {
+		src := createSkillSourceForInstallTest(t, "notdir-skill")
+		targetRootFile := filepath.Join(t.TempDir(), "target-file")
+		if err := os.WriteFile(targetRootFile, []byte("x"), 0o644); err != nil {
+			t.Fatalf("write target file: %v", err)
+		}
+		report := installReport{SchemaVersion: "0.1.0-draft", PolicyProfile: "strict", Decision: "PASS"}
+		_, _, err := installSkillAtomic(src, targetRootFile, "notdir-skill", report)
+		if err == nil || !strings.Contains(err.Error(), "failed to create install staging directory") {
+			t.Fatalf("expected staging create error for non-directory target root, got %v", err)
+		}
+	})
+
+	t.Run("install fails when staging root cannot be created", func(t *testing.T) {
+		src := createSkillSourceForInstallTest(t, "missing-target-root")
+		missingTarget := filepath.Join(t.TempDir(), "missing", "skills")
+		report := installReport{SchemaVersion: "0.1.0-draft", PolicyProfile: "strict", Decision: "PASS"}
+		_, _, err := installSkillAtomic(src, missingTarget, "missing-target-root", report)
+		if err == nil || !strings.Contains(err.Error(), "failed to create install staging directory") {
+			t.Fatalf("expected staging create error, got %v", err)
+		}
+	})
+
+	t.Run("copyTreeNormalized fails when destination subpath cannot be created", func(t *testing.T) {
+		srcRoot := t.TempDir()
+		if err := os.Mkdir(filepath.Join(srcRoot, "skill"), 0o755); err != nil {
+			t.Fatalf("mkdir skill: %v", err)
+		}
+		if err := os.Mkdir(filepath.Join(srcRoot, "skill", "nested"), 0o755); err != nil {
+			t.Fatalf("mkdir nested: %v", err)
+		}
+		if err := os.WriteFile(filepath.Join(srcRoot, "skill", "nested", "file.txt"), []byte("x"), 0o644); err != nil {
+			t.Fatalf("write file: %v", err)
+		}
+
+		dstRoot := filepath.Join(t.TempDir(), "dst")
+		if err := os.MkdirAll(dstRoot, 0o755); err != nil {
+			t.Fatalf("mkdir dst root: %v", err)
+		}
+		if err := os.WriteFile(filepath.Join(dstRoot, "nested"), []byte("block"), 0o644); err != nil {
+			t.Fatalf("write blocker file: %v", err)
+		}
+
+		err := copyTreeNormalized(filepath.Join(srcRoot, "skill"), dstRoot)
+		if err == nil || (!strings.Contains(err.Error(), "failed to create install directory") && !strings.Contains(err.Error(), "not a directory")) {
+			t.Fatalf("expected install directory creation error, got %v", err)
+		}
+	})
+}
+
+func TestInstallSkillAtomicRejectsDifferentProvenance(t *testing.T) {
+	targetRoot := filepath.Join(t.TempDir(), "skills")
+	if err := os.MkdirAll(targetRoot, 0o755); err != nil {
+		t.Fatalf("mkdir target root: %v", err)
+	}
+
+	first := createSkillSourceForInstallTest(t, "same-name-skill")
+	second := createSkillSourceForInstallTest(t, "same-name-skill")
+	if err := os.WriteFile(filepath.Join(second, "README.md"), []byte("different"), 0o644); err != nil {
+		t.Fatalf("mutate second source: %v", err)
+	}
+
+	firstReport := installReport{
+		SchemaVersion: "0.1.0-draft",
+		Source:        source{Input: first, Kind: "local-dir"},
+		PolicyProfile: "strict",
+		Decision:      "PASS",
+	}
+	if _, _, err := installSkillAtomic(first, targetRoot, "same-name-skill", firstReport); err != nil {
+		t.Fatalf("first installSkillAtomic() error = %v", err)
+	}
+
+	secondReport := installReport{
+		SchemaVersion: "0.1.0-draft",
+		Source:        source{Input: second, Kind: "local-dir"},
+		PolicyProfile: "strict",
+		Decision:      "PASS",
+	}
+	_, _, err := installSkillAtomic(second, targetRoot, "same-name-skill", secondReport)
+	if err == nil || !strings.Contains(err.Error(), "different provenance") {
+		t.Fatalf("expected different provenance rejection, got %v", err)
+	}
+}
+
+func TestInstallUsesAndValidatesSourceMetadata(t *testing.T) {
+	t.Run("install lock source follows fetched metadata", func(t *testing.T) {
+		src := createSkillSourceForInstallTest(t, "meta-skill")
+		_, rootHash, err := buildFileDigestsFiltered(src, map[string]struct{}{
+			sourceMetadataFile: {},
+		})
+		if err != nil {
+			t.Fatalf("buildFileDigestsFiltered() error = %v", err)
+		}
+		if err := writeSourceMetadata(src, sourceMetadata{
+			Schema:          "gokui.source/v1",
+			SourceInput:     "github:org/repo//skills/meta-skill@8f3c2d1",
+			SourceKind:      "github-source",
+			ResolvedRef:     "8f3c2d1",
+			FetchedAt:       "2026-05-23T00:00:00Z",
+			SkillRootSHA256: rootHash,
+		}); err != nil {
+			t.Fatalf("writeSourceMetadata() error = %v", err)
+		}
+
+		targetRoot := filepath.Join(t.TempDir(), "skills")
+		var stdout strings.Builder
+		var stderr strings.Builder
+		code := runInstall([]string{src, "--target", "custom:" + targetRoot, "--profile", "strict"}, &stdout, &stderr)
+		if code != 0 {
+			t.Fatalf("runInstall() code = %d, want 0\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
+		}
+		if stderr.Len() != 0 {
+			t.Fatalf("stderr should be empty, got %q", stderr.String())
+		}
+
+		lockRaw, err := os.ReadFile(filepath.Join(targetRoot, "meta-skill", installLockFile))
+		if err != nil {
+			t.Fatalf("read lock: %v", err)
+		}
+		var lock installLock
+		if err := json.Unmarshal(lockRaw, &lock); err != nil {
+			t.Fatalf("unmarshal lock: %v", err)
+		}
+		if lock.Source.Kind != "github-source" {
+			t.Fatalf("lock source kind = %q, want github-source", lock.Source.Kind)
+		}
+		if lock.Source.Input != "github:org/repo//skills/meta-skill@8f3c2d1" {
+			t.Fatalf("lock source input = %q", lock.Source.Input)
+		}
+	})
+
+	t.Run("install rejects mismatched source metadata hash", func(t *testing.T) {
+		src := createSkillSourceForInstallTest(t, "bad-meta-skill")
+		if err := writeSourceMetadata(src, sourceMetadata{
+			Schema:          "gokui.source/v1",
+			SourceInput:     "github:org/repo//skills/bad-meta-skill@8f3c2d1",
+			SourceKind:      "github-source",
+			ResolvedRef:     "8f3c2d1",
+			FetchedAt:       "2026-05-23T00:00:00Z",
+			SkillRootSHA256: strings.Repeat("0", 64),
+		}); err != nil {
+			t.Fatalf("writeSourceMetadata() error = %v", err)
+		}
+
+		var stdout strings.Builder
+		var stderr strings.Builder
+		code := runInstall([]string{src, "--target", "custom:" + filepath.Join(t.TempDir(), "skills"), "--profile", "strict"}, &stdout, &stderr)
+		if code != 1 {
+			t.Fatalf("runInstall() code = %d, want 1", code)
+		}
+		if !strings.Contains(stderr.String(), "source metadata hash mismatch") {
+			t.Fatalf("stderr should include source metadata hash mismatch, got %q", stderr.String())
+		}
+	})
+}
+
+func TestInstallSkillAtomicExistingTargetValidation(t *testing.T) {
+	report := installReport{
+		SchemaVersion: "0.1.0-draft",
+		PolicyProfile: "strict",
+		Decision:      "PASS",
+	}
+
+	t.Run("existing target path is a file", func(t *testing.T) {
+		src := createSkillSourceForInstallTest(t, "file-target-skill")
+		targetRoot := filepath.Join(t.TempDir(), "skills")
+		if err := os.MkdirAll(targetRoot, 0o755); err != nil {
+			t.Fatalf("mkdir target root: %v", err)
+		}
+		if err := os.WriteFile(filepath.Join(targetRoot, "file-target-skill"), []byte("x"), 0o644); err != nil {
+			t.Fatalf("write colliding file: %v", err)
+		}
+
+		_, _, err := installSkillAtomic(src, targetRoot, "file-target-skill", report)
+		if err == nil || !strings.Contains(err.Error(), "non-directory path") {
+			t.Fatalf("expected non-directory path error, got %v", err)
+		}
+	})
+
+	t.Run("existing target directory without lockfile", func(t *testing.T) {
+		src := createSkillSourceForInstallTest(t, "missing-lock-skill")
+		targetRoot := filepath.Join(t.TempDir(), "skills")
+		if err := os.MkdirAll(filepath.Join(targetRoot, "missing-lock-skill"), 0o755); err != nil {
+			t.Fatalf("mkdir colliding dir: %v", err)
+		}
+
+		_, _, err := installSkillAtomic(src, targetRoot, "missing-lock-skill", report)
+		if err == nil || !strings.Contains(err.Error(), "missing/invalid lockfile") {
+			t.Fatalf("expected missing lockfile error, got %v", err)
+		}
+	})
+}
+
+func TestReadInstallLockAndProvenanceMatches(t *testing.T) {
+	base := installLock{
+		Schema: "gokui.lock/v1",
+		Name:   "skill",
+		Source: lockSource{
+			Type:  "local",
+			Input: "/tmp/skill",
+			Kind:  "local-dir",
+		},
+		Skill: lockSkill{
+			RootSHA256: "abc",
+		},
+		Policy: lockPolicy{
+			Profile:  "strict",
+			Decision: "pass",
+		},
+	}
+
+	t.Run("readInstallLock success and failures", func(t *testing.T) {
+		dir := t.TempDir()
+		okPath := filepath.Join(dir, "ok.lock")
+		raw, err := json.Marshal(base)
+		if err != nil {
+			t.Fatalf("marshal lock: %v", err)
+		}
+		if err := os.WriteFile(okPath, raw, 0o644); err != nil {
+			t.Fatalf("write ok lock: %v", err)
+		}
+
+		got, err := readInstallLock(okPath)
+		if err != nil {
+			t.Fatalf("readInstallLock(ok) error = %v", err)
+		}
+		if got.Schema != "gokui.lock/v1" || got.Name != "skill" {
+			t.Fatalf("unexpected lock: %+v", got)
+		}
+
+		badJSON := filepath.Join(dir, "bad-json.lock")
+		if err := os.WriteFile(badJSON, []byte("{"), 0o644); err != nil {
+			t.Fatalf("write bad json lock: %v", err)
+		}
+		if _, err := readInstallLock(badJSON); err == nil || !strings.Contains(err.Error(), "invalid install lockfile JSON") {
+			t.Fatalf("expected invalid JSON error, got %v", err)
+		}
+
+		badSchema := base
+		badSchema.Schema = "gokui.lock/v0"
+		badSchemaRaw, err := json.Marshal(badSchema)
+		if err != nil {
+			t.Fatalf("marshal bad schema lock: %v", err)
+		}
+		badSchemaPath := filepath.Join(dir, "bad-schema.lock")
+		if err := os.WriteFile(badSchemaPath, badSchemaRaw, 0o644); err != nil {
+			t.Fatalf("write bad schema lock: %v", err)
+		}
+		if _, err := readInstallLock(badSchemaPath); err == nil || !strings.Contains(err.Error(), "unsupported install lockfile schema") {
+			t.Fatalf("expected unsupported schema error, got %v", err)
+		}
+	})
+
+	t.Run("provenanceMatches true and false cases", func(t *testing.T) {
+		if !provenanceMatches(base, base) {
+			t.Fatal("expected matching provenance")
+		}
+
+		mut := base
+		mut.Schema = "other"
+		if provenanceMatches(base, mut) {
+			t.Fatal("schema mismatch should fail")
+		}
+
+		mut = base
+		mut.Name = "other"
+		if provenanceMatches(base, mut) {
+			t.Fatal("name mismatch should fail")
+		}
+
+		mut = base
+		mut.Source.Input = "/other"
+		if provenanceMatches(base, mut) {
+			t.Fatal("source mismatch should fail")
+		}
+
+		mut = base
+		mut.Policy.Profile = "team"
+		if provenanceMatches(base, mut) {
+			t.Fatal("profile mismatch should fail")
+		}
+
+		mut = base
+		mut.Skill.RootSHA256 = "def"
+		if provenanceMatches(base, mut) {
+			t.Fatal("root hash mismatch should fail")
+		}
+	})
+}
+
+func TestBuildFileDigestsAndSourceType(t *testing.T) {
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "a.txt"), []byte("a"), 0o644); err != nil {
+		t.Fatalf("write a.txt: %v", err)
+	}
+	if err := os.Mkdir(filepath.Join(root, "sub"), 0o755); err != nil {
+		t.Fatalf("mkdir sub: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "sub", "b.txt"), []byte("b"), 0o644); err != nil {
+		t.Fatalf("write b.txt: %v", err)
+	}
+
+	files, rootHash, err := buildFileDigestsFiltered(root, nil)
+	if err != nil {
+		t.Fatalf("buildFileDigests() error = %v", err)
+	}
+	if len(files) != 2 || rootHash == "" {
+		t.Fatalf("unexpected digests files=%d rootHash=%q", len(files), rootHash)
+	}
+
+	if sourceTypeFromKind("local-dir") != "local" {
+		t.Fatal("local-dir should map to local")
+	}
+	if sourceTypeFromKind("zip") != "archive" {
+		t.Fatal("zip should map to archive")
+	}
+	if sourceTypeFromKind("github-source") != "github" {
+		t.Fatal("github-source should map to github")
+	}
+	if sourceTypeFromKind("x") != "unknown" {
+		t.Fatal("unknown kind should map to unknown")
+	}
+}
+
+func TestCopyFileWithModeAndHashErrors(t *testing.T) {
+	t.Run("copyFileWithMode source missing", func(t *testing.T) {
+		err := copyFileWithMode(filepath.Join(t.TempDir(), "missing"), filepath.Join(t.TempDir(), "out"), 0o644)
+		if err == nil || !strings.Contains(err.Error(), "failed to open source file") {
+			t.Fatalf("expected source-open error, got %v", err)
+		}
+	})
+
+	t.Run("copyFileWithMode destination create failure", func(t *testing.T) {
+		src := filepath.Join(t.TempDir(), "src.txt")
+		if err := os.WriteFile(src, []byte("x"), 0o644); err != nil {
+			t.Fatalf("write src: %v", err)
+		}
+		dst := filepath.Join(t.TempDir(), "dir")
+		if err := os.Mkdir(dst, 0o755); err != nil {
+			t.Fatalf("mkdir dst dir: %v", err)
+		}
+		err := copyFileWithMode(src, dst, 0o644)
+		if err == nil || !strings.Contains(err.Error(), "failed to create destination file") {
+			t.Fatalf("expected destination create error, got %v", err)
+		}
+	})
+
+	t.Run("hashFile source missing", func(t *testing.T) {
+		_, _, err := hashFile(filepath.Join(t.TempDir(), "missing"))
+		if err == nil || !strings.Contains(err.Error(), "failed to open file for hashing") {
+			t.Fatalf("expected hash open error, got %v", err)
+		}
+	})
+}
+
+func TestBuildLockSummaryCounts(t *testing.T) {
+	src := createSkillSourceForInstallTest(t, "summary-skill")
+	report := installReport{
+		SchemaVersion: "0.1.0-draft",
+		Source: source{
+			Input: src,
+			Kind:  "zip",
+		},
+		PolicyProfile: "strict",
+		Decision:      "PASS",
+		Findings: []inspectFinding{
+			{ID: "A", Severity: "critical"},
+			{ID: "B", Severity: "high"},
+			{ID: "C", Severity: "medium"},
+			{ID: "D", Severity: "low"},
+		},
+	}
+	lock, err := buildInstallLock(src, report)
+	if err != nil {
+		t.Fatalf("buildInstallLock() error = %v", err)
+	}
+	if lock.Findings.Critical != 1 || lock.Findings.High != 1 || lock.Findings.Medium != 1 || lock.Findings.Low != 1 {
+		t.Fatalf("unexpected finding summary: %+v", lock.Findings)
+	}
+}
+
+func TestWriteInstallMetadataAndBuildDigestsErrors(t *testing.T) {
+	t.Run("writeInstallMetadata fails on lock path collision", func(t *testing.T) {
+		stage := createSkillSourceForInstallTest(t, "collision-skill")
+		if err := os.Mkdir(filepath.Join(stage, installLockFile), 0o755); err != nil {
+			t.Fatalf("mkdir lock collision: %v", err)
+		}
+		report := installReport{
+			SchemaVersion: "0.1.0-draft",
+			Source:        source{Input: stage, Kind: "local-dir"},
+			PolicyProfile: "strict",
+			Decision:      "PASS",
+		}
+		err := writeInstallMetadata(stage, report)
+		if err == nil || !strings.Contains(err.Error(), "failed to write install lockfile") {
+			t.Fatalf("expected lockfile write error, got %v", err)
+		}
+	})
+
+	t.Run("writeInstallMetadata fails when lock build fails", func(t *testing.T) {
+		if runtime.GOOS == "windows" {
+			t.Skip("permission behavior differs on windows")
+		}
+
+		stage := createSkillSourceForInstallTest(t, "hash-fail-skill")
+		blocked := filepath.Join(stage, "blocked.bin")
+		if err := os.WriteFile(blocked, []byte("x"), 0o644); err != nil {
+			t.Fatalf("write blocked file: %v", err)
+		}
+		if err := os.Chmod(blocked, 0o000); err != nil {
+			t.Fatalf("chmod blocked file: %v", err)
+		}
+		defer os.Chmod(blocked, 0o644)
+
+		report := installReport{
+			SchemaVersion: "0.1.0-draft",
+			Source:        source{Input: stage, Kind: "local-dir"},
+			PolicyProfile: "strict",
+			Decision:      "PASS",
+		}
+		err := writeInstallMetadata(stage, report)
+		if err == nil || !strings.Contains(err.Error(), "failed to digest installed files") {
+			t.Fatalf("expected digest error, got %v", err)
+		}
+	})
+
+	t.Run("buildFileDigests fails when file is unreadable", func(t *testing.T) {
+		if runtime.GOOS == "windows" {
+			t.Skip("permission behavior differs on windows")
+		}
+		root := t.TempDir()
+		file := filepath.Join(root, "blocked.txt")
+		if err := os.WriteFile(file, []byte("x"), 0o644); err != nil {
+			t.Fatalf("write blocked file: %v", err)
+		}
+		if err := os.Chmod(file, 0o000); err != nil {
+			t.Fatalf("chmod blocked file: %v", err)
+		}
+		defer os.Chmod(file, 0o644)
+
+		_, _, err := buildFileDigestsFiltered(root, nil)
+		if err == nil || !strings.Contains(err.Error(), "failed to open file for hashing") {
+			t.Fatalf("expected digest read error, got %v", err)
+		}
+	})
+
+	t.Run("buildFileDigests fails when root directory is missing", func(t *testing.T) {
+		_, _, err := buildFileDigestsFiltered(filepath.Join(t.TempDir(), "missing"), nil)
+		if err == nil || !strings.Contains(err.Error(), "failed to digest installed files") {
+			t.Fatalf("expected walk error, got %v", err)
+		}
+	})
+
+	t.Run("buildInstallLock propagates digest errors", func(t *testing.T) {
+		_, err := buildInstallLock(filepath.Join(t.TempDir(), "missing"), installReport{})
+		if err == nil || !strings.Contains(err.Error(), "failed to digest installed files") {
+			t.Fatalf("expected digest propagation error, got %v", err)
+		}
+	})
+}
+
+func TestHashFileCopyError(t *testing.T) {
+	dir := t.TempDir()
+	_, _, err := hashFile(dir)
+	if err == nil || !strings.Contains(err.Error(), "failed to hash file") {
+		t.Fatalf("expected hash copy error for directory input, got %v", err)
+	}
+}
+
+func TestEvaluateSkillDecision(t *testing.T) {
+	passRoot := createSkillSourceForInstallTest(t, "eval-pass-skill")
+	findings, decision, err := evaluateSkill(passRoot)
+	if err != nil {
+		t.Fatalf("evaluateSkill(pass) error = %v", err)
+	}
+	if decision != "PASS" || len(findings) != 0 {
+		t.Fatalf("expected PASS with no findings, got decision=%s findings=%d", decision, len(findings))
+	}
+
+	rejectRoot := filepath.FromSlash("../../fixtures/fake-prereq-skill")
+	findings, decision, err = evaluateSkill(rejectRoot)
+	if err != nil {
+		t.Fatalf("evaluateSkill(reject) error = %v", err)
+	}
+	if decision != "REJECTED" || len(findings) == 0 {
+		t.Fatalf("expected REJECTED with findings, got decision=%s findings=%d", decision, len(findings))
+	}
+}
+
+func TestCopyTreeNormalizedRejectsSymlink(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlink permissions differ on windows")
+	}
+
+	src := t.TempDir()
+	if err := os.WriteFile(filepath.Join(src, "regular.txt"), []byte("ok"), 0o644); err != nil {
+		t.Fatalf("write regular file: %v", err)
+	}
+	if err := os.Symlink("regular.txt", filepath.Join(src, "link.txt")); err != nil {
+		t.Fatalf("create symlink: %v", err)
+	}
+
+	dst := t.TempDir()
+	err := copyTreeNormalized(src, filepath.Join(dst, "copy"))
+	if err == nil || !strings.Contains(err.Error(), "contains symlink") {
+		t.Fatalf("expected symlink rejection, got %v", err)
+	}
+}
+
+func createSkillSourceForInstallTest(t *testing.T, name string) string {
+	t.Helper()
+	root := t.TempDir()
+	skillDir := filepath.Join(root, name)
+	if err := os.Mkdir(skillDir, 0o755); err != nil {
+		t.Fatalf("mkdir skill dir: %v", err)
+	}
+	content := "---\nname: " + name + "\ndescription: Use when testing install atomic path.\n---\n\n# Skill\n"
+	if err := os.WriteFile(filepath.Join(skillDir, "SKILL.md"), []byte(content), 0o644); err != nil {
+		t.Fatalf("write SKILL.md: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(skillDir, "README.md"), []byte("fixture"), 0o644); err != nil {
+		t.Fatalf("write README.md: %v", err)
+	}
+	return skillDir
+}
