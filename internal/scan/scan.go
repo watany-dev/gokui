@@ -1,6 +1,8 @@
 package scan
 
 import (
+	"bytes"
+	"errors"
 	"fmt"
 	"net"
 	neturl "net/url"
@@ -11,6 +13,7 @@ import (
 	"strings"
 	"unicode"
 
+	"github.com/watany-dev/gokui/internal/limitio"
 	"golang.org/x/text/unicode/norm"
 )
 
@@ -334,20 +337,30 @@ func scanTextFile(target scanTarget) ([]Finding, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to stat scan file %s: %w", target.Relative, err)
 	}
-	if info.Size() > maxScanFileBytes {
-		return []Finding{{
-			ID:       "LARGE_TEXT_FILE",
-			Severity: "medium",
-			File:     target.Relative,
-			Line:     1,
-			Summary:  "text file exceeds scan size limit",
-		}}, nil
+	if !info.Mode().IsRegular() {
+		return nil, fmt.Errorf("%s: scan source contains non-regular file: %s", ruleScanSpecialFile, target.Relative)
 	}
 
-	content, err := os.ReadFile(target.Absolute)
+	in, err := os.Open(target.Absolute)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read scan file %s: %w", target.Relative, err)
 	}
+	defer in.Close()
+
+	var contentBuf bytes.Buffer
+	if _, err := limitio.CopyWithStrictLimit(&contentBuf, in, maxScanFileBytes); err != nil {
+		if errors.Is(err, limitio.ErrSizeExceeded) {
+			return []Finding{{
+				ID:       "LARGE_TEXT_FILE",
+				Severity: "medium",
+				File:     target.Relative,
+				Line:     1,
+				Summary:  "text file exceeds scan size limit",
+			}}, nil
+		}
+		return nil, fmt.Errorf("failed to read scan file %s: %w", target.Relative, err)
+	}
+	content := contentBuf.Bytes()
 
 	lines := strings.Split(strings.ReplaceAll(string(content), "\r\n", "\n"), "\n")
 	findings := make([]Finding, 0)

@@ -945,6 +945,18 @@ func TestScanTextFileErrorsAndDedup(t *testing.T) {
 		}
 	})
 
+	t.Run("rejects non-regular file", func(t *testing.T) {
+		dir := t.TempDir()
+		_, err := scanTextFile(scanTarget{
+			Absolute: dir,
+			Relative: "dir-as-file",
+			Kind:     "markdown",
+		})
+		if err == nil || !strings.Contains(err.Error(), ruleScanSpecialFile) {
+			t.Fatalf("expected special-file error, got %v", err)
+		}
+	})
+
 	t.Run("read failure", func(t *testing.T) {
 		if runtime.GOOS == "windows" {
 			t.Skip("permission behavior differs on windows")
