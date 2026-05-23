@@ -78,6 +78,9 @@ func TestScanSkillRootScansScriptLikeFiles(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "loader.ps1"), []byte("powershell -EncodedCommand SQBmACgAJABQAFMAVgBlAHIAcwBpAG8AbgBUAGEAYgBsAGUAKQA="), 0o644); err != nil {
 		t.Fatalf("write encoded command script: %v", err)
 	}
+	if err := os.WriteFile(filepath.Join(root, "install.sh"), []byte("chmod +x ./agent-installer.sh && ./agent-installer.sh"), 0o644); err != nil {
+		t.Fatalf("write chmod exec chain script: %v", err)
+	}
 	if err := os.WriteFile(filepath.Join(root, "runner.py"), []byte("npx tool"), 0o644); err != nil {
 		t.Fatalf("write runner: %v", err)
 	}
@@ -92,6 +95,7 @@ func TestScanSkillRootScansScriptLikeFiles(t *testing.T) {
 	assertHasID(t, findings, "BASE64_PIPE_EXEC")
 	assertHasID(t, findings, "HEX_PIPE_EXEC")
 	assertHasID(t, findings, "ENCODED_COMMAND_EXEC")
+	assertHasID(t, findings, "CHMOD_EXEC_CHAIN")
 	assertHasID(t, findings, "UNPINNED_RUNTIME_TOOL")
 }
 
@@ -292,6 +296,121 @@ func TestEncodedCommandExecPattern(t *testing.T) {
 			t.Fatalf("unexpected encodedCmdExec match for %q", line)
 		}
 	})
+}
+
+func TestHasChmodExecChain(t *testing.T) {
+	t.Run("detects same-line chmod and execute", func(t *testing.T) {
+		line := "chmod +x ./install.sh && ./install.sh"
+		if !hasChmodExecChain(line) {
+			t.Fatalf("expected hasChmodExecChain true for %q", line)
+		}
+	})
+
+	t.Run("detects chmod and execute through shell command", func(t *testing.T) {
+		line := "sudo chmod +x scripts/run.sh; bash scripts/run.sh"
+		if !hasChmodExecChain(line) {
+			t.Fatalf("expected hasChmodExecChain true for %q", line)
+		}
+	})
+
+	t.Run("does not match chmod without execution", func(t *testing.T) {
+		line := "chmod +x ./install.sh"
+		if hasChmodExecChain(line) {
+			t.Fatalf("unexpected hasChmodExecChain true for %q", line)
+		}
+	})
+
+	t.Run("does not match execution of different file", func(t *testing.T) {
+		line := "chmod +x ./install.sh && ./other.sh"
+		if hasChmodExecChain(line) {
+			t.Fatalf("unexpected hasChmodExecChain true for %q", line)
+		}
+	})
+}
+
+func TestSplitCommandSegments(t *testing.T) {
+	if got := splitCommandSegments(""); got != nil {
+		t.Fatalf("expected nil for empty input, got %#v", got)
+	}
+	got := splitCommandSegments("chmod +x a.sh && ./a.sh || echo done; ./noop")
+	if len(got) != 4 {
+		t.Fatalf("expected 4 segments, got %d (%#v)", len(got), got)
+	}
+}
+
+func TestFindChmodExecutableTarget(t *testing.T) {
+	cases := []struct {
+		name   string
+		fields []string
+		want   string
+	}{
+		{name: "simple", fields: []string{"chmod", "+x", "./install.sh"}, want: "install.sh"},
+		{name: "sudo", fields: []string{"sudo", "chmod", "u+x", "scripts/run.sh"}, want: "scripts/run.sh"},
+		{name: "not chmod", fields: []string{"echo", "chmod", "+x", "x"}, want: ""},
+		{name: "missing target", fields: []string{"chmod", "+x"}, want: ""},
+		{name: "without plus x", fields: []string{"chmod", "644", "file"}, want: ""},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := findChmodExecutableTarget(tc.fields); got != tc.want {
+				t.Fatalf("findChmodExecutableTarget(%#v) = %q, want %q", tc.fields, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestFindExecutedLocalTarget(t *testing.T) {
+	cases := []struct {
+		name   string
+		fields []string
+		want   string
+	}{
+		{name: "default", fields: []string{"./run.sh"}, want: "run.sh"},
+		{name: "sudo default", fields: []string{"sudo", "./run.sh"}, want: "run.sh"},
+		{name: "shell wrapper", fields: []string{"bash", "./scripts/run.sh"}, want: "scripts/run.sh"},
+		{name: "shell wrapper without arg", fields: []string{"sh"}, want: ""},
+		{name: "chmod command", fields: []string{"chmod", "+x", "x"}, want: ""},
+		{name: "url command", fields: []string{"https://example.com/x.sh"}, want: ""},
+		{name: "flag command", fields: []string{"-c"}, want: ""},
+		{name: "var command", fields: []string{"$RUNNER"}, want: ""},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := findExecutedLocalTarget(tc.fields); got != tc.want {
+				t.Fatalf("findExecutedLocalTarget(%#v) = %q, want %q", tc.fields, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestNormalizeExecPath(t *testing.T) {
+	cases := []struct {
+		in   string
+		want string
+	}{
+		{in: "'./run.sh'", want: "run.sh"},
+		{in: ".\\run.ps1", want: "run.ps1"},
+		{in: "scripts/run.sh,", want: "scripts/run.sh"},
+		{in: "scripts/run.sh)", want: "scripts/run.sh"},
+		{in: "scripts/run.sh]", want: "scripts/run.sh"},
+		{in: "-c", want: ""},
+		{in: "https://example.com/run.sh", want: ""},
+		{in: "$RUNNER", want: ""},
+	}
+	for _, tc := range cases {
+		if got := normalizeExecPath(tc.in); got != tc.want {
+			t.Fatalf("normalizeExecPath(%q) = %q, want %q", tc.in, got, tc.want)
+		}
+	}
+}
+
+func TestMatchesApproximatePhrase(t *testing.T) {
+	if matchesApproximatePhrase([]string{"ignore"}, []string{"ignore", "previous"}) {
+		t.Fatal("length mismatch should not match")
+	}
+	if matchesApproximatePhrase([]string{"ignore", "different"}, []string{"ignore", "previous"}) {
+		t.Fatal("word mismatch should not match")
+	}
 }
 
 func TestIsTypoglycemiaVariant(t *testing.T) {
