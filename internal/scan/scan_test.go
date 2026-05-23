@@ -72,6 +72,9 @@ func TestScanSkillRootScansScriptLikeFiles(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "script.sh"), []byte("echo payload | base64 -d | sh"), 0o644); err != nil {
 		t.Fatalf("write script: %v", err)
 	}
+	if err := os.WriteFile(filepath.Join(root, "decode.sh"), []byte("echo 6563686f20706f776e6564 | xxd -r -p | sh"), 0o644); err != nil {
+		t.Fatalf("write hex decode script: %v", err)
+	}
 	if err := os.WriteFile(filepath.Join(root, "runner.py"), []byte("npx tool"), 0o644); err != nil {
 		t.Fatalf("write runner: %v", err)
 	}
@@ -84,6 +87,7 @@ func TestScanSkillRootScansScriptLikeFiles(t *testing.T) {
 		t.Fatalf("ScanSkillRoot() error = %v", err)
 	}
 	assertHasID(t, findings, "BASE64_PIPE_EXEC")
+	assertHasID(t, findings, "HEX_PIPE_EXEC")
 	assertHasID(t, findings, "UNPINNED_RUNTIME_TOOL")
 }
 
@@ -250,6 +254,22 @@ func TestPromptOverrideApproximatePhrase(t *testing.T) {
 		line := "please ignore previous versions and proceed"
 		if hasPromptOverrideApproximatePhrase(line) {
 			t.Fatalf("unexpected approximate prompt override detection for %q", line)
+		}
+	})
+}
+
+func TestHexPipeExecPattern(t *testing.T) {
+	t.Run("detects xxd decode pipe to shell", func(t *testing.T) {
+		line := "echo 6869 | xxd -r -p | sh"
+		if !hexPipeExec.MatchString(line) {
+			t.Fatalf("expected hexPipeExec to match %q", line)
+		}
+	})
+
+	t.Run("does not match decode command without pipe execution", func(t *testing.T) {
+		line := "echo 6869 | xxd -r -p > out.bin"
+		if hexPipeExec.MatchString(line) {
+			t.Fatalf("unexpected hexPipeExec match for %q", line)
 		}
 	})
 }

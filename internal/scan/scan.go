@@ -28,6 +28,7 @@ type Finding struct {
 var (
 	curlPipePattern = regexp.MustCompile(`(?i)\b(?:curl|wget)\b[^\n|]{0,300}\|\s*(?:sh|bash|zsh|pwsh|powershell)\b`)
 	base64PipeExec  = regexp.MustCompile(`(?i)\b(?:base64|openssl\s+base64)\b[^\n|]{0,300}\|\s*(?:sh|bash|zsh|pwsh|powershell|python|node)\b`)
+	hexPipeExec     = regexp.MustCompile(`(?i)\b(?:xxd\s+-r(?:\s+-p)?|unhexlify|fromhex|hexdecode)\b[^\n|]{0,300}\|\s*(?:sh|bash|zsh|pwsh|powershell|python|node)\b`)
 
 	promptOverridePattern = regexp.MustCompile(`(?i)\b(?:ignore|override|bypass)\b.{0,80}\b(?:previous|prior|system|higher|earlier)\b.{0,40}\b(?:instruction|instructions|prompt|prompts)\b`)
 
@@ -286,6 +287,15 @@ func scanTextFile(target scanTarget) ([]Finding, error) {
 					File:     target.Relative,
 					Line:     lineNum,
 					Summary:  "decoded payload piped directly to an interpreter",
+				})
+			}
+			if hexPipeExec.MatchString(variant) {
+				findings = append(findings, Finding{
+					ID:       "HEX_PIPE_EXEC",
+					Severity: "critical",
+					File:     target.Relative,
+					Line:     lineNum,
+					Summary:  "hex-decoded payload piped directly to an interpreter",
 				})
 			}
 			if isUnpinnedRuntimeToolLine(variant) {
