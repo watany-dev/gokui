@@ -101,6 +101,8 @@ GitHub source syntax is now strictly validated as
 `github:owner/repo//path/to/skill@ref`; `install` requires commit-pinned refs
 for GitHub sources and rejects floating refs. `install` and `update` validate
 fetched source metadata for GitHub-origin skills.
+Parser bounds are also enforced for overall source length and owner/repo/path/ref
+segment lengths.
 Local directory inspect already enforces that `SKILL.md` exists at the skill
 root, rejects symlinked source paths/components or symlinked `SKILL.md`, and
 requires `SKILL.md` to be a regular file (not a directory/device/FIFO/socket).

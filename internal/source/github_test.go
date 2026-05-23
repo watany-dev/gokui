@@ -45,6 +45,50 @@ func TestParseGitHubSource(t *testing.T) {
 			}
 		}
 	})
+
+	t.Run("enforces length bounds", func(t *testing.T) {
+		ownerMax := strings.Repeat("a", maxGitHubOwnerChars)
+		repoMax := strings.Repeat("b", maxGitHubRepoChars)
+		pathMax := strings.Repeat("c", maxGitHubPathChars)
+		refMax := strings.Repeat("d", maxGitHubRefChars)
+		valid := fmt.Sprintf("github:%s/%s//%s@%s", ownerMax, repoMax, pathMax, refMax)
+		if _, err := ParseGitHubSource(valid); err != nil {
+			t.Fatalf("expected max-length source to pass, got %v", err)
+		}
+
+		cases := []struct {
+			name  string
+			input string
+		}{
+			{
+				name:  "owner too long",
+				input: fmt.Sprintf("github:%s/x//skills/demo@main", strings.Repeat("o", maxGitHubOwnerChars+1)),
+			},
+			{
+				name:  "repo too long",
+				input: fmt.Sprintf("github:owner/%s//skills/demo@main", strings.Repeat("r", maxGitHubRepoChars+1)),
+			},
+			{
+				name:  "path too long",
+				input: fmt.Sprintf("github:owner/repo//%s@main", strings.Repeat("p", maxGitHubPathChars+1)),
+			},
+			{
+				name:  "ref too long",
+				input: fmt.Sprintf("github:owner/repo//skills/demo@%s", strings.Repeat("f", maxGitHubRefChars+1)),
+			},
+			{
+				name:  "total input too long",
+				input: "github:owner/repo//skills/demo@" + strings.Repeat("x", maxGitHubSourceInputChars),
+			},
+		}
+		for _, tc := range cases {
+			t.Run(tc.name, func(t *testing.T) {
+				if _, err := ParseGitHubSource(tc.input); err == nil {
+					t.Fatalf("expected parse error for over-limit input: %s", tc.name)
+				}
+			})
+		}
+	})
 }
 
 func TestParseGitHubSourcePropertyNoPanic(t *testing.T) {

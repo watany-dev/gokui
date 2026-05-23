@@ -12,6 +12,14 @@ var (
 	commitRefPattern      = regexp.MustCompile(`^[0-9a-fA-F]{40}$`)
 )
 
+const (
+	maxGitHubSourceInputChars = 4096
+	maxGitHubOwnerChars       = 39
+	maxGitHubRepoChars        = 100
+	maxGitHubPathChars        = 1024
+	maxGitHubRefChars         = 255
+)
+
 // GitHubSpec is a parsed github source in the form:
 // github:owner/repo//path/to/skill@ref
 type GitHubSpec struct {
@@ -27,6 +35,9 @@ func ParseGitHubSource(input string) (GitHubSpec, error) {
 	if !strings.HasPrefix(input, prefix) {
 		return GitHubSpec{}, fmt.Errorf("github source must start with %q", prefix)
 	}
+	if len(input) > maxGitHubSourceInputChars {
+		return GitHubSpec{}, fmt.Errorf("github source exceeds max length: %d", maxGitHubSourceInputChars)
+	}
 
 	rest := strings.TrimPrefix(input, prefix)
 	at := strings.LastIndex(rest, "@")
@@ -37,6 +48,9 @@ func ParseGitHubSource(input string) (GitHubSpec, error) {
 	ref := rest[at+1:]
 	if strings.TrimSpace(ref) != ref {
 		return GitHubSpec{}, fmt.Errorf("github source ref must not contain surrounding spaces")
+	}
+	if len(ref) > maxGitHubRefChars {
+		return GitHubSpec{}, fmt.Errorf("github source ref exceeds max length: %d", maxGitHubRefChars)
 	}
 
 	parts := strings.SplitN(location, "//", 2)
@@ -55,6 +69,12 @@ func ParseGitHubSource(input string) (GitHubSpec, error) {
 	repo := strings.TrimSpace(repoParts[1])
 	if owner == "" || repo == "" {
 		return GitHubSpec{}, fmt.Errorf("github source owner/repo must be non-empty")
+	}
+	if len(owner) > maxGitHubOwnerChars {
+		return GitHubSpec{}, fmt.Errorf("github source owner exceeds max length: %d", maxGitHubOwnerChars)
+	}
+	if len(repo) > maxGitHubRepoChars {
+		return GitHubSpec{}, fmt.Errorf("github source repo exceeds max length: %d", maxGitHubRepoChars)
 	}
 	if !githubRepoPartPattern.MatchString(owner) || !githubRepoPartPattern.MatchString(repo) {
 		return GitHubSpec{}, fmt.Errorf("github source owner/repo contains invalid characters")
@@ -91,6 +111,9 @@ func normalizeGitHubPath(p string) (string, error) {
 	}
 	if strings.HasPrefix(clean, "../") || clean == ".." {
 		return "", fmt.Errorf("github source path must not escape repository root")
+	}
+	if len(clean) > maxGitHubPathChars {
+		return "", fmt.Errorf("github source path exceeds max length: %d", maxGitHubPathChars)
 	}
 	return clean, nil
 }
