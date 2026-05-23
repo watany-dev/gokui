@@ -448,6 +448,35 @@ func TestRun(t *testing.T) {
 		}
 	})
 
+	t.Run("inspect surfaces oversized skill frontmatter rule_id in json error", func(t *testing.T) {
+		var stdout bytes.Buffer
+		var stderr bytes.Buffer
+
+		origLimit := maxSkillFrontmatterBytes
+		maxSkillFrontmatterBytes = 16
+		t.Cleanup(func() { maxSkillFrontmatterBytes = origLimit })
+
+		root := t.TempDir()
+		skillBody := "---\nname: huge-skill\ndescription: Use when validating oversized frontmatter behavior.\n---\n"
+		if err := os.WriteFile(filepath.Join(root, "SKILL.md"), []byte(skillBody), 0o644); err != nil {
+			t.Fatalf("write SKILL.md: %v", err)
+		}
+
+		code := Run([]string{"inspect", root, "--format", "json"}, &stdout, &stderr, cfg)
+		if code != 1 {
+			t.Fatalf("Run() code = %d, want 1", code)
+		}
+		if stderr.Len() != 0 {
+			t.Fatalf("stderr should be empty, got %q", stderr.String())
+		}
+		if !strings.Contains(stdout.String(), "\"error_code\": \""+inspectErrorCodeSourcePrepareFailed+"\"") {
+			t.Fatalf("stdout should include source-prepare-failed code, got %q", stdout.String())
+		}
+		if !strings.Contains(stdout.String(), "\"rule_id\": \""+ruleSkillFrontmatterTooLarge+"\"") {
+			t.Fatalf("stdout should include frontmatter size rule_id, got %q", stdout.String())
+		}
+	})
+
 	t.Run("inspect validates tar.gz archive source", func(t *testing.T) {
 		var stdout bytes.Buffer
 		var stderr bytes.Buffer
@@ -1166,6 +1195,18 @@ func TestValidateSkillFrontmatter(t *testing.T) {
 		}
 		if !strings.Contains(err.Error(), "DESCRIPTION_TOOL_INJECTION") {
 			t.Fatalf("expected DESCRIPTION_TOOL_INJECTION marker, got %v", err)
+		}
+	})
+
+	t.Run("rejects oversized skill file", func(t *testing.T) {
+		origLimit := maxSkillFrontmatterBytes
+		maxSkillFrontmatterBytes = 16
+		t.Cleanup(func() { maxSkillFrontmatterBytes = origLimit })
+
+		path := writeSkill(t, "---\nname: valid-skill\ndescription: Use when validating oversized frontmatter rejection.\n---\n")
+		_, err := validateSkillFrontmatter(path)
+		if err == nil || !strings.Contains(err.Error(), ruleSkillFrontmatterTooLarge) {
+			t.Fatalf("expected oversized frontmatter error, got %v", err)
 		}
 	})
 }

@@ -130,12 +130,15 @@ type skillFrontmatter struct {
 }
 
 var (
-	skillNamePattern           = regexp.MustCompile(`^[a-z0-9]+(?:-[a-z0-9]+)*$`)
-	descriptionURLPattern      = regexp.MustCompile(`(?i)\b(?:https?://|ftp://|www\.)\S+`)
-	descriptionCommandPattern  = regexp.MustCompile(`(?i)\b(run|execute|exec|invoke|call|use)\b.{0,30}\b(bash|sh|zsh|pwsh|powershell|python|node|npm|npx|uvx|go|curl|wget|terminal|command)\b`)
-	descriptionOverridePattern = regexp.MustCompile(`(?i)\b(ignore|override|bypass)\b.{0,40}\b(previous|prior|system|higher|earlier)\b.{0,20}\b(instruction|instructions|prompt|prompts)\b`)
-	ruleIDPrefixPattern        = regexp.MustCompile(`^([A-Z][A-Z0-9_]+):\s`)
+	skillNamePattern                 = regexp.MustCompile(`^[a-z0-9]+(?:-[a-z0-9]+)*$`)
+	descriptionURLPattern            = regexp.MustCompile(`(?i)\b(?:https?://|ftp://|www\.)\S+`)
+	descriptionCommandPattern        = regexp.MustCompile(`(?i)\b(run|execute|exec|invoke|call|use)\b.{0,30}\b(bash|sh|zsh|pwsh|powershell|python|node|npm|npx|uvx|go|curl|wget|terminal|command)\b`)
+	descriptionOverridePattern       = regexp.MustCompile(`(?i)\b(ignore|override|bypass)\b.{0,40}\b(previous|prior|system|higher|earlier)\b.{0,20}\b(instruction|instructions|prompt|prompts)\b`)
+	ruleIDPrefixPattern              = regexp.MustCompile(`^([A-Z][A-Z0-9_]+):\s`)
+	maxSkillFrontmatterBytes   int64 = 1_000_000
 )
+
+const ruleSkillFrontmatterTooLarge = "SKILL_FRONTMATTER_TOO_LARGE"
 
 const (
 	descriptionToolInjectionRuleID      = "DESCRIPTION_TOOL_INJECTION"
@@ -703,6 +706,14 @@ func validateLocalDirInspectSource(input string) error {
 }
 
 func validateSkillFrontmatter(skillPath string) (skillFrontmatter, error) {
+	info, statErr := os.Stat(skillPath)
+	if statErr != nil {
+		return skillFrontmatter{}, fmt.Errorf("failed to read SKILL.md: %s", skillPath)
+	}
+	if info.Size() > maxSkillFrontmatterBytes {
+		return skillFrontmatter{}, fmt.Errorf("%s: SKILL.md exceeds size limit: %s", ruleSkillFrontmatterTooLarge, skillPath)
+	}
+
 	content, err := os.ReadFile(skillPath)
 	if err != nil {
 		return skillFrontmatter{}, fmt.Errorf("failed to read SKILL.md: %s", skillPath)
