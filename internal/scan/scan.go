@@ -94,6 +94,26 @@ var pasteSiteHosts = map[string]struct{}{
 	"gist.githubusercontent.com": {},
 }
 
+var homeConfigPathHints = []string{
+	"~/.bashrc",
+	"~/.zshrc",
+	"~/.profile",
+	"~/.bash_profile",
+	"~/.config/fish/config.fish",
+	"~/.ssh/config",
+	"~/.ssh/authorized_keys",
+	"~/library/launchagents/",
+	"/etc/profile",
+	"/etc/bash.bashrc",
+	"/etc/zsh/zshrc",
+	"/etc/cron.d/",
+	"/etc/cron.daily/",
+	"/etc/cron.hourly/",
+	"/etc/cron.weekly/",
+	"/etc/cron.monthly/",
+	"/var/spool/cron/",
+}
+
 // ScanSkillRoot scans markdown instruction files under skillRoot.
 func ScanSkillRoot(skillRoot string) ([]Finding, error) {
 	targets, err := scanTargets(skillRoot)
@@ -315,6 +335,15 @@ func scanTextFile(target scanTarget) ([]Finding, error) {
 					File:     target.Relative,
 					Line:     lineNum,
 					Summary:  "chmod +x followed by execution of the same local artifact",
+				})
+			}
+			if hasHomeConfigWrite(variant) {
+				findings = append(findings, Finding{
+					ID:       "WRITES_HOME_CONFIG",
+					Severity: "high",
+					File:     target.Relative,
+					Line:     lineNum,
+					Summary:  "writes to shell/ssh/cron/launch-agent configuration path",
 				})
 			}
 			if isUnpinnedRuntimeToolLine(variant) {
@@ -604,6 +633,48 @@ func normalizeExecPath(token string) string {
 		return ""
 	}
 	return clean
+}
+
+func hasHomeConfigWrite(line string) bool {
+	lower := strings.ToLower(line)
+	if hasCrontabWrite(lower) {
+		return true
+	}
+	if !containsAnyString(lower, homeConfigPathHints) {
+		return false
+	}
+	if strings.Contains(lower, ">>") || strings.Contains(lower, ">|") {
+		return true
+	}
+	if strings.Contains(lower, "| tee") || strings.Contains(lower, "tee -a") {
+		return true
+	}
+	if strings.Contains(lower, " cp ") || strings.HasPrefix(strings.TrimSpace(lower), "cp ") {
+		return true
+	}
+	if strings.Contains(lower, " mv ") || strings.HasPrefix(strings.TrimSpace(lower), "mv ") {
+		return true
+	}
+	if strings.Contains(lower, " install ") || strings.HasPrefix(strings.TrimSpace(lower), "install ") {
+		return true
+	}
+	return false
+}
+
+func hasCrontabWrite(line string) bool {
+	if strings.Contains(line, "| crontab") || strings.Contains(line, "|crontab") {
+		return true
+	}
+	return strings.Contains(line, "crontab -e")
+}
+
+func containsAnyString(s string, needles []string) bool {
+	for _, needle := range needles {
+		if strings.Contains(s, needle) {
+			return true
+		}
+	}
+	return false
 }
 
 func tokenizeWords(line string) []string {

@@ -81,6 +81,9 @@ func TestScanSkillRootScansScriptLikeFiles(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "install.sh"), []byte("chmod +x ./agent-installer.sh && ./agent-installer.sh"), 0o644); err != nil {
 		t.Fatalf("write chmod exec chain script: %v", err)
 	}
+	if err := os.WriteFile(filepath.Join(root, "persist.sh"), []byte("echo 'alias ll=\"ls -la\"' >> ~/.bashrc"), 0o644); err != nil {
+		t.Fatalf("write home config write script: %v", err)
+	}
 	if err := os.WriteFile(filepath.Join(root, "runner.py"), []byte("npx tool"), 0o644); err != nil {
 		t.Fatalf("write runner: %v", err)
 	}
@@ -96,6 +99,7 @@ func TestScanSkillRootScansScriptLikeFiles(t *testing.T) {
 	assertHasID(t, findings, "HEX_PIPE_EXEC")
 	assertHasID(t, findings, "ENCODED_COMMAND_EXEC")
 	assertHasID(t, findings, "CHMOD_EXEC_CHAIN")
+	assertHasID(t, findings, "WRITES_HOME_CONFIG")
 	assertHasID(t, findings, "UNPINNED_RUNTIME_TOOL")
 }
 
@@ -410,6 +414,35 @@ func TestMatchesApproximatePhrase(t *testing.T) {
 	}
 	if matchesApproximatePhrase([]string{"ignore", "different"}, []string{"ignore", "previous"}) {
 		t.Fatal("word mismatch should not match")
+	}
+}
+
+func TestHasHomeConfigWrite(t *testing.T) {
+	cases := []struct {
+		line string
+		want bool
+	}{
+		{line: `echo "alias ll='ls -la'" >> ~/.bashrc`, want: true},
+		{line: "cat payload | tee -a ~/.zshrc", want: true},
+		{line: "cp helper.sh /etc/cron.daily/helper", want: true},
+		{line: "printf '* * * * * /tmp/x' | crontab -", want: true},
+		{line: "source ~/.bashrc", want: false},
+		{line: "cat ~/.ssh/config", want: false},
+		{line: "echo hi > /tmp/test", want: false},
+	}
+	for _, tc := range cases {
+		if got := hasHomeConfigWrite(tc.line); got != tc.want {
+			t.Fatalf("hasHomeConfigWrite(%q) = %v, want %v", tc.line, got, tc.want)
+		}
+	}
+}
+
+func TestContainsAnyString(t *testing.T) {
+	if !containsAnyString("abc ~/.bashrc", []string{"~/.bashrc"}) {
+		t.Fatal("expected containsAnyString true")
+	}
+	if containsAnyString("abc", []string{"~/.bashrc"}) {
+		t.Fatal("expected containsAnyString false")
 	}
 }
 
