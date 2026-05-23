@@ -3,7 +3,7 @@ package app
 import (
 	"encoding/json"
 	"errors"
-	"strings"
+	"fmt"
 	"testing"
 	"testing/quick"
 )
@@ -28,26 +28,24 @@ func TestClassifyLockVerifyErrorProperties(t *testing.T) {
 
 	t.Run("classification precedence is stable", func(t *testing.T) {
 		prop := func(prefix string, middle string, suffix string, includeRead bool, includeInvalid bool, includeDigest bool) bool {
-			message := prefix
-			if includeInvalid {
-				message += " invalid lockfile JSON "
-			}
-			message += middle
+			err := errors.New(prefix + middle + suffix)
 			if includeDigest {
-				message += " failed to digest installed files "
+				err = fmt.Errorf("digest wrapper: %w: %w", errDigestBuildFailed, err)
 			}
-			message += suffix
+			if includeInvalid {
+				err = fmt.Errorf("invalid wrapper: %w: %w", errLockfileInvalidJSON, err)
+			}
 			if includeRead {
-				message += " failed to read lockfile "
+				err = fmt.Errorf("read wrapper: %w: %w", errLockfileReadFailed, err)
 			}
 
-			got := classifyLockVerifyError(errors.New(message))
+			got := classifyLockVerifyError(err)
 			switch {
-			case strings.Contains(message, "failed to read lockfile"):
+			case includeRead:
 				return got == lockVerifyErrorCodeReadLockfile
-			case strings.Contains(message, "invalid lockfile JSON"):
+			case includeInvalid:
 				return got == lockVerifyErrorCodeInvalidLockfile
-			case strings.Contains(message, "failed to digest installed files"):
+			case includeDigest:
 				return got == lockVerifyErrorCodeDigestFailed
 			default:
 				return got == lockVerifyErrorCodeUnknown

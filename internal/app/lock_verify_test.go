@@ -483,18 +483,40 @@ func TestRunLockVerifyErrorPathsAndDriftKinds(t *testing.T) {
 
 func TestClassifyLockVerifyError(t *testing.T) {
 	cases := []struct {
-		msg  string
+		name string
+		err  error
 		want string
 	}{
-		{msg: "failed to read lockfile: /x/gokui.lock", want: lockVerifyErrorCodeReadLockfile},
-		{msg: "invalid lockfile JSON: /x/gokui.lock", want: lockVerifyErrorCodeInvalidLockfile},
-		{msg: "failed to digest installed files: x", want: lockVerifyErrorCodeDigestFailed},
-		{msg: "other", want: lockVerifyErrorCodeUnknown},
+		{
+			name: "wrapped lockfile read failure",
+			err:  fmt.Errorf("wrap: %w", errLockfileReadFailed),
+			want: lockVerifyErrorCodeReadLockfile,
+		},
+		{
+			name: "wrapped invalid lockfile json",
+			err:  fmt.Errorf("wrap: %w", errLockfileInvalidJSON),
+			want: lockVerifyErrorCodeInvalidLockfile,
+		},
+		{
+			name: "wrapped digest failure",
+			err:  fmt.Errorf("wrap: %w", errDigestBuildFailed),
+			want: lockVerifyErrorCodeDigestFailed,
+		},
+		{
+			name: "text-only lockfile phrase does not match",
+			err:  errors.New("failed to read lockfile: /x/gokui.lock"),
+			want: lockVerifyErrorCodeUnknown,
+		},
+		{
+			name: "other error remains unknown",
+			err:  errors.New("other"),
+			want: lockVerifyErrorCodeUnknown,
+		},
 	}
 	for _, tc := range cases {
-		got := classifyLockVerifyError(errors.New(tc.msg))
+		got := classifyLockVerifyError(tc.err)
 		if got != tc.want {
-			t.Fatalf("classifyLockVerifyError(%q) = %q, want %q", tc.msg, got, tc.want)
+			t.Fatalf("%s: classifyLockVerifyError(%v) = %q, want %q", tc.name, tc.err, got, tc.want)
 		}
 	}
 }

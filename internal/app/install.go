@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -30,6 +31,7 @@ var (
 	installMaxDigestFiles            = 10_000
 	installMaxDigestTotalBytes int64 = 200 * 1024 * 1024
 	installMaxDigestFileBytes  int64 = 20 * 1024 * 1024
+	errDigestBuildFailed             = errors.New("failed to digest installed files")
 )
 
 const (
@@ -886,7 +888,7 @@ func buildFileDigestsFiltered(root string, exclude map[string]struct{}) ([]lockF
 		return nil
 	})
 	if err != nil {
-		return nil, "", fmt.Errorf("%w: failed to digest installed files", err)
+		return nil, "", fmt.Errorf("%w: %w", errDigestBuildFailed, err)
 	}
 
 	sort.Slice(files, func(i, j int) bool {

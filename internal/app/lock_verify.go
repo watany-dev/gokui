@@ -3,6 +3,7 @@ package app
 import (
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -48,6 +49,8 @@ type lockVerifyCheck struct {
 var (
 	maxLockVerifyLockFileBytes int64 = 1_000_000
 	maxInstallReportFileBytes  int64 = 1_000_000
+	errLockfileReadFailed            = errors.New("failed to read lockfile")
+	errLockfileInvalidJSON           = errors.New("invalid lockfile JSON")
 )
 
 const ruleInstallReportTooLarge = "INSTALL_REPORT_TOO_LARGE"
@@ -233,26 +236,26 @@ func verifyLock(skillPath string) (lockVerifyReport, error) {
 	lockPath := filepath.Join(cleanPath, installLockFile)
 	linkInfo, lstatErr := os.Lstat(lockPath)
 	if lstatErr != nil {
-		return lockVerifyReport{}, fmt.Errorf("failed to read lockfile: %s", lockPath)
+		return lockVerifyReport{}, fmt.Errorf("%w: %s", errLockfileReadFailed, lockPath)
 	}
 	if linkInfo.Mode()&os.ModeSymlink != 0 {
-		return lockVerifyReport{}, fmt.Errorf("%s: failed to read lockfile (symlink is not allowed): %s", ruleLockfileSymlink, lockPath)
+		return lockVerifyReport{}, fmt.Errorf("%s: %w (symlink is not allowed): %s", ruleLockfileSymlink, errLockfileReadFailed, lockPath)
 	}
 	if !linkInfo.Mode().IsRegular() {
-		return lockVerifyReport{}, fmt.Errorf("%s: failed to read lockfile (regular file required): %s", ruleLockfileSpecialFile, lockPath)
+		return lockVerifyReport{}, fmt.Errorf("%s: %w (regular file required): %s", ruleLockfileSpecialFile, errLockfileReadFailed, lockPath)
 	}
 	if linkInfo.Size() > maxLockVerifyLockFileBytes {
-		return lockVerifyReport{}, fmt.Errorf("%s: failed to read lockfile (size exceeds limit): %s", ruleLockfileTooLarge, lockPath)
+		return lockVerifyReport{}, fmt.Errorf("%s: %w (size exceeds limit): %s", ruleLockfileTooLarge, errLockfileReadFailed, lockPath)
 	}
 
 	lockRaw, err := os.ReadFile(lockPath)
 	if err != nil {
-		return lockVerifyReport{}, fmt.Errorf("failed to read lockfile: %s", lockPath)
+		return lockVerifyReport{}, fmt.Errorf("%w: %s", errLockfileReadFailed, lockPath)
 	}
 
 	var lock installLock
 	if err := json.Unmarshal(lockRaw, &lock); err != nil {
-		return lockVerifyReport{}, fmt.Errorf("invalid lockfile JSON: %s", lockPath)
+		return lockVerifyReport{}, fmt.Errorf("%w: %s", errLockfileInvalidJSON, lockPath)
 	}
 
 	checks := make([]lockVerifyCheck, 0, 8)
@@ -346,13 +349,12 @@ func verifyLock(skillPath string) (lockVerifyReport, error) {
 }
 
 func classifyLockVerifyError(err error) string {
-	msg := err.Error()
 	switch {
-	case strings.Contains(msg, "failed to read lockfile"):
+	case errors.Is(err, errLockfileReadFailed):
 		return lockVerifyErrorCodeReadLockfile
-	case strings.Contains(msg, "invalid lockfile JSON"):
+	case errors.Is(err, errLockfileInvalidJSON):
 		return lockVerifyErrorCodeInvalidLockfile
-	case strings.Contains(msg, "failed to digest installed files"):
+	case errors.Is(err, errDigestBuildFailed):
 		return lockVerifyErrorCodeDigestFailed
 	default:
 		return lockVerifyErrorCodeUnknown
