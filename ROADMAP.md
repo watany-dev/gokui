@@ -39,6 +39,7 @@ tests/CI:
 - medium-severity detection of mixed-script filename patterns
 - high-severity detection of password-protected archive instructions
 - high-severity detection of shell/ssh/cron/launch-agent config writes
+- high-severity detection of broad Bash wildcard tool permissions
 
 This roadmap section below remains forward-looking for gaps and future phases.
 
