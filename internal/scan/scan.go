@@ -31,6 +31,7 @@ var (
 	externalBinaryPattern = regexp.MustCompile(`(?i)\bhttps?://\S+\.(?:zip|exe|msi|dmg|pkg|tar\.gz|tgz)\b`)
 	urlPattern            = regexp.MustCompile(`(?i)\bhttps?://[^\s<>"')\]]+`)
 	rawHTMLPattern        = regexp.MustCompile(`(?i)<\s*(?:script|iframe|object|embed|form|link|meta|img|svg|video|audio)\b`)
+	markdownLinkPattern   = regexp.MustCompile(`\[(?P<label>[^\]]+)\]\((?P<target>https?://[^)\s]+)\)`)
 
 	fakePrereqPattern = regexp.MustCompile(`(?i)\b(?:required|required prerequisite|you must|before use)\b.{0,120}\b(?:download|install)\b.{0,200}\b(?:run|execute|bash|sh|powershell|chmod \+x)\b`)
 )
@@ -250,6 +251,7 @@ func scanTextFile(target scanTarget) ([]Finding, error) {
 				Summary:  "raw HTML markup detected in markdown content",
 			})
 		}
+		findings = append(findings, classifyMarkdownLinkSpoofing(line, target.Relative, lineNum)...)
 	}
 
 	return deduplicateFindings(findings), nil
@@ -390,6 +392,71 @@ func isImagePath(path string) bool {
 		strings.HasSuffix(lower, ".svg") ||
 		strings.HasSuffix(lower, ".bmp") ||
 		strings.HasSuffix(lower, ".ico")
+}
+
+func classifyMarkdownLinkSpoofing(line string, relPath string, lineNum int) []Finding {
+	matches := markdownLinkPattern.FindAllStringSubmatch(line, -1)
+	if len(matches) == 0 {
+		return nil
+	}
+
+	out := make([]Finding, 0, len(matches))
+	for _, match := range matches {
+		if len(match) < 3 {
+			continue
+		}
+		displayHost, ok := parseDisplayLinkHost(match[1])
+		if !ok {
+			continue
+		}
+		targetHost, ok := parseURLHost(match[2])
+		if !ok {
+			continue
+		}
+		if normalizeHost(displayHost) == normalizeHost(targetHost) {
+			continue
+		}
+		out = append(out, Finding{
+			ID:       "LINK_SPOOFING_URL_MISMATCH",
+			Severity: "high",
+			File:     relPath,
+			Line:     lineNum,
+			Summary:  "markdown link label host differs from link target host",
+		})
+	}
+	return out
+}
+
+func parseDisplayLinkHost(label string) (string, bool) {
+	trimmed := strings.TrimSpace(label)
+	if trimmed == "" || strings.Contains(trimmed, " ") {
+		return "", false
+	}
+	if strings.Contains(trimmed, "://") {
+		return parseURLHost(trimmed)
+	}
+	if !strings.Contains(trimmed, ".") {
+		return "", false
+	}
+	return parseURLHost("https://" + trimmed)
+}
+
+func parseURLHost(raw string) (string, bool) {
+	parsed, err := neturl.Parse(strings.TrimSpace(raw))
+	if err != nil {
+		return "", false
+	}
+	host := strings.ToLower(parsed.Hostname())
+	if host == "" {
+		return "", false
+	}
+	return host, true
+}
+
+func normalizeHost(host string) string {
+	normalized := strings.ToLower(strings.TrimSpace(host))
+	normalized = strings.TrimPrefix(normalized, "www.")
+	return normalized
 }
 
 func deduplicateFindings(in []Finding) []Finding {

@@ -30,6 +30,7 @@ copy snippet from https://pastebin.com/raw/abc123
 download release from https://github.com/org/repo/releases/download/v1.0.0/tool.tgz
 ![badge](https://example.com/badge.png)
 <img src="https://example.com/assets/logo.webp" />
+Use [https://trusted.example.com/guide](https://evil.example.net/guide) as prerequisite docs.
 `
 	if err := os.WriteFile(filepath.Join(root, "SKILL.md"), []byte(skill), 0o644); err != nil {
 		t.Fatalf("write SKILL.md: %v", err)
@@ -59,6 +60,7 @@ download https://example.com/cli.exe`
 	assertHasID(t, findings, "RELEASE_ASSET_URL")
 	assertHasID(t, findings, "REMOTE_IMAGE_URL")
 	assertHasID(t, findings, "RAW_HTML_MARKUP")
+	assertHasID(t, findings, "LINK_SPOOFING_URL_MISMATCH")
 }
 
 func TestScanSkillRootScansScriptLikeFiles(t *testing.T) {
@@ -120,6 +122,38 @@ func TestClassifyURLRisksEdgeCases(t *testing.T) {
 			if f.ID == "REMOTE_IMAGE_URL" {
 				t.Fatalf("unexpected REMOTE_IMAGE_URL finding: %+v", findings)
 			}
+		}
+	})
+}
+
+func TestClassifyMarkdownLinkSpoofing(t *testing.T) {
+	t.Run("detects host mismatch", func(t *testing.T) {
+		line := "[https://trusted.example.com/login](https://evil.example.net/login)"
+		findings := classifyMarkdownLinkSpoofing(line, "SKILL.md", 10)
+		assertHasID(t, findings, "LINK_SPOOFING_URL_MISMATCH")
+	})
+
+	t.Run("does not flag matching host", func(t *testing.T) {
+		line := "[https://trusted.example.com/login](https://trusted.example.com/login)"
+		findings := classifyMarkdownLinkSpoofing(line, "SKILL.md", 11)
+		if len(findings) != 0 {
+			t.Fatalf("expected no findings, got %+v", findings)
+		}
+	})
+
+	t.Run("does not flag www prefix equivalence", func(t *testing.T) {
+		line := "[trusted.example.com](https://www.trusted.example.com/path)"
+		findings := classifyMarkdownLinkSpoofing(line, "SKILL.md", 12)
+		if len(findings) != 0 {
+			t.Fatalf("expected no findings for equivalent hosts, got %+v", findings)
+		}
+	})
+
+	t.Run("ignores non-host labels", func(t *testing.T) {
+		line := "[click here](https://trusted.example.com/login)"
+		findings := classifyMarkdownLinkSpoofing(line, "SKILL.md", 13)
+		if len(findings) != 0 {
+			t.Fatalf("expected no findings for non-host label, got %+v", findings)
 		}
 	})
 }

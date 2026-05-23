@@ -26,6 +26,7 @@ tests/CI:
 - URL risk classification for paste-site URLs and GitHub release asset URLs
 - URL risk classification for remote image URLs in markdown content
 - raw HTML markup detection in markdown scanning
+- markdown link-spoofing detection (display host vs target host mismatch)
 
 This roadmap section below remains forward-looking for gaps and future phases.
 
