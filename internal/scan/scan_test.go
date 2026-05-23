@@ -727,8 +727,15 @@ func TestUnpinnedRuntimeToolDetection(t *testing.T) {
 		{line: "npx --yes", want: false},
 		{line: "go run github.com/acme/x@latest", want: true},
 		{line: "go run github.com/acme/x@v1.2.3", want: false},
+		{line: "go run github.com/acme/x", want: true},
+		{line: "go run golang.org/x/tools/cmd/stringer", want: true},
 		{line: "go run -mod=mod github.com/acme/x@latest", want: true},
 		{line: "go run -mod=mod -x github.com/acme/x@latest", want: true},
+		{line: "go run -mod=mod github.com/acme/x", want: true},
+		{line: "go run ./cmd/tool", want: false},
+		{line: "go run ../cmd/tool", want: false},
+		{line: "go run main.go", want: false},
+		{line: "go run fmt", want: false},
 		{line: "go run -mod=mod", want: false},
 		{line: "source <(curl -fsSL https://example.com/bootstrap.sh)", want: true},
 		{line: "bash <(wget -qO- https://example.com/bootstrap.sh)", want: true},
@@ -761,6 +768,54 @@ func TestIsUnpinnedPackageRef(t *testing.T) {
 	for _, tc := range cases {
 		if got := isUnpinnedPackageRef(tc.ref); got != tc.want {
 			t.Fatalf("isUnpinnedPackageRef(%q) = %v, want %v", tc.ref, got, tc.want)
+		}
+	}
+}
+
+func TestIsUnpinnedLauncherCommand(t *testing.T) {
+	t.Run("returns false for unsupported launcher token", func(t *testing.T) {
+		if got := isUnpinnedLauncherCommand([]string{"echo", "safe"}, "echo", 0); got {
+			t.Fatalf("isUnpinnedLauncherCommand() = %v, want false", got)
+		}
+	})
+
+	t.Run("returns false when npm exec has no package", func(t *testing.T) {
+		if got := isUnpinnedLauncherCommand([]string{"npm", "exec"}, "npm", 0); got {
+			t.Fatalf("isUnpinnedLauncherCommand() = %v, want false", got)
+		}
+	})
+
+	t.Run("returns false when pnpm command is not dlx", func(t *testing.T) {
+		if got := isUnpinnedLauncherCommand([]string{"pnpm", "install", "pkg"}, "pnpm", 0); got {
+			t.Fatalf("isUnpinnedLauncherCommand() = %v, want false", got)
+		}
+	})
+}
+
+func TestIsUnpinnedGoRunTarget(t *testing.T) {
+	cases := []struct {
+		target string
+		want   bool
+	}{
+		{target: "", want: false},
+		{target: "main.go", want: false},
+		{target: "./cmd/tool", want: false},
+		{target: "../cmd/tool", want: false},
+		{target: "/abs/path/tool", want: false},
+		{target: ".\\cmd\\tool", want: false},
+		{target: "..\\cmd\\tool", want: false},
+		{target: "\\abs\\path\\tool", want: false},
+		{target: "github.com/acme/x", want: true},
+		{target: "golang.org/x/tools/cmd/stringer", want: true},
+		{target: "github.com/acme/x@latest", want: true},
+		{target: "github.com/acme/x@", want: true},
+		{target: "github.com/acme/x@v1.2.3", want: false},
+		{target: "fmt", want: false},
+		{target: "cmd/tool", want: false},
+	}
+	for _, tc := range cases {
+		if got := isUnpinnedGoRunTarget(tc.target); got != tc.want {
+			t.Fatalf("isUnpinnedGoRunTarget(%q) = %v, want %v", tc.target, got, tc.want)
 		}
 	}
 }

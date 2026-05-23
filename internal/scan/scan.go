@@ -905,12 +905,43 @@ func isUnpinnedLauncherCommand(fields []string, token string, tokenIndex int) bo
 			if strings.HasPrefix(part, "-") {
 				continue
 			}
-			return strings.HasSuffix(part, "@latest")
+			return isUnpinnedGoRunTarget(part)
 		}
 		return false
 	default:
 		return false
 	}
+}
+
+func isUnpinnedGoRunTarget(target string) bool {
+	if target == "" {
+		return false
+	}
+	if strings.HasSuffix(target, ".go") {
+		return false
+	}
+	if strings.HasPrefix(target, "./") || strings.HasPrefix(target, "../") || strings.HasPrefix(target, "/") {
+		return false
+	}
+	if strings.HasPrefix(target, ".\\") || strings.HasPrefix(target, "..\\") || strings.HasPrefix(target, "\\") {
+		return false
+	}
+
+	if strings.Contains(target, "@") {
+		parts := strings.SplitN(target, "@", 2)
+		if len(parts) != 2 {
+			return false
+		}
+		version := strings.TrimSpace(parts[1])
+		return version == "" || version == "latest"
+	}
+
+	// Remote Go module/package paths conventionally include a dot in the first segment.
+	firstSegment := target
+	if slash := strings.Index(firstSegment, "/"); slash >= 0 {
+		firstSegment = firstSegment[:slash]
+	}
+	return strings.Contains(firstSegment, ".")
 }
 
 func isRemoteScriptImportLine(lowerLine string) bool {

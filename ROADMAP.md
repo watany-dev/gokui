@@ -198,6 +198,7 @@ code.
   - `pnpm dlx foo`
   - `yarn dlx foo`
   - `npm exec foo`
+  - `go run github.com/org/tool` (no `@version`)
   - `go run ...@latest`
   - remote script imports
 - Add bounded deobfuscation:

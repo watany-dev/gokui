@@ -413,7 +413,8 @@ Critical patterns include:
 - persistence through shell startup files, cron, launch agents, services, or
   user config directories
 - unpinned runtime tools such as `npx foo`, `uvx foo`, `bunx foo`,
-  `pnpm dlx foo`, `yarn dlx foo`, `npm exec foo`, `go run ...@latest`, or
+  `pnpm dlx foo`, `yarn dlx foo`, `npm exec foo`, `go run github.com/org/tool`
+  (with no version) or `go run ...@latest`, or
   remote script imports (including `corepack pnpm/yarn/npm ...` wrappers)
 
 ### Archives
