@@ -573,15 +573,15 @@ func collectURLs(root string) ([]string, error) {
 		if d.IsDir() {
 			return nil
 		}
+		if !isMarkdownLikeFile(d.Name()) {
+			return nil
+		}
 		if d.Type()&os.ModeSymlink != 0 {
 			rel, relErr := filepath.Rel(root, path)
 			if relErr == nil {
 				path = filepath.ToSlash(rel)
 			}
 			return fmt.Errorf("%s: URL scan input contains symlink: %s", ruleUpdateURLScanSymlink, path)
-		}
-		if !isMarkdownLikeFile(d.Name()) {
-			return nil
 		}
 		scannedFiles++
 		if scannedFiles > updateMaxScanFiles {

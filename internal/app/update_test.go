@@ -442,6 +442,91 @@ func TestRunUpdateDryRunRejectedAndError(t *testing.T) {
 		}
 	})
 
+	t.Run("installed markdown symlink yields evaluation error with URL-scan rule_id", func(t *testing.T) {
+		if runtime.GOOS == "windows" {
+			t.Skip("symlink permissions differ on windows")
+		}
+
+		targetRoot := filepath.Join(t.TempDir(), "skills")
+		if err := os.MkdirAll(targetRoot, 0o755); err != nil {
+			t.Fatalf("mkdir target root: %v", err)
+		}
+		src := createSkillSourceForInstallTest(t, "update-url-symlink-skill")
+		report := installReport{
+			SchemaVersion: "0.1.0-draft",
+			Source:        source{Input: src, Kind: "local-dir"},
+			PolicyProfile: "strict",
+			Decision:      "PASS",
+		}
+		installedPath, _, err := installSkillAtomic(src, targetRoot, "update-url-symlink-skill", report)
+		if err != nil {
+			t.Fatalf("installSkillAtomic() error = %v", err)
+		}
+		if err := os.Symlink("README.md", filepath.Join(installedPath, "link.md")); err != nil {
+			t.Fatalf("create installed markdown symlink: %v", err)
+		}
+
+		var stdout strings.Builder
+		var stderr strings.Builder
+		code := runUpdate([]string{"--dry-run", "--target", "custom:" + targetRoot, "--format", "json"}, &stdout, &stderr)
+		if code != 1 {
+			t.Fatalf("runUpdate(installed markdown symlink) code = %d, want 1\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
+		}
+		if stderr.Len() != 0 {
+			t.Fatalf("stderr should be empty, got %q", stderr.String())
+		}
+		if !strings.Contains(stdout.String(), "\"error_code\": \""+updateCodeEvaluationError+"\"") {
+			t.Fatalf("stdout should include evaluation error_code, got %q", stdout.String())
+		}
+		if !strings.Contains(stdout.String(), "\"rule_id\": \""+ruleUpdateURLScanSymlink+"\"") {
+			t.Fatalf("stdout should include URL-scan symlink rule_id, got %q", stdout.String())
+		}
+	})
+
+	t.Run("installed non-markdown symlink yields evaluation error with executable-scan rule_id", func(t *testing.T) {
+		if runtime.GOOS == "windows" {
+			t.Skip("symlink permissions differ on windows")
+		}
+
+		targetRoot := filepath.Join(t.TempDir(), "skills")
+		if err := os.MkdirAll(targetRoot, 0o755); err != nil {
+			t.Fatalf("mkdir target root: %v", err)
+		}
+		src := createSkillSourceForInstallTest(t, "update-exec-symlink-skill")
+		report := installReport{
+			SchemaVersion: "0.1.0-draft",
+			Source:        source{Input: src, Kind: "local-dir"},
+			PolicyProfile: "strict",
+			Decision:      "PASS",
+		}
+		installedPath, _, err := installSkillAtomic(src, targetRoot, "update-exec-symlink-skill", report)
+		if err != nil {
+			t.Fatalf("installSkillAtomic() error = %v", err)
+		}
+		if err := os.WriteFile(filepath.Join(installedPath, "target.bin"), []byte("x"), 0o644); err != nil {
+			t.Fatalf("write symlink target: %v", err)
+		}
+		if err := os.Symlink("target.bin", filepath.Join(installedPath, "link.bin")); err != nil {
+			t.Fatalf("create installed non-markdown symlink: %v", err)
+		}
+
+		var stdout strings.Builder
+		var stderr strings.Builder
+		code := runUpdate([]string{"--dry-run", "--target", "custom:" + targetRoot, "--format", "json"}, &stdout, &stderr)
+		if code != 1 {
+			t.Fatalf("runUpdate(installed non-markdown symlink) code = %d, want 1\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
+		}
+		if stderr.Len() != 0 {
+			t.Fatalf("stderr should be empty, got %q", stderr.String())
+		}
+		if !strings.Contains(stdout.String(), "\"error_code\": \""+updateCodeEvaluationError+"\"") {
+			t.Fatalf("stdout should include evaluation error_code, got %q", stdout.String())
+		}
+		if !strings.Contains(stdout.String(), "\"rule_id\": \""+ruleUpdateExecutableScanSymlink+"\"") {
+			t.Fatalf("stdout should include executable-scan symlink rule_id, got %q", stdout.String())
+		}
+	})
+
 	t.Run("github source lock is evaluated when fetch succeeds", func(t *testing.T) {
 		targetRoot := filepath.Join(t.TempDir(), "skills")
 		if err := os.MkdirAll(targetRoot, 0o755); err != nil {
@@ -1040,6 +1125,29 @@ func TestUpdateHelpers(t *testing.T) {
 		_, err := collectURLs(root)
 		if err == nil || !strings.Contains(err.Error(), ruleUpdateURLScanSymlink) {
 			t.Fatalf("expected URL-scan symlink rejection, got %v", err)
+		}
+	})
+
+	t.Run("collectURLs ignores non-markdown symlink inputs", func(t *testing.T) {
+		if runtime.GOOS == "windows" {
+			t.Skip("symlink permissions differ on windows")
+		}
+
+		root := t.TempDir()
+		target := filepath.Join(root, "real.bin")
+		if err := os.WriteFile(target, []byte("x"), 0o644); err != nil {
+			t.Fatalf("write target file: %v", err)
+		}
+		if err := os.Symlink("real.bin", filepath.Join(root, "link.bin")); err != nil {
+			t.Fatalf("create non-markdown symlink: %v", err)
+		}
+
+		urls, err := collectURLs(root)
+		if err != nil {
+			t.Fatalf("collectURLs() should ignore non-markdown symlink, got error %v", err)
+		}
+		if len(urls) != 0 {
+			t.Fatalf("collectURLs() should return no URLs, got %+v", urls)
 		}
 	})
 
