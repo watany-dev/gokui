@@ -95,6 +95,9 @@ make release-check RELEASE_CHECK_VULN=0
 
 # Equivalent shorthand
 make release-check-offline
+
+# Create a timestamped release evidence file from template
+make release-evidence
 ```
 
 Release execution checklist: [RELEASE.md](RELEASE.md)

@@ -21,7 +21,7 @@ LDFLAGS := -s -w \
 	-X main.commit=$(COMMIT) \
 	-X main.date=$(DATE)
 
-.PHONY: build fmt fmt-check lint typecheck deadcode test test-race coverage vuln actionlint check release-check release-check-offline
+.PHONY: build fmt fmt-check lint typecheck deadcode test test-race coverage vuln actionlint check release-check release-check-offline release-evidence
 
 build:
 	$(GO) build -trimpath -buildvcs=true -ldflags='$(LDFLAGS)' -o gokui $(MAIN_PKG)
@@ -76,3 +76,6 @@ endif
 
 release-check-offline:
 	$(MAKE) release-check RELEASE_CHECK_VULN=0
+
+release-evidence:
+	./scripts/new-release-evidence.sh

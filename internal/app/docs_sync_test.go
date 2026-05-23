@@ -179,6 +179,7 @@ func TestReleaseChecklistDocumentationSync(t *testing.T) {
 	required := []string{
 		"make release-check",
 		"make release-check-offline",
+		"make release-evidence",
 		"make vuln",
 	}
 	for _, line := range required {
@@ -205,6 +206,9 @@ func TestReleaseChecklistDocumentationSync(t *testing.T) {
 		if !strings.Contains(template, line) {
 			t.Fatalf("RELEASE_EVIDENCE_TEMPLATE.md missing line: %q", line)
 		}
+	}
+	if !strings.Contains(releaseDoc, "releases/evidence/<timestamp>-<commit>.md") {
+		t.Fatal("RELEASE.md should describe release evidence output path")
 	}
 }
 
