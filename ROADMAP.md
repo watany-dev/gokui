@@ -41,6 +41,7 @@ tests/CI:
 - high-severity detection of shell/ssh/cron/launch-agent config writes
 - high-severity detection of broad Bash wildcard tool permissions
 - medium-severity detection of unknown/unclassified file types
+- high-severity detection of remote script import patterns under unpinned runtime tooling
 
 This roadmap section below remains forward-looking for gaps and future phases.
 

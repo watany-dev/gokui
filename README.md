@@ -64,6 +64,8 @@ as critical.
 Broad Bash wildcard tool permissions are now flagged as high severity.
 Unknown/unclassified file types are now flagged as medium severity for manual
 review.
+Remote script import patterns (for example `source <(curl ...)` and
+`deno run https://...`) are now flagged under `UNPINNED_RUNTIME_TOOL`.
 Unicode Tags, bidi controls, variation selectors, and ANSI/OSC escapes in
 scanned text are now flagged as critical. Zero-width and disallowed C0/C1
 control characters are also flagged as critical findings.
