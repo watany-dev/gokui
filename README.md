@@ -108,6 +108,9 @@ make release-evidence
 
 # Run offline release gate and auto-generate evidence + logs
 make release-evidence-offline
+
+# Run offline gate + vuln check and auto-generate evidence + logs
+make release-evidence-online
 ```
 
 CI is configured to resolve the latest available patch release for the selected
