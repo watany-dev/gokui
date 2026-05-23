@@ -229,6 +229,9 @@ derived from rule-prefixed validation messages (for example
 | `FETCH_DIGEST_FAILED` | digest generation failed |
 | `FETCH_SOURCE_METADATA_WRITE_FAILED` | source metadata write failed |
 
+When available, fetch JSON fatal errors also include optional `rule_id`
+derived from rule-prefixed source/materialization validation errors.
+
 ### install (`--format json`)
 
 Rejected policy decision:
@@ -248,6 +251,9 @@ Fatal errors:
 | `INSTALL_TARGET_PREPARE_FAILED` | target root preparation failed |
 | `INSTALL_WRITE_FAILED` | install write/staging/finalize failed |
 
+When available, install JSON fatal errors also include optional `rule_id`
+derived from rule-prefixed source/materialization validation errors.
+
 ### lock verify (`--format json`, fatal errors)
 
 | error_code | Meaning |
@@ -256,6 +262,9 @@ Fatal errors:
 | `LOCKFILE_INVALID_JSON` | lockfile JSON parse failed |
 | `FILE_DIGEST_BUILD_FAILED` | digest build failed |
 | `LOCK_VERIFY_FAILED` | other verify failure |
+
+When available, lock verify JSON fatal errors also include optional `rule_id`
+derived from rule-prefixed lock/source validation messages.
 
 Per-check `checks[].code` values:
 - `LOCK_SCHEMA`
@@ -289,6 +298,9 @@ Fatal command-level errors (`status=ERROR`) use:
 | `UPDATE_TARGET_INVALID` | update target spec is invalid |
 | `UPDATE_TARGET_READ_FAILED` | resolved target path cannot be read |
 | `UPDATE_REPORT_BUILD_FAILED` | update report build failed for other reasons |
+
+When available, update JSON fatal errors also include optional `rule_id`
+derived from rule-prefixed target/report validation messages.
 
 ## Exit Code Contract
 
