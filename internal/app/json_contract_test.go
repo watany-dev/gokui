@@ -151,6 +151,7 @@ func TestInstallMetadataJSONContract(t *testing.T) {
 		"source",
 		"policy_profile",
 		"decision",
+		"error_code",
 		"findings",
 		"installed_path",
 		"installed",
@@ -175,6 +176,70 @@ func TestInstallMetadataJSONContract(t *testing.T) {
 		"skill",
 		"policy",
 		"findings",
+	})
+}
+
+func TestInstallJSONContract(t *testing.T) {
+	sourceDir := createSkillSourceForInstallTest(t, "install-command-json-contract")
+	targetRoot := filepath.Join(t.TempDir(), "skills")
+
+	var stdout strings.Builder
+	var stderr strings.Builder
+	code := runInstall([]string{
+		sourceDir,
+		"--target", "custom:" + targetRoot,
+		"--profile", "strict",
+		"--format", "json",
+	}, &stdout, &stderr)
+	if code != 0 {
+		t.Fatalf("runInstall(json) code = %d, want 0\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("stderr should be empty, got %q", stderr.String())
+	}
+
+	var top map[string]json.RawMessage
+	if err := json.Unmarshal([]byte(stdout.String()), &top); err != nil {
+		t.Fatalf("json unmarshal install output: %v", err)
+	}
+	assertJSONHasKeysContract(t, top, []string{
+		"schema_version",
+		"source",
+		"policy_profile",
+		"decision",
+		"error_code",
+		"findings",
+		"installed_path",
+		"installed",
+		"note",
+	})
+}
+
+func TestInstallJSONErrorContract(t *testing.T) {
+	var stdout strings.Builder
+	var stderr strings.Builder
+
+	code := runInstall([]string{"--format", "json"}, &stdout, &stderr)
+	if code != 1 {
+		t.Fatalf("runInstall(json error) code = %d, want 1\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("stderr should be empty for json error output, got %q", stderr.String())
+	}
+
+	var top map[string]json.RawMessage
+	if err := json.Unmarshal([]byte(stdout.String()), &top); err != nil {
+		t.Fatalf("json unmarshal install error output: %v", err)
+	}
+	assertJSONHasKeysContract(t, top, []string{
+		"schema_version",
+		"status",
+		"error_code",
+		"message",
+		"source",
+		"target",
+		"policy_profile",
+		"note",
 	})
 }
 

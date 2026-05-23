@@ -27,7 +27,9 @@ rejects high/critical findings, installs atomically to `--target codex` or
 `--target custom:/path`, writes `.gokui-report.json` and `gokui.lock`, allows
 idempotent reinstall only when provenance matches, and rejects same-name
 different-provenance installs. It also supports commit-pinned GitHub sources
-(`github:owner/repo//path@<sha>`) via safe tarball materialization.
+(`github:owner/repo//path@<sha>`) via safe tarball materialization. In JSON
+mode, rejected installs set report `error_code=INSTALL_POLICY_REJECTED`, and
+fatal errors emit a machine-readable error envelope with top-level `error_code`.
 `lock verify` now validates installed files against `gokui.lock`, checks source
 field consistency (including strict GitHub source syntax and commit pinning),
 validates lock/report structural integrity, validates GitHub source metadata
@@ -41,7 +43,7 @@ refs are evaluated and floating refs are rejected. JSON output now emits stable
 skill-item keys for automation-friendly parsing, including `error_code` for
 status-aware automation.
 JSON output contracts are now stability-tested across `inspect`, `fetch`,
-`update`, `lock verify`, and install metadata files.
+`install`, `update`, `lock verify`, and install metadata files.
 `fetch` now supports commit-pinned GitHub sources and materializes them into a
 quarantine output root via `--out`, and records `.gokui-source.json`
 provenance metadata. In JSON mode, fetch failures return `error_code` for

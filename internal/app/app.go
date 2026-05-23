@@ -115,7 +115,7 @@ usage:
   gokui version
   gokui fetch github:owner/repo//path/to/skill@commit --out <quarantine-dir>
   gokui inspect <local-dir|zip|github-source>
-  gokui install <source> --target codex --profile strict
+  gokui install <source> --target codex --profile strict [--format human|json]
   gokui update --dry-run
   gokui lock verify`)
 }
