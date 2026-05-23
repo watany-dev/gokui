@@ -10,6 +10,8 @@ import (
 	"sort"
 	"strings"
 	"unicode"
+
+	"golang.org/x/text/unicode/norm"
 )
 
 const maxScanFileBytes = 500_000
@@ -249,89 +251,127 @@ func scanTextFile(target scanTarget) ([]Finding, error) {
 			continue
 		}
 
-		if curlPipePattern.MatchString(line) {
+		normalized, changed := normalizeLineNFKC(line)
+		if changed {
 			findings = append(findings, Finding{
-				ID:       "CURL_PIPE_SHELL",
-				Severity: "critical",
+				ID:       "NFKC_CHANGES_TEXT",
+				Severity: "medium",
 				File:     target.Relative,
 				Line:     lineNum,
-				Summary:  "network output piped directly to shell interpreter",
+				Summary:  "Unicode compatibility normalization changes text",
 			})
 		}
-		if base64PipeExec.MatchString(line) {
-			findings = append(findings, Finding{
-				ID:       "BASE64_PIPE_EXEC",
-				Severity: "critical",
-				File:     target.Relative,
-				Line:     lineNum,
-				Summary:  "decoded payload piped directly to an interpreter",
-			})
+		for _, variant := range lineVariants(line, normalized, changed) {
+			if curlPipePattern.MatchString(variant) {
+				findings = append(findings, Finding{
+					ID:       "CURL_PIPE_SHELL",
+					Severity: "critical",
+					File:     target.Relative,
+					Line:     lineNum,
+					Summary:  "network output piped directly to shell interpreter",
+				})
+			}
+			if base64PipeExec.MatchString(variant) {
+				findings = append(findings, Finding{
+					ID:       "BASE64_PIPE_EXEC",
+					Severity: "critical",
+					File:     target.Relative,
+					Line:     lineNum,
+					Summary:  "decoded payload piped directly to an interpreter",
+				})
+			}
+			if isUnpinnedRuntimeToolLine(variant) {
+				findings = append(findings, Finding{
+					ID:       "UNPINNED_RUNTIME_TOOL",
+					Severity: "high",
+					File:     target.Relative,
+					Line:     lineNum,
+					Summary:  "unpinned runtime tool execution detected",
+				})
+			}
+			findings = append(findings, classifyURLRisks(variant, target.Relative, lineNum, target.Kind == "markdown")...)
 		}
-		if isUnpinnedRuntimeToolLine(line) {
-			findings = append(findings, Finding{
-				ID:       "UNPINNED_RUNTIME_TOOL",
-				Severity: "high",
-				File:     target.Relative,
-				Line:     lineNum,
-				Summary:  "unpinned runtime tool execution detected",
-			})
-		}
-		findings = append(findings, classifyURLRisks(line, target.Relative, lineNum, target.Kind == "markdown")...)
 		findings = append(findings, classifyUnicodeThreats(line, target.Relative, lineNum)...)
 
 		if target.Kind != "markdown" {
 			continue
 		}
 
-		if fakePrereqPattern.MatchString(line) {
-			findings = append(findings, Finding{
-				ID:       "FAKE_PREREQ_EXECUTION",
-				Severity: "critical",
-				File:     target.Relative,
-				Line:     lineNum,
-				Summary:  "prerequisite text asks to download and run code",
-			})
+		for _, variant := range lineVariants(line, normalized, changed) {
+			if fakePrereqPattern.MatchString(variant) {
+				findings = append(findings, Finding{
+					ID:       "FAKE_PREREQ_EXECUTION",
+					Severity: "critical",
+					File:     target.Relative,
+					Line:     lineNum,
+					Summary:  "prerequisite text asks to download and run code",
+				})
+			}
+			if externalBinaryPattern.MatchString(variant) {
+				findings = append(findings, Finding{
+					ID:       "EXTERNAL_BINARY_DOWNLOAD",
+					Severity: "high",
+					File:     target.Relative,
+					Line:     lineNum,
+					Summary:  "external binary archive download instruction detected",
+				})
+			}
+			if promptOverridePattern.MatchString(variant) {
+				findings = append(findings, Finding{
+					ID:       "PROMPT_OVERRIDE_LANGUAGE",
+					Severity: "high",
+					File:     target.Relative,
+					Line:     lineNum,
+					Summary:  "prompt override language detected",
+				})
+			}
+			if passwordArchivePattern.MatchString(variant) {
+				findings = append(findings, Finding{
+					ID:       "PASSWORD_PROTECTED_ARCHIVE",
+					Severity: "high",
+					File:     target.Relative,
+					Line:     lineNum,
+					Summary:  "password-protected archive instruction detected",
+				})
+			}
+			if rawHTMLPattern.MatchString(variant) {
+				findings = append(findings, Finding{
+					ID:       "RAW_HTML_MARKUP",
+					Severity: "medium",
+					File:     target.Relative,
+					Line:     lineNum,
+					Summary:  "raw HTML markup detected in markdown content",
+				})
+			}
+			findings = append(findings, classifyMarkdownLinkSpoofing(variant, target.Relative, lineNum)...)
 		}
-		if externalBinaryPattern.MatchString(line) {
-			findings = append(findings, Finding{
-				ID:       "EXTERNAL_BINARY_DOWNLOAD",
-				Severity: "high",
-				File:     target.Relative,
-				Line:     lineNum,
-				Summary:  "external binary archive download instruction detected",
-			})
-		}
-		if promptOverridePattern.MatchString(line) {
-			findings = append(findings, Finding{
-				ID:       "PROMPT_OVERRIDE_LANGUAGE",
-				Severity: "high",
-				File:     target.Relative,
-				Line:     lineNum,
-				Summary:  "prompt override language detected",
-			})
-		}
-		if passwordArchivePattern.MatchString(line) {
-			findings = append(findings, Finding{
-				ID:       "PASSWORD_PROTECTED_ARCHIVE",
-				Severity: "high",
-				File:     target.Relative,
-				Line:     lineNum,
-				Summary:  "password-protected archive instruction detected",
-			})
-		}
-		if rawHTMLPattern.MatchString(line) {
-			findings = append(findings, Finding{
-				ID:       "RAW_HTML_MARKUP",
-				Severity: "medium",
-				File:     target.Relative,
-				Line:     lineNum,
-				Summary:  "raw HTML markup detected in markdown content",
-			})
-		}
-		findings = append(findings, classifyMarkdownLinkSpoofing(line, target.Relative, lineNum)...)
 	}
 
 	return deduplicateFindings(findings), nil
+}
+
+func normalizeLineNFKC(line string) (string, bool) {
+	if isASCII(line) {
+		return line, false
+	}
+	normalized := norm.NFKC.String(line)
+	return normalized, normalized != line
+}
+
+func lineVariants(raw string, normalized string, hasNormalized bool) []string {
+	if !hasNormalized {
+		return []string{raw}
+	}
+	return []string{raw, normalized}
+}
+
+func isASCII(s string) bool {
+	for i := 0; i < len(s); i++ {
+		if s[i] > 0x7F {
+			return false
+		}
+	}
+	return true
 }
 
 func isUnpinnedRuntimeToolLine(line string) bool {
