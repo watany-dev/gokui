@@ -51,6 +51,11 @@ func TestAutomationErrorCodesUniqueAndFormat(t *testing.T) {
 		updateCodeSourceMetadataBad,
 		updateCodeSourcePrepareError,
 		updateCodeEvaluationError,
+
+		updateFatalCodeArgsInvalid,
+		updateFatalCodeTargetInvalid,
+		updateFatalCodeTargetReadFail,
+		updateFatalCodeReportBuild,
 	}
 
 	pattern := regexp.MustCompile(`^[A-Z0-9_]+$`)
@@ -147,6 +152,11 @@ func TestAutomationErrorCodesDocumentedInREADME(t *testing.T) {
 		updateCodeSourceMetadataBad,
 		updateCodeSourcePrepareError,
 		updateCodeEvaluationError,
+
+		updateFatalCodeArgsInvalid,
+		updateFatalCodeTargetInvalid,
+		updateFatalCodeTargetReadFail,
+		updateFatalCodeReportBuild,
 	}
 
 	for _, code := range codes {

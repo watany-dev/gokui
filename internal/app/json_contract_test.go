@@ -358,6 +358,32 @@ func TestLockVerifyJSONErrorContract(t *testing.T) {
 	})
 }
 
+func TestUpdateJSONErrorContract(t *testing.T) {
+	var stdout strings.Builder
+	var stderr strings.Builder
+
+	code := runUpdate([]string{"--format", "json"}, &stdout, &stderr)
+	if code != 1 {
+		t.Fatalf("runUpdate(json error) code = %d, want 1\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("stderr should be empty for json error output, got %q", stderr.String())
+	}
+
+	var top map[string]json.RawMessage
+	if err := json.Unmarshal([]byte(stdout.String()), &top); err != nil {
+		t.Fatalf("json unmarshal update error output: %v", err)
+	}
+	assertJSONHasKeysContract(t, top, []string{
+		"schema_version",
+		"status",
+		"error_code",
+		"message",
+		"target",
+		"note",
+	})
+}
+
 func assertJSONHasKeysContract(t *testing.T, obj map[string]json.RawMessage, keys []string) {
 	t.Helper()
 	for _, key := range keys {

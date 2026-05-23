@@ -30,6 +30,15 @@ type updateReport struct {
 	Note          string            `json:"note"`
 }
 
+type updateErrorReport struct {
+	SchemaVersion string `json:"schema_version"`
+	Status        string `json:"status"`
+	ErrorCode     string `json:"error_code"`
+	Message       string `json:"message"`
+	Target        string `json:"target"`
+	Note          string `json:"note"`
+}
+
 type updateSkillItem struct {
 	Name               string           `json:"name"`
 	Path               string           `json:"path"`
@@ -57,6 +66,13 @@ const (
 	updateCodeEvaluationError    = "EVALUATION_ERROR"
 )
 
+const (
+	updateFatalCodeArgsInvalid    = "UPDATE_ARGS_INVALID"
+	updateFatalCodeTargetInvalid  = "UPDATE_TARGET_INVALID"
+	updateFatalCodeTargetReadFail = "UPDATE_TARGET_READ_FAILED"
+	updateFatalCodeReportBuild    = "UPDATE_REPORT_BUILD_FAILED"
+)
+
 type updateDiff struct {
 	Added   []string `json:"added"`
 	Removed []string `json:"removed"`
@@ -79,20 +95,57 @@ type updateSummary struct {
 }
 
 func runUpdate(args []string, stdout io.Writer, stderr io.Writer) int {
+	requestedJSON := updateArgsRequestJSON(args)
+
 	parsed, err := parseUpdateArgs(args)
 	if err != nil {
+		if requestedJSON {
+			return writeUpdateJSONError(stdout, stderr, updateErrorReport{
+				SchemaVersion: reportSchemaVersion,
+				Status:        "ERROR",
+				ErrorCode:     updateFatalCodeArgsInvalid,
+				Message:       err.Error(),
+				Target:        extractUpdateTargetArg(args),
+				Note:          "update failed before target resolution",
+			})
+		}
 		_, _ = fmt.Fprintf(stderr, "%s\n\n%s\n", err.Error(), usage())
 		return 1
 	}
+	jsonOutput := parsed.Format == "json"
 
 	targetRoot, err := resolveInstallTarget(parsed.Target)
 	if err != nil {
+		if jsonOutput {
+			return writeUpdateJSONError(stdout, stderr, updateErrorReport{
+				SchemaVersion: reportSchemaVersion,
+				Status:        "ERROR",
+				ErrorCode:     updateFatalCodeTargetInvalid,
+				Message:       err.Error(),
+				Target:        parsed.Target,
+				Note:          "update target validation failed",
+			})
+		}
 		_, _ = fmt.Fprintln(stderr, err.Error())
 		return 1
 	}
 
 	report, err := buildUpdateReport(targetRoot)
 	if err != nil {
+		if jsonOutput {
+			errorCode := updateFatalCodeReportBuild
+			if strings.Contains(err.Error(), "failed to read update target") {
+				errorCode = updateFatalCodeTargetReadFail
+			}
+			return writeUpdateJSONError(stdout, stderr, updateErrorReport{
+				SchemaVersion: reportSchemaVersion,
+				Status:        "ERROR",
+				ErrorCode:     errorCode,
+				Message:       err.Error(),
+				Target:        targetRoot,
+				Note:          "update report generation failed",
+			})
+		}
 		_, _ = fmt.Fprintln(stderr, err.Error())
 		return 1
 	}
@@ -131,6 +184,40 @@ func runUpdate(args []string, stdout io.Writer, stderr io.Writer) int {
 		return 2
 	}
 	return 0
+}
+
+func updateArgsRequestJSON(args []string) bool {
+	for i := 0; i < len(args); i++ {
+		if args[i] == "--format" && i+1 < len(args) && args[i+1] == "json" {
+			return true
+		}
+		if strings.HasPrefix(args[i], "--format=") && strings.TrimPrefix(args[i], "--format=") == "json" {
+			return true
+		}
+	}
+	return false
+}
+
+func extractUpdateTargetArg(args []string) string {
+	for i := 0; i < len(args); i++ {
+		if args[i] == "--target" && i+1 < len(args) {
+			return args[i+1]
+		}
+		if strings.HasPrefix(args[i], "--target=") {
+			return strings.TrimPrefix(args[i], "--target=")
+		}
+	}
+	return "codex"
+}
+
+func writeUpdateJSONError(stdout io.Writer, stderr io.Writer, report updateErrorReport) int {
+	out, err := json.MarshalIndent(report, "", "  ")
+	if err != nil {
+		_, _ = fmt.Fprintln(stderr, "failed to render update error report")
+		return 1
+	}
+	_, _ = fmt.Fprintf(stdout, "%s\n", out)
+	return 1
 }
 
 func parseUpdateArgs(args []string) (updateArgs, error) {

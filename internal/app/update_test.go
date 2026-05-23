@@ -579,6 +579,74 @@ func TestRunUpdateDryRunRejectedAndError(t *testing.T) {
 	})
 }
 
+func TestRunUpdateJSONFatalErrors(t *testing.T) {
+	t.Run("parse errors emit machine-readable JSON", func(t *testing.T) {
+		var stdout strings.Builder
+		var stderr strings.Builder
+		code := runUpdate([]string{"--format", "json"}, &stdout, &stderr)
+		if code != 1 {
+			t.Fatalf("runUpdate(json parse error) code = %d, want 1\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
+		}
+		if stderr.Len() != 0 {
+			t.Fatalf("stderr should be empty for json parse errors, got %q", stderr.String())
+		}
+		if !strings.Contains(stdout.String(), "\"error_code\": \""+updateFatalCodeArgsInvalid+"\"") {
+			t.Fatalf("stdout should include parse error code, got %q", stdout.String())
+		}
+	})
+
+	t.Run("target validation errors emit machine-readable JSON", func(t *testing.T) {
+		var stdout strings.Builder
+		var stderr strings.Builder
+		code := runUpdate([]string{"--dry-run", "--target", "unsupported-target", "--format", "json"}, &stdout, &stderr)
+		if code != 1 {
+			t.Fatalf("runUpdate(json target invalid) code = %d, want 1\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
+		}
+		if stderr.Len() != 0 {
+			t.Fatalf("stderr should be empty for json target errors, got %q", stderr.String())
+		}
+		if !strings.Contains(stdout.String(), "\"error_code\": \""+updateFatalCodeTargetInvalid+"\"") {
+			t.Fatalf("stdout should include target-invalid error code, got %q", stdout.String())
+		}
+	})
+
+	t.Run("target read failures emit machine-readable JSON", func(t *testing.T) {
+		var stdout strings.Builder
+		var stderr strings.Builder
+		code := runUpdate([]string{"--dry-run", "--target", "custom:" + filepath.Join(t.TempDir(), "missing"), "--format", "json"}, &stdout, &stderr)
+		if code != 1 {
+			t.Fatalf("runUpdate(json target read fail) code = %d, want 1\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
+		}
+		if stderr.Len() != 0 {
+			t.Fatalf("stderr should be empty for json build errors, got %q", stderr.String())
+		}
+		if !strings.Contains(stdout.String(), "\"error_code\": \""+updateFatalCodeTargetReadFail+"\"") {
+			t.Fatalf("stdout should include target-read-failed code, got %q", stdout.String())
+		}
+	})
+}
+
+func TestUpdateArgJSONHelpers(t *testing.T) {
+	if !updateArgsRequestJSON([]string{"--dry-run", "--format", "json"}) {
+		t.Fatal("updateArgsRequestJSON() should detect --format json")
+	}
+	if !updateArgsRequestJSON([]string{"--dry-run", "--format=json"}) {
+		t.Fatal("updateArgsRequestJSON() should detect --format=json")
+	}
+	if updateArgsRequestJSON([]string{"--dry-run", "--format", "human"}) {
+		t.Fatal("updateArgsRequestJSON() should be false for non-json format")
+	}
+	if got := extractUpdateTargetArg([]string{"--dry-run", "--target", "custom:/tmp/skills"}); got != "custom:/tmp/skills" {
+		t.Fatalf("extractUpdateTargetArg() = %q", got)
+	}
+	if got := extractUpdateTargetArg([]string{"--dry-run", "--target=custom:/tmp/skills"}); got != "custom:/tmp/skills" {
+		t.Fatalf("extractUpdateTargetArg(equals) = %q", got)
+	}
+	if got := extractUpdateTargetArg([]string{"--dry-run"}); got != "codex" {
+		t.Fatalf("extractUpdateTargetArg(default) = %q", got)
+	}
+}
+
 func assertJSONHasKeys(t *testing.T, obj map[string]json.RawMessage, keys []string) {
 	t.Helper()
 	for _, key := range keys {

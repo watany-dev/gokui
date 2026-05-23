@@ -197,6 +197,15 @@ Per-check `checks[].code` values:
 | `SOURCE_PREPARE_FAILED` | source preparation/materialization failed |
 | `EVALUATION_ERROR` | scan/evaluation failed |
 
+Fatal command-level errors (`status=ERROR`) use:
+
+| error_code | Meaning |
+| --- | --- |
+| `UPDATE_ARGS_INVALID` | CLI argument parse/validation failed |
+| `UPDATE_TARGET_INVALID` | update target spec is invalid |
+| `UPDATE_TARGET_READ_FAILED` | resolved target path cannot be read |
+| `UPDATE_REPORT_BUILD_FAILED` | update report build failed for other reasons |
+
 Status and error-code combinations are constrained as:
 
 | `skills[].status` | Allowed `skills[].error_code` |
