@@ -83,7 +83,9 @@ const (
 const ruleUpdateTargetSymlink = "UPDATE_TARGET_SYMLINK_DETECTED"
 const ruleUpdateTargetEntrySymlink = "UPDATE_TARGET_ENTRY_SYMLINK_DETECTED"
 const ruleUpdateURLScanSymlink = "UPDATE_URL_SCAN_SYMLINK_DETECTED"
+const ruleUpdateURLScanSpecialFile = "UPDATE_URL_SCAN_SPECIAL_FILE"
 const ruleUpdateExecutableScanSymlink = "UPDATE_EXECUTABLE_SCAN_SYMLINK_DETECTED"
+const ruleUpdateExecutableScanSpecialFile = "UPDATE_EXECUTABLE_SCAN_SPECIAL_FILE"
 
 type updateDiff struct {
 	Added   []string `json:"added"`
@@ -583,13 +585,20 @@ func collectURLs(root string) ([]string, error) {
 			}
 			return fmt.Errorf("%s: URL scan input contains symlink: %s", ruleUpdateURLScanSymlink, path)
 		}
-		scannedFiles++
-		if scannedFiles > updateMaxScanFiles {
-			return fmt.Errorf("URL scan exceeded max file count: %d", updateMaxScanFiles)
-		}
 		info, err := d.Info()
 		if err != nil {
 			return fmt.Errorf("failed to stat file for URL scan: %w", err)
+		}
+		if !info.Mode().IsRegular() {
+			rel, relErr := filepath.Rel(root, path)
+			if relErr == nil {
+				path = filepath.ToSlash(rel)
+			}
+			return fmt.Errorf("%s: URL scan input contains non-regular file: %s", ruleUpdateURLScanSpecialFile, path)
+		}
+		scannedFiles++
+		if scannedFiles > updateMaxScanFiles {
+			return fmt.Errorf("URL scan exceeded max file count: %d", updateMaxScanFiles)
 		}
 		if info.Size() > updateMaxURLScanFileBytes {
 			rel, relErr := filepath.Rel(root, path)
@@ -631,13 +640,20 @@ func collectExecutableFiles(root string) ([]string, error) {
 			}
 			return fmt.Errorf("%s: executable scan input contains symlink: %s", ruleUpdateExecutableScanSymlink, path)
 		}
-		scannedFiles++
-		if scannedFiles > updateMaxScanFiles {
-			return fmt.Errorf("executable scan exceeded max file count: %d", updateMaxScanFiles)
-		}
 		info, err := d.Info()
 		if err != nil {
 			return err
+		}
+		if !info.Mode().IsRegular() {
+			rel, relErr := filepath.Rel(root, path)
+			if relErr == nil {
+				path = filepath.ToSlash(rel)
+			}
+			return fmt.Errorf("%s: executable scan input contains non-regular file: %s", ruleUpdateExecutableScanSpecialFile, path)
+		}
+		scannedFiles++
+		if scannedFiles > updateMaxScanFiles {
+			return fmt.Errorf("executable scan exceeded max file count: %d", updateMaxScanFiles)
 		}
 		if info.Mode().Perm()&0o111 == 0 {
 			return nil

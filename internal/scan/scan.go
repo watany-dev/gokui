@@ -21,6 +21,7 @@ var scanMaxFiles = 10_000
 const (
 	ruleScanSymlinkInSource = "SYMLINK_IN_SCAN_SOURCE"
 	ruleScanFileCount       = "SCAN_FILE_COUNT_EXCEEDED"
+	ruleScanSpecialFile     = "SPECIAL_FILE_IN_SCAN_SOURCE"
 )
 
 // Finding represents one scan result.
@@ -285,6 +286,13 @@ func scanTargets(skillRoot string) ([]scanTarget, error) {
 		}
 		if d.IsDir() {
 			return nil
+		}
+		info, infoErr := d.Info()
+		if infoErr != nil {
+			return fmt.Errorf("failed to stat scan source file: %w", infoErr)
+		}
+		if !info.Mode().IsRegular() {
+			return fmt.Errorf("%s: scan source contains non-regular file: %s", ruleScanSpecialFile, rel)
 		}
 		scannedFiles++
 		if scannedFiles > scanMaxFiles {

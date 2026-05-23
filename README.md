@@ -99,6 +99,7 @@ fetched source metadata for GitHub-origin skills.
 Local directory inspect already enforces that `SKILL.md` exists at the skill
 root, rejects symlinked source paths/components or symlinked `SKILL.md`, and
 requires `SKILL.md` to be a regular file (not a directory/device/FIFO/socket).
+Inspect/update scan walkers also reject non-regular files before reading.
 It also validates strict YAML frontmatter rules (no duplicate keys, anchors,
 aliases, merge keys, or custom tags), requires a valid `name` that matches the
 directory name, and enforces safety-oriented `description` checks.

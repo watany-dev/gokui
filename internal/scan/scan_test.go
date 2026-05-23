@@ -3,6 +3,7 @@ package scan
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -869,6 +870,26 @@ func TestScanSkillRootRejectsSymlinkSource(t *testing.T) {
 	_, err := ScanSkillRoot(root)
 	if err == nil || !strings.Contains(err.Error(), ruleScanSymlinkInSource) {
 		t.Fatalf("expected symlink rule error, got %v", err)
+	}
+}
+
+func TestScanSkillRootRejectsSpecialFileSource(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("mkfifo is not available on windows")
+	}
+
+	root := t.TempDir()
+	fifoPath := filepath.Join(root, "SKILL.md")
+	if _, err := exec.LookPath("mkfifo"); err != nil {
+		t.Skip("mkfifo command not available")
+	}
+	if err := exec.Command("mkfifo", fifoPath).Run(); err != nil {
+		t.Skipf("mkfifo unsupported in this environment: %v", err)
+	}
+
+	_, err := ScanSkillRoot(root)
+	if err == nil || !strings.Contains(err.Error(), ruleScanSpecialFile) {
+		t.Fatalf("expected special-file rule error, got %v", err)
 	}
 }
 

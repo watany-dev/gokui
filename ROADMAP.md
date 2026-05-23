@@ -18,6 +18,7 @@ tests/CI:
 - Install atomic finalize hardening for symlinked target entries
 - Fetch atomic finalize hardening for symlinked output entries
 - Update dry-run hardening for symlinked target entries and symlinked URL/executable scan inputs
+- Scan/update walker hardening for non-regular file rejection before reads
 - Commit-pinned GitHub source fetch and install/update/verify provenance checks
 - Atomic install with `.gokui-report.json` and `gokui.lock`
 - Lock drift verification with per-check machine-readable codes

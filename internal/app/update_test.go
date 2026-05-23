@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"sort"
@@ -1128,6 +1129,26 @@ func TestUpdateHelpers(t *testing.T) {
 		}
 	})
 
+	t.Run("collectURLs rejects non-regular markdown inputs", func(t *testing.T) {
+		if runtime.GOOS == "windows" {
+			t.Skip("mkfifo is not available on windows")
+		}
+
+		root := t.TempDir()
+		fifoPath := filepath.Join(root, "pipe.md")
+		if _, err := exec.LookPath("mkfifo"); err != nil {
+			t.Skip("mkfifo command not available")
+		}
+		if err := exec.Command("mkfifo", fifoPath).Run(); err != nil {
+			t.Skipf("mkfifo unsupported in this environment: %v", err)
+		}
+
+		_, err := collectURLs(root)
+		if err == nil || !strings.Contains(err.Error(), ruleUpdateURLScanSpecialFile) {
+			t.Fatalf("expected URL-scan special-file rejection, got %v", err)
+		}
+	})
+
 	t.Run("collectURLs ignores non-markdown symlink inputs", func(t *testing.T) {
 		if runtime.GOOS == "windows" {
 			t.Skip("symlink permissions differ on windows")
@@ -1168,6 +1189,26 @@ func TestUpdateHelpers(t *testing.T) {
 		_, err := collectExecutableFiles(root)
 		if err == nil || !strings.Contains(err.Error(), ruleUpdateExecutableScanSymlink) {
 			t.Fatalf("expected executable-scan symlink rejection, got %v", err)
+		}
+	})
+
+	t.Run("collectExecutableFiles rejects non-regular inputs", func(t *testing.T) {
+		if runtime.GOOS == "windows" {
+			t.Skip("mkfifo is not available on windows")
+		}
+
+		root := t.TempDir()
+		fifoPath := filepath.Join(root, "pipe.sh")
+		if _, err := exec.LookPath("mkfifo"); err != nil {
+			t.Skip("mkfifo command not available")
+		}
+		if err := exec.Command("mkfifo", fifoPath).Run(); err != nil {
+			t.Skipf("mkfifo unsupported in this environment: %v", err)
+		}
+
+		_, err := collectExecutableFiles(root)
+		if err == nil || !strings.Contains(err.Error(), ruleUpdateExecutableScanSpecialFile) {
+			t.Fatalf("expected executable-scan special-file rejection, got %v", err)
 		}
 	})
 

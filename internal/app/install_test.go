@@ -645,7 +645,7 @@ func TestRunInstallJSONOutput(t *testing.T) {
 			}
 		})
 
-		t.Run("install write failure includes special-file rule_id", func(t *testing.T) {
+		t.Run("install evaluation failure includes scan special-file rule_id", func(t *testing.T) {
 			if runtime.GOOS == "windows" {
 				t.Skip("fifo behavior differs on windows")
 			}
@@ -668,11 +668,11 @@ func TestRunInstallJSONOutput(t *testing.T) {
 			if stderr.Len() != 0 {
 				t.Fatalf("stderr should be empty for json errors, got %q", stderr.String())
 			}
-			if !strings.Contains(stdout.String(), "\"error_code\": \""+installErrorCodeWriteFailed+"\"") {
-				t.Fatalf("stdout should include write-failed error_code, got %q", stdout.String())
+			if !strings.Contains(stdout.String(), "\"error_code\": \""+installErrorCodeEvaluationFailed+"\"") {
+				t.Fatalf("stdout should include evaluation-failed error_code, got %q", stdout.String())
 			}
-			if !strings.Contains(stdout.String(), "\"rule_id\": \""+ruleInstallSourceSpecialFile+"\"") {
-				t.Fatalf("stdout should include special-file rule_id, got %q", stdout.String())
+			if !strings.Contains(stdout.String(), "SPECIAL_FILE_IN_SCAN_SOURCE") {
+				t.Fatalf("stdout should include scan special-file marker, got %q", stdout.String())
 			}
 		})
 
