@@ -3,6 +3,7 @@ package app
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -875,13 +876,49 @@ func TestUpdateHelpers(t *testing.T) {
 
 	t.Run("collectURLs rejects oversized markdown files", func(t *testing.T) {
 		root := t.TempDir()
-		huge := strings.Repeat("a", maxUpdateURLScanFileBytes+1)
+		huge := strings.Repeat("a", int(updateMaxURLScanFileBytes)+1)
 		if err := os.WriteFile(filepath.Join(root, "huge.md"), []byte(huge), 0o644); err != nil {
 			t.Fatalf("write huge markdown: %v", err)
 		}
 		_, err := collectURLs(root)
 		if err == nil || !strings.Contains(err.Error(), "exceeds URL scan size limit") {
 			t.Fatalf("expected oversized markdown error, got %v", err)
+		}
+	})
+
+	t.Run("collectURLs enforces max scan file count", func(t *testing.T) {
+		origLimit := updateMaxScanFiles
+		updateMaxScanFiles = 2
+		t.Cleanup(func() { updateMaxScanFiles = origLimit })
+
+		root := t.TempDir()
+		for i := 0; i < 3; i++ {
+			name := filepath.Join(root, fmt.Sprintf("doc-%d.md", i))
+			if err := os.WriteFile(name, []byte("https://example.com"), 0o644); err != nil {
+				t.Fatalf("write markdown %d: %v", i, err)
+			}
+		}
+		_, err := collectURLs(root)
+		if err == nil || !strings.Contains(err.Error(), "URL scan exceeded max file count") {
+			t.Fatalf("expected URL scan max-file error, got %v", err)
+		}
+	})
+
+	t.Run("collectExecutableFiles enforces max scan file count", func(t *testing.T) {
+		origLimit := updateMaxScanFiles
+		updateMaxScanFiles = 2
+		t.Cleanup(func() { updateMaxScanFiles = origLimit })
+
+		root := t.TempDir()
+		for i := 0; i < 3; i++ {
+			name := filepath.Join(root, fmt.Sprintf("run-%d.sh", i))
+			if err := os.WriteFile(name, []byte("#!/bin/sh\necho hi\n"), 0o755); err != nil {
+				t.Fatalf("write executable %d: %v", i, err)
+			}
+		}
+		_, err := collectExecutableFiles(root)
+		if err == nil || !strings.Contains(err.Error(), "executable scan exceeded max file count") {
+			t.Fatalf("expected executable scan max-file error, got %v", err)
 		}
 	})
 

@@ -15,7 +15,10 @@ import (
 
 var updateURLPattern = regexp.MustCompile(`https?://[^\s<>"')\]]+`)
 
-const maxUpdateURLScanFileBytes = 1_000_000
+var (
+	updateMaxURLScanFileBytes int64 = 1_000_000
+	updateMaxScanFiles              = 10_000
+)
 
 type updateArgs struct {
 	DryRun bool
@@ -530,6 +533,7 @@ func summarizeUpdateSkills(skills []updateSkillItem) updateSummary {
 
 func collectURLs(root string) ([]string, error) {
 	set := make(map[string]struct{}, 32)
+	scannedFiles := 0
 	err := filepath.WalkDir(root, func(path string, d os.DirEntry, walkErr error) error {
 		if walkErr != nil {
 			return walkErr
@@ -540,11 +544,15 @@ func collectURLs(root string) ([]string, error) {
 		if !isMarkdownLikeFile(d.Name()) {
 			return nil
 		}
+		scannedFiles++
+		if scannedFiles > updateMaxScanFiles {
+			return fmt.Errorf("URL scan exceeded max file count: %d", updateMaxScanFiles)
+		}
 		info, err := d.Info()
 		if err != nil {
 			return fmt.Errorf("failed to stat file for URL scan: %w", err)
 		}
-		if info.Size() > maxUpdateURLScanFileBytes {
+		if info.Size() > updateMaxURLScanFileBytes {
 			rel, relErr := filepath.Rel(root, path)
 			if relErr == nil {
 				path = filepath.ToSlash(rel)
@@ -569,12 +577,17 @@ func collectURLs(root string) ([]string, error) {
 
 func collectExecutableFiles(root string) ([]string, error) {
 	set := make(map[string]struct{}, 16)
+	scannedFiles := 0
 	err := filepath.WalkDir(root, func(path string, d os.DirEntry, walkErr error) error {
 		if walkErr != nil {
 			return walkErr
 		}
 		if d.IsDir() {
 			return nil
+		}
+		scannedFiles++
+		if scannedFiles > updateMaxScanFiles {
+			return fmt.Errorf("executable scan exceeded max file count: %d", updateMaxScanFiles)
 		}
 		info, err := d.Info()
 		if err != nil {
