@@ -405,6 +405,9 @@ Every entry is checked before materialization:
 - file count and byte limits are enforced
 - extraction targets must be empty
 
+Archive path/symlink rejects include rule markers such as
+`ARCHIVE_PATH_ESCAPE` and `SYMLINK_IN_ARCHIVE` in error messages.
+
 ## Policy Profiles
 
 The default profile is `strict`.
