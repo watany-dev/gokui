@@ -38,6 +38,9 @@ var (
 	rawHTMLPattern         = regexp.MustCompile(`(?i)<\s*(?:script|iframe|object|embed|form|link|meta|img|svg|video|audio)\b`)
 	markdownLinkPattern    = regexp.MustCompile(`\[(?P<label>[^\]]+)\]\((?P<target>https?://[^)\s]+)\)`)
 	passwordArchivePattern = regexp.MustCompile(`(?i)(?:\b(?:password|passphrase|passwd|encrypted)\b.{0,80}\b(?:zip|7z|rar|archive|tar|tgz|tar\.gz)\b|\b(?:zip|7z|rar|archive|tar|tgz|tar\.gz)\b.{0,80}\b(?:password|passphrase|passwd|encrypted)\b)`)
+	goSemverExactPattern   = regexp.MustCompile(`^v?\d+\.\d+\.\d+(?:-[0-9a-z.-]+)?(?:\+[0-9a-z.-]+)?$`)
+	goPseudoVersionPattern = regexp.MustCompile(`^v\d+\.\d+\.\d+-\d{14}-[0-9a-f]{12}$`)
+	hexCommitRefPattern    = regexp.MustCompile(`^[0-9a-f]{12,40}$`)
 
 	fakePrereqPattern = regexp.MustCompile(`(?i)\b(?:required|required prerequisite|you must|before use)\b.{0,120}\b(?:download|install)\b.{0,200}\b(?:run|execute|bash|sh|powershell|chmod \+x)\b`)
 )
@@ -933,7 +936,7 @@ func isUnpinnedGoRunTarget(target string) bool {
 			return false
 		}
 		version := strings.TrimSpace(parts[1])
-		return version == "" || version == "latest"
+		return !isPinnedGoModuleVersion(version)
 	}
 
 	// Remote Go module/package paths conventionally include a dot in the first segment.
@@ -942,6 +945,26 @@ func isUnpinnedGoRunTarget(target string) bool {
 		firstSegment = firstSegment[:slash]
 	}
 	return strings.Contains(firstSegment, ".")
+}
+
+func isPinnedGoModuleVersion(version string) bool {
+	if version == "" {
+		return false
+	}
+	lower := strings.ToLower(strings.TrimSpace(version))
+	if lower == "latest" {
+		return false
+	}
+	if goSemverExactPattern.MatchString(lower) {
+		return true
+	}
+	if goPseudoVersionPattern.MatchString(lower) {
+		return true
+	}
+	if hexCommitRefPattern.MatchString(lower) {
+		return true
+	}
+	return false
 }
 
 func isRemoteScriptImportLine(lowerLine string) bool {

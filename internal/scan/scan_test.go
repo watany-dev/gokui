@@ -726,7 +726,13 @@ func TestUnpinnedRuntimeToolDetection(t *testing.T) {
 		{line: "corepack npm exec --", want: false},
 		{line: "npx --yes", want: false},
 		{line: "go run github.com/acme/x@latest", want: true},
+		{line: "go run github.com/acme/x@main", want: true},
+		{line: "go run github.com/acme/x@master", want: true},
+		{line: "go run github.com/acme/x@v1", want: true},
 		{line: "go run github.com/acme/x@v1.2.3", want: false},
+		{line: "go run github.com/acme/x@v1.2.3-rc.1", want: false},
+		{line: "go run github.com/acme/x@v1.2.3-20260523120000-abcdef123456", want: false},
+		{line: "go run github.com/acme/x@abcdef123456", want: false},
 		{line: "go run github.com/acme/x", want: true},
 		{line: "go run golang.org/x/tools/cmd/stringer", want: true},
 		{line: "go run -mod=mod github.com/acme/x@latest", want: true},
@@ -808,14 +814,45 @@ func TestIsUnpinnedGoRunTarget(t *testing.T) {
 		{target: "github.com/acme/x", want: true},
 		{target: "golang.org/x/tools/cmd/stringer", want: true},
 		{target: "github.com/acme/x@latest", want: true},
+		{target: "github.com/acme/x@main", want: true},
+		{target: "github.com/acme/x@master", want: true},
+		{target: "github.com/acme/x@v1", want: true},
 		{target: "github.com/acme/x@", want: true},
 		{target: "github.com/acme/x@v1.2.3", want: false},
+		{target: "github.com/acme/x@v1.2.3-rc.1", want: false},
+		{target: "github.com/acme/x@v1.2.3-20260523120000-abcdef123456", want: false},
+		{target: "github.com/acme/x@abcdef123456", want: false},
 		{target: "fmt", want: false},
 		{target: "cmd/tool", want: false},
 	}
 	for _, tc := range cases {
 		if got := isUnpinnedGoRunTarget(tc.target); got != tc.want {
 			t.Fatalf("isUnpinnedGoRunTarget(%q) = %v, want %v", tc.target, got, tc.want)
+		}
+	}
+}
+
+func TestIsPinnedGoModuleVersion(t *testing.T) {
+	cases := []struct {
+		version string
+		want    bool
+	}{
+		{version: "", want: false},
+		{version: "latest", want: false},
+		{version: "main", want: false},
+		{version: "master", want: false},
+		{version: "v1", want: false},
+		{version: "v1.2.3", want: true},
+		{version: "1.2.3", want: true},
+		{version: "v1.2.3-rc.1", want: true},
+		{version: "v1.2.3+meta", want: true},
+		{version: "v1.2.3-20260523120000-abcdef123456", want: true},
+		{version: "abcdef123456", want: true},
+		{version: "abcdef1", want: false},
+	}
+	for _, tc := range cases {
+		if got := isPinnedGoModuleVersion(tc.version); got != tc.want {
+			t.Fatalf("isPinnedGoModuleVersion(%q) = %v, want %v", tc.version, got, tc.want)
 		}
 	}
 }

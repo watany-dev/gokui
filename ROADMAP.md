@@ -199,6 +199,7 @@ code.
   - `yarn dlx foo`
   - `npm exec foo`
   - `go run github.com/org/tool` (no `@version`)
+  - `go run github.com/org/tool@main` (floating branch/tag refs)
   - `go run ...@latest`
   - remote script imports
 - Add bounded deobfuscation:

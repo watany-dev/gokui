@@ -414,7 +414,7 @@ Critical patterns include:
   user config directories
 - unpinned runtime tools such as `npx foo`, `uvx foo`, `bunx foo`,
   `pnpm dlx foo`, `yarn dlx foo`, `npm exec foo`, `go run github.com/org/tool`
-  (with no version) or `go run ...@latest`, or
+  (with no version) or `go run ...@latest` / `go run ...@main`, or
   remote script imports (including `corepack pnpm/yarn/npm ...` wrappers)
 
 ### Archives
