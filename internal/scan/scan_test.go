@@ -696,12 +696,17 @@ func TestUnpinnedRuntimeToolDetection(t *testing.T) {
 	}{
 		{line: "npx tool", want: true},
 		{line: "npx --yes tool@latest", want: true},
+		{line: "npx tool@next", want: true},
+		{line: "npx tool@^1.2.3", want: true},
 		{line: "npx tool@1.2.3", want: false},
 		{line: "uvx @scope/tool", want: true},
+		{line: "uvx @scope/tool@next", want: true},
 		{line: "uvx @scope/tool@0.9.1", want: false},
 		{line: "bunx @scope/tool", want: true},
+		{line: "bunx @scope/tool@beta", want: true},
 		{line: "bunx @scope/tool@1.2.3", want: false},
 		{line: "pnpm dlx @scope/tool", want: true},
+		{line: "pnpm dlx @scope/tool@canary", want: true},
 		{line: "pnpm dlx @scope/tool@1.2.3", want: false},
 		{line: "pnpm --color=always dlx @scope/tool", want: true},
 		{line: "pnpm --color=always dlx", want: false},
@@ -765,10 +770,15 @@ func TestIsUnpinnedPackageRef(t *testing.T) {
 		{ref: "@scope/pkg", want: true},
 		{ref: "@scope/pkg@", want: true},
 		{ref: "@scope/pkg@latest", want: true},
+		{ref: "@scope/pkg@next", want: true},
+		{ref: "@scope/pkg@^1.2.3", want: true},
 		{ref: "@scope/pkg@1.2.3", want: false},
+		{ref: "@scope/pkg@v1.2.3", want: false},
 		{ref: "pkg", want: true},
 		{ref: "pkg@", want: true},
 		{ref: "pkg@latest", want: true},
+		{ref: "pkg@beta", want: true},
+		{ref: "pkg@~1.2.3", want: true},
 		{ref: "pkg@1.2.3", want: false},
 	}
 	for _, tc := range cases {
@@ -853,6 +863,28 @@ func TestIsPinnedGoModuleVersion(t *testing.T) {
 	for _, tc := range cases {
 		if got := isPinnedGoModuleVersion(tc.version); got != tc.want {
 			t.Fatalf("isPinnedGoModuleVersion(%q) = %v, want %v", tc.version, got, tc.want)
+		}
+	}
+}
+
+func TestIsPinnedPackageVersion(t *testing.T) {
+	cases := []struct {
+		version string
+		want    bool
+	}{
+		{version: "", want: false},
+		{version: "latest", want: false},
+		{version: "next", want: false},
+		{version: "^1.2.3", want: false},
+		{version: "~1.2.3", want: false},
+		{version: "1.2.3", want: true},
+		{version: "v1.2.3", want: true},
+		{version: "1.2.3-beta.1", want: true},
+		{version: "v1", want: false},
+	}
+	for _, tc := range cases {
+		if got := isPinnedPackageVersion(tc.version); got != tc.want {
+			t.Fatalf("isPinnedPackageVersion(%q) = %v, want %v", tc.version, got, tc.want)
 		}
 	}
 }

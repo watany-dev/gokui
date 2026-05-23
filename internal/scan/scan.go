@@ -995,14 +995,30 @@ func isUnpinnedPackageRef(ref string) bool {
 
 	if strings.HasPrefix(ref, "@") {
 		lastAt := strings.LastIndex(ref, "@")
-		return lastAt <= 0 || lastAt == len(ref)-1 || ref[lastAt+1:] == "latest"
+		if lastAt <= 0 || lastAt == len(ref)-1 {
+			return true
+		}
+		return !isPinnedPackageVersion(ref[lastAt+1:])
 	}
 
 	parts := strings.SplitN(ref, "@", 2)
 	if len(parts) == 1 {
 		return true
 	}
-	return parts[1] == "" || parts[1] == "latest"
+	return !isPinnedPackageVersion(parts[1])
+}
+
+func isPinnedPackageVersion(version string) bool {
+	if version == "" {
+		return false
+	}
+	lower := strings.ToLower(strings.TrimSpace(version))
+	if lower == "latest" {
+		return false
+	}
+	// Treat exact semver as pinned for package launchers. Dist-tags and ranges
+	// like "next", "^1.2.3", or "~1.2.3" remain floating.
+	return goSemverExactPattern.MatchString(lower)
 }
 
 func nextNonFlagField(fields []string, start int) (string, bool) {
