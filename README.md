@@ -51,6 +51,8 @@ URLs in markdown content for review.
 Markdown raw HTML markup is now flagged as a medium-severity finding.
 Markdown links with host-mismatched display URL/target URL are flagged as high
 severity link-spoofing findings.
+Prompt-override language detection now includes bounded fuzzy/typoglycemia
+matching for common injection phrases.
 Unicode Tags, bidi controls, variation selectors, and ANSI/OSC escapes in
 scanned text are now flagged as critical. Zero-width and disallowed C0/C1
 control characters are also flagged as critical findings.
@@ -344,6 +346,7 @@ points such as `\u{E0049}` instead of being passed raw to another agent.
 `SKILL.md`, `references/**/*.md`, and README-like files are scanned for:
 
 - prompt override language
+- bounded fuzzy/typoglycemia matching for common prompt-override phrases
 - stealth instructions
 - tool execution requests
 - secret access
