@@ -1050,6 +1050,17 @@ func TestReadInstallLockAndProvenanceMatches(t *testing.T) {
 		if _, err := readInstallLock(badSchemaPath); err == nil || !strings.Contains(err.Error(), "unsupported install lockfile schema") {
 			t.Fatalf("expected unsupported schema error, got %v", err)
 		}
+
+		origLimit := maxInstallLockFileBytes
+		maxInstallLockFileBytes = 8
+		t.Cleanup(func() { maxInstallLockFileBytes = origLimit })
+		oversizedPath := filepath.Join(dir, "oversized.lock")
+		if err := os.WriteFile(oversizedPath, []byte(`{"schema":"gokui.lock/v1"}`), 0o644); err != nil {
+			t.Fatalf("write oversized lock: %v", err)
+		}
+		if _, err := readInstallLock(oversizedPath); err == nil || !strings.Contains(err.Error(), ruleLockfileTooLarge) {
+			t.Fatalf("expected oversized lockfile error, got %v", err)
+		}
 	})
 
 	t.Run("provenanceMatches true and false cases", func(t *testing.T) {

@@ -21,6 +21,10 @@ const (
 	installLockFile   = "gokui.lock"
 )
 
+var maxInstallLockFileBytes int64 = 1_000_000
+
+const ruleLockfileTooLarge = "LOCKFILE_TOO_LARGE"
+
 type installArgs struct {
 	Source  string
 	Target  string
@@ -808,6 +812,14 @@ func hashFile(path string) (sum string, size int64, err error) {
 }
 
 func readInstallLock(path string) (installLock, error) {
+	info, statErr := os.Stat(path)
+	if statErr != nil {
+		return installLock{}, fmt.Errorf("failed to read install lockfile: %s", path)
+	}
+	if info.Size() > maxInstallLockFileBytes {
+		return installLock{}, fmt.Errorf("%s: install lockfile exceeds size limit: %s", ruleLockfileTooLarge, path)
+	}
+
 	raw, err := os.ReadFile(path)
 	if err != nil {
 		return installLock{}, fmt.Errorf("failed to read install lockfile: %s", path)
