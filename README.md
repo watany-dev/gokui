@@ -197,6 +197,15 @@ Per-check `checks[].code` values:
 | `SOURCE_PREPARE_FAILED` | source preparation/materialization failed |
 | `EVALUATION_ERROR` | scan/evaluation failed |
 
+Status and error-code combinations are constrained as:
+
+| `skills[].status` | Allowed `skills[].error_code` |
+| --- | --- |
+| `UP_TO_DATE` | `UP_TO_DATE` |
+| `CHANGED` | `SOURCE_CHANGED` |
+| `REJECTED` | `POLICY_REJECTED`, `GITHUB_REF_NOT_PINNED` |
+| `ERROR` | `LOCKFILE_INVALID`, `GITHUB_SOURCE_INVALID`, `SOURCE_METADATA_INVALID`, `SOURCE_PREPARE_FAILED`, `EVALUATION_ERROR` |
+
 ## Supported Targets
 
 The MVP target set is intentionally small:
