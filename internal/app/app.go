@@ -136,6 +136,7 @@ var (
 )
 
 const (
+	descriptionToolInjectionRuleID      = "DESCRIPTION_TOOL_INJECTION"
 	inspectErrorCodeArgsInvalid         = "INSPECT_ARGS_INVALID"
 	inspectErrorCodeSourceNotFound      = "INSPECT_SOURCE_NOT_FOUND"
 	inspectErrorCodeSourceInvalid       = "INSPECT_SOURCE_INVALID"
@@ -864,10 +865,10 @@ func validateSkillDescription(description string) error {
 		return fmt.Errorf("description must not contain code fences")
 	}
 	if descriptionOverridePattern.MatchString(trimmed) {
-		return fmt.Errorf("description must not contain prompt override language")
+		return fmt.Errorf("%s: description must not contain prompt override language", descriptionToolInjectionRuleID)
 	}
 	if descriptionCommandPattern.MatchString(trimmed) {
-		return fmt.Errorf("description must not include tool or command execution instructions")
+		return fmt.Errorf("%s: description must not include tool or command execution instructions", descriptionToolInjectionRuleID)
 	}
 	return nil
 }

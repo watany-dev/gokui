@@ -1122,6 +1122,9 @@ func TestValidateSkillFrontmatter(t *testing.T) {
 		if err == nil || !strings.Contains(err.Error(), "description must not include tool or command execution instructions") {
 			t.Fatalf("expected command-instruction error, got %v", err)
 		}
+		if !strings.Contains(err.Error(), "DESCRIPTION_TOOL_INJECTION") {
+			t.Fatalf("expected DESCRIPTION_TOOL_INJECTION marker, got %v", err)
+		}
 	})
 
 	t.Run("rejects description with prompt override", func(t *testing.T) {
@@ -1129,6 +1132,9 @@ func TestValidateSkillFrontmatter(t *testing.T) {
 		_, err := validateSkillFrontmatter(path)
 		if err == nil || !strings.Contains(err.Error(), "description must not contain prompt override language") {
 			t.Fatalf("expected override error, got %v", err)
+		}
+		if !strings.Contains(err.Error(), "DESCRIPTION_TOOL_INJECTION") {
+			t.Fatalf("expected DESCRIPTION_TOOL_INJECTION marker, got %v", err)
 		}
 	})
 }
