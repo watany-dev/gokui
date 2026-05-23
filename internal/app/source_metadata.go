@@ -18,6 +18,7 @@ var maxSourceMetadataFileBytes int64 = 1_000_000
 
 const ruleSourceMetadataFileTooLarge = "SOURCE_METADATA_FILE_TOO_LARGE"
 const ruleSourceMetadataSymlink = "SOURCE_METADATA_SYMLINK_DETECTED"
+const ruleSourceMetadataSpecialFile = "SOURCE_METADATA_SPECIAL_FILE"
 
 type sourceMetadata struct {
 	Schema          string `json:"schema"`
@@ -33,6 +34,17 @@ func writeSourceMetadata(skillRoot string, meta sourceMetadata) error {
 	path := filepath.Join(skillRoot, sourceMetadataFile)
 	if err := rejectSymlinkPath(path, "source metadata file", ruleSourceMetadataSymlink); err != nil {
 		return err
+	}
+	info, statErr := os.Lstat(path)
+	if statErr == nil {
+		if info.Mode()&os.ModeSymlink != 0 {
+			return fmt.Errorf("%s: source metadata file must not be a symlink: %s", ruleSourceMetadataSymlink, path)
+		}
+		if !info.Mode().IsRegular() {
+			return fmt.Errorf("%s: source metadata file must be a regular file: %s", ruleSourceMetadataSpecialFile, path)
+		}
+	} else if !os.IsNotExist(statErr) {
+		return fmt.Errorf("failed to evaluate source metadata file: %w", statErr)
 	}
 	if err := os.WriteFile(path, raw, 0o644); err != nil {
 		return fmt.Errorf("failed to write source metadata: %w", err)
@@ -54,6 +66,9 @@ func readSourceMetadata(skillRoot string) (sourceMetadata, bool, error) {
 	}
 	if linkInfo.Mode()&os.ModeSymlink != 0 {
 		return sourceMetadata{}, false, fmt.Errorf("%s: source metadata file must not be a symlink: %s", ruleSourceMetadataSymlink, path)
+	}
+	if !linkInfo.Mode().IsRegular() {
+		return sourceMetadata{}, false, fmt.Errorf("%s: source metadata file must be a regular file: %s", ruleSourceMetadataSpecialFile, path)
 	}
 	if linkInfo.Size() > maxSourceMetadataFileBytes {
 		return sourceMetadata{}, false, fmt.Errorf("%s: source metadata exceeds size limit: %s", ruleSourceMetadataFileTooLarge, path)

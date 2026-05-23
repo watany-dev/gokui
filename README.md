@@ -34,8 +34,9 @@ different-provenance installs. It also supports commit-pinned GitHub sources
 mode, rejected installs set report `error_code=INSTALL_POLICY_REJECTED`, and
 fatal errors emit a machine-readable error envelope with top-level `error_code`.
 Install/update target roots and lock-verify input paths reject symlink path components.
-Lock/source-metadata/install-report file reads also reject symlink path components.
-Source metadata writes also reject symlink path components.
+Lock/source-metadata/install-report file reads also reject symlink path components,
+and require regular files (no directory/device/FIFO/socket paths).
+Source metadata writes also reject symlink path components and non-regular targets.
 Install target entries also reject symlink path components.
 `lock verify` now validates installed files against `gokui.lock`, checks source
 field consistency (including strict GitHub source syntax and commit pinning),

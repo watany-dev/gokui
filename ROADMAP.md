@@ -13,8 +13,8 @@ tests/CI:
 - Strict skill frontmatter validation and markdown/script scanning
 - Local-dir inspect source hardening (reject symlinked source paths/components and symlinked `SKILL.md`; require regular-file `SKILL.md`)
 - Symlink target hardening for `fetch --out`, `install --target`, `update --target`, and `lock verify` input paths (including symlink path components)
-- Lock/source-metadata/report read-path hardening with symlink component rejection
-- Source metadata write-path hardening with symlink component rejection
+- Lock/source-metadata/report read-path hardening with symlink component rejection and regular-file enforcement
+- Source metadata write-path hardening with symlink component rejection and non-regular target rejection
 - Install atomic finalize hardening for symlinked target entries
 - Fetch atomic finalize hardening for symlinked output entries
 - Update dry-run hardening for symlinked target entries and symlinked URL/executable scan inputs

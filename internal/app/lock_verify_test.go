@@ -190,8 +190,8 @@ func TestVerifyLockErrorsAndDiff(t *testing.T) {
 			t.Fatalf("mkdir lock path dir: %v", err)
 		}
 		_, err := verifyLock(dirWithLockDir)
-		if err == nil || !strings.Contains(err.Error(), "failed to read lockfile") {
-			t.Fatalf("expected lockfile read error for directory path, got %v", err)
+		if err == nil || !strings.Contains(err.Error(), ruleLockfileSpecialFile) {
+			t.Fatalf("expected lockfile special-file error for directory path, got %v", err)
 		}
 	})
 
@@ -821,8 +821,8 @@ func TestVerifyInstallReportValidationBranches(t *testing.T) {
 			t.Fatalf("mkdir report path: %v", err)
 		}
 		ok, detail := verifyInstallReport(skillPath, lock)
-		if ok || !strings.Contains(detail, "failed to read install report") {
-			t.Fatalf("expected read failure for directory report path, got ok=%v detail=%q", ok, detail)
+		if ok || !strings.Contains(detail, ruleInstallReportSpecialFile) {
+			t.Fatalf("expected special-file failure for directory report path, got ok=%v detail=%q", ok, detail)
 		}
 		if err := os.Remove(reportPath); err != nil {
 			t.Fatalf("remove report directory: %v", err)

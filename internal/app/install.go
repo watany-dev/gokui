@@ -34,6 +34,7 @@ var (
 const (
 	ruleLockfileTooLarge                = "LOCKFILE_TOO_LARGE"
 	ruleLockfileSymlink                 = "LOCKFILE_SYMLINK_DETECTED"
+	ruleLockfileSpecialFile             = "LOCKFILE_SPECIAL_FILE"
 	ruleInstallTargetSymlink            = "INSTALL_TARGET_SYMLINK_DETECTED"
 	ruleInstallTargetEntrySymlink       = "INSTALL_TARGET_ENTRY_SYMLINK_DETECTED"
 	ruleInstallSourceFileCountExceeded  = "INSTALL_SOURCE_FILE_COUNT_EXCEEDED"
@@ -905,6 +906,9 @@ func readInstallLock(path string) (installLock, error) {
 	}
 	if linkInfo.Mode()&os.ModeSymlink != 0 {
 		return installLock{}, fmt.Errorf("%s: install lockfile must not be a symlink: %s", ruleLockfileSymlink, path)
+	}
+	if !linkInfo.Mode().IsRegular() {
+		return installLock{}, fmt.Errorf("%s: install lockfile must be a regular file: %s", ruleLockfileSpecialFile, path)
 	}
 	if linkInfo.Size() > maxInstallLockFileBytes {
 		return installLock{}, fmt.Errorf("%s: install lockfile exceeds size limit: %s", ruleLockfileTooLarge, path)

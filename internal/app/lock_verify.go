@@ -52,6 +52,7 @@ var (
 
 const ruleInstallReportTooLarge = "INSTALL_REPORT_TOO_LARGE"
 const ruleInstallReportSymlink = "INSTALL_REPORT_SYMLINK_DETECTED"
+const ruleInstallReportSpecialFile = "INSTALL_REPORT_SPECIAL_FILE"
 const ruleLockVerifyPathSymlink = "LOCK_VERIFY_PATH_SYMLINK_DETECTED"
 
 const (
@@ -187,6 +188,9 @@ func verifyLock(skillPath string) (lockVerifyReport, error) {
 	}
 	if linkInfo.Mode()&os.ModeSymlink != 0 {
 		return lockVerifyReport{}, fmt.Errorf("%s: failed to read lockfile (symlink is not allowed): %s", ruleLockfileSymlink, lockPath)
+	}
+	if !linkInfo.Mode().IsRegular() {
+		return lockVerifyReport{}, fmt.Errorf("%s: failed to read lockfile (regular file required): %s", ruleLockfileSpecialFile, lockPath)
 	}
 	if linkInfo.Size() > maxLockVerifyLockFileBytes {
 		return lockVerifyReport{}, fmt.Errorf("%s: failed to read lockfile (size exceeds limit): %s", ruleLockfileTooLarge, lockPath)
@@ -439,6 +443,9 @@ func verifyInstallReport(skillPath string, lock installLock) (bool, string) {
 	}
 	if linkInfo.Mode()&os.ModeSymlink != 0 {
 		return false, fmt.Sprintf("%s: install report file must not be a symlink: %s", ruleInstallReportSymlink, reportPath)
+	}
+	if !linkInfo.Mode().IsRegular() {
+		return false, fmt.Sprintf("%s: install report file must be a regular file: %s", ruleInstallReportSpecialFile, reportPath)
 	}
 	if linkInfo.Size() > maxInstallReportFileBytes {
 		return false, fmt.Sprintf("%s: install report exceeds size limit: %s", ruleInstallReportTooLarge, reportPath)

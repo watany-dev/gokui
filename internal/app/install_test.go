@@ -1117,7 +1117,7 @@ func TestWriteInstallMetadataGitHubSource(t *testing.T) {
 			Installed:     true,
 			InstalledPath: skillRoot,
 		}
-		if err := writeInstallMetadata(skillRoot, report); err == nil || !strings.Contains(err.Error(), "failed to write source metadata") {
+		if err := writeInstallMetadata(skillRoot, report); err == nil || !strings.Contains(err.Error(), ruleSourceMetadataSpecialFile) {
 			t.Fatalf("expected source metadata write error, got %v", err)
 		}
 	})
@@ -1283,8 +1283,8 @@ func TestReadInstallLockAndProvenanceMatches(t *testing.T) {
 		if err := os.Mkdir(lockDirPath, 0o755); err != nil {
 			t.Fatalf("mkdir lock-dir: %v", err)
 		}
-		if _, err := readInstallLock(lockDirPath); err == nil || !strings.Contains(err.Error(), "failed to read install lockfile") {
-			t.Fatalf("expected read error for directory lockfile path, got %v", err)
+		if _, err := readInstallLock(lockDirPath); err == nil || !strings.Contains(err.Error(), ruleLockfileSpecialFile) {
+			t.Fatalf("expected special-file error for directory lockfile path, got %v", err)
 		}
 
 		if runtime.GOOS != "windows" {

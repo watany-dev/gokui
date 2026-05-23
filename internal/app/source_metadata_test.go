@@ -96,8 +96,11 @@ func TestSourceMetadataHelpers(t *testing.T) {
 		if err := os.Mkdir(filepath.Join(dirAsMeta, sourceMetadataFile), 0o755); err != nil {
 			t.Fatalf("mkdir metadata directory: %v", err)
 		}
-		if _, _, err := readSourceMetadata(dirAsMeta); err == nil || !strings.Contains(err.Error(), "failed to read source metadata") {
+		if _, _, err := readSourceMetadata(dirAsMeta); err == nil || !strings.Contains(err.Error(), ruleSourceMetadataSpecialFile) {
 			t.Fatalf("expected read error, got %v", err)
+		}
+		if err := writeSourceMetadata(dirAsMeta, sourceMetadata{Schema: sourceMetadataSchemaVersion}); err == nil || !strings.Contains(err.Error(), ruleSourceMetadataSpecialFile) {
+			t.Fatalf("expected metadata write special-file rejection, got %v", err)
 		}
 
 		if runtime.GOOS != "windows" {
