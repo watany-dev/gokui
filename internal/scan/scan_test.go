@@ -940,8 +940,8 @@ func TestScanTextFileErrorsAndDedup(t *testing.T) {
 			Relative: "missing.md",
 			Kind:     "markdown",
 		})
-		if err == nil || !strings.Contains(err.Error(), "failed to stat scan file") {
-			t.Fatalf("expected stat error, got %v", err)
+		if err == nil || !strings.Contains(err.Error(), "failed to read scan file") {
+			t.Fatalf("expected read error, got %v", err)
 		}
 	})
 

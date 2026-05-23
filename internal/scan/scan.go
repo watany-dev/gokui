@@ -333,19 +333,18 @@ func scanTargets(skillRoot string) ([]scanTarget, error) {
 }
 
 func scanTextFile(target scanTarget) ([]Finding, error) {
-	info, err := os.Stat(target.Absolute)
-	if err != nil {
-		return nil, fmt.Errorf("failed to stat scan file %s: %w", target.Relative, err)
-	}
-	if !info.Mode().IsRegular() {
-		return nil, fmt.Errorf("%s: scan source contains non-regular file: %s", ruleScanSpecialFile, target.Relative)
-	}
-
 	in, err := os.Open(target.Absolute)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read scan file %s: %w", target.Relative, err)
 	}
 	defer in.Close()
+	info, err := in.Stat()
+	if err != nil {
+		return nil, fmt.Errorf("failed to read scan file %s: %w", target.Relative, err)
+	}
+	if !info.Mode().IsRegular() {
+		return nil, fmt.Errorf("%s: scan source contains non-regular file: %s", ruleScanSpecialFile, target.Relative)
+	}
 
 	var contentBuf bytes.Buffer
 	if _, err := limitio.CopyWithStrictLimit(&contentBuf, in, maxScanFileBytes); err != nil {
