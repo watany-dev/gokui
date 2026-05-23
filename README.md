@@ -84,6 +84,16 @@ gokui update --dry-run [--target codex|custom:/path] [--format human|json]
 gokui lock verify [path] [--format human|json]
 ```
 
+Release readiness gate:
+
+```sh
+# Includes fmt/lint/typecheck/deadcode/coverage/test/build and govulncheck
+make release-check
+
+# Offline fallback when vulnerability DB access is unavailable
+make release-check RELEASE_CHECK_VULN=0
+```
+
 ## Threat Model
 
 gokui assumes that a skill bundle from another person or repository is

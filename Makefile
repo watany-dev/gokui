@@ -1,5 +1,6 @@
 GO ?= go
 COVERAGE_THRESHOLD ?= 95
+RELEASE_CHECK_VULN ?= 1
 GOFMT_TARGETS := cmd internal
 MAIN_PKG := ./cmd/gokui
 CACHE_DIR ?= $(CURDIR)/.cache
@@ -20,7 +21,7 @@ LDFLAGS := -s -w \
 	-X main.commit=$(COMMIT) \
 	-X main.date=$(DATE)
 
-.PHONY: build fmt fmt-check lint typecheck deadcode test test-race coverage vuln actionlint check
+.PHONY: build fmt fmt-check lint typecheck deadcode test test-race coverage vuln actionlint check release-check
 
 build:
 	$(GO) build -trimpath -buildvcs=true -ldflags='$(LDFLAGS)' -o gokui $(MAIN_PKG)
@@ -65,3 +66,10 @@ actionlint:
 	$(GO) tool actionlint
 
 check: fmt-check lint typecheck deadcode coverage
+
+release-check: check test build
+ifeq ($(RELEASE_CHECK_VULN),1)
+	$(MAKE) vuln
+else
+	@echo "Skipping vuln check (RELEASE_CHECK_VULN=$(RELEASE_CHECK_VULN))"
+endif

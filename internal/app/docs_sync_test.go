@@ -160,3 +160,21 @@ func TestUpdateStatusErrorCodeMatrixDocumentationSync(t *testing.T) {
 		}
 	}
 }
+
+func TestReleaseCheckDocumentationSync(t *testing.T) {
+	readmeBytes, err := os.ReadFile("../../README.md")
+	if err != nil {
+		t.Fatalf("failed to read README.md: %v", err)
+	}
+	readme := string(readmeBytes)
+
+	required := []string{
+		"make release-check",
+		"make release-check RELEASE_CHECK_VULN=0",
+	}
+	for _, line := range required {
+		if !strings.Contains(readme, line) {
+			t.Fatalf("README missing release-check documentation line: %q", line)
+		}
+	}
+}
