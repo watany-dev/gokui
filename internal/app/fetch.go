@@ -88,7 +88,7 @@ func runFetch(args []string, stdout io.Writer, stderr io.Writer) int {
 		return 1
 	}
 	if err := writeSourceMetaFunc(dest, sourceMetadata{
-		Schema:          "gokui.source/v1",
+		Schema:          sourceMetadataSchemaVersion,
 		SourceInput:     parsed.Source,
 		SourceKind:      "github-source",
 		ResolvedRef:     spec.Ref,
@@ -100,7 +100,7 @@ func runFetch(args []string, stdout io.Writer, stderr io.Writer) int {
 	}
 
 	report := fetchReport{
-		SchemaVersion: "0.1.0-draft",
+		SchemaVersion: reportSchemaVersion,
 		Source: source{
 			Input: parsed.Source,
 			Kind:  sourceKind,

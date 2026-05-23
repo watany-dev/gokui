@@ -133,7 +133,7 @@ func verifyLock(skillPath string) (lockVerifyReport, error) {
 	}
 
 	checks := make([]lockVerifyCheck, 0, 8)
-	schemaOK := lock.Schema == "gokui.lock/v1"
+	schemaOK := lock.Schema == lockSchemaVersion
 	checks = append(checks, lockVerifyCheck{
 		Name:   "schema",
 		OK:     schemaOK,
@@ -201,7 +201,7 @@ func verifyLock(skillPath string) (lockVerifyReport, error) {
 	}
 
 	return lockVerifyReport{
-		SchemaVersion: "0.1.0-draft",
+		SchemaVersion: reportSchemaVersion,
 		SkillPath:     cleanPath,
 		Status:        status,
 		Checks:        checks,

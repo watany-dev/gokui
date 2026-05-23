@@ -183,7 +183,7 @@ func runInspect(args []string, stdout io.Writer, stderr io.Writer) int {
 	}
 
 	report := inspectReport{
-		SchemaVersion: "0.1.0-draft",
+		SchemaVersion: reportSchemaVersion,
 		PreRelease:    true,
 		Source: source{
 			Input: input,

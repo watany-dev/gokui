@@ -53,7 +53,7 @@ func readSourceMetadata(skillRoot string) (sourceMetadata, bool, error) {
 }
 
 func validateSourceMetadata(meta sourceMetadata) error {
-	if meta.Schema != "gokui.source/v1" {
+	if meta.Schema != sourceMetadataSchemaVersion {
 		return fmt.Errorf("unsupported source metadata schema: %s", meta.Schema)
 	}
 	if strings.TrimSpace(meta.SourceInput) == "" {

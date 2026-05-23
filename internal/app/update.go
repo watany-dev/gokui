@@ -216,7 +216,7 @@ func buildUpdateReport(targetRoot string) (updateReport, error) {
 
 	summary := summarizeUpdateSkills(skills)
 	return updateReport{
-		SchemaVersion: "0.1.0-draft",
+		SchemaVersion: reportSchemaVersion,
 		Target:        cleanTarget,
 		DryRun:        true,
 		Skills:        skills,

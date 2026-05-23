@@ -118,7 +118,7 @@ func runInstall(args []string, stdout io.Writer, stderr io.Writer) int {
 	}
 
 	report := installReport{
-		SchemaVersion: "0.1.0-draft",
+		SchemaVersion: reportSchemaVersion,
 		Source:        installSource,
 		PolicyProfile: parsed.Profile,
 		Decision:      decision,
@@ -419,7 +419,7 @@ func buildInstallLock(stagedSkill string, report installReport) (installLock, er
 
 	skillName := filepath.Base(filepath.Clean(stagedSkill))
 	return installLock{
-		Schema:      "gokui.lock/v1",
+		Schema:      lockSchemaVersion,
 		Name:        skillName,
 		InstalledAt: time.Now().UTC().Format(time.RFC3339),
 		Source: lockSource{
@@ -530,7 +530,7 @@ func readInstallLock(path string) (installLock, error) {
 	if err := json.Unmarshal(raw, &lock); err != nil {
 		return installLock{}, fmt.Errorf("invalid install lockfile JSON: %s", path)
 	}
-	if lock.Schema != "gokui.lock/v1" {
+	if lock.Schema != lockSchemaVersion {
 		return installLock{}, fmt.Errorf("unsupported install lockfile schema at %s: %s", path, lock.Schema)
 	}
 	return lock, nil
