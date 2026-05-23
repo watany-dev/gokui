@@ -3,6 +3,22 @@
 This roadmap follows gokui's core position: it is a quarantine gate for Agent
 Skill bundles, not a convenience-first package manager.
 
+## Current Implementation Snapshot (May 23, 2026)
+
+The following items are implemented in the current codebase and validated by
+tests/CI:
+
+- CLI commands: `fetch`, `inspect`, `install`, `update --dry-run`, `lock verify`
+- Quarantine-safe archive materialization for inspect/install flows
+- Strict skill frontmatter validation and markdown/script scanning
+- Commit-pinned GitHub source fetch and install/update/verify provenance checks
+- Atomic install with `.gokui-report.json` and `gokui.lock`
+- Lock drift verification with per-check machine-readable codes
+- Stable JSON output contracts for all MVP commands
+- Machine-readable `error_code` support across command failure paths
+
+This roadmap section below remains forward-looking for gaps and future phases.
+
 ## Design Principles
 
 - Fail closed for third-party skills.

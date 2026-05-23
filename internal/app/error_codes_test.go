@@ -1,7 +1,9 @@
 package app
 
 import (
+	"os"
 	"regexp"
+	"strings"
 	"testing"
 )
 
@@ -92,5 +94,64 @@ func TestLockVerifyCheckCodesUniqueAndFormat(t *testing.T) {
 			t.Fatalf("duplicate lock verify check code detected: %q", code)
 		}
 		seen[code] = struct{}{}
+	}
+}
+
+func TestAutomationErrorCodesDocumentedInREADME(t *testing.T) {
+	readmeBytes, err := os.ReadFile("../../README.md")
+	if err != nil {
+		t.Fatalf("failed to read README.md: %v", err)
+	}
+	readme := string(readmeBytes)
+
+	codes := []string{
+		inspectErrorCodeArgsInvalid,
+		inspectErrorCodeSourceNotFound,
+		inspectErrorCodeSourceInvalid,
+		inspectErrorCodeSourcePrepareFailed,
+		inspectErrorCodeScanFailed,
+
+		fetchErrorCodeArgsInvalid,
+		fetchErrorCodeSourceUnsupported,
+		fetchErrorCodeSourceInvalid,
+		fetchErrorCodeSourceRefNotPinned,
+		fetchErrorCodeSourceDownloadFailed,
+		fetchErrorCodeSkillInvalid,
+		fetchErrorCodeOutputPrepareFailed,
+		fetchErrorCodeCopyFailed,
+		fetchErrorCodeDigestFailed,
+		fetchErrorCodeMetadataWriteFailed,
+
+		installErrorCodeArgsInvalid,
+		installErrorCodeProfileUnsupported,
+		installErrorCodeSourceNotFound,
+		installErrorCodeSourcePrepareFailed,
+		installErrorCodeEvaluationFailed,
+		installErrorCodeSourceMetadataFailed,
+		installErrorCodeTargetInvalid,
+		installErrorCodeTargetPrepareFailed,
+		installErrorCodeWriteFailed,
+		installErrorCodePolicyRejected,
+
+		lockVerifyErrorCodeReadLockfile,
+		lockVerifyErrorCodeInvalidLockfile,
+		lockVerifyErrorCodeDigestFailed,
+		lockVerifyErrorCodeUnknown,
+
+		updateCodeUpToDate,
+		updateCodeChanged,
+		updateCodePolicyRejected,
+		updateCodeGitHubRefFloating,
+		updateCodeLockfileInvalid,
+		updateCodeGitHubSourceBad,
+		updateCodeSourceMetadataBad,
+		updateCodeSourcePrepareError,
+		updateCodeEvaluationError,
+	}
+
+	for _, code := range codes {
+		if !strings.Contains(readme, "`"+code+"`") {
+			t.Fatalf("README.md is missing documented error_code: %s", code)
+		}
 	}
 }
