@@ -104,3 +104,18 @@ func TestLockfileExampleSchemaSync(t *testing.T) {
 		}
 	}
 }
+
+func TestREADMEStatusStatementIsConsistentWithImplementedPreRelease(t *testing.T) {
+	readmeBytes, err := os.ReadFile("../../README.md")
+	if err != nil {
+		t.Fatalf("failed to read README.md: %v", err)
+	}
+	readme := string(readmeBytes)
+
+	if strings.Contains(readme, "does not yet contain a\nworking release") {
+		t.Fatal("README contains stale status statement about lacking a working release")
+	}
+	if !strings.Contains(readme, "pre-release software under active hardening") {
+		t.Fatal("README should explicitly state pre-release hardening status")
+	}
+}

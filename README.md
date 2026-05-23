@@ -16,8 +16,9 @@ does. gokui treats all of those layers as security-relevant.
 
 ## Status
 
-gokui is currently in early design. The repository does not yet contain a
-working release. `inspect` now performs pre-release structural validation and
+gokui is pre-release software under active hardening. Current commands are
+implemented with stable automation contracts, while security coverage and policy
+depth continue to expand. `inspect` now performs pre-release structural validation and
 basic markdown threat scanning, and emits a draft JSON/human report with
 `PASS`/`REJECTED` decisions. In JSON mode, fatal inspect failures emit
 machine-readable top-level `error_code` for automation. For GitHub sources, floating refs remain
