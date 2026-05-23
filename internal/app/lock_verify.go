@@ -301,10 +301,8 @@ func verifyLockStructure(lock installLock) (bool, string) {
 	if strings.TrimSpace(lock.Policy.Profile) == "" {
 		return false, "lock policy profile is empty"
 	}
-	switch strings.ToLower(strings.TrimSpace(lock.Policy.Decision)) {
-	case "pass", "rejected":
-	default:
-		return false, fmt.Sprintf("unsupported lock policy decision: %s", lock.Policy.Decision)
+	if !strings.EqualFold(strings.TrimSpace(lock.Policy.Decision), "pass") {
+		return false, fmt.Sprintf("lock policy decision must be pass for installed skill, got %s", lock.Policy.Decision)
 	}
 
 	if !isSHA256Hex(lock.Skill.RootSHA256) {
@@ -364,11 +362,19 @@ func verifyInstallReport(skillPath string, lock installLock) (bool, string) {
 	if !strings.EqualFold(strings.TrimSpace(report.Decision), strings.TrimSpace(lock.Policy.Decision)) {
 		return false, "install report decision does not match lock policy decision"
 	}
+	if !strings.EqualFold(strings.TrimSpace(report.Decision), "pass") {
+		return false, "install report decision must be pass for installed skill"
+	}
 	if !report.Installed {
 		return false, "install report installed must be true"
 	}
 	if filepath.Clean(report.InstalledPath) != filepath.Clean(skillPath) {
 		return false, fmt.Sprintf("install report path mismatch: expected %s, got %s", skillPath, report.InstalledPath)
+	}
+
+	reportSummary := summarizeFindingSeverities(report.Findings)
+	if reportSummary != lock.Findings {
+		return false, "install report findings summary does not match lock findings"
 	}
 
 	return true, fmt.Sprintf("schema=%s decision=%s", report.SchemaVersion, report.Decision)
