@@ -600,26 +600,29 @@ func collectURLs(root string) ([]string, error) {
 			}
 			return fmt.Errorf("%s: URL scan input contains symlink: %s", ruleUpdateURLScanSymlink, path)
 		}
-		info, err := d.Info()
+		info, err := os.Lstat(path)
 		if err != nil {
 			return fmt.Errorf("failed to stat file for URL scan: %w", err)
 		}
-		if !info.Mode().IsRegular() {
-			rel, relErr := filepath.Rel(root, path)
-			if relErr == nil {
-				path = filepath.ToSlash(rel)
-			}
-			return fmt.Errorf("%s: URL scan input contains non-regular file: %s", ruleUpdateURLScanSpecialFile, path)
-		}
-		scannedFiles++
-		if scannedFiles > updateMaxScanFiles {
-			return fmt.Errorf("URL scan exceeded max file count: %d", updateMaxScanFiles)
+		if err := ensureURLScanRegularFile(info, path, root); err != nil {
+			return err
 		}
 		f, err := os.Open(path)
 		if err != nil {
 			return fmt.Errorf("failed to read file for URL scan: %w", err)
 		}
 		defer f.Close()
+		info, err = f.Stat()
+		if err != nil {
+			return fmt.Errorf("failed to stat file for URL scan: %w", err)
+		}
+		if err := ensureURLScanRegularFile(info, path, root); err != nil {
+			return err
+		}
+		scannedFiles++
+		if scannedFiles > updateMaxScanFiles {
+			return fmt.Errorf("URL scan exceeded max file count: %d", updateMaxScanFiles)
+		}
 		content, err := readURLScanContent(f, path, root)
 		if err != nil {
 			return err
@@ -634,6 +637,17 @@ func collectURLs(root string) ([]string, error) {
 		return nil, err
 	}
 	return mapKeysSorted(set), nil
+}
+
+func ensureURLScanRegularFile(info os.FileInfo, path string, root string) error {
+	if info.Mode().IsRegular() {
+		return nil
+	}
+	rel, relErr := filepath.Rel(root, path)
+	if relErr == nil {
+		path = filepath.ToSlash(rel)
+	}
+	return fmt.Errorf("%s: URL scan input contains non-regular file: %s", ruleUpdateURLScanSpecialFile, path)
 }
 
 func collectExecutableFiles(root string) ([]string, error) {

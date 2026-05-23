@@ -1303,6 +1303,31 @@ func TestUpdateHelpers(t *testing.T) {
 		}
 	})
 
+	t.Run("ensureURLScanRegularFile classifies regular and non-regular files", func(t *testing.T) {
+		root := t.TempDir()
+
+		regularPath := filepath.Join(root, "doc.md")
+		if err := os.WriteFile(regularPath, []byte("ok"), 0o644); err != nil {
+			t.Fatalf("write regular markdown: %v", err)
+		}
+		regularInfo, err := os.Lstat(regularPath)
+		if err != nil {
+			t.Fatalf("lstat regular markdown: %v", err)
+		}
+		if err := ensureURLScanRegularFile(regularInfo, regularPath, root); err != nil {
+			t.Fatalf("regular markdown should pass validation, got %v", err)
+		}
+
+		dirInfo, err := os.Lstat(root)
+		if err != nil {
+			t.Fatalf("lstat root dir: %v", err)
+		}
+		err = ensureURLScanRegularFile(dirInfo, root, root)
+		if err == nil || !strings.Contains(err.Error(), ruleUpdateURLScanSpecialFile) {
+			t.Fatalf("expected non-regular file error, got %v", err)
+		}
+	})
+
 	t.Run("collectExecutableFiles enforces max scan file count", func(t *testing.T) {
 		origLimit := updateMaxScanFiles
 		updateMaxScanFiles = 2
