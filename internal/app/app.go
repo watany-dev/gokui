@@ -131,10 +131,10 @@ gokui is pre-release software.
 usage:
   gokui version
   gokui fetch github:owner/repo//path/to/skill@commit --out <quarantine-dir>
-  gokui inspect <local-dir|zip|github-source>
+  gokui inspect <local-dir|zip|github-source> [--format human|json]
   gokui install <source> --target codex --profile strict [--format human|json]
-  gokui update --dry-run
-  gokui lock verify`)
+  gokui update --dry-run [--target codex|custom:/path] [--format human|json]
+  gokui lock verify [path] [--format human|json]`)
 }
 
 func runInspect(args []string, stdout io.Writer, stderr io.Writer) int {
