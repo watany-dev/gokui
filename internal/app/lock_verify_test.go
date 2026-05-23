@@ -12,6 +12,14 @@ import (
 	"testing/quick"
 )
 
+type errorStatter struct {
+	err error
+}
+
+func (s errorStatter) Stat() (os.FileInfo, error) {
+	return nil, s.err
+}
+
 func TestParseLockVerifyArgs(t *testing.T) {
 	t.Run("defaults", func(t *testing.T) {
 		got, err := parseLockVerifyArgs(nil)
@@ -30,6 +38,16 @@ func TestParseLockVerifyArgs(t *testing.T) {
 		}
 		if got.Path != "./skill" || got.Format != "json" {
 			t.Fatalf("unexpected parse result: %+v", got)
+		}
+	})
+
+	t.Run("path and equals-format", func(t *testing.T) {
+		got, err := parseLockVerifyArgs([]string{"./skill", "--format=json"})
+		if err != nil {
+			t.Fatalf("parseLockVerifyArgs() error = %v", err)
+		}
+		if got.Path != "./skill" || got.Format != "json" {
+			t.Fatalf("unexpected parse result for equals-format: %+v", got)
 		}
 	})
 
@@ -256,6 +274,62 @@ func TestVerifyLockErrorsAndDiff(t *testing.T) {
 	}
 	if len(unexpected) != 1 || unexpected[0] != "c.txt" {
 		t.Fatalf("unexpected unexpected files: %+v", unexpected)
+	}
+}
+
+func TestLockVerifyStableFileHelpers(t *testing.T) {
+	root := t.TempDir()
+	firstPath := filepath.Join(root, "first.txt")
+	if err := os.WriteFile(firstPath, []byte("one"), 0o644); err != nil {
+		t.Fatalf("write first file: %v", err)
+	}
+	secondPath := filepath.Join(root, "second.txt")
+	if err := os.WriteFile(secondPath, []byte("two"), 0o644); err != nil {
+		t.Fatalf("write second file: %v", err)
+	}
+
+	firstInfo, err := os.Lstat(firstPath)
+	if err != nil {
+		t.Fatalf("lstat first file: %v", err)
+	}
+	secondInfo, err := os.Lstat(secondPath)
+	if err != nil {
+		t.Fatalf("lstat second file: %v", err)
+	}
+
+	if err := ensureLockfileStableFile(firstInfo, firstInfo, firstPath); err != nil {
+		t.Fatalf("same lockfile identity should pass, got %v", err)
+	}
+	err = ensureLockfileStableFile(firstInfo, secondInfo, secondPath)
+	if err == nil || !strings.Contains(err.Error(), ruleLockfileSourceChanged) || !strings.Contains(err.Error(), "failed to read lockfile") {
+		t.Fatalf("expected lockfile source-changed read error, got %v", err)
+	}
+
+	if err := ensureInstallReportStableFile(firstInfo, firstInfo, firstPath); err != nil {
+		t.Fatalf("same install-report identity should pass, got %v", err)
+	}
+	err = ensureInstallReportStableFile(firstInfo, secondInfo, secondPath)
+	if err == nil || !strings.Contains(err.Error(), ruleInstallReportSourceChanged) {
+		t.Fatalf("expected install-report source-changed error, got %v", err)
+	}
+
+	if err := ensureLockfileStableFromOpen(firstInfo, errorStatter{err: errors.New("stat fail")}, firstPath); err == nil || !strings.Contains(err.Error(), "failed to read lockfile") {
+		t.Fatalf("expected lockfile stat error, got %v", err)
+	}
+	if err := ensureInstallReportStableFromOpen(firstInfo, errorStatter{err: errors.New("stat fail")}, firstPath); err == nil || !strings.Contains(err.Error(), "failed to read install report") {
+		t.Fatalf("expected install report stat error, got %v", err)
+	}
+
+	opened, err := os.Open(firstPath)
+	if err != nil {
+		t.Fatalf("open first file: %v", err)
+	}
+	defer opened.Close()
+	if err := ensureLockfileStableFromOpen(firstInfo, opened, firstPath); err != nil {
+		t.Fatalf("same opened lockfile should pass, got %v", err)
+	}
+	if err := ensureInstallReportStableFromOpen(firstInfo, opened, firstPath); err != nil {
+		t.Fatalf("same opened install report should pass, got %v", err)
 	}
 }
 
@@ -1085,6 +1159,38 @@ func TestVerifyInstallReportValidationBranches(t *testing.T) {
 			}
 		})
 	}
+
+	t.Run("decision must be pass even when matching lock decision", func(t *testing.T) {
+		rep := valid
+		rep.Decision = "REJECTED"
+		mutRaw, err := json.MarshalIndent(rep, "", "  ")
+		if err != nil {
+			t.Fatalf("marshal report: %v", err)
+		}
+		writeReport(t, string(mutRaw))
+
+		mutLock := lock
+		mutLock.Policy.Decision = "REJECTED"
+		ok, detail := verifyInstallReport(skillPath, mutLock)
+		if ok || !strings.Contains(detail, "decision must be pass") {
+			t.Fatalf("expected pass-decision enforcement, got ok=%v detail=%q", ok, detail)
+		}
+	})
+
+	t.Run("findings summary mismatch", func(t *testing.T) {
+		validRaw, err := json.MarshalIndent(valid, "", "  ")
+		if err != nil {
+			t.Fatalf("marshal valid report: %v", err)
+		}
+		writeReport(t, string(validRaw))
+
+		mutLock := lock
+		mutLock.Findings = lockFindingSummary{High: 1}
+		ok, detail := verifyInstallReport(skillPath, mutLock)
+		if ok || !strings.Contains(detail, "findings summary does not match") {
+			t.Fatalf("expected findings summary mismatch, got ok=%v detail=%q", ok, detail)
+		}
+	})
 }
 
 func TestVerifyLockStructureValidationBranches(t *testing.T) {

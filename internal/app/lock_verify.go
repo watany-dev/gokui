@@ -58,7 +58,9 @@ var (
 const ruleInstallReportTooLarge = "INSTALL_REPORT_TOO_LARGE"
 const ruleInstallReportSymlink = "INSTALL_REPORT_SYMLINK_DETECTED"
 const ruleInstallReportSpecialFile = "INSTALL_REPORT_SPECIAL_FILE"
+const ruleInstallReportSourceChanged = "INSTALL_REPORT_SOURCE_CHANGED_DURING_READ"
 const ruleLockVerifyPathSymlink = "LOCK_VERIFY_PATH_SYMLINK_DETECTED"
+const ruleLockfileSourceChanged = "LOCKFILE_SOURCE_CHANGED_DURING_READ"
 
 const (
 	lockVerifyCodeSchema         = "LOCK_SCHEMA"
@@ -83,6 +85,10 @@ type lockVerifyDriftInfo struct {
 	MissingFiles    []string `json:"missing_files"`
 	ChangedFiles    []string `json:"changed_files"`
 	UnexpectedFiles []string `json:"unexpected_files"`
+}
+
+type fileInfoStatter interface {
+	Stat() (os.FileInfo, error)
 }
 
 func runLockVerify(args []string, stdout io.Writer, stderr io.Writer) int {
@@ -252,6 +258,9 @@ func verifyLock(skillPath string) (lockVerifyReport, error) {
 		return lockVerifyReport{}, fmt.Errorf("%w: %s", errLockfileReadFailed, lockPath)
 	}
 	defer f.Close()
+	if err := ensureLockfileStableFromOpen(linkInfo, f, lockPath); err != nil {
+		return lockVerifyReport{}, err
+	}
 	var lockRaw bytes.Buffer
 	if _, err := limitio.CopyWithStrictLimit(&lockRaw, f, maxLockVerifyLockFileBytes); err != nil {
 		if errors.Is(err, limitio.ErrSizeExceeded) {
@@ -511,6 +520,9 @@ func verifyInstallReport(skillPath string, lock installLock) (bool, string) {
 		return false, fmt.Sprintf("failed to read install report: %s", reportPath)
 	}
 	defer f.Close()
+	if err := ensureInstallReportStableFromOpen(linkInfo, f, reportPath); err != nil {
+		return false, err.Error()
+	}
 
 	var raw bytes.Buffer
 	if _, err := limitio.CopyWithStrictLimit(&raw, f, maxInstallReportFileBytes); err != nil {
@@ -555,6 +567,36 @@ func verifyInstallReport(skillPath string, lock installLock) (bool, string) {
 	}
 
 	return true, fmt.Sprintf("schema=%s decision=%s", report.SchemaVersion, report.Decision)
+}
+
+func ensureLockfileStableFile(previous os.FileInfo, current os.FileInfo, lockPath string) error {
+	if os.SameFile(previous, current) {
+		return nil
+	}
+	return fmt.Errorf("%s: %w (file changed during read): %s", ruleLockfileSourceChanged, errLockfileReadFailed, lockPath)
+}
+
+func ensureLockfileStableFromOpen(previous os.FileInfo, opened fileInfoStatter, lockPath string) error {
+	current, err := opened.Stat()
+	if err != nil {
+		return fmt.Errorf("%w: %s", errLockfileReadFailed, lockPath)
+	}
+	return ensureLockfileStableFile(previous, current, lockPath)
+}
+
+func ensureInstallReportStableFile(previous os.FileInfo, current os.FileInfo, reportPath string) error {
+	if os.SameFile(previous, current) {
+		return nil
+	}
+	return fmt.Errorf("%s: install report file changed during read: %s", ruleInstallReportSourceChanged, reportPath)
+}
+
+func ensureInstallReportStableFromOpen(previous os.FileInfo, opened fileInfoStatter, reportPath string) error {
+	current, err := opened.Stat()
+	if err != nil {
+		return fmt.Errorf("failed to read install report: %s", reportPath)
+	}
+	return ensureInstallReportStableFile(previous, current, reportPath)
 }
 
 func isSHA256Hex(in string) bool {
