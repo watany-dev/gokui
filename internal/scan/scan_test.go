@@ -174,13 +174,38 @@ func TestUnpinnedRuntimeToolDetection(t *testing.T) {
 		{line: "npx tool@1.2.3", want: false},
 		{line: "uvx @scope/tool", want: true},
 		{line: "uvx @scope/tool@0.9.1", want: false},
+		{line: "npx --yes", want: false},
 		{line: "go run github.com/acme/x@latest", want: true},
 		{line: "go run github.com/acme/x@v1.2.3", want: false},
+		{line: "go run -mod=mod github.com/acme/x@latest", want: true},
+		{line: "go run -mod=mod", want: false},
 		{line: "echo safe", want: false},
 	}
 	for _, tc := range cases {
 		if got := isUnpinnedRuntimeToolLine(tc.line); got != tc.want {
 			t.Fatalf("isUnpinnedRuntimeToolLine(%q) = %v, want %v", tc.line, got, tc.want)
+		}
+	}
+}
+
+func TestIsUnpinnedPackageRef(t *testing.T) {
+	cases := []struct {
+		ref  string
+		want bool
+	}{
+		{ref: "", want: false},
+		{ref: "@scope/pkg", want: true},
+		{ref: "@scope/pkg@", want: true},
+		{ref: "@scope/pkg@latest", want: true},
+		{ref: "@scope/pkg@1.2.3", want: false},
+		{ref: "pkg", want: true},
+		{ref: "pkg@", want: true},
+		{ref: "pkg@latest", want: true},
+		{ref: "pkg@1.2.3", want: false},
+	}
+	for _, tc := range cases {
+		if got := isUnpinnedPackageRef(tc.ref); got != tc.want {
+			t.Fatalf("isUnpinnedPackageRef(%q) = %v, want %v", tc.ref, got, tc.want)
 		}
 	}
 }
