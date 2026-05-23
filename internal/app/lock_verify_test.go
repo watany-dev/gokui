@@ -202,6 +202,9 @@ func TestRunLockVerifyErrorPathsAndDriftKinds(t *testing.T) {
 	if !strings.Contains(stdout.String(), "\"error_code\": \""+lockVerifyErrorCodeReadLockfile+"\"") {
 		t.Fatalf("stdout should include read-lockfile error code, got %q", stdout.String())
 	}
+	if strings.Contains(stdout.String(), "\"rule_id\":") {
+		t.Fatalf("stdout should omit rule_id when no rule-prefixed error is present, got %q", stdout.String())
+	}
 
 	src := createSkillSourceForInstallTest(t, "drift-kinds-skill")
 	targetRoot := filepath.Join(t.TempDir(), "skills")
