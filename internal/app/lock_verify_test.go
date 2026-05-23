@@ -348,6 +348,26 @@ func TestRunLockVerifyErrorPathsAndDriftKinds(t *testing.T) {
 	}
 	maxLockVerifyLockFileBytes = origLimit
 
+	stdout.Reset()
+	stderr.Reset()
+	lockDirSkill := t.TempDir()
+	if err := os.Mkdir(filepath.Join(lockDirSkill, installLockFile), 0o755); err != nil {
+		t.Fatalf("mkdir lockfile directory path: %v", err)
+	}
+	code = runLockVerify([]string{lockDirSkill, "--format", "json"}, &stdout, &stderr)
+	if code != 1 {
+		t.Fatalf("runLockVerify(lockfile special-file json) code = %d, want 1", code)
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("stderr should be empty for json error output, got %q", stderr.String())
+	}
+	if !strings.Contains(stdout.String(), "\"error_code\": \""+lockVerifyErrorCodeReadLockfile+"\"") {
+		t.Fatalf("stdout should include read-lockfile error code, got %q", stdout.String())
+	}
+	if !strings.Contains(stdout.String(), "\"rule_id\": \""+ruleLockfileSpecialFile+"\"") {
+		t.Fatalf("stdout should include lockfile special-file rule_id, got %q", stdout.String())
+	}
+
 	if runtime.GOOS != "windows" {
 		stdout.Reset()
 		stderr.Reset()
