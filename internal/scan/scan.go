@@ -25,6 +25,7 @@ const (
 	ruleScanSymlinkInSource = "SYMLINK_IN_SCAN_SOURCE"
 	ruleScanFileCount       = "SCAN_FILE_COUNT_EXCEEDED"
 	ruleScanSpecialFile     = "SPECIAL_FILE_IN_SCAN_SOURCE"
+	ruleScanSourceChanged   = "SCAN_SOURCE_CHANGED_DURING_READ"
 )
 
 // Finding represents one scan result.
@@ -78,6 +79,7 @@ type scanTarget struct {
 	Absolute string
 	Relative string
 	Kind     string
+	Info     os.FileInfo
 }
 
 var scriptLikeExtensions = map[string]struct{}{
@@ -307,6 +309,7 @@ func scanTargets(skillRoot string) ([]scanTarget, error) {
 				Absolute: path,
 				Relative: rel,
 				Kind:     "markdown",
+				Info:     info,
 			})
 			return nil
 		}
@@ -316,6 +319,7 @@ func scanTargets(skillRoot string) ([]scanTarget, error) {
 				Absolute: path,
 				Relative: rel,
 				Kind:     "script",
+				Info:     info,
 			})
 			return nil
 		}
@@ -323,6 +327,7 @@ func scanTargets(skillRoot string) ([]scanTarget, error) {
 			Absolute: path,
 			Relative: rel,
 			Kind:     "unknown",
+			Info:     info,
 		})
 		return nil
 	})
@@ -344,6 +349,9 @@ func scanTextFile(target scanTarget) ([]Finding, error) {
 	}
 	if !info.Mode().IsRegular() {
 		return nil, fmt.Errorf("%s: scan source contains non-regular file: %s", ruleScanSpecialFile, target.Relative)
+	}
+	if target.Info != nil && !os.SameFile(target.Info, info) {
+		return nil, fmt.Errorf("%s: scan source changed during read: %s", ruleScanSourceChanged, target.Relative)
 	}
 
 	var contentBuf bytes.Buffer

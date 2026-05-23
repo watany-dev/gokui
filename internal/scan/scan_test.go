@@ -1010,6 +1010,32 @@ func TestScanTextFileErrorsAndDedup(t *testing.T) {
 		}
 	})
 
+	t.Run("rejects changed source identity", func(t *testing.T) {
+		root := t.TempDir()
+		originalPath := filepath.Join(root, "original.md")
+		if err := os.WriteFile(originalPath, []byte("one"), 0o644); err != nil {
+			t.Fatalf("write original file: %v", err)
+		}
+		otherPath := filepath.Join(root, "other.md")
+		if err := os.WriteFile(otherPath, []byte("two"), 0o644); err != nil {
+			t.Fatalf("write other file: %v", err)
+		}
+		originalInfo, err := os.Lstat(originalPath)
+		if err != nil {
+			t.Fatalf("lstat original file: %v", err)
+		}
+
+		_, err = scanTextFile(scanTarget{
+			Absolute: otherPath,
+			Relative: "other.md",
+			Kind:     "markdown",
+			Info:     originalInfo,
+		})
+		if err == nil || !strings.Contains(err.Error(), ruleScanSourceChanged) {
+			t.Fatalf("expected changed-source error, got %v", err)
+		}
+	})
+
 	t.Run("deduplicates findings", func(t *testing.T) {
 		in := []Finding{
 			{ID: "A", Severity: "high", File: "SKILL.md", Line: 10},
