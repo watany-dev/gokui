@@ -153,14 +153,8 @@ func detectSingleTopLevelDirectory(root string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to read extracted github archive: %w", err)
 	}
-	var dirs []os.DirEntry
-	for _, entry := range entries {
-		if entry.IsDir() {
-			dirs = append(dirs, entry)
-		}
-	}
-	if len(dirs) != 1 {
+	if len(entries) != 1 || !entries[0].IsDir() {
 		return "", fmt.Errorf("github archive must contain a single top-level directory")
 	}
-	return filepath.Join(root, dirs[0].Name()), nil
+	return filepath.Join(root, entries[0].Name()), nil
 }

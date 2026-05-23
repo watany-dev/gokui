@@ -144,6 +144,25 @@ func TestFetchGitHubSkillErrors(t *testing.T) {
 		}
 	})
 
+	t.Run("rejects archive with top-level file alongside repository directory", func(t *testing.T) {
+		archive := buildTarGz(t, map[string]string{
+			"repo-8f3c2d1a4b5c6d7e8f901234567890abcdef1234/skills/demo/SKILL.md": "---\nname: demo\ndescription: d\n---\n",
+			"README.md": "unexpected top-level file",
+		})
+		githubCodeloadBaseURL = "https://mock.codeload.local"
+		githubHTTPClient = &http.Client{
+			Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+				return httpResponse(http.StatusOK, archive), nil
+			}),
+		}
+
+		spec := GitHubSpec{Owner: "o", Repo: "r", Path: "skills/demo", Ref: "8f3c2d1a4b5c6d7e8f901234567890abcdef1234"}
+		_, _, err := FetchGitHubSkill(spec)
+		if err == nil || !strings.Contains(err.Error(), "single top-level directory") {
+			t.Fatalf("expected top-level directory error, got %v", err)
+		}
+	})
+
 	t.Run("rejects invalid tar stream", func(t *testing.T) {
 		githubCodeloadBaseURL = "https://mock.codeload.local"
 		githubHTTPClient = &http.Client{
