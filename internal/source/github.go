@@ -79,6 +79,9 @@ func ParseGitHubSource(input string) (GitHubSpec, error) {
 	if !githubRepoPartPattern.MatchString(owner) || !githubRepoPartPattern.MatchString(repo) {
 		return GitHubSpec{}, fmt.Errorf("github source owner/repo contains invalid characters")
 	}
+	if owner == "." || owner == ".." || repo == "." || repo == ".." {
+		return GitHubSpec{}, fmt.Errorf("github source owner/repo must not use dot segments")
+	}
 
 	skillPath, err := normalizeGitHubPath(parts[1])
 	if err != nil {
