@@ -1353,6 +1353,63 @@ func TestUpdateHelpers(t *testing.T) {
 		}
 	})
 
+	t.Run("buildUpdateReport infers wrapped rule_id from source evaluation errors", func(t *testing.T) {
+		if runtime.GOOS == "windows" {
+			t.Skip("mkfifo is not available on windows")
+		}
+
+		sourceRoot := createSkillSourceForInstallTest(t, "wrapped-rule-source")
+		fifoPath := filepath.Join(sourceRoot, "pipe.fifo")
+		if _, err := exec.LookPath("mkfifo"); err != nil {
+			t.Skip("mkfifo command not available")
+		}
+		if err := exec.Command("mkfifo", fifoPath).Run(); err != nil {
+			t.Skipf("mkfifo unsupported in this environment: %v", err)
+		}
+
+		targetRoot := filepath.Join(t.TempDir(), "skills")
+		if err := os.MkdirAll(filepath.Join(targetRoot, "wrapped-rule-source"), 0o755); err != nil {
+			t.Fatalf("mkdir wrapped-rule-source: %v", err)
+		}
+		lock := installLock{
+			Schema: "gokui.lock/v1",
+			Name:   "wrapped-rule-source",
+			Source: lockSource{
+				Type:  "local",
+				Input: sourceRoot,
+				Kind:  "local-dir",
+			},
+			Skill: lockSkill{
+				Files: []lockFileHash{},
+			},
+			Policy: lockPolicy{
+				Profile:  "strict",
+				Decision: "pass",
+			},
+		}
+		raw, err := json.MarshalIndent(lock, "", "  ")
+		if err != nil {
+			t.Fatalf("marshal lock: %v", err)
+		}
+		if err := os.WriteFile(filepath.Join(targetRoot, "wrapped-rule-source", installLockFile), raw, 0o644); err != nil {
+			t.Fatalf("write lock: %v", err)
+		}
+
+		report, err := buildUpdateReport(targetRoot)
+		if err != nil {
+			t.Fatalf("buildUpdateReport() error = %v", err)
+		}
+		if report.Summary.Errors != 1 {
+			t.Fatalf("expected one error, got %+v", report.Summary)
+		}
+		if report.Skills[0].RuleID != "SPECIAL_FILE_IN_SCAN_SOURCE" {
+			t.Fatalf("expected wrapped rule_id extraction, got %+v", report.Skills[0])
+		}
+		if !strings.Contains(report.Skills[0].Message, "failed walking skill files for scan") {
+			t.Fatalf("expected wrapped source scan message, got %+v", report.Skills[0])
+		}
+	})
+
 	t.Run("buildUpdateReport captures installed-tree evaluation errors", func(t *testing.T) {
 		if runtime.GOOS == "windows" {
 			t.Skip("permission behavior differs on windows")
