@@ -7,6 +7,7 @@ import (
 	"compress/gzip"
 	"encoding/json"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -1581,6 +1582,37 @@ func TestRunInspectJSONErrorCodes(t *testing.T) {
 		}
 	})
 
+	t.Run("local scan special-file failure emits wrapped rule_id", func(t *testing.T) {
+		if runtime.GOOS == "windows" {
+			t.Skip("mkfifo is not available on windows")
+		}
+
+		skillRoot := createSkillSourceForInstallTest(t, "inspect-local-special-file")
+		fifoPath := filepath.Join(skillRoot, "pipe.fifo")
+		if _, err := exec.LookPath("mkfifo"); err != nil {
+			t.Skip("mkfifo command not available")
+		}
+		if err := exec.Command("mkfifo", fifoPath).Run(); err != nil {
+			t.Skipf("mkfifo unsupported in this environment: %v", err)
+		}
+
+		var stdout bytes.Buffer
+		var stderr bytes.Buffer
+		code := Run([]string{"inspect", skillRoot, "--format", "json"}, &stdout, &stderr, cfg)
+		if code != 1 {
+			t.Fatalf("Run() code = %d, want 1\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
+		}
+		if stderr.Len() != 0 {
+			t.Fatalf("stderr should be empty, got %q", stderr.String())
+		}
+		if !strings.Contains(stdout.String(), "\"error_code\": \""+inspectErrorCodeScanFailed+"\"") {
+			t.Fatalf("stdout should include scan-failed code, got %q", stdout.String())
+		}
+		if !strings.Contains(stdout.String(), "\"rule_id\": \"SPECIAL_FILE_IN_SCAN_SOURCE\"") {
+			t.Fatalf("stdout should include wrapped scan special-file rule_id, got %q", stdout.String())
+		}
+	})
+
 	t.Run("ancestor symlink source path emits prepare-failed with rule_id", func(t *testing.T) {
 		if runtime.GOOS == "windows" {
 			t.Skip("symlink permissions differ on windows")
@@ -1691,6 +1723,43 @@ func TestRunInspectJSONErrorCodes(t *testing.T) {
 		}
 		if !strings.Contains(stdout.String(), inspectErrorCodeScanFailed) {
 			t.Fatalf("stdout should include %q, got %q", inspectErrorCodeScanFailed, stdout.String())
+		}
+	})
+
+	t.Run("github scan special-file failure emits wrapped rule_id", func(t *testing.T) {
+		if runtime.GOOS == "windows" {
+			t.Skip("mkfifo is not available on windows")
+		}
+
+		origFetch := fetchGitHubSkill
+		t.Cleanup(func() { fetchGitHubSkill = origFetch })
+
+		skillRoot := createSkillSourceForInstallTest(t, "inspect-github-special-file")
+		fifoPath := filepath.Join(skillRoot, "pipe.fifo")
+		if _, err := exec.LookPath("mkfifo"); err != nil {
+			t.Skip("mkfifo command not available")
+		}
+		if err := exec.Command("mkfifo", fifoPath).Run(); err != nil {
+			t.Skipf("mkfifo unsupported in this environment: %v", err)
+		}
+		fetchGitHubSkill = func(spec srcpkg.GitHubSpec) (string, func(), error) {
+			return skillRoot, nil, nil
+		}
+
+		var stdout bytes.Buffer
+		var stderr bytes.Buffer
+		code := Run([]string{"inspect", "github:org/repo//skills/inspect-github-special-file@8f3c2d1a4b5c6d7e8f901234567890abcdef1234", "--format", "json"}, &stdout, &stderr, cfg)
+		if code != 1 {
+			t.Fatalf("Run() code = %d, want 1\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
+		}
+		if stderr.Len() != 0 {
+			t.Fatalf("stderr should be empty, got %q", stderr.String())
+		}
+		if !strings.Contains(stdout.String(), "\"error_code\": \""+inspectErrorCodeScanFailed+"\"") {
+			t.Fatalf("stdout should include scan-failed code, got %q", stdout.String())
+		}
+		if !strings.Contains(stdout.String(), "\"rule_id\": \"SPECIAL_FILE_IN_SCAN_SOURCE\"") {
+			t.Fatalf("stdout should include wrapped scan special-file rule_id, got %q", stdout.String())
 		}
 	})
 
