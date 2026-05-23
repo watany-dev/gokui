@@ -426,12 +426,7 @@ func evaluateUpdateSkill(item updateSkillItem, lock installLock) (updateSkillIte
 	}
 	if err != nil {
 		message := err.Error()
-		status := "ERROR"
-		code := updateCodeSourcePrepareError
-		if kind == "github-source" && strings.Contains(message, "commit-pinned ref") {
-			status = "REJECTED"
-			code = updateCodeGitHubRefFloating
-		}
+		status, code := classifyUpdateSourcePrepareFailure(kind, err)
 		item.Status = status
 		item.ErrorCode = code
 		item.Message = message
@@ -522,6 +517,15 @@ func evaluateUpdateSkill(item updateSkillItem, lock installLock) (updateSkillIte
 	item.Message = "no change detected against installed lock snapshot"
 	item.RuleID = inferRuleIDForJSONError(item.Message)
 	return item, nil
+}
+
+func classifyUpdateSourcePrepareFailure(kind string, err error) (status string, code string) {
+	status = "ERROR"
+	code = updateCodeSourcePrepareError
+	if kind == "github-source" && isGitHubRefNotPinnedError(err) {
+		return "REJECTED", updateCodeGitHubRefFloating
+	}
+	return status, code
 }
 
 func filterLockFiles(files []lockFileHash, exclude map[string]struct{}) []lockFileHash {

@@ -1,6 +1,7 @@
 package app
 
 import (
+	"errors"
 	"fmt"
 	"path/filepath"
 
@@ -8,6 +9,8 @@ import (
 )
 
 var fetchGitHubSkill = srcpkg.FetchGitHubSkill
+
+var errGitHubRefNotPinned = errors.New("github source requires a commit-pinned ref")
 
 func preparePolicyEvaluationSource(input string, sourceKind string) (skillRoot string, cleanup func(), err error) {
 	switch sourceKind {
@@ -17,7 +20,7 @@ func preparePolicyEvaluationSource(input string, sourceKind string) (skillRoot s
 			return "", nil, fmt.Errorf("invalid github source: %w", parseErr)
 		}
 		if !srcpkg.IsCommitPinnedRef(spec.Ref) {
-			return "", nil, fmt.Errorf("github source requires a commit-pinned ref (e.g. @8f3c2d1a4b5c6d7e8f901234567890abcdef1234)")
+			return "", nil, fmt.Errorf("%w (e.g. @8f3c2d1a4b5c6d7e8f901234567890abcdef1234)", errGitHubRefNotPinned)
 		}
 
 		root, release, fetchErr := fetchGitHubSkill(spec)
@@ -41,4 +44,8 @@ func preparePolicyEvaluationSource(input string, sourceKind string) (skillRoot s
 		}
 		return filepath.Clean(root), release, nil
 	}
+}
+
+func isGitHubRefNotPinnedError(err error) bool {
+	return errors.Is(err, errGitHubRefNotPinned)
 }

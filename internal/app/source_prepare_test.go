@@ -2,6 +2,7 @@ package app
 
 import (
 	"errors"
+	"fmt"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -81,6 +82,25 @@ func TestPreparePolicyEvaluationSource(t *testing.T) {
 		}
 		if !cleaned {
 			t.Fatal("cleanup should run when validation fails")
+		}
+	})
+}
+
+func TestIsGitHubRefNotPinnedError(t *testing.T) {
+	t.Run("matches sentinel and wrapped sentinel", func(t *testing.T) {
+		if !isGitHubRefNotPinnedError(errGitHubRefNotPinned) {
+			t.Fatal("expected sentinel to match")
+		}
+		wrapped := fmt.Errorf("wrapped: %w", errGitHubRefNotPinned)
+		if !isGitHubRefNotPinnedError(wrapped) {
+			t.Fatal("expected wrapped sentinel to match")
+		}
+	})
+
+	t.Run("does not match text-only error", func(t *testing.T) {
+		err := errors.New("github source requires a commit-pinned ref")
+		if isGitHubRefNotPinnedError(err) {
+			t.Fatal("did not expect text-only error to match")
 		}
 	})
 }

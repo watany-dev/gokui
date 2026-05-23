@@ -108,6 +108,32 @@ func TestIsUpdateTargetReadError(t *testing.T) {
 	})
 }
 
+func TestClassifyUpdateSourcePrepareFailure(t *testing.T) {
+	t.Run("github pinned-ref sentinel maps to rejected floating-ref code", func(t *testing.T) {
+		err := fmt.Errorf("wrapped: %w", errGitHubRefNotPinned)
+		status, code := classifyUpdateSourcePrepareFailure("github-source", err)
+		if status != "REJECTED" || code != updateCodeGitHubRefFloating {
+			t.Fatalf("unexpected classification: status=%q code=%q", status, code)
+		}
+	})
+
+	t.Run("text-only commit-pinned phrase does not trigger rejected mapping", func(t *testing.T) {
+		err := errors.New("github source requires a commit-pinned ref")
+		status, code := classifyUpdateSourcePrepareFailure("github-source", err)
+		if status != "ERROR" || code != updateCodeSourcePrepareError {
+			t.Fatalf("unexpected classification: status=%q code=%q", status, code)
+		}
+	})
+
+	t.Run("non-github source stays source-prepare error", func(t *testing.T) {
+		err := fmt.Errorf("wrapped: %w", errGitHubRefNotPinned)
+		status, code := classifyUpdateSourcePrepareFailure("local-dir", err)
+		if status != "ERROR" || code != updateCodeSourcePrepareError {
+			t.Fatalf("unexpected classification: status=%q code=%q", status, code)
+		}
+	})
+}
+
 func TestRunUpdateDryRunStatuses(t *testing.T) {
 	targetRoot := filepath.Join(t.TempDir(), "skills")
 	if err := os.MkdirAll(targetRoot, 0o755); err != nil {
