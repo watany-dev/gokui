@@ -954,6 +954,9 @@ func TestInspectArgJSONHelpers(t *testing.T) {
 	if got := extractInspectSourceArg([]string{"--format", "json"}); got != "" {
 		t.Fatalf("extractInspectSourceArg() without source = %q, want empty", got)
 	}
+	if got := extractInspectSourceArg([]string{"--unknown", "./skill", "--format", "json"}); got != "./skill" {
+		t.Fatalf("extractInspectSourceArg() should skip unknown options, got %q", got)
+	}
 }
 
 func TestDetectSourceKind(t *testing.T) {
@@ -1261,6 +1264,34 @@ func TestValidateSkillFrontmatter(t *testing.T) {
 			t.Fatalf("expected special-file SKILL rejection, got %v", err)
 		}
 	})
+
+	t.Run("ensureSkillFrontmatterStableFile detects source replacement", func(t *testing.T) {
+		root := t.TempDir()
+		firstPath := filepath.Join(root, "first.md")
+		if err := os.WriteFile(firstPath, []byte("one"), 0o644); err != nil {
+			t.Fatalf("write first file: %v", err)
+		}
+		secondPath := filepath.Join(root, "second.md")
+		if err := os.WriteFile(secondPath, []byte("two"), 0o644); err != nil {
+			t.Fatalf("write second file: %v", err)
+		}
+		firstInfo, err := os.Lstat(firstPath)
+		if err != nil {
+			t.Fatalf("lstat first file: %v", err)
+		}
+		secondInfo, err := os.Lstat(secondPath)
+		if err != nil {
+			t.Fatalf("lstat second file: %v", err)
+		}
+
+		if err := ensureSkillFrontmatterStableFile(firstInfo, firstInfo, firstPath); err != nil {
+			t.Fatalf("same file should pass, got %v", err)
+		}
+		err = ensureSkillFrontmatterStableFile(firstInfo, secondInfo, secondPath)
+		if err == nil || !strings.Contains(err.Error(), ruleSkillFrontmatterSourceChanged) {
+			t.Fatalf("expected changed-source error, got %v", err)
+		}
+	})
 }
 
 func TestValidateSkillDescriptionPropertyNoPanic(t *testing.T) {
@@ -1276,6 +1307,22 @@ func TestValidateSkillDescriptionPropertyNoPanic(t *testing.T) {
 	if err := quick.Check(prop, &quick.Config{MaxCount: 500}); err != nil {
 		t.Fatalf("validateSkillDescription panic-safety property failed: %v", err)
 	}
+}
+
+func TestParseFrontmatterYAMLBranches(t *testing.T) {
+	t.Run("rejects multiple yaml documents", func(t *testing.T) {
+		_, err := parseFrontmatterYAML("name: one\n---\nname: two\n")
+		if err == nil || !strings.Contains(err.Error(), "multiple YAML documents are not allowed") {
+			t.Fatalf("expected multiple-document rejection, got %v", err)
+		}
+	})
+
+	t.Run("rejects non-mapping root", func(t *testing.T) {
+		_, err := parseFrontmatterYAML("- item\n")
+		if err == nil || !strings.Contains(err.Error(), "frontmatter root must be a YAML mapping") {
+			t.Fatalf("expected mapping-root rejection, got %v", err)
+		}
+	})
 }
 
 func TestValidateLocalDirInspectSource(t *testing.T) {

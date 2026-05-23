@@ -22,6 +22,7 @@ var maxSourceMetadataFileBytes int64 = 1_000_000
 const ruleSourceMetadataFileTooLarge = "SOURCE_METADATA_FILE_TOO_LARGE"
 const ruleSourceMetadataSymlink = "SOURCE_METADATA_SYMLINK_DETECTED"
 const ruleSourceMetadataSpecialFile = "SOURCE_METADATA_SPECIAL_FILE"
+const ruleSourceMetadataSourceChanged = "SOURCE_METADATA_SOURCE_CHANGED_DURING_READ"
 
 type sourceMetadata struct {
 	Schema          string `json:"schema"`
@@ -79,6 +80,13 @@ func readSourceMetadata(skillRoot string) (sourceMetadata, bool, error) {
 		return sourceMetadata{}, false, fmt.Errorf("failed to read source metadata: %w", err)
 	}
 	defer f.Close()
+	currentInfo, statErr := f.Stat()
+	if statErr != nil {
+		return sourceMetadata{}, false, fmt.Errorf("failed to read source metadata: %w", statErr)
+	}
+	if err := ensureSourceMetadataStableFile(linkInfo, currentInfo, path); err != nil {
+		return sourceMetadata{}, false, err
+	}
 
 	var raw bytes.Buffer
 	if _, err := limitio.CopyWithStrictLimit(&raw, f, maxSourceMetadataFileBytes); err != nil {
@@ -96,6 +104,13 @@ func readSourceMetadata(skillRoot string) (sourceMetadata, bool, error) {
 		return sourceMetadata{}, false, err
 	}
 	return meta, true, nil
+}
+
+func ensureSourceMetadataStableFile(previous os.FileInfo, current os.FileInfo, path string) error {
+	if os.SameFile(previous, current) {
+		return nil
+	}
+	return fmt.Errorf("%s: source metadata file changed during read: %s", ruleSourceMetadataSourceChanged, path)
 }
 
 func validateSourceMetadata(meta sourceMetadata) error {

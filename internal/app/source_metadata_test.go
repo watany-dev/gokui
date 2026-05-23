@@ -75,6 +75,17 @@ func TestSourceMetadataHelpers(t *testing.T) {
 		}
 	})
 
+	t.Run("resolveSourceForInstall returns metadata read errors for github source", func(t *testing.T) {
+		dir := t.TempDir()
+		if err := os.WriteFile(filepath.Join(dir, sourceMetadataFile), []byte("{"), 0o644); err != nil {
+			t.Fatalf("write invalid metadata: %v", err)
+		}
+		_, err := resolveSourceForInstall(dir, "github:org/repo//skills/x@8f3c2d1a4b5c6d7e8f901234567890abcdef1234", "github-source")
+		if err == nil || !strings.Contains(err.Error(), "invalid source metadata JSON") {
+			t.Fatalf("expected metadata read error, got %v", err)
+		}
+	})
+
 	t.Run("read/write metadata error paths", func(t *testing.T) {
 		nonDir := filepath.Join(t.TempDir(), "not-dir")
 		if err := os.WriteFile(nonDir, []byte("x"), 0o644); err != nil {
@@ -206,6 +217,60 @@ func TestSourceMetadataHelpers(t *testing.T) {
 		}
 		if _, _, err := readSourceMetadata(oversizedDir); err == nil || !strings.Contains(err.Error(), ruleSourceMetadataFileTooLarge) {
 			t.Fatalf("expected oversized metadata error, got %v", err)
+		}
+
+		if runtime.GOOS != "windows" {
+			unreadableDir := t.TempDir()
+			unreadablePath := filepath.Join(unreadableDir, sourceMetadataFile)
+			if err := os.WriteFile(unreadablePath, []byte(`{"schema":"gokui.source/v1"}`), 0o644); err != nil {
+				t.Fatalf("write unreadable metadata file: %v", err)
+			}
+			if err := os.Chmod(unreadablePath, 0o000); err != nil {
+				t.Fatalf("chmod unreadable metadata file: %v", err)
+			}
+			defer os.Chmod(unreadablePath, 0o644)
+			if _, _, err := readSourceMetadata(unreadableDir); err == nil || !strings.Contains(err.Error(), "failed to read source metadata") {
+				t.Fatalf("expected unreadable metadata read error, got %v", err)
+			}
+
+			readOnlyDir := t.TempDir()
+			if err := os.Chmod(readOnlyDir, 0o555); err != nil {
+				t.Fatalf("chmod readonly dir: %v", err)
+			}
+			defer os.Chmod(readOnlyDir, 0o755)
+			err := writeSourceMetadata(readOnlyDir, sourceMetadata{Schema: sourceMetadataSchemaVersion})
+			if err == nil || !strings.Contains(err.Error(), "failed to write source metadata") {
+				t.Fatalf("expected readonly metadata write error, got %v", err)
+			}
+		}
+	})
+
+	t.Run("ensureSourceMetadataStableFile detects source replacement", func(t *testing.T) {
+		root := t.TempDir()
+		firstPath := filepath.Join(root, "first.json")
+		if err := os.WriteFile(firstPath, []byte(`{"schema":"gokui.source/v1"}`), 0o644); err != nil {
+			t.Fatalf("write first metadata: %v", err)
+		}
+		secondPath := filepath.Join(root, "second.json")
+		if err := os.WriteFile(secondPath, []byte(`{"schema":"gokui.source/v1"}`), 0o644); err != nil {
+			t.Fatalf("write second metadata: %v", err)
+		}
+
+		firstInfo, err := os.Lstat(firstPath)
+		if err != nil {
+			t.Fatalf("lstat first metadata: %v", err)
+		}
+		secondInfo, err := os.Lstat(secondPath)
+		if err != nil {
+			t.Fatalf("lstat second metadata: %v", err)
+		}
+
+		if err := ensureSourceMetadataStableFile(firstInfo, firstInfo, firstPath); err != nil {
+			t.Fatalf("same file should pass, got %v", err)
+		}
+		err = ensureSourceMetadataStableFile(firstInfo, secondInfo, secondPath)
+		if err == nil || !strings.Contains(err.Error(), ruleSourceMetadataSourceChanged) {
+			t.Fatalf("expected changed-source error, got %v", err)
 		}
 	})
 

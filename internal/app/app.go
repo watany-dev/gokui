@@ -146,9 +146,10 @@ var (
 
 const ruleSkillFrontmatterTooLarge = "SKILL_FRONTMATTER_TOO_LARGE"
 const (
-	ruleInspectSourceSymlink        = "INSPECT_SOURCE_SYMLINK_DETECTED"
-	ruleSkillFrontmatterSymlink     = "SKILL_FRONTMATTER_SYMLINK_DETECTED"
-	ruleSkillFrontmatterSpecialFile = "SKILL_FRONTMATTER_SPECIAL_FILE"
+	ruleInspectSourceSymlink          = "INSPECT_SOURCE_SYMLINK_DETECTED"
+	ruleSkillFrontmatterSymlink       = "SKILL_FRONTMATTER_SYMLINK_DETECTED"
+	ruleSkillFrontmatterSpecialFile   = "SKILL_FRONTMATTER_SPECIAL_FILE"
+	ruleSkillFrontmatterSourceChanged = "SKILL_FRONTMATTER_SOURCE_CHANGED_DURING_READ"
 )
 
 const (
@@ -792,6 +793,13 @@ func validateSkillFrontmatter(skillPath string) (skillFrontmatter, error) {
 		return skillFrontmatter{}, fmt.Errorf("failed to read SKILL.md: %s", skillPath)
 	}
 	defer f.Close()
+	currentInfo, statErr := f.Stat()
+	if statErr != nil {
+		return skillFrontmatter{}, fmt.Errorf("failed to read SKILL.md: %s", skillPath)
+	}
+	if err := ensureSkillFrontmatterStableFile(info, currentInfo, skillPath); err != nil {
+		return skillFrontmatter{}, err
+	}
 	var content bytes.Buffer
 	if _, err := limitio.CopyWithStrictLimit(&content, f, maxSkillFrontmatterBytes); err != nil {
 		if errors.Is(err, limitio.ErrSizeExceeded) {
@@ -848,6 +856,13 @@ func validateSkillFrontmatter(skillPath string) (skillFrontmatter, error) {
 		Name:        name,
 		Description: description,
 	}, nil
+}
+
+func ensureSkillFrontmatterStableFile(previous os.FileInfo, current os.FileInfo, skillPath string) error {
+	if os.SameFile(previous, current) {
+		return nil
+	}
+	return fmt.Errorf("%s: SKILL.md changed during read: %s", ruleSkillFrontmatterSourceChanged, skillPath)
 }
 
 func parseFrontmatterYAML(frontmatter string) (*yaml.Node, error) {
