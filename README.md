@@ -33,7 +33,7 @@ different-provenance installs. It also supports commit-pinned GitHub sources
 (`github:owner/repo//path@<sha>`) via safe tarball materialization. In JSON
 mode, rejected installs set report `error_code=INSTALL_POLICY_REJECTED`, and
 fatal errors emit a machine-readable error envelope with top-level `error_code`.
-Install/update target roots and lock-verify input paths must not be symlink paths.
+Install/update target roots and lock-verify input paths reject symlink path components.
 `lock verify` now validates installed files against `gokui.lock`, checks source
 field consistency (including strict GitHub source syntax and commit pinning),
 validates lock/report structural integrity, validates GitHub source metadata

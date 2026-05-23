@@ -59,6 +59,31 @@ func TestRejectSymlinkPath(t *testing.T) {
 		}
 	})
 
+	t.Run("rejects path when ancestor directory is a symlink", func(t *testing.T) {
+		if runtime.GOOS == "windows" {
+			t.Skip("symlink permissions differ on windows")
+		}
+
+		base := t.TempDir()
+		real := filepath.Join(base, "real")
+		if err := os.Mkdir(real, 0o755); err != nil {
+			t.Fatalf("mkdir real: %v", err)
+		}
+		realChild := filepath.Join(real, "child")
+		if err := os.Mkdir(realChild, 0o755); err != nil {
+			t.Fatalf("mkdir real child: %v", err)
+		}
+		link := filepath.Join(base, "link")
+		if err := os.Symlink("real", link); err != nil {
+			t.Fatalf("create symlink: %v", err)
+		}
+
+		err := rejectSymlinkPath(filepath.Join(link, "child"), "test path", "RULE_TEST")
+		if err == nil || !strings.Contains(err.Error(), "RULE_TEST") {
+			t.Fatalf("expected ancestor symlink rejection rule id, got %v", err)
+		}
+	})
+
 	t.Run("returns evaluation error for invalid path", func(t *testing.T) {
 		err := rejectSymlinkPath("\x00", "test path", "RULE_TEST")
 		if err == nil || !strings.Contains(err.Error(), "failed to evaluate") {

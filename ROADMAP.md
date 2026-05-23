@@ -12,7 +12,7 @@ tests/CI:
 - Quarantine-safe archive materialization for inspect/install flows
 - Strict skill frontmatter validation and markdown/script scanning
 - Local-dir inspect source hardening (reject symlinked source roots and symlinked `SKILL.md`)
-- Symlink target hardening for `fetch --out`, `install --target`, `update --target`, and `lock verify` input paths
+- Symlink target hardening for `fetch --out`, `install --target`, `update --target`, and `lock verify` input paths (including symlink path components)
 - Commit-pinned GitHub source fetch and install/update/verify provenance checks
 - Atomic install with `.gokui-report.json` and `gokui.lock`
 - Lock drift verification with per-check machine-readable codes
