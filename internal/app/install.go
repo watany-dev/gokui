@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/watany-dev/gokui/internal/scan"
+	srcpkg "github.com/watany-dev/gokui/internal/source"
 )
 
 const (
@@ -632,6 +633,34 @@ func copyFileWithMode(src string, dst string, mode os.FileMode) error {
 }
 
 func writeInstallMetadata(stagedSkill string, report installReport) error {
+	if report.Source.Kind == "github-source" {
+		spec, err := srcpkg.ParseGitHubSource(report.Source.Input)
+		if err != nil {
+			return fmt.Errorf("invalid github source while writing source metadata: %w", err)
+		}
+		if !srcpkg.IsCommitPinnedRef(spec.Ref) {
+			return fmt.Errorf("github source metadata requires commit-pinned ref")
+		}
+		_, rootHash, err := buildFileDigestsFiltered(stagedSkill, map[string]struct{}{
+			sourceMetadataFile: {},
+			installReportFile:  {},
+			installLockFile:    {},
+		})
+		if err != nil {
+			return err
+		}
+		if err := writeSourceMetadata(stagedSkill, sourceMetadata{
+			Schema:          sourceMetadataSchemaVersion,
+			SourceInput:     report.Source.Input,
+			SourceKind:      report.Source.Kind,
+			ResolvedRef:     spec.Ref,
+			FetchedAt:       time.Now().UTC().Format(time.RFC3339),
+			SkillRootSHA256: rootHash,
+		}); err != nil {
+			return err
+		}
+	}
+
 	reportBytes, err := json.MarshalIndent(report, "", "  ")
 	if err != nil {
 		return fmt.Errorf("failed to render install report: %w", err)
