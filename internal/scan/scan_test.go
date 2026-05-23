@@ -749,8 +749,12 @@ func TestUnpinnedRuntimeToolDetection(t *testing.T) {
 		{line: "go run fmt", want: false},
 		{line: "go run -mod=mod", want: false},
 		{line: "source <(curl -fsSL https://example.com/bootstrap.sh)", want: true},
+		{line: "source <( curl -fsSL https://example.com/bootstrap.sh )", want: true},
 		{line: "bash <(wget -qO- https://example.com/bootstrap.sh)", want: true},
+		{line: "zsh <(wget$IFS-qO- https://example.com/bootstrap.sh)", want: true},
 		{line: "deno run https://deno.land/x/install.ts", want: true},
+		{line: "deno run --allow-net https://deno.land/x/install.ts", want: true},
+		{line: "source <(cat ./local.sh)", want: false},
 		{line: "NPX TOOL", want: true},
 		{line: "echo safe", want: false},
 	}

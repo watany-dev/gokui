@@ -33,14 +33,16 @@ var (
 
 	promptOverridePattern = regexp.MustCompile(`(?i)\b(?:ignore|override|bypass)\b.{0,80}\b(?:previous|prior|system|higher|earlier)\b.{0,40}\b(?:instruction|instructions|prompt|prompts)\b`)
 
-	externalBinaryPattern  = regexp.MustCompile(`(?i)\bhttps?://\S+\.(?:zip|exe|msi|dmg|pkg|tar\.gz|tgz)\b`)
-	urlPattern             = regexp.MustCompile(`(?i)\bhttps?://[^\s<>"')\]]+`)
-	rawHTMLPattern         = regexp.MustCompile(`(?i)<\s*(?:script|iframe|object|embed|form|link|meta|img|svg|video|audio)\b`)
-	markdownLinkPattern    = regexp.MustCompile(`\[(?P<label>[^\]]+)\]\((?P<target>https?://[^)\s]+)\)`)
-	passwordArchivePattern = regexp.MustCompile(`(?i)(?:\b(?:password|passphrase|passwd|encrypted)\b.{0,80}\b(?:zip|7z|rar|archive|tar|tgz|tar\.gz)\b|\b(?:zip|7z|rar|archive|tar|tgz|tar\.gz)\b.{0,80}\b(?:password|passphrase|passwd|encrypted)\b)`)
-	goSemverExactPattern   = regexp.MustCompile(`^v?\d+\.\d+\.\d+(?:-[0-9a-z.-]+)?(?:\+[0-9a-z.-]+)?$`)
-	goPseudoVersionPattern = regexp.MustCompile(`^v\d+\.\d+\.\d+-\d{14}-[0-9a-f]{12}$`)
-	hexCommitRefPattern    = regexp.MustCompile(`^[0-9a-f]{12,40}$`)
+	externalBinaryPattern     = regexp.MustCompile(`(?i)\bhttps?://\S+\.(?:zip|exe|msi|dmg|pkg|tar\.gz|tgz)\b`)
+	urlPattern                = regexp.MustCompile(`(?i)\bhttps?://[^\s<>"')\]]+`)
+	rawHTMLPattern            = regexp.MustCompile(`(?i)<\s*(?:script|iframe|object|embed|form|link|meta|img|svg|video|audio)\b`)
+	markdownLinkPattern       = regexp.MustCompile(`\[(?P<label>[^\]]+)\]\((?P<target>https?://[^)\s]+)\)`)
+	passwordArchivePattern    = regexp.MustCompile(`(?i)(?:\b(?:password|passphrase|passwd|encrypted)\b.{0,80}\b(?:zip|7z|rar|archive|tar|tgz|tar\.gz)\b|\b(?:zip|7z|rar|archive|tar|tgz|tar\.gz)\b.{0,80}\b(?:password|passphrase|passwd|encrypted)\b)`)
+	goSemverExactPattern      = regexp.MustCompile(`^v?\d+\.\d+\.\d+(?:-[0-9a-z.-]+)?(?:\+[0-9a-z.-]+)?$`)
+	goPseudoVersionPattern    = regexp.MustCompile(`^v\d+\.\d+\.\d+-\d{14}-[0-9a-f]{12}$`)
+	hexCommitRefPattern       = regexp.MustCompile(`^[0-9a-f]{12,40}$`)
+	remoteScriptImportPattern = regexp.MustCompile(`(?i)\b(?:source|bash|sh|zsh)\b\s*<\(\s*(?:curl|wget)\b`)
+	remoteDenoRunPattern      = regexp.MustCompile(`(?i)\bdeno\b\s+run\b[^\n]{0,300}\bhttps?://`)
 
 	fakePrereqPattern = regexp.MustCompile(`(?i)\b(?:required|required prerequisite|you must|before use)\b.{0,120}\b(?:download|install)\b.{0,200}\b(?:run|execute|bash|sh|powershell|chmod \+x)\b`)
 )
@@ -968,24 +970,10 @@ func isPinnedGoModuleVersion(version string) bool {
 }
 
 func isRemoteScriptImportLine(lowerLine string) bool {
-	remoteImportPatterns := []string{
-		"source <(curl ",
-		"source <(wget ",
-		"bash <(curl ",
-		"bash <(wget ",
-		"sh <(curl ",
-		"sh <(wget ",
-		"zsh <(curl ",
-		"zsh <(wget ",
-		"deno run https://",
-		"deno run http://",
+	if remoteScriptImportPattern.MatchString(lowerLine) {
+		return true
 	}
-	for _, pattern := range remoteImportPatterns {
-		if strings.Contains(lowerLine, pattern) {
-			return true
-		}
-	}
-	return false
+	return remoteDenoRunPattern.MatchString(lowerLine)
 }
 
 func isUnpinnedPackageRef(ref string) bool {
