@@ -1231,6 +1231,18 @@ func TestValidateSkillFrontmatter(t *testing.T) {
 			t.Fatalf("expected SKILL symlink rejection, got %v", err)
 		}
 	})
+
+	t.Run("rejects special-file skill file", func(t *testing.T) {
+		path := filepath.Join(t.TempDir(), "SKILL.md")
+		if err := os.Mkdir(path, 0o755); err != nil {
+			t.Fatalf("mkdir SKILL.md: %v", err)
+		}
+
+		_, err := validateSkillFrontmatter(path)
+		if err == nil || !strings.Contains(err.Error(), ruleSkillFrontmatterSpecialFile) {
+			t.Fatalf("expected special-file SKILL rejection, got %v", err)
+		}
+	})
 }
 
 func TestValidateSkillDescriptionPropertyNoPanic(t *testing.T) {
@@ -1344,6 +1356,22 @@ func TestValidateLocalDirInspectSource(t *testing.T) {
 		err := validateLocalDirInspectSource(dir)
 		if err == nil || !strings.Contains(err.Error(), ruleSkillFrontmatterSymlink) {
 			t.Fatalf("expected SKILL symlink rejection, got %v", err)
+		}
+	})
+
+	t.Run("rejects non-regular SKILL.md in source directory", func(t *testing.T) {
+		base := t.TempDir()
+		dir := filepath.Join(base, "special-skill")
+		if err := os.Mkdir(dir, 0o755); err != nil {
+			t.Fatalf("mkdir skill dir: %v", err)
+		}
+		if err := os.Mkdir(filepath.Join(dir, "SKILL.md"), 0o755); err != nil {
+			t.Fatalf("mkdir special SKILL path: %v", err)
+		}
+
+		err := validateLocalDirInspectSource(dir)
+		if err == nil || !strings.Contains(err.Error(), ruleSkillFrontmatterSpecialFile) {
+			t.Fatalf("expected non-regular SKILL rejection, got %v", err)
 		}
 	})
 }

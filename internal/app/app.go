@@ -140,8 +140,9 @@ var (
 
 const ruleSkillFrontmatterTooLarge = "SKILL_FRONTMATTER_TOO_LARGE"
 const (
-	ruleInspectSourceSymlink    = "INSPECT_SOURCE_SYMLINK_DETECTED"
-	ruleSkillFrontmatterSymlink = "SKILL_FRONTMATTER_SYMLINK_DETECTED"
+	ruleInspectSourceSymlink        = "INSPECT_SOURCE_SYMLINK_DETECTED"
+	ruleSkillFrontmatterSymlink     = "SKILL_FRONTMATTER_SYMLINK_DETECTED"
+	ruleSkillFrontmatterSpecialFile = "SKILL_FRONTMATTER_SPECIAL_FILE"
 )
 
 const (
@@ -701,7 +702,7 @@ func validateLocalDirInspectSource(input string) error {
 		return err
 	}
 	skillInfo, skillErr := os.Lstat(skillPath)
-	if skillErr != nil || skillInfo.IsDir() {
+	if skillErr != nil {
 		return fmt.Errorf("inspect local dir must contain SKILL.md at root: %s", input)
 	}
 	if skillInfo.Mode()&os.ModeSymlink != 0 {
@@ -728,6 +729,9 @@ func validateSkillFrontmatter(skillPath string) (skillFrontmatter, error) {
 	}
 	if info.Mode()&os.ModeSymlink != 0 {
 		return skillFrontmatter{}, fmt.Errorf("%s: SKILL.md must not be a symlink: %s", ruleSkillFrontmatterSymlink, skillPath)
+	}
+	if !info.Mode().IsRegular() {
+		return skillFrontmatter{}, fmt.Errorf("%s: SKILL.md must be a regular file: %s", ruleSkillFrontmatterSpecialFile, skillPath)
 	}
 	if info.Size() > maxSkillFrontmatterBytes {
 		return skillFrontmatter{}, fmt.Errorf("%s: SKILL.md exceeds size limit: %s", ruleSkillFrontmatterTooLarge, skillPath)

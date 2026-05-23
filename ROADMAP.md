@@ -11,7 +11,7 @@ tests/CI:
 - CLI commands: `fetch`, `inspect`, `install`, `update --dry-run`, `lock verify`
 - Quarantine-safe archive materialization for inspect/install flows
 - Strict skill frontmatter validation and markdown/script scanning
-- Local-dir inspect source hardening (reject symlinked source paths/components and symlinked `SKILL.md`)
+- Local-dir inspect source hardening (reject symlinked source paths/components and symlinked `SKILL.md`; require regular-file `SKILL.md`)
 - Symlink target hardening for `fetch --out`, `install --target`, `update --target`, and `lock verify` input paths (including symlink path components)
 - Lock/source-metadata/report read-path hardening with symlink component rejection
 - Source metadata write-path hardening with symlink component rejection
