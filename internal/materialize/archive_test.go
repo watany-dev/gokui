@@ -53,6 +53,9 @@ func TestExtractArchiveZipRejectsPathEscape(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "escapes destination") {
 		t.Fatalf("expected path-escape error, got %v", err)
 	}
+	if !strings.Contains(err.Error(), "ARCHIVE_PATH_ESCAPE") {
+		t.Fatalf("expected ARCHIVE_PATH_ESCAPE marker, got %v", err)
+	}
 }
 
 func TestExtractArchiveZipRejectsBackslashPathEscape(t *testing.T) {
@@ -146,6 +149,9 @@ func TestExtractArchiveTarRejectsSymlink(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "symlink entry") {
 		t.Fatalf("expected symlink error, got %v", err)
 	}
+	if !strings.Contains(err.Error(), "SYMLINK_IN_ARCHIVE") {
+		t.Fatalf("expected SYMLINK_IN_ARCHIVE marker, got %v", err)
+	}
 }
 
 func TestExtractArchiveTarRejectsHardlink(t *testing.T) {
@@ -232,6 +238,9 @@ func TestExtractArchiveZipRejectsSymlinkEntry(t *testing.T) {
 	err := ExtractArchive(src, "zip", dest, Limits{})
 	if err == nil || !strings.Contains(err.Error(), "symlink entry") {
 		t.Fatalf("expected symlink error, got %v", err)
+	}
+	if !strings.Contains(err.Error(), "SYMLINK_IN_ARCHIVE") {
+		t.Fatalf("expected SYMLINK_IN_ARCHIVE marker, got %v", err)
 	}
 }
 
@@ -428,6 +437,9 @@ func TestExtractArchiveTarLimitsAndDuplicatePath(t *testing.T) {
 		err := ExtractArchive(src, "tar", dest, Limits{})
 		if err == nil || !strings.Contains(err.Error(), "absolute path") {
 			t.Fatalf("expected absolute-path error, got %v", err)
+		}
+		if !strings.Contains(err.Error(), "ARCHIVE_PATH_ESCAPE") {
+			t.Fatalf("expected ARCHIVE_PATH_ESCAPE marker, got %v", err)
 		}
 	})
 

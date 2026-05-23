@@ -13,9 +13,11 @@ import (
 )
 
 const (
-	defaultMaxFiles      = 1000
-	defaultMaxTotalBytes = 50 * 1024 * 1024
-	defaultMaxFileBytes  = 10 * 1024 * 1024
+	defaultMaxFiles       = 1000
+	defaultMaxTotalBytes  = 50 * 1024 * 1024
+	defaultMaxFileBytes   = 10 * 1024 * 1024
+	ruleArchivePathEscape = "ARCHIVE_PATH_ESCAPE"
+	ruleSymlinkInArchive  = "SYMLINK_IN_ARCHIVE"
 )
 
 // Limits controls archive extraction limits.
@@ -127,7 +129,7 @@ func extractZip(src, dest string, limits Limits) error {
 
 		mode := file.Mode()
 		if mode&os.ModeSymlink != 0 {
-			return fmt.Errorf("archive contains symlink entry: %s", file.Name)
+			return fmt.Errorf("%s: archive contains symlink entry: %s", ruleSymlinkInArchive, file.Name)
 		}
 
 		if file.FileInfo().IsDir() {
@@ -230,9 +232,9 @@ func extractTar(src, dest string, limits Limits) error {
 		case tar.TypeReg:
 			// continue below
 		case tar.TypeSymlink:
-			return fmt.Errorf("archive contains symlink entry: %s", header.Name)
+			return fmt.Errorf("%s: archive contains symlink entry: %s", ruleSymlinkInArchive, header.Name)
 		case tar.TypeLink:
-			return fmt.Errorf("archive contains hardlink entry: %s", header.Name)
+			return fmt.Errorf("%s: archive contains hardlink entry: %s", ruleSymlinkInArchive, header.Name)
 		default:
 			return fmt.Errorf("archive contains unsupported special entry: %s", header.Name)
 		}
@@ -283,14 +285,14 @@ func writeTarFile(header *tar.Header, tarReader *tar.Reader, outPath string, max
 func safeJoin(root, name string) (string, error) {
 	normalized := strings.ReplaceAll(name, "\\", "/")
 	if strings.HasPrefix(normalized, "/") || filepath.IsAbs(name) {
-		return "", fmt.Errorf("archive contains absolute path: %s", name)
+		return "", fmt.Errorf("%s: archive contains absolute path: %s", ruleArchivePathEscape, name)
 	}
 	cleanName := path.Clean(normalized)
 	if cleanName == "." {
 		return "", fmt.Errorf("archive contains invalid path: %s", name)
 	}
 	if cleanName == ".." || strings.HasPrefix(cleanName, "../") {
-		return "", fmt.Errorf("archive path escapes destination: %s", name)
+		return "", fmt.Errorf("%s: archive path escapes destination: %s", ruleArchivePathEscape, name)
 	}
 
 	joined := filepath.Join(root, filepath.FromSlash(cleanName))
@@ -299,7 +301,7 @@ func safeJoin(root, name string) (string, error) {
 		return "", fmt.Errorf("failed to validate archive path: %w", err)
 	}
 	if rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
-		return "", fmt.Errorf("archive path escapes destination: %s", name)
+		return "", fmt.Errorf("%s: archive path escapes destination: %s", ruleArchivePathEscape, name)
 	}
 	return joined, nil
 }
