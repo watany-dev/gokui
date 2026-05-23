@@ -317,6 +317,9 @@ func TestRun(t *testing.T) {
 		if !strings.Contains(stdout.String(), "\"error_code\": \""+inspectErrorCodeSourcePrepareFailed+"\"") {
 			t.Fatalf("stdout should include source-prepare-failed code, got %q", stdout.String())
 		}
+		if strings.Contains(stdout.String(), "\"rule_id\":") {
+			t.Fatalf("stdout should omit rule_id when error message has no rule prefix, got %q", stdout.String())
+		}
 	})
 
 	t.Run("inspect rejects local source when path is a file", func(t *testing.T) {
