@@ -105,6 +105,9 @@ make inspect-sarif
 
 # Create a timestamped release evidence file from template
 make release-evidence
+
+# Run offline release gate and auto-generate evidence + logs
+make release-evidence-offline
 ```
 
 CI is configured to resolve the latest available patch release for the selected

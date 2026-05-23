@@ -20,6 +20,7 @@ tests/CI:
 - CI SARIF smoke job for inspect output generation and artifact capture
 - CI setup-go hardening to resolve the latest available Go patch release
 - `make vuln` hardened with patched Go toolchain baseline (`go1.26.3+auto`)
+- automated offline release evidence collection with per-step logs
 
 This roadmap section below remains forward-looking for gaps and future phases.
 

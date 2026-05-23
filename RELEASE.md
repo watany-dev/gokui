@@ -77,6 +77,7 @@ Record release evidence using:
 
 - [RELEASE_EVIDENCE_TEMPLATE.md](RELEASE_EVIDENCE_TEMPLATE.md)
 - `make release-evidence` (creates `releases/evidence/<timestamp>-<commit>.md`)
+- `make release-evidence-offline` (runs offline gate and creates evidence with step logs)
 
 At minimum, capture:
 - commit SHA

@@ -23,7 +23,7 @@ LDFLAGS := -s -w \
 	-X main.commit=$(COMMIT) \
 	-X main.date=$(DATE)
 
-.PHONY: build fmt fmt-check lint typecheck deadcode test test-race coverage vuln actionlint check release-check release-check-offline release-evidence inspect-sarif
+.PHONY: build fmt fmt-check lint typecheck deadcode test test-race coverage vuln actionlint check release-check release-check-offline release-evidence release-evidence-offline inspect-sarif
 
 build:
 	$(GO) build -trimpath -buildvcs=true -ldflags='$(LDFLAGS)' -o gokui $(MAIN_PKG)
@@ -82,6 +82,9 @@ release-check-offline:
 
 release-evidence:
 	./scripts/new-release-evidence.sh
+
+release-evidence-offline:
+	./scripts/collect-release-evidence.sh
 
 inspect-sarif:
 	./scripts/generate-inspect-sarif.sh "$(INSPECT_SARIF_OUT)"

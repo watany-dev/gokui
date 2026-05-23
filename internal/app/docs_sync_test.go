@@ -181,6 +181,7 @@ func TestReleaseChecklistDocumentationSync(t *testing.T) {
 		"make release-check-offline",
 		"make inspect-sarif",
 		"make release-evidence",
+		"make release-evidence-offline",
 		"make vuln",
 		"VULN_GOTOOLCHAIN=go1.26.3+auto",
 	}
@@ -226,6 +227,7 @@ func TestReleaseCheckDocumentationSync(t *testing.T) {
 		"make release-check RELEASE_CHECK_VULN=0",
 		"make release-check-offline",
 		"make inspect-sarif",
+		"make release-evidence-offline",
 		"inspect-sarif smoke generation, and govulncheck",
 	}
 	for _, line := range required {
@@ -262,6 +264,8 @@ func TestMakefileVulnToolchainBaselineSync(t *testing.T) {
 	required := []string{
 		"VULN_GOTOOLCHAIN ?= go1.26.3+auto",
 		"GOTOOLCHAIN=$(VULN_GOTOOLCHAIN) $(GO) tool govulncheck ./...",
+		"release-evidence-offline:",
+		"./scripts/collect-release-evidence.sh",
 	}
 	for _, line := range required {
 		if !strings.Contains(makefile, line) {
