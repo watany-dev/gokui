@@ -13,6 +13,7 @@ import (
 	"testing"
 	"testing/quick"
 
+	"github.com/watany-dev/gokui/internal/limitio"
 	srcpkg "github.com/watany-dev/gokui/internal/source"
 )
 
@@ -1518,6 +1519,17 @@ func TestCopyFileWithModeAndHashErrors(t *testing.T) {
 		_, _, err := hashFile(filepath.Join(t.TempDir(), "missing"))
 		if err == nil || !strings.Contains(err.Error(), "failed to open file for hashing") {
 			t.Fatalf("expected hash open error, got %v", err)
+		}
+	})
+
+	t.Run("hashFileWithLimit detects overflow", func(t *testing.T) {
+		path := filepath.Join(t.TempDir(), "data.bin")
+		if err := os.WriteFile(path, []byte("ab"), 0o644); err != nil {
+			t.Fatalf("write data: %v", err)
+		}
+		_, _, err := hashFileWithLimit(path, 1)
+		if err == nil || !errors.Is(err, limitio.ErrSizeExceeded) {
+			t.Fatalf("expected size exceeded error, got %v", err)
 		}
 	})
 }

@@ -899,6 +899,9 @@ func buildFileDigestsFiltered(root string, exclude map[string]struct{}) ([]lockF
 		}
 		sum, size, err := hashFile(path)
 		if err != nil {
+			if errors.Is(err, limitio.ErrSizeExceeded) {
+				return fmt.Errorf("%s: digest input file exceeds size limit: %s", ruleInstallDigestFileTooLarge, rel)
+			}
 			return err
 		}
 		files = append(files, lockFileHash{
@@ -927,6 +930,10 @@ func buildFileDigestsFiltered(root string, exclude map[string]struct{}) ([]lockF
 }
 
 func hashFile(path string) (sum string, size int64, err error) {
+	return hashFileWithLimit(path, installMaxDigestFileBytes)
+}
+
+func hashFileWithLimit(path string, maxBytes int64) (sum string, size int64, err error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return "", 0, fmt.Errorf("failed to open file for hashing: %w", err)
@@ -934,8 +941,16 @@ func hashFile(path string) (sum string, size int64, err error) {
 	defer f.Close()
 
 	hasher := sha256.New()
-	n, err := io.Copy(hasher, f)
+	var n int64
+	if maxBytes >= 0 {
+		n, err = limitio.CopyWithStrictLimit(hasher, f, maxBytes)
+	} else {
+		n, err = io.Copy(hasher, f)
+	}
 	if err != nil {
+		if errors.Is(err, limitio.ErrSizeExceeded) {
+			return "", 0, err
+		}
 		return "", 0, fmt.Errorf("failed to hash file: %w", err)
 	}
 	return hex.EncodeToString(hasher.Sum(nil)), n, nil

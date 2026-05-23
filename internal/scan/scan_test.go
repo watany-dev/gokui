@@ -800,6 +800,36 @@ func TestPasswordProtectedArchivePattern(t *testing.T) {
 	}
 }
 
+func TestParseURLHostAndTokenizeWords(t *testing.T) {
+	t.Run("parseURLHost handles invalid and valid inputs", func(t *testing.T) {
+		if host, ok := parseURLHost("://bad-url"); ok || host != "" {
+			t.Fatalf("expected invalid url parse to fail, got host=%q ok=%v", host, ok)
+		}
+		if host, ok := parseURLHost("https:///path-only"); ok || host != "" {
+			t.Fatalf("expected empty-host parse to fail, got host=%q ok=%v", host, ok)
+		}
+		if host, ok := parseURLHost(" https://Example.COM:8443/path "); !ok || host != "example.com" {
+			t.Fatalf("expected normalized host example.com, got host=%q ok=%v", host, ok)
+		}
+	})
+
+	t.Run("tokenizeWords splits on non-letters", func(t *testing.T) {
+		if out := tokenizeWords(" \t "); out != nil {
+			t.Fatalf("expected nil for blank line, got %+v", out)
+		}
+		out := tokenizeWords("Run_Bash-Setup 123, then EXECUTE!")
+		want := []string{"run", "bash", "setup", "then", "execute"}
+		if len(out) != len(want) {
+			t.Fatalf("unexpected token count: got %+v want %+v", out, want)
+		}
+		for i := range want {
+			if out[i] != want[i] {
+				t.Fatalf("unexpected tokens: got %+v want %+v", out, want)
+			}
+		}
+	})
+}
+
 func TestClassifyUnicodeThreats(t *testing.T) {
 	t.Run("detects unicode tag, bidi, zero-width, control, variation selector, and ansi/osc", func(t *testing.T) {
 		line := "x\U000E0001 y\u202E z\u200B q\u0001 v\uFE0F ansi\x1b[31mred\x1b[0m"
