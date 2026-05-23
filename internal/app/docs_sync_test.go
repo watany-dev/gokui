@@ -179,6 +179,7 @@ func TestReleaseChecklistDocumentationSync(t *testing.T) {
 	required := []string{
 		"make release-check",
 		"make release-check-offline",
+		"make inspect-sarif",
 		"make release-evidence",
 		"make vuln",
 	}
@@ -223,6 +224,7 @@ func TestReleaseCheckDocumentationSync(t *testing.T) {
 		"make release-check",
 		"make release-check RELEASE_CHECK_VULN=0",
 		"make release-check-offline",
+		"make inspect-sarif",
 		"fmt/lint/typecheck/deadcode/coverage/test/test-race/build and govulncheck",
 	}
 	for _, line := range required {

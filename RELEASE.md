@@ -52,6 +52,8 @@ with network access and record the result.
 
 - JSON error contracts:
   - `fetch`, `inspect`, `install`, `update`, `lock verify`
+- SARIF contract smoke check:
+  - `make inspect-sarif` (expects reject exit code path and emits `inspect-results.sarif`)
 - Exit code contract:
   - success: `0`
   - fatal error: `1`
