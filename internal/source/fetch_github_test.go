@@ -216,6 +216,53 @@ func TestFetchGitHubSkillErrors(t *testing.T) {
 		}
 	})
 
+	t.Run("downloadGitHubArchive rejects redirect to different host", func(t *testing.T) {
+		spec := GitHubSpec{Owner: "o", Repo: "r", Path: "skills/x", Ref: "8f3c2d1a4b5c6d7e8f901234567890abcdef1234"}
+		githubCodeloadBaseURL = "https://mock.codeload.local"
+		githubHTTPClient = &http.Client{
+			Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+				switch req.URL.Host {
+				case "mock.codeload.local":
+					resp := httpResponse(http.StatusFound, []byte("redirect"))
+					resp.Header.Set("Location", "https://evil.example/archive.tar.gz")
+					return resp, nil
+				case "evil.example":
+					return httpResponse(http.StatusOK, []byte("evil")), nil
+				default:
+					return httpResponse(http.StatusNotFound, []byte("not found")), nil
+				}
+			}),
+		}
+
+		err := downloadGitHubArchive(spec, filepath.Join(t.TempDir(), "archive.tar.gz"))
+		if err == nil || !strings.Contains(err.Error(), ruleGitHubRedirectHost) {
+			t.Fatalf("expected redirect-host mismatch error, got %v", err)
+		}
+	})
+
+	t.Run("downloadGitHubArchive allows redirect within same host", func(t *testing.T) {
+		spec := GitHubSpec{Owner: "o", Repo: "r", Path: "skills/x", Ref: "8f3c2d1a4b5c6d7e8f901234567890abcdef1234"}
+		githubCodeloadBaseURL = "https://mock.codeload.local"
+		githubHTTPClient = &http.Client{
+			Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+				switch req.URL.Path {
+				case "/o/r/tar.gz/8f3c2d1a4b5c6d7e8f901234567890abcdef1234":
+					resp := httpResponse(http.StatusFound, []byte("redirect"))
+					resp.Header.Set("Location", "https://mock.codeload.local/redirected/archive.tar.gz")
+					return resp, nil
+				case "/redirected/archive.tar.gz":
+					return httpResponse(http.StatusOK, []byte("ok")), nil
+				default:
+					return httpResponse(http.StatusNotFound, []byte("not found")), nil
+				}
+			}),
+		}
+
+		if err := downloadGitHubArchive(spec, filepath.Join(t.TempDir(), "archive.tar.gz")); err != nil {
+			t.Fatalf("expected same-host redirect success, got %v", err)
+		}
+	})
+
 	t.Run("detectSingleTopLevelDirectory handles read error", func(t *testing.T) {
 		_, err := detectSingleTopLevelDirectory(filepath.Join(t.TempDir(), "missing"))
 		if err == nil || !strings.Contains(err.Error(), "failed to read extracted github archive") {

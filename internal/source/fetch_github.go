@@ -13,7 +13,8 @@ import (
 )
 
 const (
-	maxGitHubArchiveBytes = 100 * 1024 * 1024
+	maxGitHubArchiveBytes  = 100 * 1024 * 1024
+	ruleGitHubRedirectHost = "GITHUB_ARCHIVE_REDIRECT_HOST_MISMATCH"
 )
 
 var (
@@ -90,7 +91,24 @@ func downloadGitHubArchive(spec GitHubSpec, archivePath string) error {
 	if err != nil {
 		return fmt.Errorf("failed to construct github archive request: %w", err)
 	}
-	resp, err := githubHTTPClient.Do(req)
+	expectedHost := req.URL.Hostname()
+
+	client := *githubHTTPClient
+	previousCheckRedirect := client.CheckRedirect
+	client.CheckRedirect = func(next *http.Request, via []*http.Request) error {
+		if !strings.EqualFold(next.URL.Hostname(), expectedHost) {
+			return fmt.Errorf("%s: github archive redirected to unexpected host: %s", ruleGitHubRedirectHost, next.URL.Hostname())
+		}
+		if previousCheckRedirect != nil {
+			return previousCheckRedirect(next, via)
+		}
+		if len(via) >= 10 {
+			return fmt.Errorf("stopped after 10 redirects")
+		}
+		return nil
+	}
+
+	resp, err := client.Do(req)
 	if err != nil {
 		return fmt.Errorf("failed to download github archive: %w", err)
 	}
