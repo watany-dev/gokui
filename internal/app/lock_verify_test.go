@@ -74,6 +74,14 @@ func TestVerifyLockAndRunLockVerify(t *testing.T) {
 	if verifyReport.Status != "VERIFIED" {
 		t.Fatalf("verify status = %q, want VERIFIED", verifyReport.Status)
 	}
+	assertCheckCode(t, verifyReport.Checks, "schema", lockVerifyCodeSchema)
+	assertCheckCode(t, verifyReport.Checks, "name", lockVerifyCodeName)
+	assertCheckCode(t, verifyReport.Checks, "lock_structure", lockVerifyCodeStructure)
+	assertCheckCode(t, verifyReport.Checks, "source", lockVerifyCodeSource)
+	assertCheckCode(t, verifyReport.Checks, "source_metadata", lockVerifyCodeSourceMetadata)
+	assertCheckCode(t, verifyReport.Checks, "install_report", lockVerifyCodeInstallReport)
+	assertCheckCode(t, verifyReport.Checks, "file_digests", lockVerifyCodeFileDigests)
+	assertCheckCode(t, verifyReport.Checks, "root_hash", lockVerifyCodeRootHash)
 
 	var stdout strings.Builder
 	var stderr strings.Builder
@@ -911,6 +919,19 @@ func assertCheckFailedContains(t *testing.T, checks []lockVerifyCheck, name stri
 			}
 			if !strings.Contains(c.Detail, contains) {
 				t.Fatalf("check %s detail = %q, want contains %q", name, c.Detail, contains)
+			}
+			return
+		}
+	}
+	t.Fatalf("check %s not found", name)
+}
+
+func assertCheckCode(t *testing.T, checks []lockVerifyCheck, name string, code string) {
+	t.Helper()
+	for _, c := range checks {
+		if c.Name == name {
+			if c.Code != code {
+				t.Fatalf("check %s code = %q, want %q", name, c.Code, code)
 			}
 			return
 		}

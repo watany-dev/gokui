@@ -200,7 +200,7 @@ func TestLockVerifyJSONContract(t *testing.T) {
 		t.Fatal("lock verify checks should not be empty")
 	}
 	for _, c := range checks {
-		assertJSONHasKeysContract(t, c, []string{"name", "ok", "detail"})
+		assertJSONHasKeysContract(t, c, []string{"code", "name", "ok", "detail"})
 	}
 
 	var drift map[string]json.RawMessage

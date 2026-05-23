@@ -31,7 +31,8 @@ different-provenance installs. It also supports commit-pinned GitHub sources
 `lock verify` now validates installed files against `gokui.lock`, checks source
 field consistency (including strict GitHub source syntax and commit pinning),
 validates lock/report structural integrity, validates GitHub source metadata
-integrity, and reports drift
+integrity, reports drift, and emits per-check `code` fields in JSON output for
+automation
 (missing/changed/unexpected files).
 `update --dry-run` now re-evaluates installed skills from lockfile source
 provenance for local-dir/zip/tar sources, reports added/removed/changed files,

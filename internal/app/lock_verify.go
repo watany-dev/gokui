@@ -29,10 +29,22 @@ type lockVerifyReport struct {
 }
 
 type lockVerifyCheck struct {
+	Code   string `json:"code"`
 	Name   string `json:"name"`
 	OK     bool   `json:"ok"`
 	Detail string `json:"detail"`
 }
+
+const (
+	lockVerifyCodeSchema         = "LOCK_SCHEMA"
+	lockVerifyCodeName           = "SKILL_NAME"
+	lockVerifyCodeStructure      = "LOCK_STRUCTURE"
+	lockVerifyCodeSource         = "LOCK_SOURCE"
+	lockVerifyCodeSourceMetadata = "SOURCE_METADATA"
+	lockVerifyCodeInstallReport  = "INSTALL_REPORT"
+	lockVerifyCodeFileDigests    = "FILE_DIGESTS"
+	lockVerifyCodeRootHash       = "ROOT_HASH"
+)
 
 type lockVerifyDriftInfo struct {
 	MissingFiles    []string `json:"missing_files"`
@@ -69,7 +81,7 @@ func runLockVerify(args []string, stdout io.Writer, stderr io.Writer) int {
 			if !check.OK {
 				state = "failed"
 			}
-			_, _ = fmt.Fprintf(stdout, "- %s: %s (%s)\n", check.Name, state, check.Detail)
+			_, _ = fmt.Fprintf(stdout, "- %s [%s]: %s (%s)\n", check.Name, check.Code, state, check.Detail)
 		}
 		if len(report.Drift.MissingFiles) > 0 {
 			_, _ = fmt.Fprintf(stdout, "missing: %s\n", strings.Join(report.Drift.MissingFiles, ", "))
@@ -135,6 +147,7 @@ func verifyLock(skillPath string) (lockVerifyReport, error) {
 	checks := make([]lockVerifyCheck, 0, 8)
 	schemaOK := lock.Schema == lockSchemaVersion
 	checks = append(checks, lockVerifyCheck{
+		Code:   lockVerifyCodeSchema,
 		Name:   "schema",
 		OK:     schemaOK,
 		Detail: fmt.Sprintf("expected gokui.lock/v1, got %s", lock.Schema),
@@ -142,12 +155,14 @@ func verifyLock(skillPath string) (lockVerifyReport, error) {
 
 	nameOK := lock.Name == filepath.Base(cleanPath)
 	checks = append(checks, lockVerifyCheck{
+		Code:   lockVerifyCodeName,
 		Name:   "name",
 		OK:     nameOK,
 		Detail: fmt.Sprintf("expected %s, got %s", filepath.Base(cleanPath), lock.Name),
 	})
 	lockStructureOK, lockStructureDetail := verifyLockStructure(lock)
 	checks = append(checks, lockVerifyCheck{
+		Code:   lockVerifyCodeStructure,
 		Name:   "lock_structure",
 		OK:     lockStructureOK,
 		Detail: lockStructureDetail,
@@ -155,18 +170,21 @@ func verifyLock(skillPath string) (lockVerifyReport, error) {
 
 	sourceOK, sourceDetail := verifyLockSource(lock)
 	checks = append(checks, lockVerifyCheck{
+		Code:   lockVerifyCodeSource,
 		Name:   "source",
 		OK:     sourceOK,
 		Detail: sourceDetail,
 	})
 	sourceMetaOK, sourceMetaDetail := verifyLockSourceMetadata(cleanPath, lock)
 	checks = append(checks, lockVerifyCheck{
+		Code:   lockVerifyCodeSourceMetadata,
 		Name:   "source_metadata",
 		OK:     sourceMetaOK,
 		Detail: sourceMetaDetail,
 	})
 	reportOK, reportDetail := verifyInstallReport(cleanPath, lock)
 	checks = append(checks, lockVerifyCheck{
+		Code:   lockVerifyCodeInstallReport,
 		Name:   "install_report",
 		OK:     reportOK,
 		Detail: reportDetail,
@@ -180,6 +198,7 @@ func verifyLock(skillPath string) (lockVerifyReport, error) {
 	missing, changed, unexpected := diffLockFiles(lock.Skill.Files, actualFiles)
 	digestOK := len(missing) == 0 && len(changed) == 0 && len(unexpected) == 0
 	checks = append(checks, lockVerifyCheck{
+		Code:   lockVerifyCodeFileDigests,
 		Name:   "file_digests",
 		OK:     digestOK,
 		Detail: fmt.Sprintf("missing=%d changed=%d unexpected=%d", len(missing), len(changed), len(unexpected)),
@@ -187,6 +206,7 @@ func verifyLock(skillPath string) (lockVerifyReport, error) {
 
 	rootOK := lock.Skill.RootSHA256 == actualRootHash
 	checks = append(checks, lockVerifyCheck{
+		Code:   lockVerifyCodeRootHash,
 		Name:   "root_hash",
 		OK:     rootOK,
 		Detail: fmt.Sprintf("expected %s, got %s", lock.Skill.RootSHA256, actualRootHash),
