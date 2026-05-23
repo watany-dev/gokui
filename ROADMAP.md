@@ -30,6 +30,7 @@ tests/CI:
 - critical detection of Unicode Tags and bidi controls in scanned text
 - critical detection of zero-width and disallowed C0/C1 controls in scanned text
 - critical detection of variation selectors and ANSI/OSC escapes in scanned text
+- medium-severity detection of mixed-script filename patterns
 - high-severity detection of password-protected archive instructions
 
 This roadmap section below remains forward-looking for gaps and future phases.

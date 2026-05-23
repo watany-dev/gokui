@@ -54,6 +54,8 @@ severity link-spoofing findings.
 Unicode Tags, bidi controls, variation selectors, and ANSI/OSC escapes in
 scanned text are now flagged as critical. Zero-width and disallowed C0/C1
 control characters are also flagged as critical findings.
+Mixed-script filename patterns that can mimic trusted names are now flagged as
+medium severity findings.
 Password-protected archive instructions are now flagged as high severity.
 JSON output contracts are now stability-tested across `inspect`, `fetch`,
 `install`, `update`, `lock verify`, and install metadata files.
