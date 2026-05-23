@@ -13,8 +13,10 @@ import (
 )
 
 const (
-	maxGitHubArchiveBytes  = 100 * 1024 * 1024
-	ruleGitHubRedirectHost = "GITHUB_ARCHIVE_REDIRECT_HOST_MISMATCH"
+	maxGitHubArchiveBytes    = 100 * 1024 * 1024
+	ruleGitHubArchiveScheme  = "GITHUB_ARCHIVE_SCHEME_INVALID"
+	ruleGitHubRedirectHost   = "GITHUB_ARCHIVE_REDIRECT_HOST_MISMATCH"
+	ruleGitHubRedirectScheme = "GITHUB_ARCHIVE_REDIRECT_SCHEME_INVALID"
 )
 
 var (
@@ -91,11 +93,18 @@ func downloadGitHubArchive(spec GitHubSpec, archivePath string) error {
 	if err != nil {
 		return fmt.Errorf("failed to construct github archive request: %w", err)
 	}
+	if !strings.EqualFold(req.URL.Scheme, "https") {
+		return fmt.Errorf("%s: github archive URL must use https: %s", ruleGitHubArchiveScheme, req.URL.String())
+	}
 	expectedHost := req.URL.Hostname()
+	expectedScheme := req.URL.Scheme
 
 	client := *githubHTTPClient
 	previousCheckRedirect := client.CheckRedirect
 	client.CheckRedirect = func(next *http.Request, via []*http.Request) error {
+		if !strings.EqualFold(next.URL.Scheme, expectedScheme) {
+			return fmt.Errorf("%s: github archive redirected to unexpected scheme: %s", ruleGitHubRedirectScheme, next.URL.Scheme)
+		}
 		if !strings.EqualFold(next.URL.Hostname(), expectedHost) {
 			return fmt.Errorf("%s: github archive redirected to unexpected host: %s", ruleGitHubRedirectHost, next.URL.Hostname())
 		}

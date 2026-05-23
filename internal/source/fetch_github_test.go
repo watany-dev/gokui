@@ -180,6 +180,21 @@ func TestFetchGitHubSkillErrors(t *testing.T) {
 		}
 	})
 
+	t.Run("downloadGitHubArchive rejects non-https base URL", func(t *testing.T) {
+		spec := GitHubSpec{Owner: "o", Repo: "r", Path: "skills/x", Ref: "8f3c2d1a4b5c6d7e8f901234567890abcdef1234"}
+		githubCodeloadBaseURL = "http://mock.codeload.local"
+		githubHTTPClient = &http.Client{
+			Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+				return httpResponse(http.StatusOK, []byte("x")), nil
+			}),
+		}
+
+		err := downloadGitHubArchive(spec, filepath.Join(t.TempDir(), "archive.tar.gz"))
+		if err == nil || !strings.Contains(err.Error(), ruleGitHubArchiveScheme) {
+			t.Fatalf("expected non-https scheme error, got %v", err)
+		}
+	})
+
 	t.Run("downloadGitHubArchive handles output creation error", func(t *testing.T) {
 		spec := GitHubSpec{Owner: "o", Repo: "r", Path: "skills/x", Ref: "8f3c2d1a4b5c6d7e8f901234567890abcdef1234"}
 		githubCodeloadBaseURL = "https://mock.codeload.local"
@@ -237,6 +252,30 @@ func TestFetchGitHubSkillErrors(t *testing.T) {
 		err := downloadGitHubArchive(spec, filepath.Join(t.TempDir(), "archive.tar.gz"))
 		if err == nil || !strings.Contains(err.Error(), ruleGitHubRedirectHost) {
 			t.Fatalf("expected redirect-host mismatch error, got %v", err)
+		}
+	})
+
+	t.Run("downloadGitHubArchive rejects redirect to different scheme", func(t *testing.T) {
+		spec := GitHubSpec{Owner: "o", Repo: "r", Path: "skills/x", Ref: "8f3c2d1a4b5c6d7e8f901234567890abcdef1234"}
+		githubCodeloadBaseURL = "https://mock.codeload.local"
+		githubHTTPClient = &http.Client{
+			Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+				switch req.URL.Path {
+				case "/o/r/tar.gz/8f3c2d1a4b5c6d7e8f901234567890abcdef1234":
+					resp := httpResponse(http.StatusFound, []byte("redirect"))
+					resp.Header.Set("Location", "http://mock.codeload.local/redirected/archive.tar.gz")
+					return resp, nil
+				case "/redirected/archive.tar.gz":
+					return httpResponse(http.StatusOK, []byte("ok")), nil
+				default:
+					return httpResponse(http.StatusNotFound, []byte("not found")), nil
+				}
+			}),
+		}
+
+		err := downloadGitHubArchive(spec, filepath.Join(t.TempDir(), "archive.tar.gz"))
+		if err == nil || !strings.Contains(err.Error(), ruleGitHubRedirectScheme) {
+			t.Fatalf("expected redirect-scheme mismatch error, got %v", err)
 		}
 	})
 
