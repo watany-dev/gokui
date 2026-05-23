@@ -665,40 +665,108 @@ func copyTreeNormalized(srcRoot string, dstRoot string) error {
 		if files > installMaxCopyFiles {
 			return fmt.Errorf("%s: install source exceeds max file count: %d", ruleInstallSourceFileCountExceeded, installMaxCopyFiles)
 		}
-		totalBytes += srcInfo.Size()
-		if totalBytes > installMaxCopyTotalBytes {
+		remainingTotal := installMaxCopyTotalBytes - totalBytes
+		if remainingTotal <= 0 {
 			return fmt.Errorf("%s: install source exceeds max total bytes: %d", ruleInstallSourceTotalBytesExceeded, installMaxCopyTotalBytes)
+		}
+		if srcInfo.Size() > remainingTotal {
+			return fmt.Errorf("%s: install source exceeds max total bytes: %d", ruleInstallSourceTotalBytesExceeded, installMaxCopyTotalBytes)
+		}
+		maxCopyBytes := installMaxCopyFileBytes
+		if remainingTotal < maxCopyBytes {
+			maxCopyBytes = remainingTotal
 		}
 
 		if err := os.MkdirAll(filepath.Dir(destPath), 0o755); err != nil {
 			return fmt.Errorf("failed to create install directory: %w", err)
 		}
-		return copyFileWithMode(path, destPath, 0o644, installMaxCopyFileBytes)
+		written, err := copyFileWithMode(path, destPath, 0o644, maxCopyBytes)
+		if err != nil {
+			return err
+		}
+		totalBytes += written
+		return nil
 	})
 }
 
-func copyFileWithMode(src string, dst string, mode os.FileMode, maxBytes int64) error {
+func copyFileWithMode(src string, dst string, mode os.FileMode, maxBytes int64) (int64, error) {
 	in, err := os.Open(src)
 	if err != nil {
-		return fmt.Errorf("failed to open source file: %w", err)
+		return 0, fmt.Errorf("failed to open source file: %w", err)
 	}
 	defer in.Close()
 
 	out, err := os.OpenFile(dst, os.O_CREATE|os.O_EXCL|os.O_WRONLY, mode)
 	if err != nil {
-		return fmt.Errorf("failed to create destination file: %w", err)
+		return 0, fmt.Errorf("failed to create destination file: %w", err)
 	}
-	defer out.Close()
+	defer func() {
+		_ = out.Close()
+	}()
 
-	limited := io.LimitReader(in, maxBytes+1)
-	written, err := io.Copy(out, limited)
+	written, err := copyWithStrictLimit(out, in, maxBytes)
 	if err != nil {
-		return fmt.Errorf("failed to copy file contents: %w", err)
+		_ = os.Remove(dst)
+		if strings.Contains(err.Error(), "size exceeds limit") {
+			return 0, fmt.Errorf("%s: install source file exceeds size limit during copy: %s", ruleInstallSourceFileTooLarge, src)
+		}
+		return 0, fmt.Errorf("failed to copy file contents: %w", err)
 	}
-	if written > maxBytes {
-		return fmt.Errorf("%s: install source file exceeds size limit during copy: %s", ruleInstallSourceFileTooLarge, src)
+	return written, nil
+}
+
+func copyWithStrictLimit(dst io.Writer, src io.Reader, maxBytes int64) (int64, error) {
+	if maxBytes < 0 {
+		return 0, fmt.Errorf("size exceeds limit")
 	}
-	return nil
+	if maxBytes == 0 {
+		var probe [1]byte
+		n, err := src.Read(probe[:])
+		if n > 0 {
+			return 0, fmt.Errorf("size exceeds limit")
+		}
+		if err != nil && err != io.EOF {
+			return 0, err
+		}
+		return 0, nil
+	}
+
+	buf := make([]byte, 32*1024)
+	var written int64
+	for written < maxBytes {
+		remaining := maxBytes - written
+		chunkSize := int64(len(buf))
+		if remaining < chunkSize {
+			chunkSize = remaining
+		}
+		n, err := src.Read(buf[:chunkSize])
+		if n > 0 {
+			wn, werr := dst.Write(buf[:n])
+			written += int64(wn)
+			if werr != nil {
+				return written, werr
+			}
+			if wn != n {
+				return written, io.ErrShortWrite
+			}
+		}
+		if err == io.EOF {
+			return written, nil
+		}
+		if err != nil {
+			return written, err
+		}
+	}
+
+	var probe [1]byte
+	n, err := src.Read(probe[:])
+	if n > 0 {
+		return written, fmt.Errorf("size exceeds limit")
+	}
+	if err != nil && err != io.EOF {
+		return written, err
+	}
+	return written, nil
 }
 
 func writeInstallMetadata(stagedSkill string, report installReport) error {

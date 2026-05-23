@@ -33,6 +33,8 @@ different-provenance installs. It also supports commit-pinned GitHub sources
 (`github:owner/repo//path@<sha>`) via safe tarball materialization. In JSON
 mode, rejected installs set report `error_code=INSTALL_POLICY_REJECTED`, and
 fatal errors emit a machine-readable error envelope with top-level `error_code`.
+Install source copy now enforces strict per-file byte limits without writing
+overflow bytes and removes partial destination files on overflow/error.
 Install/update target roots and lock-verify input paths reject symlink path components.
 Lock/source-metadata/install-report file reads also reject symlink path components,
 and require regular files (no directory/device/FIFO/socket paths).
