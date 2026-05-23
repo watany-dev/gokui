@@ -53,6 +53,8 @@ Markdown links with host-mismatched display URL/target URL are flagged as high
 severity link-spoofing findings.
 Prompt-override language detection now includes bounded fuzzy/typoglycemia
 matching for common injection phrases.
+PowerShell `-EncodedCommand` / `-enc` execution flags are now flagged as
+critical findings.
 Unicode Tags, bidi controls, variation selectors, and ANSI/OSC escapes in
 scanned text are now flagged as critical. Zero-width and disallowed C0/C1
 control characters are also flagged as critical findings.

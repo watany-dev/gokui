@@ -32,6 +32,7 @@ tests/CI:
 - critical detection of zero-width and disallowed C0/C1 controls in scanned text
 - critical detection of variation selectors and ANSI/OSC escapes in scanned text
 - critical detection of hex decode pipelines into interpreter execution
+- critical detection of PowerShell encoded-command execution flags
 - medium-severity detection of NFKC normalization text drift with normalized rescanning
 - medium-severity detection of mixed-script filename patterns
 - high-severity detection of password-protected archive instructions
@@ -315,6 +316,7 @@ Critical findings reject in all profiles:
 | `CURL_PIPE_SHELL` | network fetch output reaches shell, interpreter, or eval |
 | `BASE64_PIPE_EXEC` | decoded payload reaches shell, interpreter, or eval |
 | `HEX_PIPE_EXEC` | hex-decoded payload reaches shell, interpreter, or eval |
+| `ENCODED_COMMAND_EXEC` | PowerShell encoded-command execution flag detected |
 | `ARCHIVE_PATH_ESCAPE` | archive entry resolves outside quarantine |
 | `SYMLINK_IN_ARCHIVE` | archive contains symlink or hardlink |
 | `SECRET_EXFIL` | secret read combined with network send |
