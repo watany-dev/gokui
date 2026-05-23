@@ -370,7 +370,7 @@ Ruby, Go, shebang files, executable files, and common dependency manifests.
 Critical patterns include:
 
 - `curl | sh`, `wget | bash`, or equivalent network-to-interpreter flows
-- `base64 -d | sh`, `eval`, `EncodedCommand`, and similar obfuscation
+- `base64 -d | sh`, `xxd -r -p | sh`, `eval`, `EncodedCommand`, and similar obfuscation
 - access to `.env`, `~/.ssh`, `~/.aws`, browser profiles, keychains, wallets,
   cookies, or API tokens combined with network send
 - persistence through shell startup files, cron, launch agents, services, or
