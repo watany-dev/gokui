@@ -26,30 +26,112 @@ type fetchReport struct {
 	Note          string `json:"note"`
 }
 
+type fetchErrorReport struct {
+	SchemaVersion string `json:"schema_version"`
+	Status        string `json:"status"`
+	ErrorCode     string `json:"error_code"`
+	Message       string `json:"message"`
+	Source        source `json:"source"`
+	Output        string `json:"output"`
+	Note          string `json:"note"`
+}
+
+const (
+	fetchErrorCodeArgsInvalid          = "FETCH_ARGS_INVALID"
+	fetchErrorCodeSourceUnsupported    = "FETCH_SOURCE_UNSUPPORTED"
+	fetchErrorCodeSourceInvalid        = "FETCH_SOURCE_INVALID"
+	fetchErrorCodeSourceRefNotPinned   = "FETCH_SOURCE_REF_NOT_PINNED"
+	fetchErrorCodeSourceDownloadFailed = "FETCH_SOURCE_DOWNLOAD_FAILED"
+	fetchErrorCodeSkillInvalid         = "FETCH_SKILL_INVALID"
+	fetchErrorCodeOutputPrepareFailed  = "FETCH_OUTPUT_PREPARE_FAILED"
+	fetchErrorCodeCopyFailed           = "FETCH_COPY_FAILED"
+	fetchErrorCodeDigestFailed         = "FETCH_DIGEST_FAILED"
+	fetchErrorCodeMetadataWriteFailed  = "FETCH_SOURCE_METADATA_WRITE_FAILED"
+)
+
 var (
 	fetchSkillAtomicFunc = fetchSkillAtomic
 	writeSourceMetaFunc  = writeSourceMetadata
 )
 
 func runFetch(args []string, stdout io.Writer, stderr io.Writer) int {
+	requestedJSON := fetchArgsRequestJSON(args)
+
 	parsed, err := parseFetchArgs(args)
 	if err != nil {
+		if requestedJSON {
+			return writeFetchJSONError(stdout, stderr, fetchErrorReport{
+				SchemaVersion: reportSchemaVersion,
+				Status:        "ERROR",
+				ErrorCode:     fetchErrorCodeArgsInvalid,
+				Message:       err.Error(),
+				Source: source{
+					Input: extractFetchSourceArg(args),
+					Kind:  detectSourceKind(extractFetchSourceArg(args)),
+				},
+				Output: "",
+				Note:   "fetch failed before source evaluation",
+			})
+		}
 		_, _ = fmt.Fprintf(stderr, "%s\n\n%s\n", err.Error(), usage())
 		return 1
 	}
+	jsonOutput := parsed.Format == "json"
 
 	sourceKind := detectSourceKind(parsed.Source)
 	if sourceKind != "github-source" {
+		if jsonOutput {
+			return writeFetchJSONError(stdout, stderr, fetchErrorReport{
+				SchemaVersion: reportSchemaVersion,
+				Status:        "ERROR",
+				ErrorCode:     fetchErrorCodeSourceUnsupported,
+				Message:       "fetch currently supports github sources only",
+				Source: source{
+					Input: parsed.Source,
+					Kind:  sourceKind,
+				},
+				Output: parsed.Out,
+				Note:   "fetch supports github-source only in this release",
+			})
+		}
 		_, _ = fmt.Fprintln(stderr, "fetch currently supports github sources only")
 		return 1
 	}
 
 	spec, err := srcpkg.ParseGitHubSource(parsed.Source)
 	if err != nil {
+		if jsonOutput {
+			return writeFetchJSONError(stdout, stderr, fetchErrorReport{
+				SchemaVersion: reportSchemaVersion,
+				Status:        "ERROR",
+				ErrorCode:     fetchErrorCodeSourceInvalid,
+				Message:       fmt.Sprintf("invalid github source: %v", err),
+				Source: source{
+					Input: parsed.Source,
+					Kind:  sourceKind,
+				},
+				Output: parsed.Out,
+				Note:   "fetch source syntax validation failed",
+			})
+		}
 		_, _ = fmt.Fprintf(stderr, "invalid github source: %v\n", err)
 		return 1
 	}
 	if !srcpkg.IsCommitPinnedRef(spec.Ref) {
+		if jsonOutput {
+			return writeFetchJSONError(stdout, stderr, fetchErrorReport{
+				SchemaVersion: reportSchemaVersion,
+				Status:        "ERROR",
+				ErrorCode:     fetchErrorCodeSourceRefNotPinned,
+				Message:       "fetch requires a commit-pinned ref (e.g. @8f3c2d1a4b5c6d7e8f901234567890abcdef1234)",
+				Source: source{
+					Input: parsed.Source,
+					Kind:  sourceKind,
+				},
+				Output: parsed.Out,
+				Note:   "floating refs are not allowed for fetch",
+			})
+		}
 		_, _ = fmt.Fprintln(stderr, "fetch requires a commit-pinned ref (e.g. @8f3c2d1a4b5c6d7e8f901234567890abcdef1234)")
 		return 1
 	}
@@ -59,24 +141,80 @@ func runFetch(args []string, stdout io.Writer, stderr io.Writer) int {
 		defer cleanup()
 	}
 	if err != nil {
+		if jsonOutput {
+			return writeFetchJSONError(stdout, stderr, fetchErrorReport{
+				SchemaVersion: reportSchemaVersion,
+				Status:        "ERROR",
+				ErrorCode:     fetchErrorCodeSourceDownloadFailed,
+				Message:       err.Error(),
+				Source: source{
+					Input: parsed.Source,
+					Kind:  sourceKind,
+				},
+				Output: parsed.Out,
+				Note:   "failed while downloading or materializing source",
+			})
+		}
 		_, _ = fmt.Fprintln(stderr, err.Error())
 		return 1
 	}
 
 	meta, err := validateSkillFrontmatter(filepath.Join(skillRoot, "SKILL.md"))
 	if err != nil {
+		if jsonOutput {
+			return writeFetchJSONError(stdout, stderr, fetchErrorReport{
+				SchemaVersion: reportSchemaVersion,
+				Status:        "ERROR",
+				ErrorCode:     fetchErrorCodeSkillInvalid,
+				Message:       err.Error(),
+				Source: source{
+					Input: parsed.Source,
+					Kind:  sourceKind,
+				},
+				Output: parsed.Out,
+				Note:   "fetched source failed skill frontmatter validation",
+			})
+		}
 		_, _ = fmt.Fprintln(stderr, err.Error())
 		return 1
 	}
 
 	outRoot := filepath.Clean(parsed.Out)
 	if err := os.MkdirAll(outRoot, 0o755); err != nil {
+		if jsonOutput {
+			return writeFetchJSONError(stdout, stderr, fetchErrorReport{
+				SchemaVersion: reportSchemaVersion,
+				Status:        "ERROR",
+				ErrorCode:     fetchErrorCodeOutputPrepareFailed,
+				Message:       fmt.Sprintf("failed to prepare fetch output root: %v", err),
+				Source: source{
+					Input: parsed.Source,
+					Kind:  sourceKind,
+				},
+				Output: parsed.Out,
+				Note:   "output directory creation failed",
+			})
+		}
 		_, _ = fmt.Fprintf(stderr, "failed to prepare fetch output root: %v\n", err)
 		return 1
 	}
 
 	dest, err := fetchSkillAtomicFunc(skillRoot, outRoot, meta.Name)
 	if err != nil {
+		if jsonOutput {
+			return writeFetchJSONError(stdout, stderr, fetchErrorReport{
+				SchemaVersion: reportSchemaVersion,
+				Status:        "ERROR",
+				ErrorCode:     fetchErrorCodeCopyFailed,
+				Message:       err.Error(),
+				Source: source{
+					Input: parsed.Source,
+					Kind:  sourceKind,
+				},
+				Output: parsed.Out,
+				Note:   "failed while staging fetched files to output root",
+			})
+		}
 		_, _ = fmt.Fprintln(stderr, err.Error())
 		return 1
 	}
@@ -84,6 +222,20 @@ func runFetch(args []string, stdout io.Writer, stderr io.Writer) int {
 		sourceMetadataFile: {},
 	})
 	if err != nil {
+		if jsonOutput {
+			return writeFetchJSONError(stdout, stderr, fetchErrorReport{
+				SchemaVersion: reportSchemaVersion,
+				Status:        "ERROR",
+				ErrorCode:     fetchErrorCodeDigestFailed,
+				Message:       err.Error(),
+				Source: source{
+					Input: parsed.Source,
+					Kind:  sourceKind,
+				},
+				Output: dest,
+				Note:   "failed while computing fetched source digest",
+			})
+		}
 		_, _ = fmt.Fprintln(stderr, err.Error())
 		return 1
 	}
@@ -95,6 +247,20 @@ func runFetch(args []string, stdout io.Writer, stderr io.Writer) int {
 		FetchedAt:       time.Now().UTC().Format(time.RFC3339),
 		SkillRootSHA256: rootHash,
 	}); err != nil {
+		if jsonOutput {
+			return writeFetchJSONError(stdout, stderr, fetchErrorReport{
+				SchemaVersion: reportSchemaVersion,
+				Status:        "ERROR",
+				ErrorCode:     fetchErrorCodeMetadataWriteFailed,
+				Message:       err.Error(),
+				Source: source{
+					Input: parsed.Source,
+					Kind:  sourceKind,
+				},
+				Output: dest,
+				Note:   "failed while writing source metadata",
+			})
+		}
 		_, _ = fmt.Fprintln(stderr, err.Error())
 		return 1
 	}
@@ -121,6 +287,46 @@ func runFetch(args []string, stdout io.Writer, stderr io.Writer) int {
 	_, _ = fmt.Fprintf(stdout, "decision: %s\n", report.Decision)
 	_, _ = fmt.Fprintf(stdout, "output: %s\n", report.Output)
 	return 0
+}
+
+func fetchArgsRequestJSON(args []string) bool {
+	for i := 0; i < len(args); i++ {
+		if args[i] == "--format" && i+1 < len(args) && args[i+1] == "json" {
+			return true
+		}
+		if strings.HasPrefix(args[i], "--format=") && strings.TrimPrefix(args[i], "--format=") == "json" {
+			return true
+		}
+	}
+	return false
+}
+
+func extractFetchSourceArg(args []string) string {
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
+		if arg == "--out" || arg == "--format" {
+			i++
+			continue
+		}
+		if strings.HasPrefix(arg, "--out=") || strings.HasPrefix(arg, "--format=") {
+			continue
+		}
+		if strings.HasPrefix(arg, "-") {
+			continue
+		}
+		return arg
+	}
+	return ""
+}
+
+func writeFetchJSONError(stdout io.Writer, stderr io.Writer, report fetchErrorReport) int {
+	out, err := json.MarshalIndent(report, "", "  ")
+	if err != nil {
+		_, _ = fmt.Fprintln(stderr, "failed to render fetch error report")
+		return 1
+	}
+	_, _ = fmt.Fprintf(stdout, "%s\n", out)
+	return 1
 }
 
 func parseFetchArgs(args []string) (fetchArgs, error) {

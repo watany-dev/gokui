@@ -271,6 +271,154 @@ func TestRunFetch(t *testing.T) {
 			t.Fatalf("stderr should include out mkdir error, got %q", stderr.String())
 		}
 	})
+
+	t.Run("json mode failures emit machine-readable error report", func(t *testing.T) {
+		var stdout strings.Builder
+		var stderr strings.Builder
+
+		code := runFetch([]string{"--format", "json"}, &stdout, &stderr)
+		if code != 1 {
+			t.Fatalf("runFetch(json parse error) code = %d, want 1", code)
+		}
+		if stderr.Len() != 0 {
+			t.Fatalf("stderr should be empty for json parse error, got %q", stderr.String())
+		}
+		if !strings.Contains(stdout.String(), "\"status\": \"ERROR\"") {
+			t.Fatalf("stdout should include error status, got %q", stdout.String())
+		}
+		if !strings.Contains(stdout.String(), "\"error_code\": \""+fetchErrorCodeArgsInvalid+"\"") {
+			t.Fatalf("stdout should include parse error_code, got %q", stdout.String())
+		}
+
+		stdout.Reset()
+		stderr.Reset()
+		code = runFetch([]string{"../../fixtures/clean-skill", "--out", t.TempDir(), "--format", "json"}, &stdout, &stderr)
+		if code != 1 {
+			t.Fatalf("runFetch(json unsupported source) code = %d, want 1", code)
+		}
+		if stderr.Len() != 0 {
+			t.Fatalf("stderr should be empty for json source error, got %q", stderr.String())
+		}
+		if !strings.Contains(stdout.String(), "\"error_code\": \""+fetchErrorCodeSourceUnsupported+"\"") {
+			t.Fatalf("stdout should include source unsupported error_code, got %q", stdout.String())
+		}
+	})
+
+	t.Run("json mode failure codes cover major branches", func(t *testing.T) {
+		sourceDir := createSkillSourceForInstallTest(t, "json-error-skill")
+		var stdout strings.Builder
+		var stderr strings.Builder
+
+		// invalid source syntax
+		code := runFetch([]string{"github:org/repo/path@8f3c2d1a4b5c6d7e8f901234567890abcdef1234", "--out", t.TempDir(), "--format", "json"}, &stdout, &stderr)
+		if code != 1 || !strings.Contains(stdout.String(), fetchErrorCodeSourceInvalid) {
+			t.Fatalf("expected source invalid code, got code=%d stdout=%q stderr=%q", code, stdout.String(), stderr.String())
+		}
+		stdout.Reset()
+		stderr.Reset()
+
+		// floating ref
+		code = runFetch([]string{"github:org/repo//skills/x@main", "--out", t.TempDir(), "--format", "json"}, &stdout, &stderr)
+		if code != 1 || !strings.Contains(stdout.String(), fetchErrorCodeSourceRefNotPinned) {
+			t.Fatalf("expected ref-not-pinned code, got code=%d stdout=%q stderr=%q", code, stdout.String(), stderr.String())
+		}
+		stdout.Reset()
+		stderr.Reset()
+
+		// source download/materialize failure
+		fetchGitHubSkill = func(spec srcpkg.GitHubSpec) (string, func(), error) {
+			return "", nil, errors.New("download failed")
+		}
+		code = runFetch([]string{"github:org/repo//skills/x@8f3c2d1a4b5c6d7e8f901234567890abcdef1234", "--out", t.TempDir(), "--format", "json"}, &stdout, &stderr)
+		if code != 1 || !strings.Contains(stdout.String(), fetchErrorCodeSourceDownloadFailed) {
+			t.Fatalf("expected source-download-failed code, got code=%d stdout=%q stderr=%q", code, stdout.String(), stderr.String())
+		}
+		stdout.Reset()
+		stderr.Reset()
+
+		// invalid skill frontmatter
+		badSkill := t.TempDir()
+		if err := os.WriteFile(filepath.Join(badSkill, "SKILL.md"), []byte("# bad"), 0o644); err != nil {
+			t.Fatalf("write bad SKILL.md: %v", err)
+		}
+		fetchGitHubSkill = func(spec srcpkg.GitHubSpec) (string, func(), error) {
+			return badSkill, nil, nil
+		}
+		code = runFetch([]string{"github:org/repo//skills/x@8f3c2d1a4b5c6d7e8f901234567890abcdef1234", "--out", t.TempDir(), "--format", "json"}, &stdout, &stderr)
+		if code != 1 || !strings.Contains(stdout.String(), fetchErrorCodeSkillInvalid) {
+			t.Fatalf("expected skill-invalid code, got code=%d stdout=%q stderr=%q", code, stdout.String(), stderr.String())
+		}
+		stdout.Reset()
+		stderr.Reset()
+
+		// output prepare failure
+		fetchGitHubSkill = func(spec srcpkg.GitHubSpec) (string, func(), error) {
+			return sourceDir, nil, nil
+		}
+		outFile := filepath.Join(t.TempDir(), "file")
+		if err := os.WriteFile(outFile, []byte("x"), 0o644); err != nil {
+			t.Fatalf("write out file: %v", err)
+		}
+		code = runFetch([]string{"github:org/repo//skills/json-error-skill@8f3c2d1a4b5c6d7e8f901234567890abcdef1234", "--out", filepath.Join(outFile, "child"), "--format", "json"}, &stdout, &stderr)
+		if code != 1 || !strings.Contains(stdout.String(), fetchErrorCodeOutputPrepareFailed) {
+			t.Fatalf("expected output-prepare-failed code, got code=%d stdout=%q stderr=%q", code, stdout.String(), stderr.String())
+		}
+		stdout.Reset()
+		stderr.Reset()
+
+		// copy failure
+		fetchSkillAtomicFunc = func(skillRoot string, outRoot string, skillName string) (string, error) {
+			return "", errors.New("copy failed")
+		}
+		code = runFetch([]string{"github:org/repo//skills/json-error-skill@8f3c2d1a4b5c6d7e8f901234567890abcdef1234", "--out", t.TempDir(), "--format", "json"}, &stdout, &stderr)
+		if code != 1 || !strings.Contains(stdout.String(), fetchErrorCodeCopyFailed) {
+			t.Fatalf("expected copy-failed code, got code=%d stdout=%q stderr=%q", code, stdout.String(), stderr.String())
+		}
+		fetchSkillAtomicFunc = fetchSkillAtomic
+		stdout.Reset()
+		stderr.Reset()
+
+		// digest failure
+		fetchSkillAtomicFunc = func(skillRoot string, outRoot string, skillName string) (string, error) {
+			return filepath.Join(outRoot, "missing-after-copy"), nil
+		}
+		code = runFetch([]string{"github:org/repo//skills/json-error-skill@8f3c2d1a4b5c6d7e8f901234567890abcdef1234", "--out", t.TempDir(), "--format", "json"}, &stdout, &stderr)
+		if code != 1 || !strings.Contains(stdout.String(), fetchErrorCodeDigestFailed) {
+			t.Fatalf("expected digest-failed code, got code=%d stdout=%q stderr=%q", code, stdout.String(), stderr.String())
+		}
+		fetchSkillAtomicFunc = fetchSkillAtomic
+		stdout.Reset()
+		stderr.Reset()
+
+		// source metadata write failure
+		writeSourceMetaFunc = func(skillRoot string, meta sourceMetadata) error {
+			return errors.New("meta write failed")
+		}
+		code = runFetch([]string{"github:org/repo//skills/json-error-skill@8f3c2d1a4b5c6d7e8f901234567890abcdef1234", "--out", t.TempDir(), "--format", "json"}, &stdout, &stderr)
+		if code != 1 || !strings.Contains(stdout.String(), fetchErrorCodeMetadataWriteFailed) {
+			t.Fatalf("expected metadata-write-failed code, got code=%d stdout=%q stderr=%q", code, stdout.String(), stderr.String())
+		}
+		writeSourceMetaFunc = writeSourceMetadata
+	})
+}
+
+func TestFetchHelperFunctions(t *testing.T) {
+	if !fetchArgsRequestJSON([]string{"--format", "json"}) {
+		t.Fatal("expected json format detection")
+	}
+	if !fetchArgsRequestJSON([]string{"--format=json"}) {
+		t.Fatal("expected equals json format detection")
+	}
+	if fetchArgsRequestJSON([]string{"--format", "human"}) {
+		t.Fatal("human format should not be detected as json")
+	}
+
+	if got := extractFetchSourceArg([]string{"--out", "/tmp/q", "github:org/repo//skills/x@8f3c2d1a4b5c6d7e8f901234567890abcdef1234"}); !strings.HasPrefix(got, "github:") {
+		t.Fatalf("unexpected extracted source arg: %q", got)
+	}
+	if got := extractFetchSourceArg([]string{"github:org/repo//skills/x@8f3c2d1a4b5c6d7e8f901234567890abcdef1234", "--format", "json"}); !strings.HasPrefix(got, "github:") {
+		t.Fatalf("unexpected extracted source arg: %q", got)
+	}
 }
 
 func TestFetchSkillAtomic(t *testing.T) {

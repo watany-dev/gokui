@@ -44,7 +44,8 @@ JSON output contracts are now stability-tested across `inspect`, `fetch`,
 `update`, `lock verify`, and install metadata files.
 `fetch` now supports commit-pinned GitHub sources and materializes them into a
 quarantine output root via `--out`, and records `.gokui-source.json`
-provenance metadata.
+provenance metadata. In JSON mode, fetch failures return `error_code` for
+automation.
 GitHub source syntax is now strictly validated as
 `github:owner/repo//path/to/skill@ref`; `install` requires commit-pinned refs
 for GitHub sources and rejects floating refs. `install` and `update` validate
