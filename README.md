@@ -195,6 +195,8 @@ The intended flow is:
 ## Automation Error Codes
 
 For machine integration, JSON outputs use stable uppercase `error_code` values.
+Fatal JSON error envelopes may also include optional `rule_id` when a
+rule-prefixed validation error is available.
 
 ### inspect (`--format json`, fatal errors)
 
