@@ -188,7 +188,7 @@ func writeZipFile(file *zip.File, outPath string, maxBytes int64) (int64, error)
 
 	written, err := copyWithStrictLimit(out, rc, maxBytes)
 	if err != nil {
-		if strings.Contains(err.Error(), "size exceeds limit") {
+		if limitio.IsSizeExceeded(err) {
 			_ = os.Remove(outPath)
 			return 0, fmt.Errorf("archive file exceeds max file bytes during extraction: %s", file.Name)
 		}
@@ -287,7 +287,7 @@ func writeTarFile(header *tar.Header, tarReader *tar.Reader, outPath string, max
 
 	written, err := copyWithStrictLimit(out, tarReader, maxBytes)
 	if err != nil {
-		if strings.Contains(err.Error(), "size exceeds limit") {
+		if limitio.IsSizeExceeded(err) {
 			_ = os.Remove(outPath)
 			return 0, fmt.Errorf("archive file exceeds max file bytes during extraction: %s", header.Name)
 		}

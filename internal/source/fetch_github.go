@@ -160,7 +160,7 @@ func downloadGitHubArchive(spec GitHubSpec, archivePath string) error {
 	_, err = copyWithStrictLimit(out, resp.Body, maxGitHubArchiveBytes)
 	if err != nil {
 		_ = os.Remove(archivePath)
-		if strings.Contains(err.Error(), "size exceeds limit") {
+		if limitio.IsSizeExceeded(err) {
 			return fmt.Errorf("github archive exceeds max size")
 		}
 		return fmt.Errorf("failed to write github archive: %w", err)

@@ -3,6 +3,7 @@ package limitio
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"io"
 	"strings"
 	"testing"
@@ -93,6 +94,28 @@ func TestCopyWithStrictLimitEdgeCases(t *testing.T) {
 		_, err := CopyWithStrictLimit(&out, src, 1)
 		if err == nil || !strings.Contains(err.Error(), "read failed") {
 			t.Fatalf("expected read error, got %v", err)
+		}
+	})
+}
+
+func TestIsSizeExceeded(t *testing.T) {
+	t.Run("matches sentinel", func(t *testing.T) {
+		if !IsSizeExceeded(ErrSizeExceeded) {
+			t.Fatalf("expected sentinel to match")
+		}
+	})
+
+	t.Run("matches wrapped sentinel", func(t *testing.T) {
+		err := fmt.Errorf("wrapped: %w", ErrSizeExceeded)
+		if !IsSizeExceeded(err) {
+			t.Fatalf("expected wrapped sentinel to match")
+		}
+	})
+
+	t.Run("does not match text-only errors", func(t *testing.T) {
+		err := errors.New("size exceeds limit in downstream system")
+		if IsSizeExceeded(err) {
+			t.Fatalf("did not expect text-only error to match")
 		}
 	})
 }

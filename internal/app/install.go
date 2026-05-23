@@ -708,7 +708,7 @@ func copyFileWithMode(src string, dst string, mode os.FileMode, maxBytes int64) 
 	written, err := copyWithStrictLimit(out, in, maxBytes)
 	if err != nil {
 		_ = os.Remove(dst)
-		if strings.Contains(err.Error(), "size exceeds limit") {
+		if limitio.IsSizeExceeded(err) {
 			return 0, fmt.Errorf("%s: install source file exceeds size limit during copy: %s", ruleInstallSourceFileTooLarge, src)
 		}
 		return 0, fmt.Errorf("failed to copy file contents: %w", err)

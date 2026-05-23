@@ -7,6 +7,11 @@ import (
 
 var ErrSizeExceeded = errors.New("size exceeds limit")
 
+// IsSizeExceeded reports whether err indicates strict size-limit overflow.
+func IsSizeExceeded(err error) bool {
+	return errors.Is(err, ErrSizeExceeded)
+}
+
 // CopyWithStrictLimit copies from src to dst and fails closed when src
 // contains bytes beyond maxBytes, without writing overflow bytes to dst.
 func CopyWithStrictLimit(dst io.Writer, src io.Reader, maxBytes int64) (int64, error) {
