@@ -334,6 +334,8 @@ Descriptions are treated as startup-sensitive text because local agents may use
 them for implicit activation. A description that says "use this for every task",
 "run setup.sh first", "ignore previous instructions", or "do not tell the user"
 is not a normal applicability description.
+Tool-execution or prompt-override description rejects include the rule marker
+`DESCRIPTION_TOOL_INJECTION` in validation errors.
 
 ### Unicode and Text
 
