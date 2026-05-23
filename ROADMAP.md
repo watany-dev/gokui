@@ -194,6 +194,9 @@ code.
 - Flag unpinned runtime tools:
   - `npx foo`
   - `uvx foo`
+  - `bunx foo`
+  - `pnpm dlx foo`
+  - `yarn dlx foo`
   - `go run ...@latest`
   - remote script imports
 - Add bounded deobfuscation:
@@ -334,7 +337,7 @@ High findings reject under `strict`:
 
 | Rule | Condition |
 | --- | --- |
-| `UNPINNED_RUNTIME_TOOL` | `npx`, `uvx`, `go run`, or similar floating execution |
+| `UNPINNED_RUNTIME_TOOL` | `npx`, `uvx`, `bunx`, `pnpm/yarn dlx`, `go run`, or similar floating execution |
 | `EXTERNAL_BINARY_DOWNLOAD` | release asset or binary download instruction |
 | `PASSWORD_PROTECTED_ARCHIVE` | password-protected archive instruction |
 | `RAW_IP_URL` | URL host is an IP address |

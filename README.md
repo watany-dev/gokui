@@ -65,7 +65,9 @@ Broad Bash wildcard tool permissions are now flagged as high severity.
 Unknown/unclassified file types are now flagged as medium severity for manual
 review.
 Remote script import patterns (for example `source <(curl ...)` and
-`deno run https://...`) are now flagged under `UNPINNED_RUNTIME_TOOL`.
+`deno run https://...`) plus floating runtime launchers (for example `bunx`,
+`pnpm dlx`, and `yarn dlx`) are now flagged under
+`UNPINNED_RUNTIME_TOOL`.
 Unicode Tags, bidi controls, variation selectors, and ANSI/OSC escapes in
 scanned text are now flagged as critical. Zero-width and disallowed C0/C1
 control characters are also flagged as critical findings.
@@ -409,8 +411,8 @@ Critical patterns include:
   cookies, or API tokens combined with network send
 - persistence through shell startup files, cron, launch agents, services, or
   user config directories
-- unpinned runtime tools such as `npx foo`, `uvx foo`, `go run ...@latest`, or
-  remote script imports
+- unpinned runtime tools such as `npx foo`, `uvx foo`, `bunx foo`,
+  `pnpm dlx foo`, `yarn dlx foo`, `go run ...@latest`, or remote script imports
 
 ### Archives
 

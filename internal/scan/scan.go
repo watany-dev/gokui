@@ -844,15 +844,24 @@ func isUnpinnedRuntimeToolLine(line string) bool {
 	for i := 0; i < len(fields); i++ {
 		token := fields[i]
 		switch token {
-		case "npx", "uvx":
-			j := i + 1
-			for j < len(fields) && strings.HasPrefix(fields[j], "-") {
-				j++
-			}
-			if j >= len(fields) {
+		case "npx", "uvx", "bunx":
+			packageRef, ok := nextNonFlagField(fields, i+1)
+			if !ok {
 				continue
 			}
-			if isUnpinnedPackageRef(fields[j]) {
+			if isUnpinnedPackageRef(packageRef) {
+				return true
+			}
+		case "pnpm", "yarn":
+			subcommand, subcommandIndex, ok := nextNonFlagFieldWithIndex(fields, i+1)
+			if !ok || subcommand != "dlx" {
+				continue
+			}
+			packageRef, ok := nextNonFlagField(fields, subcommandIndex+1)
+			if !ok {
+				continue
+			}
+			if isUnpinnedPackageRef(packageRef) {
 				return true
 			}
 		case "go":
@@ -908,6 +917,21 @@ func isUnpinnedPackageRef(ref string) bool {
 		return true
 	}
 	return parts[1] == "" || parts[1] == "latest"
+}
+
+func nextNonFlagField(fields []string, start int) (string, bool) {
+	value, _, ok := nextNonFlagFieldWithIndex(fields, start)
+	return value, ok
+}
+
+func nextNonFlagFieldWithIndex(fields []string, start int) (string, int, bool) {
+	for i := start; i < len(fields); i++ {
+		if strings.HasPrefix(fields[i], "-") {
+			continue
+		}
+		return fields[i], i, true
+	}
+	return "", -1, false
 }
 
 func classifyURLRisks(line string, relPath string, lineNum int, isMarkdown bool) []Finding {

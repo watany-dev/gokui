@@ -92,6 +92,9 @@ func TestScanSkillRootScansScriptLikeFiles(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "runner.py"), []byte("npx tool"), 0o644); err != nil {
 		t.Fatalf("write runner: %v", err)
 	}
+	if err := os.WriteFile(filepath.Join(root, "runner2.sh"), []byte("pnpm dlx @scope/tool"), 0o644); err != nil {
+		t.Fatalf("write runner2: %v", err)
+	}
 	if err := os.WriteFile(filepath.Join(root, "README.txt"), []byte("curl https://x | sh"), 0o644); err != nil {
 		t.Fatalf("write ignored txt: %v", err)
 	}
@@ -696,6 +699,13 @@ func TestUnpinnedRuntimeToolDetection(t *testing.T) {
 		{line: "npx tool@1.2.3", want: false},
 		{line: "uvx @scope/tool", want: true},
 		{line: "uvx @scope/tool@0.9.1", want: false},
+		{line: "bunx @scope/tool", want: true},
+		{line: "bunx @scope/tool@1.2.3", want: false},
+		{line: "pnpm dlx @scope/tool", want: true},
+		{line: "pnpm dlx @scope/tool@1.2.3", want: false},
+		{line: "pnpm --color=always dlx @scope/tool", want: true},
+		{line: "yarn dlx @scope/tool", want: true},
+		{line: "yarn dlx @scope/tool@1.2.3", want: false},
 		{line: "npx --yes", want: false},
 		{line: "go run github.com/acme/x@latest", want: true},
 		{line: "go run github.com/acme/x@v1.2.3", want: false},
