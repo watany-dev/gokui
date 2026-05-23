@@ -1,6 +1,7 @@
 package app
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -11,6 +12,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/watany-dev/gokui/internal/limitio"
 	srcpkg "github.com/watany-dev/gokui/internal/source"
 )
 
@@ -613,18 +615,16 @@ func collectURLs(root string) ([]string, error) {
 		if scannedFiles > updateMaxScanFiles {
 			return fmt.Errorf("URL scan exceeded max file count: %d", updateMaxScanFiles)
 		}
-		if info.Size() > updateMaxURLScanFileBytes {
-			rel, relErr := filepath.Rel(root, path)
-			if relErr == nil {
-				path = filepath.ToSlash(rel)
-			}
-			return fmt.Errorf("markdown file exceeds URL scan size limit: %s", path)
-		}
-		content, err := os.ReadFile(path)
+		f, err := os.Open(path)
 		if err != nil {
 			return fmt.Errorf("failed to read file for URL scan: %w", err)
 		}
-		matches := updateURLPattern.FindAllString(string(content), -1)
+		defer f.Close()
+		content, err := readURLScanContent(f, path, root)
+		if err != nil {
+			return err
+		}
+		matches := updateURLPattern.FindAllString(content, -1)
 		for _, m := range matches {
 			set[m] = struct{}{}
 		}
@@ -682,6 +682,21 @@ func collectExecutableFiles(root string) ([]string, error) {
 		return nil, err
 	}
 	return mapKeysSorted(set), nil
+}
+
+func readURLScanContent(r io.Reader, path string, root string) (string, error) {
+	var content bytes.Buffer
+	if _, err := limitio.CopyWithStrictLimit(&content, r, updateMaxURLScanFileBytes); err != nil {
+		if errors.Is(err, limitio.ErrSizeExceeded) {
+			rel, relErr := filepath.Rel(root, path)
+			if relErr == nil {
+				path = filepath.ToSlash(rel)
+			}
+			return "", fmt.Errorf("markdown file exceeds URL scan size limit: %s", path)
+		}
+		return "", fmt.Errorf("failed to read file for URL scan: %w", err)
+	}
+	return content.String(), nil
 }
 
 func mapKeysSorted(set map[string]struct{}) []string {

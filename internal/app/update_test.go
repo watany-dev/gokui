@@ -1,6 +1,7 @@
 package app
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -1269,6 +1270,21 @@ func TestUpdateHelpers(t *testing.T) {
 		}
 	})
 
+	t.Run("readURLScanContent reports read and size errors", func(t *testing.T) {
+		root := t.TempDir()
+		path := filepath.Join(root, "big.md")
+
+		_, err := readURLScanContent(bytes.NewReader([]byte(strings.Repeat("a", int(updateMaxURLScanFileBytes)+1))), path, root)
+		if err == nil || !strings.Contains(err.Error(), "exceeds URL scan size limit") {
+			t.Fatalf("expected size-limit error, got %v", err)
+		}
+
+		_, err = readURLScanContent(errorReader{err: errors.New("read fail")}, path, root)
+		if err == nil || !strings.Contains(err.Error(), "failed to read file for URL scan") {
+			t.Fatalf("expected read error, got %v", err)
+		}
+	})
+
 	t.Run("collectURLs enforces max scan file count", func(t *testing.T) {
 		origLimit := updateMaxScanFiles
 		updateMaxScanFiles = 2
@@ -1524,6 +1540,14 @@ func TestUpdateHelpers(t *testing.T) {
 			t.Fatalf("expected sorted skills, got %+v", report.Skills)
 		}
 	})
+}
+
+type errorReader struct {
+	err error
+}
+
+func (r errorReader) Read(_ []byte) (int, error) {
+	return 0, r.err
 }
 
 func TestSetDiffProperties(t *testing.T) {
