@@ -102,6 +102,9 @@ func TestRunUpdateDryRunStatuses(t *testing.T) {
 	if len(upToDateReport.Skills) != 1 || upToDateReport.Skills[0].Status != "UP_TO_DATE" {
 		t.Fatalf("unexpected skill status: %+v", upToDateReport.Skills)
 	}
+	if upToDateReport.Skills[0].ErrorCode != updateCodeUpToDate {
+		t.Fatalf("unexpected up-to-date error_code: %+v", upToDateReport.Skills[0])
+	}
 
 	// Source changed after install -> dry-run should report CHANGED.
 	if err := os.WriteFile(filepath.Join(src, "README.md"), []byte("changed content"), 0o644); err != nil {
@@ -135,6 +138,9 @@ func TestRunUpdateDryRunStatuses(t *testing.T) {
 	}
 	if changedReport.Skills[0].Status != "CHANGED" {
 		t.Fatalf("expected CHANGED status, got %+v", changedReport.Skills[0])
+	}
+	if changedReport.Skills[0].ErrorCode != updateCodeChanged {
+		t.Fatalf("unexpected changed error_code: %+v", changedReport.Skills[0])
 	}
 	if len(changedReport.Skills[0].NewURLs) == 0 {
 		t.Fatalf("expected new URL detection, got %+v", changedReport.Skills[0])
@@ -202,6 +208,7 @@ func TestRunUpdateJSONContractHasStableKeys(t *testing.T) {
 			"path",
 			"source",
 			"status",
+			"error_code",
 			"decision",
 			"diff",
 			"risk",
@@ -248,6 +255,9 @@ func TestRunUpdateDryRunRejectedAndError(t *testing.T) {
 		if !strings.Contains(stdout.String(), "\"status\": \"REJECTED\"") {
 			t.Fatalf("stdout should include REJECTED status, got %q", stdout.String())
 		}
+		if !strings.Contains(stdout.String(), "\"error_code\": \""+updateCodePolicyRejected+"\"") {
+			t.Fatalf("stdout should include policy rejection error_code, got %q", stdout.String())
+		}
 	})
 
 	t.Run("missing lockfile under target returns exit code 1", func(t *testing.T) {
@@ -264,6 +274,9 @@ func TestRunUpdateDryRunRejectedAndError(t *testing.T) {
 		}
 		if !strings.Contains(stdout.String(), "ERROR") {
 			t.Fatalf("stdout should include ERROR status, got %q", stdout.String())
+		}
+		if !strings.Contains(stdout.String(), "code: "+updateCodeLockfileInvalid) {
+			t.Fatalf("stdout should include lockfile error_code line, got %q", stdout.String())
 		}
 	})
 
@@ -376,6 +389,9 @@ func TestRunUpdateDryRunRejectedAndError(t *testing.T) {
 		if !strings.Contains(stdout.String(), "\"status\": \"UP_TO_DATE\"") {
 			t.Fatalf("stdout should include UP_TO_DATE status, got %q", stdout.String())
 		}
+		if !strings.Contains(stdout.String(), "\"error_code\": \""+updateCodeUpToDate+"\"") {
+			t.Fatalf("stdout should include up-to-date error_code, got %q", stdout.String())
+		}
 	})
 
 	t.Run("floating github source lock is rejected", func(t *testing.T) {
@@ -413,6 +429,9 @@ func TestRunUpdateDryRunRejectedAndError(t *testing.T) {
 		if !strings.Contains(stdout.String(), "\"status\": \"REJECTED\"") {
 			t.Fatalf("stdout should include REJECTED status, got %q", stdout.String())
 		}
+		if !strings.Contains(stdout.String(), "\"error_code\": \""+updateCodeGitHubRefFloating+"\"") {
+			t.Fatalf("stdout should include floating-ref error_code, got %q", stdout.String())
+		}
 	})
 
 	t.Run("invalid github source in lock is error", func(t *testing.T) {
@@ -449,6 +468,9 @@ func TestRunUpdateDryRunRejectedAndError(t *testing.T) {
 		}
 		if !strings.Contains(stdout.String(), "\"status\": \"ERROR\"") {
 			t.Fatalf("stdout should include ERROR status, got %q", stdout.String())
+		}
+		if !strings.Contains(stdout.String(), "\"error_code\": \""+updateCodeGitHubSourceBad+"\"") {
+			t.Fatalf("stdout should include invalid-source error_code, got %q", stdout.String())
 		}
 	})
 }

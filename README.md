@@ -37,7 +37,8 @@ integrity, and reports drift
 provenance for local-dir/zip/tar sources, reports added/removed/changed files,
 risk deltas, and new URL/executable signals. For GitHub sources, commit-pinned
 refs are evaluated and floating refs are rejected. JSON output now emits stable
-skill-item keys for automation-friendly parsing.
+skill-item keys for automation-friendly parsing, including `error_code` for
+status-aware automation.
 JSON output contracts are now stability-tested across `inspect`, `fetch`,
 `update`, `lock verify`, and install metadata files.
 `fetch` now supports commit-pinned GitHub sources and materializes them into a

@@ -35,6 +35,7 @@ type updateSkillItem struct {
 	Path               string           `json:"path"`
 	Source             source           `json:"source"`
 	Status             string           `json:"status"`
+	ErrorCode          string           `json:"error_code"`
 	Decision           string           `json:"decision"`
 	Diff               updateDiff       `json:"diff"`
 	Risk               updateRisk       `json:"risk"`
@@ -43,6 +44,18 @@ type updateSkillItem struct {
 	Findings           []inspectFinding `json:"findings"`
 	Message            string           `json:"message"`
 }
+
+const (
+	updateCodeUpToDate           = "UP_TO_DATE"
+	updateCodeChanged            = "SOURCE_CHANGED"
+	updateCodePolicyRejected     = "POLICY_REJECTED"
+	updateCodeGitHubRefFloating  = "GITHUB_REF_NOT_PINNED"
+	updateCodeLockfileInvalid    = "LOCKFILE_INVALID"
+	updateCodeGitHubSourceBad    = "GITHUB_SOURCE_INVALID"
+	updateCodeSourceMetadataBad  = "SOURCE_METADATA_INVALID"
+	updateCodeSourcePrepareError = "SOURCE_PREPARE_FAILED"
+	updateCodeEvaluationError    = "EVALUATION_ERROR"
+)
 
 type updateDiff struct {
 	Added   []string `json:"added"`
@@ -97,6 +110,7 @@ func runUpdate(args []string, stdout io.Writer, stderr io.Writer) int {
 				decision = "-"
 			}
 			_, _ = fmt.Fprintf(stdout, "- %s: %s (decision=%s)\n", skill.Name, skill.Status, decision)
+			_, _ = fmt.Fprintf(stdout, "  code: %s\n", skill.ErrorCode)
 			_, _ = fmt.Fprintf(stdout, "  diff added=%d removed=%d changed=%d\n", len(skill.Diff.Added), len(skill.Diff.Removed), len(skill.Diff.Changed))
 			_, _ = fmt.Fprintf(stdout, "  new urls=%d new executables=%d\n", len(skill.NewURLs), len(skill.NewExecutableFiles))
 			_, _ = fmt.Fprintf(stdout, "  note: %s\n", skill.Message)
@@ -176,8 +190,9 @@ func buildUpdateReport(targetRoot string) (updateReport, error) {
 		}
 		skillPath := filepath.Join(cleanTarget, entry.Name())
 		item := updateSkillItem{
-			Name: entry.Name(),
-			Path: skillPath,
+			Name:      entry.Name(),
+			Path:      skillPath,
+			ErrorCode: updateCodeEvaluationError,
 			Diff: updateDiff{
 				Added:   []string{},
 				Removed: []string{},
@@ -191,6 +206,7 @@ func buildUpdateReport(targetRoot string) (updateReport, error) {
 		lock, err := readInstallLock(lockPath)
 		if err != nil {
 			item.Status = "ERROR"
+			item.ErrorCode = updateCodeLockfileInvalid
 			item.Message = "missing or invalid lockfile"
 			skills = append(skills, item)
 			continue
@@ -203,6 +219,7 @@ func buildUpdateReport(targetRoot string) (updateReport, error) {
 		enriched, err := evaluateUpdateSkill(item, lock)
 		if err != nil {
 			item.Status = "ERROR"
+			item.ErrorCode = updateCodeEvaluationError
 			item.Message = err.Error()
 			skills = append(skills, item)
 			continue
@@ -235,6 +252,7 @@ func evaluateUpdateSkill(item updateSkillItem, lock installLock) (updateSkillIte
 		spec, parseErr := srcpkg.ParseGitHubSource(lock.Source.Input)
 		if parseErr != nil {
 			item.Status = "ERROR"
+			item.ErrorCode = updateCodeGitHubSourceBad
 			item.Message = fmt.Sprintf("invalid github source in lockfile: %v", parseErr)
 			item.Risk = updateRisk{
 				Previous: lock.Findings,
@@ -244,6 +262,7 @@ func evaluateUpdateSkill(item updateSkillItem, lock installLock) (updateSkillIte
 		}
 		if !srcpkg.IsCommitPinnedRef(spec.Ref) {
 			item.Status = "REJECTED"
+			item.ErrorCode = updateCodeGitHubRefFloating
 			item.Message = "floating github refs are not eligible for update; commit-pinned ref required"
 			item.Risk = updateRisk{
 				Previous: lock.Findings,
@@ -256,6 +275,7 @@ func evaluateUpdateSkill(item updateSkillItem, lock installLock) (updateSkillIte
 			Kind:  kind,
 		}); err != nil {
 			item.Status = "ERROR"
+			item.ErrorCode = updateCodeSourceMetadataBad
 			item.Message = err.Error()
 			item.Risk = updateRisk{
 				Previous: lock.Findings,
@@ -273,10 +293,13 @@ func evaluateUpdateSkill(item updateSkillItem, lock installLock) (updateSkillIte
 		if kind == "github-source" {
 			message := err.Error()
 			status := "ERROR"
+			code := updateCodeSourcePrepareError
 			if strings.Contains(message, "commit-pinned ref") {
 				status = "REJECTED"
+				code = updateCodeGitHubRefFloating
 			}
 			item.Status = status
+			item.ErrorCode = code
 			item.Message = message
 			item.Risk = updateRisk{
 				Previous: lock.Findings,
@@ -344,6 +367,7 @@ func evaluateUpdateSkill(item updateSkillItem, lock installLock) (updateSkillIte
 
 	if decision == "REJECTED" {
 		item.Status = "REJECTED"
+		item.ErrorCode = updateCodePolicyRejected
 		item.Message = "fresh policy evaluation rejected update source"
 		return item, nil
 	}
@@ -353,11 +377,13 @@ func evaluateUpdateSkill(item updateSkillItem, lock installLock) (updateSkillIte
 	changedSignals := len(item.NewURLs) > 0 || len(item.NewExecutableFiles) > 0
 	if changedContent || changedRisk || changedSignals {
 		item.Status = "CHANGED"
+		item.ErrorCode = updateCodeChanged
 		item.Message = "update source differs from installed lock snapshot"
 		return item, nil
 	}
 
 	item.Status = "UP_TO_DATE"
+	item.ErrorCode = updateCodeUpToDate
 	item.Message = "no change detected against installed lock snapshot"
 	return item, nil
 }
