@@ -34,6 +34,7 @@ var (
 const (
 	ruleLockfileTooLarge                = "LOCKFILE_TOO_LARGE"
 	ruleLockfileSymlink                 = "LOCKFILE_SYMLINK_DETECTED"
+	ruleInstallTargetSymlink            = "INSTALL_TARGET_SYMLINK_DETECTED"
 	ruleInstallSourceFileCountExceeded  = "INSTALL_SOURCE_FILE_COUNT_EXCEEDED"
 	ruleInstallSourceTotalBytesExceeded = "INSTALL_SOURCE_TOTAL_BYTES_EXCEEDED"
 	ruleInstallSourceFileTooLarge       = "INSTALL_SOURCE_FILE_TOO_LARGE"
@@ -312,6 +313,22 @@ func runInstall(args []string, stdout io.Writer, stderr io.Writer) int {
 			})
 		}
 		_, _ = fmt.Fprintln(stderr, targetErr.Error())
+		return 1
+	}
+	if err := rejectSymlinkPath(targetRoot, "install target root", ruleInstallTargetSymlink); err != nil {
+		if jsonOutput {
+			return writeInstallJSONError(stdout, stderr, installErrorReport{
+				SchemaVersion: reportSchemaVersion,
+				Status:        "ERROR",
+				ErrorCode:     installErrorCodeTargetInvalid,
+				Message:       err.Error(),
+				Source:        installSource,
+				Target:        parsed.Target,
+				PolicyProfile: parsed.Profile,
+				Note:          "install target validation failed",
+			})
+		}
+		_, _ = fmt.Fprintln(stderr, err.Error())
 		return 1
 	}
 

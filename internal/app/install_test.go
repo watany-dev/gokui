@@ -306,6 +306,61 @@ func TestRunInstallErrorPaths(t *testing.T) {
 	}
 }
 
+func TestRunInstallRejectsSymlinkTargetRoot(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlink permissions differ on windows")
+	}
+
+	source := createSkillSourceForInstallTest(t, "install-symlink-target")
+	base := t.TempDir()
+	realTarget := filepath.Join(base, "real-skills")
+	if err := os.Mkdir(realTarget, 0o755); err != nil {
+		t.Fatalf("mkdir real target: %v", err)
+	}
+	symlinkTarget := filepath.Join(base, "skills-link")
+	if err := os.Symlink("real-skills", symlinkTarget); err != nil {
+		t.Fatalf("create target symlink: %v", err)
+	}
+
+	var stdout strings.Builder
+	var stderr strings.Builder
+	code := runInstall([]string{
+		source,
+		"--target", "custom:" + symlinkTarget,
+		"--profile", "strict",
+		"--format", "json",
+	}, &stdout, &stderr)
+	if code != 1 {
+		t.Fatalf("runInstall(symlink target) code = %d, want 1\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("stderr should be empty for json errors, got %q", stderr.String())
+	}
+	if !strings.Contains(stdout.String(), "\"error_code\": \""+installErrorCodeTargetInvalid+"\"") {
+		t.Fatalf("stdout should include target-invalid error code, got %q", stdout.String())
+	}
+	if !strings.Contains(stdout.String(), "\"rule_id\": \""+ruleInstallTargetSymlink+"\"") {
+		t.Fatalf("stdout should include target symlink rule_id, got %q", stdout.String())
+	}
+
+	stdout.Reset()
+	stderr.Reset()
+	code = runInstall([]string{
+		source,
+		"--target", "custom:" + symlinkTarget,
+		"--profile", "strict",
+	}, &stdout, &stderr)
+	if code != 1 {
+		t.Fatalf("runInstall(human symlink target) code = %d, want 1\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
+	}
+	if stdout.Len() != 0 {
+		t.Fatalf("stdout should be empty for human errors, got %q", stdout.String())
+	}
+	if !strings.Contains(stderr.String(), ruleInstallTargetSymlink) {
+		t.Fatalf("stderr should include target symlink rule marker, got %q", stderr.String())
+	}
+}
+
 func TestRunInstallJSONOutput(t *testing.T) {
 	t.Run("json parse error uses machine-readable envelope", func(t *testing.T) {
 		var stdout strings.Builder

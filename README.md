@@ -33,6 +33,7 @@ different-provenance installs. It also supports commit-pinned GitHub sources
 (`github:owner/repo//path@<sha>`) via safe tarball materialization. In JSON
 mode, rejected installs set report `error_code=INSTALL_POLICY_REJECTED`, and
 fatal errors emit a machine-readable error envelope with top-level `error_code`.
+Install and update target roots must not be symlink paths.
 `lock verify` now validates installed files against `gokui.lock`, checks source
 field consistency (including strict GitHub source syntax and commit pinning),
 validates lock/report structural integrity, validates GitHub source metadata
@@ -85,7 +86,7 @@ against a rejected fixture and uploads the SARIF artifact for review.
 `fetch` now supports commit-pinned GitHub sources and materializes them into a
 quarantine output root via `--out`, and records `.gokui-source.json`
 provenance metadata. In JSON mode, fetch failures return `error_code` for
-automation.
+automation. Fetch output roots must not be symlink paths.
 GitHub source syntax is now strictly validated as
 `github:owner/repo//path/to/skill@ref`; `install` requires commit-pinned refs
 for GitHub sources and rejects floating refs. `install` and `update` validate

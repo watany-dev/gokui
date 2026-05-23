@@ -79,6 +79,8 @@ const (
 	updateFatalCodeReportBuild    = "UPDATE_REPORT_BUILD_FAILED"
 )
 
+const ruleUpdateTargetSymlink = "UPDATE_TARGET_SYMLINK_DETECTED"
+
 type updateDiff struct {
 	Added   []string `json:"added"`
 	Removed []string `json:"removed"`
@@ -122,6 +124,20 @@ func runUpdate(args []string, stdout io.Writer, stderr io.Writer) int {
 
 	targetRoot, err := resolveInstallTarget(parsed.Target)
 	if err != nil {
+		if jsonOutput {
+			return writeUpdateJSONError(stdout, stderr, updateErrorReport{
+				SchemaVersion: reportSchemaVersion,
+				Status:        "ERROR",
+				ErrorCode:     updateFatalCodeTargetInvalid,
+				Message:       err.Error(),
+				Target:        parsed.Target,
+				Note:          "update target validation failed",
+			})
+		}
+		_, _ = fmt.Fprintln(stderr, err.Error())
+		return 1
+	}
+	if err := rejectSymlinkPath(targetRoot, "update target root", ruleUpdateTargetSymlink); err != nil {
 		if jsonOutput {
 			return writeUpdateJSONError(stdout, stderr, updateErrorReport{
 				SchemaVersion: reportSchemaVersion,

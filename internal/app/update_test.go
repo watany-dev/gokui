@@ -679,6 +679,51 @@ func TestRunUpdateJSONFatalErrors(t *testing.T) {
 		}
 	})
 
+	t.Run("symlink target root emits machine-readable JSON", func(t *testing.T) {
+		if runtime.GOOS == "windows" {
+			t.Skip("symlink permissions differ on windows")
+		}
+
+		base := t.TempDir()
+		realTarget := filepath.Join(base, "real-skills")
+		if err := os.Mkdir(realTarget, 0o755); err != nil {
+			t.Fatalf("mkdir real target: %v", err)
+		}
+		symlinkTarget := filepath.Join(base, "skills-link")
+		if err := os.Symlink("real-skills", symlinkTarget); err != nil {
+			t.Fatalf("create target symlink: %v", err)
+		}
+
+		var stdout strings.Builder
+		var stderr strings.Builder
+		code := runUpdate([]string{"--dry-run", "--target", "custom:" + symlinkTarget, "--format", "json"}, &stdout, &stderr)
+		if code != 1 {
+			t.Fatalf("runUpdate(json target symlink) code = %d, want 1\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
+		}
+		if stderr.Len() != 0 {
+			t.Fatalf("stderr should be empty for json target errors, got %q", stderr.String())
+		}
+		if !strings.Contains(stdout.String(), "\"error_code\": \""+updateFatalCodeTargetInvalid+"\"") {
+			t.Fatalf("stdout should include target-invalid error code, got %q", stdout.String())
+		}
+		if !strings.Contains(stdout.String(), "\"rule_id\": \""+ruleUpdateTargetSymlink+"\"") {
+			t.Fatalf("stdout should include symlink rule_id, got %q", stdout.String())
+		}
+
+		stdout.Reset()
+		stderr.Reset()
+		code = runUpdate([]string{"--dry-run", "--target", "custom:" + symlinkTarget}, &stdout, &stderr)
+		if code != 1 {
+			t.Fatalf("runUpdate(human target symlink) code = %d, want 1\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
+		}
+		if stdout.Len() != 0 {
+			t.Fatalf("stdout should be empty for human target errors, got %q", stdout.String())
+		}
+		if !strings.Contains(stderr.String(), ruleUpdateTargetSymlink) {
+			t.Fatalf("stderr should include symlink rule marker, got %q", stderr.String())
+		}
+	})
+
 	t.Run("target read failures emit machine-readable JSON", func(t *testing.T) {
 		var stdout strings.Builder
 		var stderr strings.Builder

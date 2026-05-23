@@ -50,6 +50,8 @@ const (
 	fetchErrorCodeMetadataWriteFailed  = "FETCH_SOURCE_METADATA_WRITE_FAILED"
 )
 
+const ruleFetchOutputSymlink = "FETCH_OUTPUT_SYMLINK_DETECTED"
+
 var (
 	fetchSkillAtomicFunc = fetchSkillAtomic
 	writeSourceMetaFunc  = writeSourceMetadata
@@ -181,6 +183,24 @@ func runFetch(args []string, stdout io.Writer, stderr io.Writer) int {
 	}
 
 	outRoot := filepath.Clean(parsed.Out)
+	if err := rejectSymlinkPath(outRoot, "fetch output root", ruleFetchOutputSymlink); err != nil {
+		if jsonOutput {
+			return writeFetchJSONError(stdout, stderr, fetchErrorReport{
+				SchemaVersion: reportSchemaVersion,
+				Status:        "ERROR",
+				ErrorCode:     fetchErrorCodeOutputPrepareFailed,
+				Message:       err.Error(),
+				Source: source{
+					Input: parsed.Source,
+					Kind:  sourceKind,
+				},
+				Output: parsed.Out,
+				Note:   "output root validation failed",
+			})
+		}
+		_, _ = fmt.Fprintln(stderr, err.Error())
+		return 1
+	}
 	if err := os.MkdirAll(outRoot, 0o755); err != nil {
 		if jsonOutput {
 			return writeFetchJSONError(stdout, stderr, fetchErrorReport{
