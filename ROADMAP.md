@@ -11,6 +11,7 @@ tests/CI:
 - CLI commands: `fetch`, `inspect`, `install`, `update --dry-run`, `lock verify`
 - Quarantine-safe archive materialization for inspect/install flows
 - Strict skill frontmatter validation and markdown/script scanning
+- Local-dir inspect source hardening (reject symlinked source roots and symlinked `SKILL.md`)
 - Commit-pinned GitHub source fetch and install/update/verify provenance checks
 - Atomic install with `.gokui-report.json` and `gokui.lock`
 - Lock drift verification with per-check machine-readable codes

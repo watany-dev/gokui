@@ -1210,6 +1210,27 @@ func TestValidateSkillFrontmatter(t *testing.T) {
 			t.Fatalf("expected oversized frontmatter error, got %v", err)
 		}
 	})
+
+	t.Run("rejects symlinked skill file", func(t *testing.T) {
+		if runtime.GOOS == "windows" {
+			t.Skip("symlink permissions differ on windows")
+		}
+
+		base := t.TempDir()
+		target := filepath.Join(base, "real-skill.md")
+		if err := os.WriteFile(target, []byte("---\nname: valid-skill\ndescription: Use when testing symlink rejection.\n---\n"), 0o644); err != nil {
+			t.Fatalf("write real SKILL target: %v", err)
+		}
+		link := filepath.Join(base, "SKILL.md")
+		if err := os.Symlink("real-skill.md", link); err != nil {
+			t.Fatalf("create SKILL.md symlink: %v", err)
+		}
+
+		_, err := validateSkillFrontmatter(link)
+		if err == nil || !strings.Contains(err.Error(), ruleSkillFrontmatterSymlink) {
+			t.Fatalf("expected SKILL symlink rejection, got %v", err)
+		}
+	})
 }
 
 func TestValidateSkillDescriptionPropertyNoPanic(t *testing.T) {
@@ -1253,6 +1274,47 @@ func TestValidateLocalDirInspectSource(t *testing.T) {
 		err := validateLocalDirInspectSource(dir)
 		if err == nil || !strings.Contains(err.Error(), "frontmatter name must match directory name") {
 			t.Fatalf("expected directory mismatch error, got %v", err)
+		}
+	})
+
+	t.Run("rejects source directory symlink", func(t *testing.T) {
+		if runtime.GOOS == "windows" {
+			t.Skip("symlink permissions differ on windows")
+		}
+
+		target := writeSkillDir(t, "target-skill", "---\nname: target-skill\ndescription: Use when testing source symlink rejection.\n---\n")
+		link := filepath.Join(t.TempDir(), "skill-link")
+		if err := os.Symlink(target, link); err != nil {
+			t.Fatalf("create source symlink: %v", err)
+		}
+
+		err := validateLocalDirInspectSource(link)
+		if err == nil || !strings.Contains(err.Error(), ruleInspectSourceSymlink) {
+			t.Fatalf("expected source symlink rejection, got %v", err)
+		}
+	})
+
+	t.Run("rejects symlinked SKILL.md in source directory", func(t *testing.T) {
+		if runtime.GOOS == "windows" {
+			t.Skip("symlink permissions differ on windows")
+		}
+
+		base := t.TempDir()
+		dir := filepath.Join(base, "symlinked-skill")
+		if err := os.Mkdir(dir, 0o755); err != nil {
+			t.Fatalf("mkdir skill dir: %v", err)
+		}
+		target := filepath.Join(base, "real-skill.md")
+		if err := os.WriteFile(target, []byte("---\nname: symlinked-skill\ndescription: Use when testing SKILL symlink rejection.\n---\n"), 0o644); err != nil {
+			t.Fatalf("write real SKILL target: %v", err)
+		}
+		if err := os.Symlink("../real-skill.md", filepath.Join(dir, "SKILL.md")); err != nil {
+			t.Fatalf("create SKILL.md symlink: %v", err)
+		}
+
+		err := validateLocalDirInspectSource(dir)
+		if err == nil || !strings.Contains(err.Error(), ruleSkillFrontmatterSymlink) {
+			t.Fatalf("expected SKILL symlink rejection, got %v", err)
 		}
 	})
 }

@@ -139,6 +139,10 @@ var (
 )
 
 const ruleSkillFrontmatterTooLarge = "SKILL_FRONTMATTER_TOO_LARGE"
+const (
+	ruleInspectSourceSymlink    = "INSPECT_SOURCE_SYMLINK_DETECTED"
+	ruleSkillFrontmatterSymlink = "SKILL_FRONTMATTER_SYMLINK_DETECTED"
+)
 
 const (
 	descriptionToolInjectionRuleID      = "DESCRIPTION_TOOL_INJECTION"
@@ -678,18 +682,24 @@ func detectSourceKind(input string) string {
 }
 
 func validateLocalDirInspectSource(input string) error {
-	info, err := os.Stat(input)
-	if err != nil {
+	info, lstatErr := os.Lstat(input)
+	if lstatErr != nil {
 		return fmt.Errorf("inspect source not found: %s", input)
+	}
+	if info.Mode()&os.ModeSymlink != 0 {
+		return fmt.Errorf("%s: inspect local source must not be a symlink: %s", ruleInspectSourceSymlink, input)
 	}
 	if !info.IsDir() {
 		return fmt.Errorf("inspect local source must be a directory: %s", input)
 	}
 
 	skillPath := filepath.Join(input, "SKILL.md")
-	skillInfo, skillErr := os.Stat(skillPath)
+	skillInfo, skillErr := os.Lstat(skillPath)
 	if skillErr != nil || skillInfo.IsDir() {
 		return fmt.Errorf("inspect local dir must contain SKILL.md at root: %s", input)
+	}
+	if skillInfo.Mode()&os.ModeSymlink != 0 {
+		return fmt.Errorf("%s: inspect local source SKILL.md must not be a symlink: %s", ruleSkillFrontmatterSymlink, skillPath)
 	}
 
 	meta, err := validateSkillFrontmatter(skillPath)
@@ -706,9 +716,12 @@ func validateLocalDirInspectSource(input string) error {
 }
 
 func validateSkillFrontmatter(skillPath string) (skillFrontmatter, error) {
-	info, statErr := os.Stat(skillPath)
+	info, statErr := os.Lstat(skillPath)
 	if statErr != nil {
 		return skillFrontmatter{}, fmt.Errorf("failed to read SKILL.md: %s", skillPath)
+	}
+	if info.Mode()&os.ModeSymlink != 0 {
+		return skillFrontmatter{}, fmt.Errorf("%s: SKILL.md must not be a symlink: %s", ruleSkillFrontmatterSymlink, skillPath)
 	}
 	if info.Size() > maxSkillFrontmatterBytes {
 		return skillFrontmatter{}, fmt.Errorf("%s: SKILL.md exceeds size limit: %s", ruleSkillFrontmatterTooLarge, skillPath)
