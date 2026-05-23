@@ -475,23 +475,32 @@ func TestRunInstallJSONOutput(t *testing.T) {
 			}
 		})
 
-		metaSource := createSkillSourceForInstallTest(t, "json-meta-invalid")
-		if err := writeSourceMetadata(metaSource, sourceMetadata{
-			Schema:          "gokui.source/v1",
-			SourceInput:     "github:org/repo//skills/json-meta-invalid@8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
-			SourceKind:      "github-source",
-			ResolvedRef:     "8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
-			FetchedAt:       "2026-05-23T00:00:00Z",
-			SkillRootSHA256: strings.Repeat("0", 64),
-		}); err != nil {
-			t.Fatalf("writeSourceMetadata() error = %v", err)
-		}
-		assertJSONErrorCode(t, []string{
-			metaSource,
-			"--target", "custom:" + filepath.Join(t.TempDir(), "skills"),
-			"--profile", "strict",
-			"--format", "json",
-		}, installErrorCodeSourceMetadataFailed)
+		t.Run("source metadata validation failure for github source", func(t *testing.T) {
+			metaSource := createSkillSourceForInstallTest(t, "json-meta-invalid")
+			if err := writeSourceMetadata(metaSource, sourceMetadata{
+				Schema:          "gokui.source/v1",
+				SourceInput:     "github:org/repo//skills/json-meta-invalid@8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
+				SourceKind:      "github-source",
+				ResolvedRef:     "8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
+				FetchedAt:       "2026-05-23T00:00:00Z",
+				SkillRootSHA256: strings.Repeat("0", 64),
+			}); err != nil {
+				t.Fatalf("writeSourceMetadata() error = %v", err)
+			}
+
+			origFetch := fetchGitHubSkill
+			t.Cleanup(func() { fetchGitHubSkill = origFetch })
+			fetchGitHubSkill = func(spec srcpkg.GitHubSpec) (string, func(), error) {
+				return metaSource, nil, nil
+			}
+
+			assertJSONErrorCode(t, []string{
+				"github:org/repo//skills/json-meta-invalid@8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
+				"--target", "custom:" + filepath.Join(t.TempDir(), "skills"),
+				"--profile", "strict",
+				"--format", "json",
+			}, installErrorCodeSourceMetadataFailed)
+		})
 
 		assertJSONErrorCode(t, []string{
 			source,
@@ -717,7 +726,7 @@ func TestInstallSkillAtomicRejectsDifferentProvenance(t *testing.T) {
 }
 
 func TestInstallUsesAndValidatesSourceMetadata(t *testing.T) {
-	t.Run("install lock source follows fetched metadata", func(t *testing.T) {
+	t.Run("local install does not trust embedded source metadata", func(t *testing.T) {
 		src := createSkillSourceForInstallTest(t, "meta-skill")
 		_, rootHash, err := buildFileDigestsFiltered(src, map[string]struct{}{
 			sourceMetadataFile: {},
@@ -755,15 +764,15 @@ func TestInstallUsesAndValidatesSourceMetadata(t *testing.T) {
 		if err := json.Unmarshal(lockRaw, &lock); err != nil {
 			t.Fatalf("unmarshal lock: %v", err)
 		}
-		if lock.Source.Kind != "github-source" {
-			t.Fatalf("lock source kind = %q, want github-source", lock.Source.Kind)
+		if lock.Source.Kind != "local-dir" {
+			t.Fatalf("lock source kind = %q, want local-dir", lock.Source.Kind)
 		}
-		if lock.Source.Input != "github:org/repo//skills/meta-skill@8f3c2d1a4b5c6d7e8f901234567890abcdef1234" {
+		if lock.Source.Input != src {
 			t.Fatalf("lock source input = %q", lock.Source.Input)
 		}
 	})
 
-	t.Run("install rejects mismatched source metadata hash", func(t *testing.T) {
+	t.Run("github install rejects mismatched source metadata hash", func(t *testing.T) {
 		src := createSkillSourceForInstallTest(t, "bad-meta-skill")
 		if err := writeSourceMetadata(src, sourceMetadata{
 			Schema:          "gokui.source/v1",
@@ -776,9 +785,15 @@ func TestInstallUsesAndValidatesSourceMetadata(t *testing.T) {
 			t.Fatalf("writeSourceMetadata() error = %v", err)
 		}
 
+		origFetch := fetchGitHubSkill
+		t.Cleanup(func() { fetchGitHubSkill = origFetch })
+		fetchGitHubSkill = func(spec srcpkg.GitHubSpec) (string, func(), error) {
+			return src, nil, nil
+		}
+
 		var stdout strings.Builder
 		var stderr strings.Builder
-		code := runInstall([]string{src, "--target", "custom:" + filepath.Join(t.TempDir(), "skills"), "--profile", "strict"}, &stdout, &stderr)
+		code := runInstall([]string{"github:org/repo//skills/bad-meta-skill@8f3c2d1a4b5c6d7e8f901234567890abcdef1234", "--target", "custom:" + filepath.Join(t.TempDir(), "skills"), "--profile", "strict"}, &stdout, &stderr)
 		if code != 1 {
 			t.Fatalf("runInstall() code = %d, want 1", code)
 		}

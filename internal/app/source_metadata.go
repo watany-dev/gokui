@@ -96,12 +96,22 @@ func validateSourceMetadata(meta sourceMetadata) error {
 }
 
 func resolveSourceForInstall(skillRoot string, fallbackInput string, fallbackKind string) (source, error) {
+	// Only GitHub-origin installs should consume .gokui-source.json provenance.
+	// For local/archive inputs, metadata files inside untrusted bundles must not
+	// override the user-provided source identity.
+	if fallbackKind != "github-source" {
+		return source{Input: fallbackInput, Kind: fallbackKind}, nil
+	}
+
 	meta, ok, err := readSourceMetadata(skillRoot)
 	if err != nil {
 		return source{}, err
 	}
 	if !ok {
 		return source{Input: fallbackInput, Kind: fallbackKind}, nil
+	}
+	if meta.SourceInput != fallbackInput || meta.SourceKind != fallbackKind {
+		return source{}, fmt.Errorf("source metadata mismatch with install source")
 	}
 
 	_, actualRoot, err := buildFileDigestsFiltered(skillRoot, map[string]struct{}{

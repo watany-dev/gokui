@@ -6,6 +6,7 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"testing/quick"
 )
 
 func TestSourceMetadataHelpers(t *testing.T) {
@@ -40,12 +41,26 @@ func TestSourceMetadataHelpers(t *testing.T) {
 			t.Fatalf("source_input = %q", got.SourceInput)
 		}
 
+		// Local installs must ignore embedded source metadata.
 		resolved, err := resolveSourceForInstall(skillRoot, skillRoot, "local-dir")
 		if err != nil {
 			t.Fatalf("resolveSourceForInstall() error = %v", err)
 		}
-		if resolved.Kind != "github-source" {
-			t.Fatalf("resolved kind = %q", resolved.Kind)
+		if resolved.Kind != "local-dir" || resolved.Input != skillRoot {
+			t.Fatalf("resolved source = %+v", resolved)
+		}
+
+		// GitHub installs may consume metadata only when it matches source input.
+		resolved, err = resolveSourceForInstall(skillRoot, meta.SourceInput, "github-source")
+		if err != nil {
+			t.Fatalf("resolveSourceForInstall(github) error = %v", err)
+		}
+		if resolved.Kind != "github-source" || resolved.Input != meta.SourceInput {
+			t.Fatalf("resolved github source = %+v", resolved)
+		}
+
+		if _, err := resolveSourceForInstall(skillRoot, "github:org/repo//skills/other@8f3c2d1a4b5c6d7e8f901234567890abcdef1234", "github-source"); err == nil || !strings.Contains(err.Error(), "mismatch with install source") {
+			t.Fatalf("expected metadata/source mismatch error, got %v", err)
 		}
 	})
 
@@ -158,6 +173,21 @@ func TestSourceMetadataHelpers(t *testing.T) {
 		}
 	})
 
+	t.Run("validate metadata never panics on random inputs", func(t *testing.T) {
+		prop := func(meta sourceMetadata) (ok bool) {
+			defer func() {
+				if recover() != nil {
+					ok = false
+				}
+			}()
+			_ = validateSourceMetadata(meta)
+			return true
+		}
+		if err := quick.Check(prop, &quick.Config{MaxCount: 500}); err != nil {
+			t.Fatalf("validateSourceMetadata panic-safety property failed: %v", err)
+		}
+	})
+
 	t.Run("verify installed metadata errors", func(t *testing.T) {
 		dir := t.TempDir()
 		if err := verifyInstalledSourceMetadata(dir, source{Input: "x", Kind: "github-source"}); err == nil {
@@ -265,8 +295,10 @@ func TestSourceMetadataHelpers(t *testing.T) {
 		if err := os.Mkdir(filepath.Join(skillRoot, sourceMetadataFile), 0o755); err != nil {
 			t.Fatalf("mkdir metadata dir: %v", err)
 		}
-		if _, err := resolveSourceForInstall(skillRoot, skillRoot, "local-dir"); err == nil {
-			t.Fatal("expected read metadata error")
+		if resolved, err := resolveSourceForInstall(skillRoot, skillRoot, "local-dir"); err != nil {
+			t.Fatalf("local resolve should ignore metadata, got err=%v", err)
+		} else if resolved.Kind != "local-dir" || resolved.Input != skillRoot {
+			t.Fatalf("unexpected local resolve result: %+v", resolved)
 		}
 
 		if runtime.GOOS != "windows" {
@@ -295,7 +327,7 @@ func TestSourceMetadataHelpers(t *testing.T) {
 				t.Fatalf("chmod blocked file: %v", err)
 			}
 			defer os.Chmod(blocked, 0o644)
-			if _, err := resolveSourceForInstall(digestErrRoot, digestErrRoot, "local-dir"); err == nil {
+			if _, err := resolveSourceForInstall(digestErrRoot, "github:org/repo//skills/resolve-digest-error@8f3c2d1a4b5c6d7e8f901234567890abcdef1234", "github-source"); err == nil {
 				t.Fatal("expected digest error while resolving source metadata")
 			}
 		}
