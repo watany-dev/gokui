@@ -59,6 +59,8 @@ critical findings.
 critical.
 Writes to shell rc, SSH config, cron, or launch-agent configuration paths are
 now flagged as high severity.
+Secret-path access combined with network exfiltration commands is now flagged
+as critical.
 Unicode Tags, bidi controls, variation selectors, and ANSI/OSC escapes in
 scanned text are now flagged as critical. Zero-width and disallowed C0/C1
 control characters are also flagged as critical findings.

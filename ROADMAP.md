@@ -34,6 +34,7 @@ tests/CI:
 - critical detection of hex decode pipelines into interpreter execution
 - critical detection of PowerShell encoded-command execution flags
 - critical detection of chmod-then-execute local artifact chains
+- critical detection of secret-path reads combined with network exfiltration
 - medium-severity detection of NFKC normalization text drift with normalized rescanning
 - medium-severity detection of mixed-script filename patterns
 - high-severity detection of password-protected archive instructions
