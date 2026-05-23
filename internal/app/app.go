@@ -2,6 +2,7 @@ package app
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -138,6 +139,7 @@ var (
 	ruleIDAnywherePattern            = regexp.MustCompile(`(?:^|[^A-Z0-9_])([A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+):\s`)
 	errorCodePattern                 = regexp.MustCompile(`^[A-Z0-9_]+$`)
 	maxSkillFrontmatterBytes   int64 = 1_000_000
+	errInspectSourceNotFound         = errors.New("inspect source not found")
 )
 
 const ruleSkillFrontmatterTooLarge = "SKILL_FRONTMATTER_TOO_LARGE"
@@ -342,7 +344,7 @@ func runInspect(args []string, stdout io.Writer, stderr io.Writer) int {
 		if validateErr != nil {
 			if jsonOutput {
 				errorCode := inspectErrorCodeSourcePrepareFailed
-				if strings.Contains(validateErr.Error(), "inspect source not found") {
+				if isInspectSourceNotFoundError(validateErr) {
 					errorCode = inspectErrorCodeSourceNotFound
 				}
 				return writeInspectJSONError(stdout, stderr, inspectErrorReport{
@@ -716,7 +718,7 @@ func validateLocalDirInspectSource(input string) error {
 	}
 	info, lstatErr := os.Lstat(input)
 	if lstatErr != nil {
-		return fmt.Errorf("inspect source not found: %s", input)
+		return fmt.Errorf("%w: %s", errInspectSourceNotFound, input)
 	}
 	if info.Mode()&os.ModeSymlink != 0 {
 		return fmt.Errorf("%s: inspect local source must not be a symlink: %s", ruleInspectSourceSymlink, input)
@@ -748,6 +750,10 @@ func validateLocalDirInspectSource(input string) error {
 	}
 
 	return nil
+}
+
+func isInspectSourceNotFoundError(err error) bool {
+	return errors.Is(err, errInspectSourceNotFound)
 }
 
 func validateSkillFrontmatter(skillPath string) (skillFrontmatter, error) {
