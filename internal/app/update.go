@@ -35,13 +35,13 @@ type updateSkillItem struct {
 	Path               string           `json:"path"`
 	Source             source           `json:"source"`
 	Status             string           `json:"status"`
-	Decision           string           `json:"decision,omitempty"`
+	Decision           string           `json:"decision"`
 	Diff               updateDiff       `json:"diff"`
 	Risk               updateRisk       `json:"risk"`
-	NewURLs            []string         `json:"new_urls,omitempty"`
-	NewExecutableFiles []string         `json:"new_executable_files,omitempty"`
-	Findings           []inspectFinding `json:"findings,omitempty"`
-	Message            string           `json:"message,omitempty"`
+	NewURLs            []string         `json:"new_urls"`
+	NewExecutableFiles []string         `json:"new_executable_files"`
+	Findings           []inspectFinding `json:"findings"`
+	Message            string           `json:"message"`
 }
 
 type updateDiff struct {

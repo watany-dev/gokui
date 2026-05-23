@@ -36,7 +36,8 @@ integrity, and reports drift
 `update --dry-run` now re-evaluates installed skills from lockfile source
 provenance for local-dir/zip/tar sources, reports added/removed/changed files,
 risk deltas, and new URL/executable signals. For GitHub sources, commit-pinned
-refs are evaluated and floating refs are rejected.
+refs are evaluated and floating refs are rejected. JSON output now emits stable
+skill-item keys for automation-friendly parsing.
 `fetch` now supports commit-pinned GitHub sources and materializes them into a
 quarantine output root via `--out`, and records `.gokui-source.json`
 provenance metadata.

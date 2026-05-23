@@ -144,6 +144,75 @@ func TestRunUpdateDryRunStatuses(t *testing.T) {
 	}
 }
 
+func TestRunUpdateJSONContractHasStableKeys(t *testing.T) {
+	targetRoot := filepath.Join(t.TempDir(), "skills")
+	if err := os.MkdirAll(targetRoot, 0o755); err != nil {
+		t.Fatalf("mkdir target root: %v", err)
+	}
+
+	src := createSkillSourceForInstallTest(t, "json-contract-skill")
+	report := installReport{
+		SchemaVersion: "0.1.0-draft",
+		Source:        source{Input: src, Kind: "local-dir"},
+		PolicyProfile: "strict",
+		Decision:      "PASS",
+	}
+	if _, _, err := installSkillAtomic(src, targetRoot, "json-contract-skill", report); err != nil {
+		t.Fatalf("installSkillAtomic() error = %v", err)
+	}
+
+	// Add a broken skill directory to force an ERROR item shape too.
+	if err := os.MkdirAll(filepath.Join(targetRoot, "broken-json-contract"), 0o755); err != nil {
+		t.Fatalf("mkdir broken skill dir: %v", err)
+	}
+
+	var stdout strings.Builder
+	var stderr strings.Builder
+	code := runUpdate([]string{"--dry-run", "--target", "custom:" + targetRoot, "--format", "json"}, &stdout, &stderr)
+	if code != 1 {
+		t.Fatalf("runUpdate(json contract) code = %d, want 1\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("stderr should be empty, got %q", stderr.String())
+	}
+
+	var top map[string]json.RawMessage
+	if err := json.Unmarshal([]byte(stdout.String()), &top); err != nil {
+		t.Fatalf("json unmarshal top-level: %v", err)
+	}
+	assertJSONHasKeys(t, top, []string{
+		"schema_version",
+		"target",
+		"dry_run",
+		"skills",
+		"summary",
+		"note",
+	})
+
+	var skills []map[string]json.RawMessage
+	if err := json.Unmarshal(top["skills"], &skills); err != nil {
+		t.Fatalf("json unmarshal skills: %v", err)
+	}
+	if len(skills) != 2 {
+		t.Fatalf("skills length = %d, want 2", len(skills))
+	}
+	for _, skill := range skills {
+		assertJSONHasKeys(t, skill, []string{
+			"name",
+			"path",
+			"source",
+			"status",
+			"decision",
+			"diff",
+			"risk",
+			"new_urls",
+			"new_executable_files",
+			"findings",
+			"message",
+		})
+	}
+}
+
 func TestRunUpdateDryRunRejectedAndError(t *testing.T) {
 	t.Run("rejected source returns exit code 2", func(t *testing.T) {
 		targetRoot := filepath.Join(t.TempDir(), "skills")
@@ -382,6 +451,15 @@ func TestRunUpdateDryRunRejectedAndError(t *testing.T) {
 			t.Fatalf("stdout should include ERROR status, got %q", stdout.String())
 		}
 	})
+}
+
+func assertJSONHasKeys(t *testing.T, obj map[string]json.RawMessage, keys []string) {
+	t.Helper()
+	for _, key := range keys {
+		if _, ok := obj[key]; !ok {
+			t.Fatalf("missing json key %q in object: %+v", key, obj)
+		}
+	}
 }
 
 func TestRunUpdateHumanOutputAndRiskDelta(t *testing.T) {
