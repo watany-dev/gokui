@@ -864,6 +864,24 @@ func isUnpinnedRuntimeToolLine(line string) bool {
 			if isUnpinnedPackageRef(packageRef) {
 				return true
 			}
+		case "npm":
+			subcommand, subcommandIndex, ok := nextNonFlagFieldWithIndex(fields, i+1)
+			if !ok || subcommand != "exec" {
+				continue
+			}
+			packageRef, ok := nextNonFlagField(fields, subcommandIndex+1)
+			if !ok {
+				continue
+			}
+			if packageRef == "--" {
+				packageRef, ok = nextNonFlagField(fields, subcommandIndex+2)
+				if !ok {
+					continue
+				}
+			}
+			if isUnpinnedPackageRef(packageRef) {
+				return true
+			}
 		case "go":
 			if i+2 >= len(fields) || fields[i+1] != "run" {
 				continue
