@@ -16,7 +16,9 @@ const (
 	maxGitHubArchiveBytes    = 100 * 1024 * 1024
 	ruleGitHubArchiveScheme  = "GITHUB_ARCHIVE_SCHEME_INVALID"
 	ruleGitHubRedirectHost   = "GITHUB_ARCHIVE_REDIRECT_HOST_MISMATCH"
+	ruleGitHubRedirectPort   = "GITHUB_ARCHIVE_REDIRECT_PORT_MISMATCH"
 	ruleGitHubRedirectScheme = "GITHUB_ARCHIVE_REDIRECT_SCHEME_INVALID"
+	ruleGitHubRedirectAuth   = "GITHUB_ARCHIVE_REDIRECT_USERINFO_DISALLOWED"
 )
 
 var (
@@ -98,6 +100,7 @@ func downloadGitHubArchive(spec GitHubSpec, archivePath string) error {
 	}
 	expectedHost := req.URL.Hostname()
 	expectedScheme := req.URL.Scheme
+	expectedPort := normalizePortForScheme(expectedScheme, req.URL.Port())
 
 	client := *githubHTTPClient
 	previousCheckRedirect := client.CheckRedirect
@@ -105,8 +108,15 @@ func downloadGitHubArchive(spec GitHubSpec, archivePath string) error {
 		if !strings.EqualFold(next.URL.Scheme, expectedScheme) {
 			return fmt.Errorf("%s: github archive redirected to unexpected scheme: %s", ruleGitHubRedirectScheme, next.URL.Scheme)
 		}
+		if next.URL.User != nil {
+			return fmt.Errorf("%s: github archive redirected with disallowed userinfo", ruleGitHubRedirectAuth)
+		}
 		if !strings.EqualFold(next.URL.Hostname(), expectedHost) {
 			return fmt.Errorf("%s: github archive redirected to unexpected host: %s", ruleGitHubRedirectHost, next.URL.Hostname())
+		}
+		nextPort := normalizePortForScheme(next.URL.Scheme, next.URL.Port())
+		if expectedPort != nextPort {
+			return fmt.Errorf("%s: github archive redirected to unexpected port: %s", ruleGitHubRedirectPort, next.URL.Port())
 		}
 		if previousCheckRedirect != nil {
 			return previousCheckRedirect(next, via)
@@ -157,4 +167,18 @@ func detectSingleTopLevelDirectory(root string) (string, error) {
 		return "", fmt.Errorf("github archive must contain a single top-level directory")
 	}
 	return filepath.Join(root, entries[0].Name()), nil
+}
+
+func normalizePortForScheme(scheme string, rawPort string) string {
+	if rawPort != "" {
+		return rawPort
+	}
+	switch strings.ToLower(scheme) {
+	case "https":
+		return "443"
+	case "http":
+		return "80"
+	default:
+		return ""
+	}
 }

@@ -321,6 +321,77 @@ func TestFetchGitHubSkillErrors(t *testing.T) {
 		}
 	})
 
+	t.Run("downloadGitHubArchive rejects redirect to different port on same host", func(t *testing.T) {
+		spec := GitHubSpec{Owner: "o", Repo: "r", Path: "skills/x", Ref: "8f3c2d1a4b5c6d7e8f901234567890abcdef1234"}
+		githubCodeloadBaseURL = "https://mock.codeload.local"
+		githubHTTPClient = &http.Client{
+			Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+				switch req.URL.Path {
+				case "/o/r/tar.gz/8f3c2d1a4b5c6d7e8f901234567890abcdef1234":
+					resp := httpResponse(http.StatusFound, []byte("redirect"))
+					resp.Header.Set("Location", "https://mock.codeload.local:4443/redirected/archive.tar.gz")
+					return resp, nil
+				case "/redirected/archive.tar.gz":
+					return httpResponse(http.StatusOK, []byte("ok")), nil
+				default:
+					return httpResponse(http.StatusNotFound, []byte("not found")), nil
+				}
+			}),
+		}
+
+		err := downloadGitHubArchive(spec, filepath.Join(t.TempDir(), "archive.tar.gz"))
+		if err == nil || !strings.Contains(err.Error(), ruleGitHubRedirectPort) {
+			t.Fatalf("expected redirect-port mismatch error, got %v", err)
+		}
+	})
+
+	t.Run("downloadGitHubArchive rejects redirect with userinfo", func(t *testing.T) {
+		spec := GitHubSpec{Owner: "o", Repo: "r", Path: "skills/x", Ref: "8f3c2d1a4b5c6d7e8f901234567890abcdef1234"}
+		githubCodeloadBaseURL = "https://mock.codeload.local"
+		githubHTTPClient = &http.Client{
+			Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+				switch req.URL.Path {
+				case "/o/r/tar.gz/8f3c2d1a4b5c6d7e8f901234567890abcdef1234":
+					resp := httpResponse(http.StatusFound, []byte("redirect"))
+					resp.Header.Set("Location", "https://user:pass@mock.codeload.local/redirected/archive.tar.gz")
+					return resp, nil
+				case "/redirected/archive.tar.gz":
+					return httpResponse(http.StatusOK, []byte("ok")), nil
+				default:
+					return httpResponse(http.StatusNotFound, []byte("not found")), nil
+				}
+			}),
+		}
+
+		err := downloadGitHubArchive(spec, filepath.Join(t.TempDir(), "archive.tar.gz"))
+		if err == nil || !strings.Contains(err.Error(), ruleGitHubRedirectAuth) {
+			t.Fatalf("expected redirect-userinfo disallowed error, got %v", err)
+		}
+	})
+
+	t.Run("downloadGitHubArchive allows explicit default-port redirect", func(t *testing.T) {
+		spec := GitHubSpec{Owner: "o", Repo: "r", Path: "skills/x", Ref: "8f3c2d1a4b5c6d7e8f901234567890abcdef1234"}
+		githubCodeloadBaseURL = "https://mock.codeload.local"
+		githubHTTPClient = &http.Client{
+			Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+				switch req.URL.Path {
+				case "/o/r/tar.gz/8f3c2d1a4b5c6d7e8f901234567890abcdef1234":
+					resp := httpResponse(http.StatusFound, []byte("redirect"))
+					resp.Header.Set("Location", "https://mock.codeload.local:443/redirected/archive.tar.gz")
+					return resp, nil
+				case "/redirected/archive.tar.gz":
+					return httpResponse(http.StatusOK, []byte("ok")), nil
+				default:
+					return httpResponse(http.StatusNotFound, []byte("not found")), nil
+				}
+			}),
+		}
+
+		if err := downloadGitHubArchive(spec, filepath.Join(t.TempDir(), "archive.tar.gz")); err != nil {
+			t.Fatalf("expected same-host default-port redirect success, got %v", err)
+		}
+	})
+
 	t.Run("detectSingleTopLevelDirectory handles read error", func(t *testing.T) {
 		_, err := detectSingleTopLevelDirectory(filepath.Join(t.TempDir(), "missing"))
 		if err == nil || !strings.Contains(err.Error(), "failed to read extracted github archive") {
@@ -335,6 +406,28 @@ func TestGitHubHTTPClientDefaultTimeout(t *testing.T) {
 	}
 	if githubHTTPClient.Timeout != 30*time.Second {
 		t.Fatalf("githubHTTPClient timeout = %v, want %v", githubHTTPClient.Timeout, 30*time.Second)
+	}
+}
+
+func TestNormalizePortForScheme(t *testing.T) {
+	tests := []struct {
+		name     string
+		scheme   string
+		rawPort  string
+		expected string
+	}{
+		{name: "explicit port unchanged", scheme: "https", rawPort: "4443", expected: "4443"},
+		{name: "https default port", scheme: "https", rawPort: "", expected: "443"},
+		{name: "http default port", scheme: "http", rawPort: "", expected: "80"},
+		{name: "case-insensitive scheme", scheme: "HTTPS", rawPort: "", expected: "443"},
+		{name: "unknown scheme no default", scheme: "ftp", rawPort: "", expected: ""},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := normalizePortForScheme(tc.scheme, tc.rawPort); got != tc.expected {
+				t.Fatalf("normalizePortForScheme(%q, %q) = %q, want %q", tc.scheme, tc.rawPort, got, tc.expected)
+			}
+		})
 	}
 }
 

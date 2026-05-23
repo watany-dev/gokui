@@ -92,6 +92,8 @@ against a rejected fixture and uploads the SARIF artifact for review.
 quarantine output root via `--out`, and records `.gokui-source.json`
 provenance metadata. In JSON mode, fetch failures return `error_code` for
 automation. Fetch output roots and output entries must not be symlink paths.
+GitHub archive downloads also enforce redirect safety constraints (HTTPS only,
+same host and port, and no redirect userinfo).
 GitHub source syntax is now strictly validated as
 `github:owner/repo//path/to/skill@ref`; `install` requires commit-pinned refs
 for GitHub sources and rejects floating refs. `install` and `update` validate
