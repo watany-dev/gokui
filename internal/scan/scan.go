@@ -9,6 +9,7 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"unicode"
 )
 
 const maxScanFileBytes = 500_000
@@ -90,12 +91,14 @@ func ScanSkillRoot(skillRoot string) ([]Finding, error) {
 
 	findings := make([]Finding, 0)
 	for _, target := range targets {
+		findings = append(findings, classifyPathRisks(target.Relative)...)
 		fileFindings, err := scanTextFile(target)
 		if err != nil {
 			return nil, err
 		}
 		findings = append(findings, fileFindings...)
 	}
+	findings = deduplicateFindings(findings)
 
 	sort.Slice(findings, func(i, j int) bool {
 		if findings[i].File != findings[j].File {
@@ -111,6 +114,69 @@ func ScanSkillRoot(skillRoot string) ([]Finding, error) {
 	})
 
 	return findings, nil
+}
+
+func classifyPathRisks(relPath string) []Finding {
+	name := filepath.Base(relPath)
+	stem := strings.TrimSuffix(name, filepath.Ext(name))
+	if stem == "" {
+		stem = name
+	}
+	if !hasMixedScriptLetters(stem) {
+		return nil
+	}
+	return []Finding{
+		{
+			ID:       "MIXED_SCRIPT_FILENAME",
+			Severity: "medium",
+			File:     filepath.ToSlash(relPath),
+			Line:     1,
+			Summary:  "filename contains mixed writing scripts",
+		},
+	}
+}
+
+func hasMixedScriptLetters(name string) bool {
+	scripts := make(map[string]struct{}, 2)
+	for _, r := range name {
+		if !unicode.IsLetter(r) {
+			continue
+		}
+		if script, ok := runeScriptGroup(r); ok {
+			scripts[script] = struct{}{}
+			if len(scripts) > 1 {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func runeScriptGroup(r rune) (string, bool) {
+	switch {
+	case unicode.In(r, unicode.Latin):
+		return "Latin", true
+	case unicode.In(r, unicode.Cyrillic):
+		return "Cyrillic", true
+	case unicode.In(r, unicode.Greek):
+		return "Greek", true
+	case unicode.In(r, unicode.Han):
+		return "Han", true
+	case unicode.In(r, unicode.Hiragana):
+		return "Hiragana", true
+	case unicode.In(r, unicode.Katakana):
+		return "Katakana", true
+	case unicode.In(r, unicode.Hangul):
+		return "Hangul", true
+	case unicode.In(r, unicode.Arabic):
+		return "Arabic", true
+	case unicode.In(r, unicode.Hebrew):
+		return "Hebrew", true
+	case unicode.In(r, unicode.Devanagari):
+		return "Devanagari", true
+	default:
+		return "", false
+	}
 }
 
 func scanTargets(skillRoot string) ([]scanTarget, error) {

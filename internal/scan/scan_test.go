@@ -162,6 +162,73 @@ func TestClassifyMarkdownLinkSpoofing(t *testing.T) {
 	})
 }
 
+func TestClassifyPathRisks(t *testing.T) {
+	t.Run("detects mixed script letters in filename", func(t *testing.T) {
+		findings := classifyPathRisks("docs/pay\u0440al.md")
+		assertHasID(t, findings, "MIXED_SCRIPT_FILENAME")
+		if findings[0].Severity != "medium" {
+			t.Fatalf("expected medium severity, got %q", findings[0].Severity)
+		}
+	})
+
+	t.Run("ignores single script or non-letter separators", func(t *testing.T) {
+		cases := []string{
+			"docs/paypal.md",
+			"docs/\u0442\u0435\u0441\u0442.md",
+			"docs/123-test.md",
+			"docs/.\u0442\u0435\u0441\u0442",
+		}
+		for _, path := range cases {
+			if findings := classifyPathRisks(path); len(findings) != 0 {
+				t.Fatalf("expected no findings for %q, got %+v", path, findings)
+			}
+		}
+	})
+}
+
+func TestRuneScriptGroup(t *testing.T) {
+	cases := []struct {
+		name   string
+		r      rune
+		want   string
+		wantOK bool
+	}{
+		{name: "latin", r: 'a', want: "Latin", wantOK: true},
+		{name: "cyrillic", r: '\u0436', want: "Cyrillic", wantOK: true},
+		{name: "greek", r: '\u03bb', want: "Greek", wantOK: true},
+		{name: "han", r: '\u6f22', want: "Han", wantOK: true},
+		{name: "hiragana", r: '\u3042', want: "Hiragana", wantOK: true},
+		{name: "katakana", r: '\u30ab', want: "Katakana", wantOK: true},
+		{name: "hangul", r: '\ud55c', want: "Hangul", wantOK: true},
+		{name: "arabic", r: '\u0639', want: "Arabic", wantOK: true},
+		{name: "hebrew", r: '\u05d0', want: "Hebrew", wantOK: true},
+		{name: "devanagari", r: '\u0905', want: "Devanagari", wantOK: true},
+		{name: "unknown", r: '\u0e01', want: "", wantOK: false},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got, ok := runeScriptGroup(tc.r)
+			if got != tc.want || ok != tc.wantOK {
+				t.Fatalf("runeScriptGroup(%U) = (%q, %v), want (%q, %v)", tc.r, got, ok, tc.want, tc.wantOK)
+			}
+		})
+	}
+}
+
+func TestScanSkillRootMixedScriptFilename(t *testing.T) {
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "pay\u0440al.md"), []byte("# harmless"), 0o644); err != nil {
+		t.Fatalf("write mixed-script file: %v", err)
+	}
+
+	findings, err := ScanSkillRoot(root)
+	if err != nil {
+		t.Fatalf("ScanSkillRoot() error = %v", err)
+	}
+	assertHasID(t, findings, "MIXED_SCRIPT_FILENAME")
+}
+
 func TestPasswordProtectedArchivePattern(t *testing.T) {
 	cases := []struct {
 		line string
