@@ -15,6 +15,8 @@ import (
 
 var updateURLPattern = regexp.MustCompile(`https?://[^\s<>"')\]]+`)
 
+const maxUpdateURLScanFileBytes = 1_000_000
+
 type updateArgs struct {
 	DryRun bool
 	Target string
@@ -537,6 +539,17 @@ func collectURLs(root string) ([]string, error) {
 		}
 		if !isMarkdownLikeFile(d.Name()) {
 			return nil
+		}
+		info, err := d.Info()
+		if err != nil {
+			return fmt.Errorf("failed to stat file for URL scan: %w", err)
+		}
+		if info.Size() > maxUpdateURLScanFileBytes {
+			rel, relErr := filepath.Rel(root, path)
+			if relErr == nil {
+				path = filepath.ToSlash(rel)
+			}
+			return fmt.Errorf("markdown file exceeds URL scan size limit: %s", path)
 		}
 		content, err := os.ReadFile(path)
 		if err != nil {

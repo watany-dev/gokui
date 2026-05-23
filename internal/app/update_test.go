@@ -6,8 +6,10 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"strings"
 	"testing"
+	"testing/quick"
 
 	srcpkg "github.com/watany-dev/gokui/internal/source"
 )
@@ -871,6 +873,18 @@ func TestUpdateHelpers(t *testing.T) {
 		}
 	})
 
+	t.Run("collectURLs rejects oversized markdown files", func(t *testing.T) {
+		root := t.TempDir()
+		huge := strings.Repeat("a", maxUpdateURLScanFileBytes+1)
+		if err := os.WriteFile(filepath.Join(root, "huge.md"), []byte(huge), 0o644); err != nil {
+			t.Fatalf("write huge markdown: %v", err)
+		}
+		_, err := collectURLs(root)
+		if err == nil || !strings.Contains(err.Error(), "exceeds URL scan size limit") {
+			t.Fatalf("expected oversized markdown error, got %v", err)
+		}
+	})
+
 	t.Run("filterLockFiles and summarize", func(t *testing.T) {
 		filtered := filterLockFiles([]lockFileHash{
 			{Path: installReportFile},
@@ -1033,6 +1047,38 @@ func TestUpdateHelpers(t *testing.T) {
 			t.Fatalf("expected sorted skills, got %+v", report.Skills)
 		}
 	})
+}
+
+func TestSetDiffProperties(t *testing.T) {
+	prop := func(current []string, previous []string) bool {
+		got := setDiff(current, previous)
+		if !sort.StringsAreSorted(got) {
+			return false
+		}
+
+		previousSet := make(map[string]struct{}, len(previous))
+		for _, v := range previous {
+			previousSet[v] = struct{}{}
+		}
+		currentSet := make(map[string]struct{}, len(current))
+		for _, v := range current {
+			currentSet[v] = struct{}{}
+		}
+
+		for _, v := range got {
+			if _, exists := currentSet[v]; !exists {
+				return false
+			}
+			if _, excluded := previousSet[v]; excluded {
+				return false
+			}
+		}
+		return true
+	}
+
+	if err := quick.Check(prop, &quick.Config{MaxCount: 500}); err != nil {
+		t.Fatalf("setDiff property failed: %v", err)
+	}
 }
 
 func TestEvaluateUpdateSkillAdditionalBranches(t *testing.T) {
