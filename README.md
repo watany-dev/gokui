@@ -30,7 +30,8 @@ different-provenance installs. It also supports commit-pinned GitHub sources
 (`github:owner/repo//path@<sha>`) via safe tarball materialization.
 `lock verify` now validates installed files against `gokui.lock`, checks source
 field consistency (including strict GitHub source syntax and commit pinning),
-validates GitHub source metadata integrity, and reports drift
+validates lock/report structural integrity, validates GitHub source metadata
+integrity, and reports drift
 (missing/changed/unexpected files).
 `update --dry-run` now re-evaluates installed skills from lockfile source
 provenance for local-dir/zip/tar sources, reports added/removed/changed files,

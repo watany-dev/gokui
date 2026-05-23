@@ -1,6 +1,7 @@
 package app
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -8,6 +9,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 
 	srcpkg "github.com/watany-dev/gokui/internal/source"
 )
@@ -130,7 +132,7 @@ func verifyLock(skillPath string) (lockVerifyReport, error) {
 		return lockVerifyReport{}, fmt.Errorf("invalid lockfile JSON: %s", lockPath)
 	}
 
-	checks := make([]lockVerifyCheck, 0, 6)
+	checks := make([]lockVerifyCheck, 0, 8)
 	schemaOK := lock.Schema == "gokui.lock/v1"
 	checks = append(checks, lockVerifyCheck{
 		Name:   "schema",
@@ -144,6 +146,12 @@ func verifyLock(skillPath string) (lockVerifyReport, error) {
 		OK:     nameOK,
 		Detail: fmt.Sprintf("expected %s, got %s", filepath.Base(cleanPath), lock.Name),
 	})
+	lockStructureOK, lockStructureDetail := verifyLockStructure(lock)
+	checks = append(checks, lockVerifyCheck{
+		Name:   "lock_structure",
+		OK:     lockStructureOK,
+		Detail: lockStructureDetail,
+	})
 
 	sourceOK, sourceDetail := verifyLockSource(lock)
 	checks = append(checks, lockVerifyCheck{
@@ -156,6 +164,12 @@ func verifyLock(skillPath string) (lockVerifyReport, error) {
 		Name:   "source_metadata",
 		OK:     sourceMetaOK,
 		Detail: sourceMetaDetail,
+	})
+	reportOK, reportDetail := verifyInstallReport(cleanPath, lock)
+	checks = append(checks, lockVerifyCheck{
+		Name:   "install_report",
+		OK:     reportOK,
+		Detail: reportDetail,
 	})
 
 	actualFiles, actualRootHash, err := buildFileDigestsForLock(cleanPath)
@@ -274,4 +288,110 @@ func verifyLockSourceMetadata(skillPath string, lock installLock) (bool, string)
 		return false, err.Error()
 	}
 	return true, "metadata matches lock source and installed hash"
+}
+
+func verifyLockStructure(lock installLock) (bool, string) {
+	if strings.TrimSpace(lock.InstalledAt) == "" {
+		return false, "lock installed_at is empty"
+	}
+	if _, err := time.Parse(time.RFC3339, lock.InstalledAt); err != nil {
+		return false, "lock installed_at must be RFC3339"
+	}
+
+	if strings.TrimSpace(lock.Policy.Profile) == "" {
+		return false, "lock policy profile is empty"
+	}
+	switch strings.ToLower(strings.TrimSpace(lock.Policy.Decision)) {
+	case "pass", "rejected":
+	default:
+		return false, fmt.Sprintf("unsupported lock policy decision: %s", lock.Policy.Decision)
+	}
+
+	if !isSHA256Hex(lock.Skill.RootSHA256) {
+		return false, "lock skill root_sha256 must be a 64-char hex digest"
+	}
+	if len(lock.Skill.Files) == 0 {
+		return false, "lock skill files is empty"
+	}
+
+	seen := make(map[string]struct{}, len(lock.Skill.Files))
+	for _, file := range lock.Skill.Files {
+		if strings.TrimSpace(file.Path) == "" {
+			return false, "lock file path is empty"
+		}
+		if !isValidLockRelativePath(file.Path) {
+			return false, fmt.Sprintf("lock file path is invalid: %s", file.Path)
+		}
+		if _, exists := seen[file.Path]; exists {
+			return false, fmt.Sprintf("duplicate lock file path: %s", file.Path)
+		}
+		seen[file.Path] = struct{}{}
+
+		if !isSHA256Hex(file.SHA256) {
+			return false, fmt.Sprintf("lock file sha256 is invalid: %s", file.Path)
+		}
+		if file.Bytes < 0 {
+			return false, fmt.Sprintf("lock file bytes is negative: %s", file.Path)
+		}
+	}
+
+	return true, fmt.Sprintf("installed_at=%s files=%d", lock.InstalledAt, len(lock.Skill.Files))
+}
+
+func verifyInstallReport(skillPath string, lock installLock) (bool, string) {
+	reportPath := filepath.Join(skillPath, installReportFile)
+	raw, err := os.ReadFile(reportPath)
+	if err != nil {
+		return false, fmt.Sprintf("failed to read install report: %s", reportPath)
+	}
+
+	var report installReport
+	if err := json.Unmarshal(raw, &report); err != nil {
+		return false, "invalid install report JSON"
+	}
+	if strings.TrimSpace(report.SchemaVersion) == "" {
+		return false, "install report schema_version is empty"
+	}
+	if report.Source.Input != lock.Source.Input || report.Source.Kind != lock.Source.Kind {
+		return false, "install report source does not match lock source"
+	}
+	if strings.TrimSpace(report.PolicyProfile) == "" {
+		return false, "install report policy profile is empty"
+	}
+	if report.PolicyProfile != lock.Policy.Profile {
+		return false, "install report policy profile does not match lock policy"
+	}
+	if !strings.EqualFold(strings.TrimSpace(report.Decision), strings.TrimSpace(lock.Policy.Decision)) {
+		return false, "install report decision does not match lock policy decision"
+	}
+	if !report.Installed {
+		return false, "install report installed must be true"
+	}
+	if filepath.Clean(report.InstalledPath) != filepath.Clean(skillPath) {
+		return false, fmt.Sprintf("install report path mismatch: expected %s, got %s", skillPath, report.InstalledPath)
+	}
+
+	return true, fmt.Sprintf("schema=%s decision=%s", report.SchemaVersion, report.Decision)
+}
+
+func isSHA256Hex(in string) bool {
+	decoded, err := hex.DecodeString(strings.TrimSpace(in))
+	return err == nil && len(decoded) == 32
+}
+
+func isValidLockRelativePath(in string) bool {
+	if strings.TrimSpace(in) == "" {
+		return false
+	}
+	if strings.Contains(in, "\\") {
+		return false
+	}
+	cleaned := filepath.ToSlash(filepath.Clean(in))
+	if cleaned == "." || cleaned == ".." || strings.HasPrefix(cleaned, "../") {
+		return false
+	}
+	if strings.HasPrefix(cleaned, "/") {
+		return false
+	}
+	return cleaned == in
 }

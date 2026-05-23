@@ -420,3 +420,417 @@ func TestVerifyLockDetectsSourceDrift(t *testing.T) {
 		t.Fatal("source check should exist")
 	}
 }
+
+func TestVerifyLockStructureAndReportChecks(t *testing.T) {
+	src := createSkillSourceForInstallTest(t, "structure-report-skill")
+	targetRoot := filepath.Join(t.TempDir(), "skills")
+	if err := os.MkdirAll(targetRoot, 0o755); err != nil {
+		t.Fatalf("mkdir target root: %v", err)
+	}
+	report := installReport{
+		SchemaVersion: "0.1.0-draft",
+		Source:        source{Input: src, Kind: "local-dir"},
+		PolicyProfile: "strict",
+		Decision:      "PASS",
+	}
+	installedPath, _, err := installSkillAtomic(src, targetRoot, "structure-report-skill", report)
+	if err != nil {
+		t.Fatalf("installSkillAtomic() error = %v", err)
+	}
+
+	base, err := verifyLock(installedPath)
+	if err != nil {
+		t.Fatalf("verifyLock() error = %v", err)
+	}
+	if base.Status != "VERIFIED" {
+		t.Fatalf("status = %q, want VERIFIED", base.Status)
+	}
+	assertCheckOK(t, base.Checks, "lock_structure")
+	assertCheckOK(t, base.Checks, "install_report")
+
+	t.Run("invalid lock structure", func(t *testing.T) {
+		lockPath := filepath.Join(installedPath, installLockFile)
+		raw, err := os.ReadFile(lockPath)
+		if err != nil {
+			t.Fatalf("read lock: %v", err)
+		}
+		var lock installLock
+		if err := json.Unmarshal(raw, &lock); err != nil {
+			t.Fatalf("unmarshal lock: %v", err)
+		}
+		lock.Skill.Files = append(lock.Skill.Files, lockFileHash{
+			Path:   lock.Skill.Files[0].Path,
+			SHA256: lock.Skill.Files[0].SHA256,
+			Bytes:  lock.Skill.Files[0].Bytes,
+		})
+		updated, err := json.MarshalIndent(lock, "", "  ")
+		if err != nil {
+			t.Fatalf("marshal lock: %v", err)
+		}
+		if err := os.WriteFile(lockPath, updated, 0o644); err != nil {
+			t.Fatalf("write lock: %v", err)
+		}
+
+		out, err := verifyLock(installedPath)
+		if err != nil {
+			t.Fatalf("verifyLock() error = %v", err)
+		}
+		if out.Status != "DRIFTED" {
+			t.Fatalf("status = %q, want DRIFTED", out.Status)
+		}
+		assertCheckFailedContains(t, out.Checks, "lock_structure", "duplicate lock file path")
+	})
+}
+
+func TestVerifyInstallReportFailures(t *testing.T) {
+	src := createSkillSourceForInstallTest(t, "report-failure-skill")
+	targetRoot := filepath.Join(t.TempDir(), "skills")
+	if err := os.MkdirAll(targetRoot, 0o755); err != nil {
+		t.Fatalf("mkdir target root: %v", err)
+	}
+	seedReport := installReport{
+		SchemaVersion: "0.1.0-draft",
+		Source:        source{Input: src, Kind: "local-dir"},
+		PolicyProfile: "strict",
+		Decision:      "PASS",
+	}
+	installedPath, _, err := installSkillAtomic(src, targetRoot, "report-failure-skill", seedReport)
+	if err != nil {
+		t.Fatalf("installSkillAtomic() error = %v", err)
+	}
+
+	lock, err := readInstallLock(filepath.Join(installedPath, installLockFile))
+	if err != nil {
+		t.Fatalf("readInstallLock() error = %v", err)
+	}
+
+	t.Run("missing report", func(t *testing.T) {
+		reportPath := filepath.Join(installedPath, installReportFile)
+		originalReport, err := os.ReadFile(reportPath)
+		if err != nil {
+			t.Fatalf("read original report: %v", err)
+		}
+		if err := os.Remove(reportPath); err != nil {
+			t.Fatalf("remove report: %v", err)
+		}
+		ok, detail := verifyInstallReport(installedPath, lock)
+		if ok || !strings.Contains(detail, "failed to read install report") {
+			t.Fatalf("expected missing report failure, got ok=%v detail=%q", ok, detail)
+		}
+		if err := os.WriteFile(reportPath, originalReport, 0o644); err != nil {
+			t.Fatalf("restore report: %v", err)
+		}
+	})
+
+	t.Run("source mismatch", func(t *testing.T) {
+		reportPath := filepath.Join(installedPath, installReportFile)
+		raw, err := os.ReadFile(reportPath)
+		if err != nil {
+			t.Fatalf("read report: %v", err)
+		}
+		var rep installReport
+		if err := json.Unmarshal(raw, &rep); err != nil {
+			t.Fatalf("unmarshal report: %v", err)
+		}
+		rep.Source.Input = "github:org/repo//skills/report-failure-skill@8f3c2d1a4b5c6d7e8f901234567890abcdef1234"
+		updated, err := json.MarshalIndent(rep, "", "  ")
+		if err != nil {
+			t.Fatalf("marshal report: %v", err)
+		}
+		if err := os.WriteFile(reportPath, updated, 0o644); err != nil {
+			t.Fatalf("write report: %v", err)
+		}
+
+		ok, detail := verifyInstallReport(installedPath, lock)
+		if ok || !strings.Contains(detail, "source does not match lock source") {
+			t.Fatalf("expected source mismatch failure, got ok=%v detail=%q", ok, detail)
+		}
+	})
+}
+
+func TestVerifyInstallReportValidationBranches(t *testing.T) {
+	skillPath := t.TempDir()
+	lock := installLock{
+		Source: lockSource{
+			Type:  "local",
+			Input: "/tmp/src",
+			Kind:  "local-dir",
+		},
+		Policy: lockPolicy{
+			Profile:  "strict",
+			Decision: "pass",
+		},
+	}
+
+	writeReport := func(t *testing.T, payload string) {
+		t.Helper()
+		if err := os.WriteFile(filepath.Join(skillPath, installReportFile), []byte(payload), 0o644); err != nil {
+			t.Fatalf("write report: %v", err)
+		}
+	}
+
+	t.Run("invalid json", func(t *testing.T) {
+		writeReport(t, "{")
+		ok, detail := verifyInstallReport(skillPath, lock)
+		if ok || !strings.Contains(detail, "invalid install report JSON") {
+			t.Fatalf("expected invalid json failure, got ok=%v detail=%q", ok, detail)
+		}
+	})
+
+	valid := installReport{
+		SchemaVersion: "0.1.0-draft",
+		Source: source{
+			Input: "/tmp/src",
+			Kind:  "local-dir",
+		},
+		PolicyProfile: "strict",
+		Decision:      "PASS",
+		InstalledPath: skillPath,
+		Installed:     true,
+	}
+	raw, err := json.MarshalIndent(valid, "", "  ")
+	if err != nil {
+		t.Fatalf("marshal valid report: %v", err)
+	}
+	writeReport(t, string(raw))
+	if ok, _ := verifyInstallReport(skillPath, lock); !ok {
+		t.Fatal("expected valid report check pass")
+	}
+
+	cases := []struct {
+		name      string
+		mutate    func(*installReport)
+		detailHas string
+	}{
+		{
+			name: "empty schema",
+			mutate: func(r *installReport) {
+				r.SchemaVersion = ""
+			},
+			detailHas: "schema_version is empty",
+		},
+		{
+			name: "empty profile",
+			mutate: func(r *installReport) {
+				r.PolicyProfile = ""
+			},
+			detailHas: "policy profile is empty",
+		},
+		{
+			name: "profile mismatch",
+			mutate: func(r *installReport) {
+				r.PolicyProfile = "team"
+			},
+			detailHas: "policy profile does not match",
+		},
+		{
+			name: "decision mismatch",
+			mutate: func(r *installReport) {
+				r.Decision = "REJECTED"
+			},
+			detailHas: "decision does not match",
+		},
+		{
+			name: "installed false",
+			mutate: func(r *installReport) {
+				r.Installed = false
+			},
+			detailHas: "installed must be true",
+		},
+		{
+			name: "path mismatch",
+			mutate: func(r *installReport) {
+				r.InstalledPath = filepath.Join(skillPath, "other")
+			},
+			detailHas: "path mismatch",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			rep := valid
+			tc.mutate(&rep)
+			mutRaw, err := json.MarshalIndent(rep, "", "  ")
+			if err != nil {
+				t.Fatalf("marshal report: %v", err)
+			}
+			writeReport(t, string(mutRaw))
+
+			ok, detail := verifyInstallReport(skillPath, lock)
+			if ok || !strings.Contains(detail, tc.detailHas) {
+				t.Fatalf("expected detail containing %q, got ok=%v detail=%q", tc.detailHas, ok, detail)
+			}
+		})
+	}
+}
+
+func TestVerifyLockStructureValidationBranches(t *testing.T) {
+	valid := installLock{
+		Schema:      "gokui.lock/v1",
+		Name:        "x",
+		InstalledAt: "2026-05-23T00:00:00Z",
+		Source: lockSource{
+			Type:  "local",
+			Input: "/tmp/x",
+			Kind:  "local-dir",
+		},
+		Skill: lockSkill{
+			RootSHA256: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+			Files: []lockFileHash{
+				{
+					Path:   "SKILL.md",
+					SHA256: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+					Bytes:  10,
+				},
+			},
+		},
+		Policy: lockPolicy{
+			Profile:  "strict",
+			Decision: "pass",
+		},
+	}
+
+	if ok, _ := verifyLockStructure(valid); !ok {
+		t.Fatal("expected valid lock structure")
+	}
+
+	cases := []struct {
+		name     string
+		mutate   func(*installLock)
+		detailIn string
+	}{
+		{
+			name: "empty installed_at",
+			mutate: func(l *installLock) {
+				l.InstalledAt = ""
+			},
+			detailIn: "installed_at is empty",
+		},
+		{
+			name: "invalid installed_at",
+			mutate: func(l *installLock) {
+				l.InstalledAt = "x"
+			},
+			detailIn: "must be RFC3339",
+		},
+		{
+			name: "empty profile",
+			mutate: func(l *installLock) {
+				l.Policy.Profile = ""
+			},
+			detailIn: "policy profile is empty",
+		},
+		{
+			name: "invalid decision",
+			mutate: func(l *installLock) {
+				l.Policy.Decision = "warn"
+			},
+			detailIn: "unsupported lock policy decision",
+		},
+		{
+			name: "invalid root hash",
+			mutate: func(l *installLock) {
+				l.Skill.RootSHA256 = "x"
+			},
+			detailIn: "root_sha256 must be a 64-char hex digest",
+		},
+		{
+			name: "empty files",
+			mutate: func(l *installLock) {
+				l.Skill.Files = nil
+			},
+			detailIn: "files is empty",
+		},
+		{
+			name: "invalid file path",
+			mutate: func(l *installLock) {
+				l.Skill.Files[0].Path = "../x"
+			},
+			detailIn: "file path is invalid",
+		},
+		{
+			name: "duplicate file path",
+			mutate: func(l *installLock) {
+				l.Skill.Files = append(l.Skill.Files, l.Skill.Files[0])
+			},
+			detailIn: "duplicate lock file path",
+		},
+		{
+			name: "invalid file hash",
+			mutate: func(l *installLock) {
+				l.Skill.Files[0].SHA256 = "x"
+			},
+			detailIn: "file sha256 is invalid",
+		},
+		{
+			name: "negative bytes",
+			mutate: func(l *installLock) {
+				l.Skill.Files[0].Bytes = -1
+			},
+			detailIn: "bytes is negative",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			l := valid
+			l.Skill.Files = append([]lockFileHash(nil), valid.Skill.Files...)
+			tc.mutate(&l)
+			ok, detail := verifyLockStructure(l)
+			if ok || !strings.Contains(detail, tc.detailIn) {
+				t.Fatalf("expected failure containing %q, got ok=%v detail=%q", tc.detailIn, ok, detail)
+			}
+		})
+	}
+}
+
+func TestLockVerifyHelpers(t *testing.T) {
+	if !isSHA256Hex("0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef") {
+		t.Fatal("expected valid hex digest")
+	}
+	if isSHA256Hex("x") {
+		t.Fatal("invalid digest should fail")
+	}
+
+	validPaths := []string{"SKILL.md", "references/readme.md", ".gokui-report.json"}
+	for _, p := range validPaths {
+		if !isValidLockRelativePath(p) {
+			t.Fatalf("expected valid path: %s", p)
+		}
+	}
+	invalidPaths := []string{"", ".", "..", "../x", "/x", `..\x`, `a\b`}
+	for _, p := range invalidPaths {
+		if isValidLockRelativePath(p) {
+			t.Fatalf("expected invalid path: %s", p)
+		}
+	}
+}
+
+func assertCheckOK(t *testing.T, checks []lockVerifyCheck, name string) {
+	t.Helper()
+	for _, c := range checks {
+		if c.Name == name {
+			if !c.OK {
+				t.Fatalf("check %s should pass: %+v", name, c)
+			}
+			return
+		}
+	}
+	t.Fatalf("check %s not found", name)
+}
+
+func assertCheckFailedContains(t *testing.T, checks []lockVerifyCheck, name string, contains string) {
+	t.Helper()
+	for _, c := range checks {
+		if c.Name == name {
+			if c.OK {
+				t.Fatalf("check %s should fail: %+v", name, c)
+			}
+			if !strings.Contains(c.Detail, contains) {
+				t.Fatalf("check %s detail = %q, want contains %q", name, c.Detail, contains)
+			}
+			return
+		}
+	}
+	t.Fatalf("check %s not found", name)
+}
