@@ -250,6 +250,57 @@ func TestFetchGitHubSkillErrors(t *testing.T) {
 		}
 	})
 
+	t.Run("downloadGitHubArchive rejects missing content-type", func(t *testing.T) {
+		spec := GitHubSpec{Owner: "o", Repo: "r", Path: "skills/x", Ref: "8f3c2d1a4b5c6d7e8f901234567890abcdef1234"}
+		githubCodeloadBaseURL = "https://mock.codeload.local"
+		githubHTTPClient = &http.Client{
+			Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+				resp := httpResponse(http.StatusOK, []byte("x"))
+				resp.Header.Del("Content-Type")
+				return resp, nil
+			}),
+		}
+
+		err := downloadGitHubArchive(spec, filepath.Join(t.TempDir(), "archive.tar.gz"))
+		if err == nil || !strings.Contains(err.Error(), ruleGitHubArchiveType) {
+			t.Fatalf("expected content-type validation error, got %v", err)
+		}
+	})
+
+	t.Run("downloadGitHubArchive rejects unsupported content-type", func(t *testing.T) {
+		spec := GitHubSpec{Owner: "o", Repo: "r", Path: "skills/x", Ref: "8f3c2d1a4b5c6d7e8f901234567890abcdef1234"}
+		githubCodeloadBaseURL = "https://mock.codeload.local"
+		githubHTTPClient = &http.Client{
+			Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+				resp := httpResponse(http.StatusOK, []byte("x"))
+				resp.Header.Set("Content-Type", "text/html; charset=utf-8")
+				return resp, nil
+			}),
+		}
+
+		err := downloadGitHubArchive(spec, filepath.Join(t.TempDir(), "archive.tar.gz"))
+		if err == nil || !strings.Contains(err.Error(), ruleGitHubArchiveType) {
+			t.Fatalf("expected unsupported content-type error, got %v", err)
+		}
+	})
+
+	t.Run("downloadGitHubArchive rejects unexpected content-encoding", func(t *testing.T) {
+		spec := GitHubSpec{Owner: "o", Repo: "r", Path: "skills/x", Ref: "8f3c2d1a4b5c6d7e8f901234567890abcdef1234"}
+		githubCodeloadBaseURL = "https://mock.codeload.local"
+		githubHTTPClient = &http.Client{
+			Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+				resp := httpResponse(http.StatusOK, []byte("x"))
+				resp.Header.Set("Content-Encoding", "gzip")
+				return resp, nil
+			}),
+		}
+
+		err := downloadGitHubArchive(spec, filepath.Join(t.TempDir(), "archive.tar.gz"))
+		if err == nil || !strings.Contains(err.Error(), ruleGitHubArchiveCoding) {
+			t.Fatalf("expected content-encoding validation error, got %v", err)
+		}
+	})
+
 	t.Run("downloadGitHubArchive rejects redirect to different host", func(t *testing.T) {
 		spec := GitHubSpec{Owner: "o", Repo: "r", Path: "skills/x", Ref: "8f3c2d1a4b5c6d7e8f901234567890abcdef1234"}
 		githubCodeloadBaseURL = "https://mock.codeload.local"
@@ -431,6 +482,46 @@ func TestNormalizePortForScheme(t *testing.T) {
 	}
 }
 
+func TestValidateGitHubArchiveResponseHeaders(t *testing.T) {
+	t.Run("accepts allowed content types", func(t *testing.T) {
+		allowed := []string{
+			"application/x-gzip",
+			"application/gzip",
+			"application/octet-stream",
+			"application/x-tar",
+			"application/tar; charset=binary",
+		}
+		for _, ct := range allowed {
+			resp := httpResponse(http.StatusOK, []byte("x"))
+			resp.Header.Set("Content-Type", ct)
+			if err := validateGitHubArchiveResponseHeaders(resp); err != nil {
+				t.Fatalf("expected content type %q to pass, got %v", ct, err)
+			}
+		}
+	})
+
+	t.Run("rejects malformed content type", func(t *testing.T) {
+		resp := httpResponse(http.StatusOK, []byte("x"))
+		resp.Header.Set("Content-Type", "???")
+		if err := validateGitHubArchiveResponseHeaders(resp); err == nil || !strings.Contains(err.Error(), ruleGitHubArchiveType) {
+			t.Fatalf("expected malformed content-type error, got %v", err)
+		}
+	})
+
+	t.Run("accepts empty and identity content encoding", func(t *testing.T) {
+		resp := httpResponse(http.StatusOK, []byte("x"))
+		resp.Header.Set("Content-Type", "application/x-gzip")
+		resp.Header.Del("Content-Encoding")
+		if err := validateGitHubArchiveResponseHeaders(resp); err != nil {
+			t.Fatalf("expected empty content-encoding to pass, got %v", err)
+		}
+		resp.Header.Set("Content-Encoding", "identity")
+		if err := validateGitHubArchiveResponseHeaders(resp); err != nil {
+			t.Fatalf("expected identity content-encoding to pass, got %v", err)
+		}
+	})
+}
+
 type roundTripFunc func(*http.Request) (*http.Response, error)
 
 func (f roundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) {
@@ -438,11 +529,13 @@ func (f roundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) {
 }
 
 func httpResponse(status int, body []byte) *http.Response {
-	return &http.Response{
+	resp := &http.Response{
 		StatusCode: status,
 		Body:       io.NopCloser(bytes.NewReader(body)),
 		Header:     make(http.Header),
 	}
+	resp.Header.Set("Content-Type", "application/x-gzip")
+	return resp
 }
 
 func buildTarGz(t *testing.T, files map[string]string) []byte {

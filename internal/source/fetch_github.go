@@ -3,6 +3,7 @@ package source
 import (
 	"fmt"
 	"io"
+	"mime"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -19,6 +20,8 @@ const (
 	ruleGitHubRedirectPort   = "GITHUB_ARCHIVE_REDIRECT_PORT_MISMATCH"
 	ruleGitHubRedirectScheme = "GITHUB_ARCHIVE_REDIRECT_SCHEME_INVALID"
 	ruleGitHubRedirectAuth   = "GITHUB_ARCHIVE_REDIRECT_USERINFO_DISALLOWED"
+	ruleGitHubArchiveType    = "GITHUB_ARCHIVE_CONTENT_TYPE_INVALID"
+	ruleGitHubArchiveCoding  = "GITHUB_ARCHIVE_CONTENT_ENCODING_INVALID"
 )
 
 var (
@@ -98,6 +101,7 @@ func downloadGitHubArchive(spec GitHubSpec, archivePath string) error {
 	if !strings.EqualFold(req.URL.Scheme, "https") {
 		return fmt.Errorf("%s: github archive URL must use https: %s", ruleGitHubArchiveScheme, req.URL.String())
 	}
+	req.Header.Set("Accept-Encoding", "identity")
 	expectedHost := req.URL.Hostname()
 	expectedScheme := req.URL.Scheme
 	expectedPort := normalizePortForScheme(expectedScheme, req.URL.Port())
@@ -135,6 +139,9 @@ func downloadGitHubArchive(spec GitHubSpec, archivePath string) error {
 
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("failed to download github archive: unexpected status %d", resp.StatusCode)
+	}
+	if err := validateGitHubArchiveResponseHeaders(resp); err != nil {
+		return err
 	}
 	if resp.ContentLength > maxGitHubArchiveBytes {
 		return fmt.Errorf("github archive exceeds max size")
@@ -180,5 +187,27 @@ func normalizePortForScheme(scheme string, rawPort string) string {
 		return "80"
 	default:
 		return ""
+	}
+}
+
+func validateGitHubArchiveResponseHeaders(resp *http.Response) error {
+	contentEncoding := strings.TrimSpace(resp.Header.Get("Content-Encoding"))
+	if contentEncoding != "" && !strings.EqualFold(contentEncoding, "identity") {
+		return fmt.Errorf("%s: github archive response uses unexpected content encoding: %s", ruleGitHubArchiveCoding, contentEncoding)
+	}
+
+	contentType := strings.TrimSpace(resp.Header.Get("Content-Type"))
+	if contentType == "" {
+		return fmt.Errorf("%s: github archive response missing content type", ruleGitHubArchiveType)
+	}
+	mediaType, _, err := mime.ParseMediaType(contentType)
+	if err != nil {
+		return fmt.Errorf("%s: github archive response has invalid content type: %s", ruleGitHubArchiveType, contentType)
+	}
+	switch strings.ToLower(mediaType) {
+	case "application/x-gzip", "application/gzip", "application/octet-stream", "application/x-tar", "application/tar":
+		return nil
+	default:
+		return fmt.Errorf("%s: github archive response has unsupported content type: %s", ruleGitHubArchiveType, mediaType)
 	}
 }
