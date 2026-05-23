@@ -373,6 +373,15 @@ func scanTextFile(target scanTarget) ([]Finding, error) {
 					Summary:  "secret path access combined with network exfiltration command",
 				})
 			}
+			if hasBashWildcardPermission(variant) {
+				findings = append(findings, Finding{
+					ID:       "ALLOWED_TOOLS_BASH_WILDCARD",
+					Severity: "high",
+					File:     target.Relative,
+					Line:     lineNum,
+					Summary:  "broad Bash wildcard permission detected",
+				})
+			}
 			if isUnpinnedRuntimeToolLine(variant) {
 				findings = append(findings, Finding{
 					ID:       "UNPINNED_RUNTIME_TOOL",
@@ -728,6 +737,27 @@ func hasSecretExfilLine(line string) bool {
 		"-f ",
 	}
 	return containsAnyString(lower, sendHints)
+}
+
+func hasBashWildcardPermission(line string) bool {
+	lower := strings.ToLower(line)
+	if !strings.Contains(lower, "bash") {
+		return false
+	}
+	if !containsAnyString(lower, []string{"allowed", "tools", "permissions"}) {
+		return false
+	}
+	wildcardHints := []string{
+		"bash(*)",
+		"bash:*",
+		"bash: *",
+		"bash [*]",
+		"bash=*",
+		"bash = *",
+		"bash all",
+		"bash: all",
+	}
+	return containsAnyString(lower, wildcardHints)
 }
 
 func tokenizeWords(line string) []string {
