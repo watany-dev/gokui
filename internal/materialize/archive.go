@@ -136,49 +136,64 @@ func extractZip(src, dest string, limits Limits) error {
 			return fmt.Errorf("archive exceeds max files limit: %d", limits.MaxFiles)
 		}
 
-		size := int64(file.UncompressedSize64)
-		if size > limits.MaxFileBytes {
+		declaredSize := int64(file.UncompressedSize64)
+		if declaredSize > limits.MaxFileBytes {
 			return fmt.Errorf("archive file exceeds max file bytes: %s", file.Name)
 		}
-		totalBytes += size
-		if totalBytes > limits.MaxTotalBytes {
+		remainingTotal := limits.MaxTotalBytes - totalBytes
+		if remainingTotal <= 0 {
 			return fmt.Errorf("archive exceeds max total bytes: %d", limits.MaxTotalBytes)
 		}
+		if declaredSize > remainingTotal {
+			return fmt.Errorf("archive exceeds max total bytes: %d", limits.MaxTotalBytes)
+		}
+		maxWrite := limits.MaxFileBytes
+		if remainingTotal < maxWrite {
+			maxWrite = remainingTotal
+		}
 
-		if err := writeZipFile(file, path, limits.MaxFileBytes); err != nil {
+		written, err := writeZipFile(file, path, maxWrite)
+		if err != nil {
 			return err
+		}
+		totalBytes += written
+		if totalBytes > limits.MaxTotalBytes {
+			return fmt.Errorf("archive exceeds max total bytes: %d", limits.MaxTotalBytes)
 		}
 	}
 
 	return nil
 }
 
-func writeZipFile(file *zip.File, outPath string, maxBytes int64) error {
+func writeZipFile(file *zip.File, outPath string, maxBytes int64) (int64, error) {
 	if err := os.MkdirAll(filepath.Dir(outPath), 0o755); err != nil {
-		return fmt.Errorf("failed to create parent directory: %w", err)
+		return 0, fmt.Errorf("failed to create parent directory: %w", err)
 	}
 
 	rc, err := file.Open()
 	if err != nil {
-		return fmt.Errorf("failed to open archive file %s: %w", file.Name, err)
+		return 0, fmt.Errorf("failed to open archive file %s: %w", file.Name, err)
 	}
 	defer rc.Close()
 
 	out, err := os.OpenFile(outPath, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o644)
 	if err != nil {
-		return fmt.Errorf("failed to create output file %s: %w", outPath, err)
+		return 0, fmt.Errorf("failed to create output file %s: %w", outPath, err)
 	}
-	defer out.Close()
+	defer func() {
+		_ = out.Close()
+	}()
 
-	limited := io.LimitReader(rc, maxBytes+1)
-	written, err := io.Copy(out, limited)
+	written, err := copyWithStrictLimit(out, rc, maxBytes)
 	if err != nil {
-		return fmt.Errorf("failed to extract file %s: %w", file.Name, err)
+		if strings.Contains(err.Error(), "size exceeds limit") {
+			_ = os.Remove(outPath)
+			return 0, fmt.Errorf("archive file exceeds max file bytes during extraction: %s", file.Name)
+		}
+		_ = os.Remove(outPath)
+		return 0, fmt.Errorf("failed to extract file %s: %w", file.Name, err)
 	}
-	if written > maxBytes {
-		return fmt.Errorf("archive file exceeds max file bytes during extraction: %s", file.Name)
-	}
-	return nil
+	return written, nil
 }
 
 func extractTar(src, dest string, limits Limits) error {
@@ -236,6 +251,9 @@ func extractTar(src, dest string, limits Limits) error {
 			return fmt.Errorf("archive exceeds max files limit: %d", limits.MaxFiles)
 		}
 
+		if header.Size < 0 {
+			return fmt.Errorf("archive file has negative size: %s", header.Name)
+		}
 		if header.Size > limits.MaxFileBytes {
 			return fmt.Errorf("archive file exceeds max file bytes: %s", header.Name)
 		}
@@ -244,7 +262,7 @@ func extractTar(src, dest string, limits Limits) error {
 			return fmt.Errorf("archive exceeds max total bytes: %d", limits.MaxTotalBytes)
 		}
 
-		if err := writeTarFile(header, tarReader, path, limits.MaxFileBytes); err != nil {
+		if _, err := writeTarFile(header, tarReader, path, limits.MaxFileBytes); err != nil {
 			return err
 		}
 	}
@@ -252,26 +270,83 @@ func extractTar(src, dest string, limits Limits) error {
 	return nil
 }
 
-func writeTarFile(header *tar.Header, tarReader *tar.Reader, outPath string, maxBytes int64) error {
+func writeTarFile(header *tar.Header, tarReader *tar.Reader, outPath string, maxBytes int64) (int64, error) {
 	if err := os.MkdirAll(filepath.Dir(outPath), 0o755); err != nil {
-		return fmt.Errorf("failed to create parent directory: %w", err)
+		return 0, fmt.Errorf("failed to create parent directory: %w", err)
 	}
 
 	out, err := os.OpenFile(outPath, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o644)
 	if err != nil {
-		return fmt.Errorf("failed to create output file %s: %w", outPath, err)
+		return 0, fmt.Errorf("failed to create output file %s: %w", outPath, err)
 	}
-	defer out.Close()
+	defer func() {
+		_ = out.Close()
+	}()
 
-	limited := io.LimitReader(tarReader, maxBytes+1)
-	written, err := io.Copy(out, limited)
+	written, err := copyWithStrictLimit(out, tarReader, maxBytes)
 	if err != nil {
-		return fmt.Errorf("failed to extract file %s: %w", header.Name, err)
+		if strings.Contains(err.Error(), "size exceeds limit") {
+			_ = os.Remove(outPath)
+			return 0, fmt.Errorf("archive file exceeds max file bytes during extraction: %s", header.Name)
+		}
+		_ = os.Remove(outPath)
+		return 0, fmt.Errorf("failed to extract file %s: %w", header.Name, err)
 	}
-	if written > maxBytes {
-		return fmt.Errorf("archive file exceeds max file bytes during extraction: %s", header.Name)
+	return written, nil
+}
+
+func copyWithStrictLimit(dst io.Writer, src io.Reader, maxBytes int64) (int64, error) {
+	if maxBytes < 0 {
+		return 0, fmt.Errorf("size exceeds limit")
 	}
-	return nil
+	if maxBytes == 0 {
+		var probe [1]byte
+		n, err := src.Read(probe[:])
+		if n > 0 {
+			return 0, fmt.Errorf("size exceeds limit")
+		}
+		if err != nil && err != io.EOF {
+			return 0, err
+		}
+		return 0, nil
+	}
+
+	buf := make([]byte, 32*1024)
+	var written int64
+	for written < maxBytes {
+		remaining := maxBytes - written
+		chunkSize := int64(len(buf))
+		if remaining < chunkSize {
+			chunkSize = remaining
+		}
+		n, err := src.Read(buf[:chunkSize])
+		if n > 0 {
+			wn, werr := dst.Write(buf[:n])
+			written += int64(wn)
+			if werr != nil {
+				return written, werr
+			}
+			if wn != n {
+				return written, io.ErrShortWrite
+			}
+		}
+		if err == io.EOF {
+			return written, nil
+		}
+		if err != nil {
+			return written, err
+		}
+	}
+
+	var probe [1]byte
+	n, err := src.Read(probe[:])
+	if n > 0 {
+		return written, fmt.Errorf("size exceeds limit")
+	}
+	if err != nil && err != io.EOF {
+		return written, err
+	}
+	return written, nil
 }
 
 func safeJoin(root, name string) (string, error) {
