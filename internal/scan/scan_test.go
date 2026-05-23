@@ -6,6 +6,7 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"testing/quick"
 )
 
 func TestScanSkillRootFindings(t *testing.T) {
@@ -951,10 +952,15 @@ func TestUnpinnedRuntimeToolDetection(t *testing.T) {
 		{line: "npm exec", want: false},
 		{line: "npm exec --", want: false},
 		{line: "corepack pnpm dlx @scope/tool", want: true},
+		{line: "corepack pnpm@latest dlx @scope/tool", want: true},
+		{line: "corepack pnpm@9.0.0 dlx @scope/tool", want: true},
 		{line: "corepack yarn dlx @scope/tool", want: true},
+		{line: "corepack yarn@stable dlx @scope/tool", want: true},
 		{line: "corepack npm exec @scope/tool", want: true},
+		{line: "corepack npm@10 exec @scope/tool", want: true},
 		{line: "corepack --install-directory ~/.local/bin pnpm dlx @scope/tool", want: true},
 		{line: "corepack pnpm dlx @scope/tool@1.2.3", want: false},
+		{line: "corepack pnpm@9.0.0 dlx @scope/tool@1.2.3", want: false},
 		{line: "corepack yarn dlx @scope/tool@1.2.3", want: false},
 		{line: "corepack npm exec @scope/tool@1.2.3", want: false},
 		{line: "corepack npm exec -- @scope/tool@1.2.3", want: false},
@@ -1040,6 +1046,48 @@ func TestIsUnpinnedLauncherCommand(t *testing.T) {
 			t.Fatalf("isUnpinnedLauncherCommand() = %v, want false", got)
 		}
 	})
+
+	t.Run("accepts normalized launcher token from corepack wrappers", func(t *testing.T) {
+		if got := isUnpinnedLauncherCommand([]string{"corepack", "pnpm@9.0.0", "dlx", "@scope/pkg"}, "pnpm", 1); !got {
+			t.Fatalf("isUnpinnedLauncherCommand() = %v, want true", got)
+		}
+	})
+}
+
+func TestNormalizeLauncherToken(t *testing.T) {
+	cases := []struct {
+		in   string
+		want string
+	}{
+		{in: "", want: ""},
+		{in: "pnpm", want: "pnpm"},
+		{in: "PNPM@9.0.0", want: "pnpm"},
+		{in: "yarn@stable", want: "yarn"},
+		{in: "npm@10", want: "npm"},
+		{in: "npx@latest", want: "npx"},
+		{in: "@scope/pkg@1.2.3", want: "@scope/pkg@1.2.3"},
+		{in: "go@1.22.0", want: "go@1.22.0"},
+	}
+	for _, tc := range cases {
+		if got := normalizeLauncherToken(tc.in); got != tc.want {
+			t.Fatalf("normalizeLauncherToken(%q) = %q, want %q", tc.in, got, tc.want)
+		}
+	}
+}
+
+func TestNormalizeLauncherTokenProperty(t *testing.T) {
+	launchers := []string{"npx", "uvx", "bunx", "pnpm", "yarn", "npm"}
+	prop := func(idx uint8, suffix string) bool {
+		launcher := launchers[int(idx)%len(launchers)]
+		if strings.TrimSpace(suffix) == "" {
+			suffix = "latest"
+		}
+		token := launcher + "@" + suffix
+		return normalizeLauncherToken(token) == launcher
+	}
+	if err := quick.Check(prop, &quick.Config{MaxCount: 500}); err != nil {
+		t.Fatalf("normalizeLauncherToken property failed: %v", err)
+	}
 }
 
 func TestIsUnpinnedGoRunTarget(t *testing.T) {

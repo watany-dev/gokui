@@ -855,12 +855,13 @@ func isUnpinnedRuntimeToolLine(line string) bool {
 	}
 
 	for i := 0; i < len(fields); i++ {
-		token := fields[i]
+		token := normalizeLauncherToken(fields[i])
 		if token == "corepack" {
 			launcher, launcherIndex, ok := nextNonFlagFieldWithIndex(fields, i+1)
 			if !ok {
 				continue
 			}
+			launcher = normalizeLauncherToken(launcher)
 			if isUnpinnedLauncherCommand(fields, launcher, launcherIndex) {
 				return true
 			}
@@ -873,6 +874,20 @@ func isUnpinnedRuntimeToolLine(line string) bool {
 	}
 
 	return false
+}
+
+func normalizeLauncherToken(token string) string {
+	token = strings.TrimSpace(strings.ToLower(token))
+	if token == "" {
+		return token
+	}
+	for _, launcher := range []string{"npx", "uvx", "bunx", "pnpm", "yarn", "npm"} {
+		prefix := launcher + "@"
+		if strings.HasPrefix(token, prefix) && len(token) > len(prefix) {
+			return launcher
+		}
+	}
+	return token
 }
 
 func isUnpinnedLauncherCommand(fields []string, token string, tokenIndex int) bool {
