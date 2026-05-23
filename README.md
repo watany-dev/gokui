@@ -116,6 +116,87 @@ The intended flow is:
 5. Make a policy decision.
 6. Install atomically with normalized permissions, a lockfile, and a report.
 
+## Automation Error Codes
+
+For machine integration, JSON outputs use stable uppercase `error_code` values.
+
+### inspect (`--format json`, fatal errors)
+
+| error_code | Meaning |
+| --- | --- |
+| `INSPECT_ARGS_INVALID` | CLI argument parse/validation failed |
+| `INSPECT_SOURCE_NOT_FOUND` | source path does not exist |
+| `INSPECT_SOURCE_INVALID` | GitHub source syntax is invalid |
+| `INSPECT_SOURCE_PREPARE_FAILED` | source materialization/structure validation failed |
+| `INSPECT_SCAN_FAILED` | scan phase failed |
+
+### fetch (`--format json`, fatal errors)
+
+| error_code | Meaning |
+| --- | --- |
+| `FETCH_ARGS_INVALID` | CLI argument parse/validation failed |
+| `FETCH_SOURCE_UNSUPPORTED` | source type is unsupported |
+| `FETCH_SOURCE_INVALID` | GitHub source syntax is invalid |
+| `FETCH_SOURCE_REF_NOT_PINNED` | GitHub ref is not commit-pinned |
+| `FETCH_SOURCE_DOWNLOAD_FAILED` | download/materialization failed |
+| `FETCH_SKILL_INVALID` | fetched skill metadata/frontmatter is invalid |
+| `FETCH_OUTPUT_PREPARE_FAILED` | output directory preparation failed |
+| `FETCH_COPY_FAILED` | staging/copy step failed |
+| `FETCH_DIGEST_FAILED` | digest generation failed |
+| `FETCH_SOURCE_METADATA_WRITE_FAILED` | source metadata write failed |
+
+### install (`--format json`)
+
+Rejected policy decision:
+- `INSTALL_POLICY_REJECTED` (report `decision=REJECTED`, exit code `2`)
+
+Fatal errors:
+
+| error_code | Meaning |
+| --- | --- |
+| `INSTALL_ARGS_INVALID` | CLI argument parse/validation failed |
+| `INSTALL_PROFILE_UNSUPPORTED` | unsupported profile selected |
+| `INSTALL_SOURCE_NOT_FOUND` | non-GitHub source path not found |
+| `INSTALL_SOURCE_PREPARE_FAILED` | source preparation/materialization failed |
+| `INSTALL_EVALUATION_FAILED` | scan/evaluation phase failed |
+| `INSTALL_SOURCE_METADATA_INVALID` | source metadata validation failed |
+| `INSTALL_TARGET_INVALID` | target spec is invalid |
+| `INSTALL_TARGET_PREPARE_FAILED` | target root preparation failed |
+| `INSTALL_WRITE_FAILED` | install write/staging/finalize failed |
+
+### lock verify (`--format json`, fatal errors)
+
+| error_code | Meaning |
+| --- | --- |
+| `LOCKFILE_READ_FAILED` | lockfile read failed |
+| `LOCKFILE_INVALID_JSON` | lockfile JSON parse failed |
+| `FILE_DIGEST_BUILD_FAILED` | digest build failed |
+| `LOCK_VERIFY_FAILED` | other verify failure |
+
+Per-check `checks[].code` values:
+- `LOCK_SCHEMA`
+- `SKILL_NAME`
+- `LOCK_STRUCTURE`
+- `LOCK_SOURCE`
+- `SOURCE_METADATA`
+- `INSTALL_REPORT`
+- `FILE_DIGESTS`
+- `ROOT_HASH`
+
+### update (`--format json`, per-skill `skills[].error_code`)
+
+| error_code | Meaning |
+| --- | --- |
+| `UP_TO_DATE` | no source or risk delta |
+| `SOURCE_CHANGED` | source drift detected |
+| `POLICY_REJECTED` | new evaluation is rejected by policy |
+| `GITHUB_REF_NOT_PINNED` | GitHub ref is floating |
+| `LOCKFILE_INVALID` | installed lockfile is invalid |
+| `GITHUB_SOURCE_INVALID` | invalid GitHub source in lock |
+| `SOURCE_METADATA_INVALID` | source metadata validation failed |
+| `SOURCE_PREPARE_FAILED` | source preparation/materialization failed |
+| `EVALUATION_ERROR` | scan/evaluation failed |
+
 ## Supported Targets
 
 The MVP target set is intentionally small:
