@@ -503,7 +503,7 @@ func extractInstallProfileArg(args []string) string {
 
 func writeInstallJSONError(stdout io.Writer, stderr io.Writer, report installErrorReport) int {
 	if report.RuleID == "" {
-		report.RuleID = inferRuleIDFromMessage(report.Message)
+		report.RuleID = inferRuleIDForJSONError(report.Message)
 	}
 	out, err := json.MarshalIndent(report, "", "  ")
 	if err != nil {

@@ -240,7 +240,7 @@ func extractUpdateTargetArg(args []string) string {
 
 func writeUpdateJSONError(stdout io.Writer, stderr io.Writer, report updateErrorReport) int {
 	if report.RuleID == "" {
-		report.RuleID = inferRuleIDFromMessage(report.Message)
+		report.RuleID = inferRuleIDForJSONError(report.Message)
 	}
 	out, err := json.MarshalIndent(report, "", "  ")
 	if err != nil {

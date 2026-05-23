@@ -76,7 +76,7 @@ func TestLockVerifyJSONErrorEnvelopeProperties(t *testing.T) {
 				report.RuleID = explicitRuleRaw
 			}
 		} else {
-			report.RuleID = inferRuleIDFromMessage(report.Message)
+			report.RuleID = inferRuleIDForJSONError(report.Message)
 		}
 
 		out, err := json.MarshalIndent(report, "", "  ")

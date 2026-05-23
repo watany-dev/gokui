@@ -41,7 +41,7 @@ func TestJSONErrorRuleIDProperties(t *testing.T) {
 
 			expectedRule := report.RuleID
 			if expectedRule == "" {
-				expectedRule = inferRuleIDFromMessage(report.Message)
+				expectedRule = inferRuleIDForJSONError(report.Message)
 			}
 
 			var decoded installErrorReport
@@ -97,7 +97,7 @@ func TestJSONErrorRuleIDProperties(t *testing.T) {
 
 			expectedRule := report.RuleID
 			if expectedRule == "" {
-				expectedRule = inferRuleIDFromMessage(report.Message)
+				expectedRule = inferRuleIDForJSONError(report.Message)
 			}
 
 			var decoded fetchErrorReport
@@ -149,7 +149,7 @@ func TestJSONErrorRuleIDProperties(t *testing.T) {
 
 			expectedRule := report.RuleID
 			if expectedRule == "" {
-				expectedRule = inferRuleIDFromMessage(report.Message)
+				expectedRule = inferRuleIDForJSONError(report.Message)
 			}
 
 			var decoded updateErrorReport

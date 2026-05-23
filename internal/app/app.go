@@ -135,6 +135,7 @@ var (
 	descriptionCommandPattern        = regexp.MustCompile(`(?i)\b(run|execute|exec|invoke|call|use)\b.{0,30}\b(bash|sh|zsh|pwsh|powershell|python|node|npm|npx|uvx|go|curl|wget|terminal|command)\b`)
 	descriptionOverridePattern       = regexp.MustCompile(`(?i)\b(ignore|override|bypass)\b.{0,40}\b(previous|prior|system|higher|earlier)\b.{0,20}\b(instruction|instructions|prompt|prompts)\b`)
 	ruleIDPrefixPattern              = regexp.MustCompile(`^([A-Z][A-Z0-9_]+):\s`)
+	ruleIDAnywherePattern            = regexp.MustCompile(`(?:^|[^A-Z0-9_])([A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+):\s`)
 	maxSkillFrontmatterBytes   int64 = 1_000_000
 )
 
@@ -649,7 +650,7 @@ func extractInspectSourceArg(args []string) string {
 
 func writeInspectJSONError(stdout io.Writer, stderr io.Writer, report inspectErrorReport) int {
 	if report.RuleID == "" {
-		report.RuleID = inferRuleIDFromMessage(report.Message)
+		report.RuleID = inferRuleIDForJSONError(report.Message)
 	}
 	out, err := json.MarshalIndent(report, "", "  ")
 	if err != nil {
@@ -662,6 +663,17 @@ func writeInspectJSONError(stdout io.Writer, stderr io.Writer, report inspectErr
 
 func inferRuleIDFromMessage(message string) string {
 	match := ruleIDPrefixPattern.FindStringSubmatch(strings.TrimSpace(message))
+	if len(match) != 2 {
+		return ""
+	}
+	return match[1]
+}
+
+func inferRuleIDForJSONError(message string) string {
+	if id := inferRuleIDFromMessage(message); id != "" {
+		return id
+	}
+	match := ruleIDAnywherePattern.FindStringSubmatch(message)
 	if len(match) != 2 {
 		return ""
 	}

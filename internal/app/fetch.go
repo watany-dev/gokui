@@ -343,7 +343,7 @@ func extractFetchSourceArg(args []string) string {
 
 func writeFetchJSONError(stdout io.Writer, stderr io.Writer, report fetchErrorReport) int {
 	if report.RuleID == "" {
-		report.RuleID = inferRuleIDFromMessage(report.Message)
+		report.RuleID = inferRuleIDForJSONError(report.Message)
 	}
 	out, err := json.MarshalIndent(report, "", "  ")
 	if err != nil {
