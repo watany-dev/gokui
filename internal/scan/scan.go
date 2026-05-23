@@ -396,9 +396,11 @@ func isImagePath(path string) bool {
 }
 
 func classifyUnicodeThreats(line string, relPath string, lineNum int) []Finding {
-	out := make([]Finding, 0, 2)
+	out := make([]Finding, 0, 4)
 	hasUnicodeTag := false
 	hasBidi := false
+	hasZeroWidth := false
+	hasControl := false
 
 	for _, r := range line {
 		if !hasUnicodeTag && r >= 0xE0000 && r <= 0xE007F {
@@ -421,7 +423,27 @@ func classifyUnicodeThreats(line string, relPath string, lineNum int) []Finding 
 				Summary:  "bidi control character detected in text",
 			})
 		}
-		if hasUnicodeTag && hasBidi {
+		if !hasZeroWidth && isZeroWidthRune(r) {
+			hasZeroWidth = true
+			out = append(out, Finding{
+				ID:       "ZERO_WIDTH_CHAR_IN_TEXT",
+				Severity: "critical",
+				File:     relPath,
+				Line:     lineNum,
+				Summary:  "zero-width character detected in text",
+			})
+		}
+		if !hasControl && isDisallowedControlRune(r) {
+			hasControl = true
+			out = append(out, Finding{
+				ID:       "CONTROL_CHAR_IN_TEXT",
+				Severity: "critical",
+				File:     relPath,
+				Line:     lineNum,
+				Summary:  "disallowed control character detected in text",
+			})
+		}
+		if hasUnicodeTag && hasBidi && hasZeroWidth && hasControl {
 			break
 		}
 	}
@@ -431,6 +453,17 @@ func classifyUnicodeThreats(line string, relPath string, lineNum int) []Finding 
 
 func isBidiControlRune(r rune) bool {
 	return (r >= 0x202A && r <= 0x202E) || (r >= 0x2066 && r <= 0x2069)
+}
+
+func isZeroWidthRune(r rune) bool {
+	return (r >= 0x200B && r <= 0x200F) || r == 0x2060 || r == 0xFEFF
+}
+
+func isDisallowedControlRune(r rune) bool {
+	if r == '\t' || r == '\n' || r == '\r' {
+		return false
+	}
+	return (r >= 0x00 && r <= 0x1F) || (r >= 0x7F && r <= 0x9F)
 }
 
 func classifyMarkdownLinkSpoofing(line string, relPath string, lineNum int) []Finding {

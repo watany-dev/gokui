@@ -28,6 +28,7 @@ tests/CI:
 - raw HTML markup detection in markdown scanning
 - markdown link-spoofing detection (display host vs target host mismatch)
 - critical detection of Unicode Tags and bidi controls in scanned text
+- critical detection of zero-width and disallowed C0/C1 controls in scanned text
 
 This roadmap section below remains forward-looking for gaps and future phases.
 
