@@ -1212,6 +1212,23 @@ func TestValidateSkillFrontmatter(t *testing.T) {
 		}
 	})
 
+	t.Run("fails when skill file is unreadable", func(t *testing.T) {
+		if runtime.GOOS == "windows" {
+			t.Skip("permission behavior differs on windows")
+		}
+
+		path := writeSkill(t, "---\nname: valid-skill\ndescription: Use when testing unreadable skill file.\n---\n")
+		if err := os.Chmod(path, 0o000); err != nil {
+			t.Fatalf("chmod skill file: %v", err)
+		}
+		defer os.Chmod(path, 0o644)
+
+		_, err := validateSkillFrontmatter(path)
+		if err == nil || !strings.Contains(err.Error(), "failed to read SKILL.md") {
+			t.Fatalf("expected read failure for unreadable skill file, got %v", err)
+		}
+	})
+
 	t.Run("rejects symlinked skill file", func(t *testing.T) {
 		if runtime.GOOS == "windows" {
 			t.Skip("symlink permissions differ on windows")

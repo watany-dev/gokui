@@ -1,6 +1,7 @@
 package app
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -12,6 +13,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"github.com/watany-dev/gokui/internal/limitio"
 	"github.com/watany-dev/gokui/internal/materialize"
 	"github.com/watany-dev/gokui/internal/scan"
 	srcpkg "github.com/watany-dev/gokui/internal/source"
@@ -785,16 +787,20 @@ func validateSkillFrontmatter(skillPath string) (skillFrontmatter, error) {
 	if !info.Mode().IsRegular() {
 		return skillFrontmatter{}, fmt.Errorf("%s: SKILL.md must be a regular file: %s", ruleSkillFrontmatterSpecialFile, skillPath)
 	}
-	if info.Size() > maxSkillFrontmatterBytes {
-		return skillFrontmatter{}, fmt.Errorf("%s: SKILL.md exceeds size limit: %s", ruleSkillFrontmatterTooLarge, skillPath)
-	}
-
-	content, err := os.ReadFile(skillPath)
+	f, err := os.Open(skillPath)
 	if err != nil {
 		return skillFrontmatter{}, fmt.Errorf("failed to read SKILL.md: %s", skillPath)
 	}
+	defer f.Close()
+	var content bytes.Buffer
+	if _, err := limitio.CopyWithStrictLimit(&content, f, maxSkillFrontmatterBytes); err != nil {
+		if errors.Is(err, limitio.ErrSizeExceeded) {
+			return skillFrontmatter{}, fmt.Errorf("%s: SKILL.md exceeds size limit: %s", ruleSkillFrontmatterTooLarge, skillPath)
+		}
+		return skillFrontmatter{}, fmt.Errorf("failed to read SKILL.md: %s", skillPath)
+	}
 
-	text := strings.ReplaceAll(string(content), "\r\n", "\n")
+	text := strings.ReplaceAll(content.String(), "\r\n", "\n")
 	lines := strings.Split(text, "\n")
 	if len(lines) == 0 || lines[0] != "---" {
 		return skillFrontmatter{}, fmt.Errorf("SKILL.md must start with YAML frontmatter: %s", skillPath)
