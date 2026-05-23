@@ -2,6 +2,7 @@ package app
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -18,6 +19,7 @@ var updateURLPattern = regexp.MustCompile(`https?://[^\s<>"')\]]+`)
 var (
 	updateMaxURLScanFileBytes int64 = 1_000_000
 	updateMaxScanFiles              = 10_000
+	errUpdateTargetRead             = errors.New("failed to read update target")
 )
 
 type updateArgs struct {
@@ -163,7 +165,7 @@ func runUpdate(args []string, stdout io.Writer, stderr io.Writer) int {
 	if err != nil {
 		if jsonOutput {
 			errorCode := updateFatalCodeReportBuild
-			if strings.Contains(err.Error(), "failed to read update target") {
+			if isUpdateTargetReadError(err) {
 				errorCode = updateFatalCodeTargetReadFail
 			}
 			return writeUpdateJSONError(stdout, stderr, updateErrorReport{
@@ -301,7 +303,7 @@ func buildUpdateReport(targetRoot string) (updateReport, error) {
 	cleanTarget := filepath.Clean(targetRoot)
 	entries, err := os.ReadDir(cleanTarget)
 	if err != nil {
-		return updateReport{}, fmt.Errorf("failed to read update target: %s", cleanTarget)
+		return updateReport{}, fmt.Errorf("%w: %s", errUpdateTargetRead, cleanTarget)
 	}
 
 	skills := make([]updateSkillItem, 0, len(entries))
@@ -366,6 +368,10 @@ func buildUpdateReport(targetRoot string) (updateReport, error) {
 		Summary:       summary,
 		Note:          "pre-release update performs dry-run diff and policy re-evaluation",
 	}, nil
+}
+
+func isUpdateTargetReadError(err error) bool {
+	return errors.Is(err, errUpdateTargetRead)
 }
 
 func evaluateUpdateSkill(item updateSkillItem, lock installLock) (updateSkillItem, error) {

@@ -89,6 +89,25 @@ func TestWriteUpdateJSONErrorPreservesExplicitRuleID(t *testing.T) {
 	}
 }
 
+func TestIsUpdateTargetReadError(t *testing.T) {
+	t.Run("matches sentinel and wrapped sentinel", func(t *testing.T) {
+		if !isUpdateTargetReadError(errUpdateTargetRead) {
+			t.Fatal("expected sentinel to match")
+		}
+		wrapped := fmt.Errorf("wrapped: %w", errUpdateTargetRead)
+		if !isUpdateTargetReadError(wrapped) {
+			t.Fatal("expected wrapped sentinel to match")
+		}
+	})
+
+	t.Run("does not match text-only error", func(t *testing.T) {
+		err := errors.New("failed to read update target: /tmp/skills")
+		if isUpdateTargetReadError(err) {
+			t.Fatal("did not expect text-only error to match")
+		}
+	})
+}
+
 func TestRunUpdateDryRunStatuses(t *testing.T) {
 	targetRoot := filepath.Join(t.TempDir(), "skills")
 	if err := os.MkdirAll(targetRoot, 0o755); err != nil {
