@@ -45,6 +45,13 @@ type lockVerifyCheck struct {
 	Detail string `json:"detail"`
 }
 
+var (
+	maxLockVerifyLockFileBytes int64 = 1_000_000
+	maxInstallReportFileBytes  int64 = 1_000_000
+)
+
+const ruleInstallReportTooLarge = "INSTALL_REPORT_TOO_LARGE"
+
 const (
 	lockVerifyCodeSchema         = "LOCK_SCHEMA"
 	lockVerifyCodeName           = "SKILL_NAME"
@@ -169,6 +176,14 @@ func parseLockVerifyArgs(args []string) (lockVerifyArgs, error) {
 func verifyLock(skillPath string) (lockVerifyReport, error) {
 	cleanPath := filepath.Clean(skillPath)
 	lockPath := filepath.Join(cleanPath, installLockFile)
+	info, err := os.Stat(lockPath)
+	if err != nil {
+		return lockVerifyReport{}, fmt.Errorf("failed to read lockfile: %s", lockPath)
+	}
+	if info.Size() > maxLockVerifyLockFileBytes {
+		return lockVerifyReport{}, fmt.Errorf("%s: failed to read lockfile (size exceeds limit): %s", ruleLockfileTooLarge, lockPath)
+	}
+
 	lockRaw, err := os.ReadFile(lockPath)
 	if err != nil {
 		return lockVerifyReport{}, fmt.Errorf("failed to read lockfile: %s", lockPath)
@@ -407,6 +422,14 @@ func verifyLockStructure(lock installLock) (bool, string) {
 
 func verifyInstallReport(skillPath string, lock installLock) (bool, string) {
 	reportPath := filepath.Join(skillPath, installReportFile)
+	info, err := os.Stat(reportPath)
+	if err != nil {
+		return false, fmt.Sprintf("failed to read install report: %s", reportPath)
+	}
+	if info.Size() > maxInstallReportFileBytes {
+		return false, fmt.Sprintf("%s: install report exceeds size limit: %s", ruleInstallReportTooLarge, reportPath)
+	}
+
 	raw, err := os.ReadFile(reportPath)
 	if err != nil {
 		return false, fmt.Sprintf("failed to read install report: %s", reportPath)

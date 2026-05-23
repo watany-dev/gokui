@@ -14,6 +14,10 @@ import (
 
 const sourceMetadataFile = ".gokui-source.json"
 
+var maxSourceMetadataFileBytes int64 = 1_000_000
+
+const ruleSourceMetadataFileTooLarge = "SOURCE_METADATA_FILE_TOO_LARGE"
+
 type sourceMetadata struct {
 	Schema          string `json:"schema"`
 	SourceInput     string `json:"source_input"`
@@ -34,11 +38,19 @@ func writeSourceMetadata(skillRoot string, meta sourceMetadata) error {
 
 func readSourceMetadata(skillRoot string) (sourceMetadata, bool, error) {
 	path := filepath.Join(skillRoot, sourceMetadataFile)
-	raw, err := os.ReadFile(path)
+	info, err := os.Stat(path)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return sourceMetadata{}, false, nil
 		}
+		return sourceMetadata{}, false, fmt.Errorf("failed to read source metadata: %w", err)
+	}
+	if info.Size() > maxSourceMetadataFileBytes {
+		return sourceMetadata{}, false, fmt.Errorf("%s: source metadata exceeds size limit: %s", ruleSourceMetadataFileTooLarge, path)
+	}
+
+	raw, err := os.ReadFile(path)
+	if err != nil {
 		return sourceMetadata{}, false, fmt.Errorf("failed to read source metadata: %w", err)
 	}
 

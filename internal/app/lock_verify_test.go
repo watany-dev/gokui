@@ -146,6 +146,32 @@ func TestVerifyLockErrorsAndDiff(t *testing.T) {
 		t.Fatalf("expected invalid JSON error, got %v", err)
 	}
 
+	t.Run("oversized lockfile", func(t *testing.T) {
+		origLimit := maxLockVerifyLockFileBytes
+		maxLockVerifyLockFileBytes = 8
+		t.Cleanup(func() { maxLockVerifyLockFileBytes = origLimit })
+
+		oversizedDir := t.TempDir()
+		if err := os.WriteFile(filepath.Join(oversizedDir, installLockFile), []byte(`{"schema":"gokui.lock/v1"}`), 0o644); err != nil {
+			t.Fatalf("write oversized lockfile: %v", err)
+		}
+		_, err := verifyLock(oversizedDir)
+		if err == nil || !strings.Contains(err.Error(), ruleLockfileTooLarge) || !strings.Contains(err.Error(), "failed to read lockfile") {
+			t.Fatalf("expected oversized lockfile read failure, got %v", err)
+		}
+	})
+
+	t.Run("lockfile path is directory", func(t *testing.T) {
+		dirWithLockDir := t.TempDir()
+		if err := os.Mkdir(filepath.Join(dirWithLockDir, installLockFile), 0o755); err != nil {
+			t.Fatalf("mkdir lock path dir: %v", err)
+		}
+		_, err := verifyLock(dirWithLockDir)
+		if err == nil || !strings.Contains(err.Error(), "failed to read lockfile") {
+			t.Fatalf("expected lockfile read error for directory path, got %v", err)
+		}
+	})
+
 	missing, changed, unexpected := diffLockFiles(
 		[]lockFileHash{
 			{Path: "a.txt", SHA256: "1", Bytes: 1},
@@ -207,6 +233,29 @@ func TestRunLockVerifyErrorPathsAndDriftKinds(t *testing.T) {
 	if strings.Contains(stdout.String(), "\"rule_id\":") {
 		t.Fatalf("stdout should omit rule_id when no rule-prefixed error is present, got %q", stdout.String())
 	}
+
+	stdout.Reset()
+	stderr.Reset()
+	origLimit := maxLockVerifyLockFileBytes
+	maxLockVerifyLockFileBytes = 8
+	oversizedDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(oversizedDir, installLockFile), []byte(`{"schema":"gokui.lock/v1"}`), 0o644); err != nil {
+		t.Fatalf("write oversized lockfile: %v", err)
+	}
+	code = runLockVerify([]string{oversizedDir, "--format", "json"}, &stdout, &stderr)
+	if code != 1 {
+		t.Fatalf("runLockVerify(oversized lock json) code = %d, want 1", code)
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("stderr should be empty for json error output, got %q", stderr.String())
+	}
+	if !strings.Contains(stdout.String(), "\"error_code\": \""+lockVerifyErrorCodeReadLockfile+"\"") {
+		t.Fatalf("stdout should include read-lockfile error code, got %q", stdout.String())
+	}
+	if !strings.Contains(stdout.String(), "\"rule_id\": \""+ruleLockfileTooLarge+"\"") {
+		t.Fatalf("stdout should include lockfile-too-large rule_id, got %q", stdout.String())
+	}
+	maxLockVerifyLockFileBytes = origLimit
 
 	src := createSkillSourceForInstallTest(t, "drift-kinds-skill")
 	targetRoot := filepath.Join(t.TempDir(), "skills")
@@ -622,6 +671,34 @@ func TestVerifyInstallReportValidationBranches(t *testing.T) {
 		ok, detail := verifyInstallReport(skillPath, lock)
 		if ok || !strings.Contains(detail, "invalid install report JSON") {
 			t.Fatalf("expected invalid json failure, got ok=%v detail=%q", ok, detail)
+		}
+	})
+
+	t.Run("oversized report", func(t *testing.T) {
+		origLimit := maxInstallReportFileBytes
+		maxInstallReportFileBytes = 8
+		t.Cleanup(func() { maxInstallReportFileBytes = origLimit })
+		writeReport(t, `{"schema_version":"0.1.0-draft"}`)
+		ok, detail := verifyInstallReport(skillPath, lock)
+		if ok || !strings.Contains(detail, ruleInstallReportTooLarge) {
+			t.Fatalf("expected oversized report failure, got ok=%v detail=%q", ok, detail)
+		}
+	})
+
+	t.Run("report path is directory", func(t *testing.T) {
+		reportPath := filepath.Join(skillPath, installReportFile)
+		if err := os.Remove(reportPath); err != nil && !os.IsNotExist(err) {
+			t.Fatalf("remove report file: %v", err)
+		}
+		if err := os.Mkdir(reportPath, 0o755); err != nil {
+			t.Fatalf("mkdir report path: %v", err)
+		}
+		ok, detail := verifyInstallReport(skillPath, lock)
+		if ok || !strings.Contains(detail, "failed to read install report") {
+			t.Fatalf("expected read failure for directory report path, got ok=%v detail=%q", ok, detail)
+		}
+		if err := os.Remove(reportPath); err != nil {
+			t.Fatalf("remove report directory: %v", err)
 		}
 	})
 

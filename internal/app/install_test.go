@@ -1051,6 +1051,18 @@ func TestReadInstallLockAndProvenanceMatches(t *testing.T) {
 			t.Fatalf("expected unsupported schema error, got %v", err)
 		}
 
+		if _, err := readInstallLock(filepath.Join(dir, "missing.lock")); err == nil || !strings.Contains(err.Error(), "failed to read install lockfile") {
+			t.Fatalf("expected read error for missing lockfile, got %v", err)
+		}
+
+		lockDirPath := filepath.Join(dir, "lock-dir")
+		if err := os.Mkdir(lockDirPath, 0o755); err != nil {
+			t.Fatalf("mkdir lock-dir: %v", err)
+		}
+		if _, err := readInstallLock(lockDirPath); err == nil || !strings.Contains(err.Error(), "failed to read install lockfile") {
+			t.Fatalf("expected read error for directory lockfile path, got %v", err)
+		}
+
 		origLimit := maxInstallLockFileBytes
 		maxInstallLockFileBytes = 8
 		t.Cleanup(func() { maxInstallLockFileBytes = origLimit })
