@@ -290,7 +290,7 @@ func scanTargets(skillRoot string) ([]scanTarget, error) {
 		if d.IsDir() {
 			return nil
 		}
-		info, infoErr := d.Info()
+		info, infoErr := os.Lstat(path)
 		if infoErr != nil {
 			return fmt.Errorf("failed to stat scan source file: %w", infoErr)
 		}
