@@ -22,6 +22,7 @@ tests/CI:
 - Scan/update walker hardening for non-regular file rejection before reads
 - Commit-pinned GitHub source fetch and install/update/verify provenance checks
 - GitHub archive network hardening (redirect constraints + response content-type/encoding validation)
+- GitHub archive strict stream-size enforcement with overflow-write prevention and cleanup
 - GitHub source parser length bounds (input and owner/repo/path/ref segments)
 - Atomic install with `.gokui-report.json` and `gokui.lock`
 - Lock drift verification with per-check machine-readable codes

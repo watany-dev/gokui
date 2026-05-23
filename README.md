@@ -96,7 +96,9 @@ provenance metadata. In JSON mode, fetch failures return `error_code` for
 automation. Fetch output roots and output entries must not be symlink paths.
 GitHub archive downloads also enforce redirect safety constraints (HTTPS only,
 same host and port, and no redirect userinfo) plus response header validation
-for expected archive content types and content encoding.
+for expected archive content types and content encoding. Streamed size limits
+are enforced without writing overflow bytes, and partial archive files are
+removed on failure.
 GitHub source syntax is now strictly validated as
 `github:owner/repo//path/to/skill@ref`; `install` requires commit-pinned refs
 for GitHub sources and rejects floating refs. `install` and `update` validate
