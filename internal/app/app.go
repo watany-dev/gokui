@@ -130,7 +130,7 @@ gokui is pre-release software.
 
 usage:
   gokui version
-  gokui fetch github:owner/repo//path/to/skill@commit --out <quarantine-dir>
+  gokui fetch github:owner/repo//path/to/skill@commit --out <quarantine-dir> [--format human|json]
   gokui inspect <local-dir|zip|github-source> [--format human|json]
   gokui install <source> --target codex --profile strict [--format human|json]
   gokui update --dry-run [--target codex|custom:/path] [--format human|json]

@@ -114,8 +114,8 @@ gokui separates fetching, inspection, and installation.
 ```sh
 gokui fetch github:org/repo//skills/pdf-helper@8f3c2d1a4b5c6d7e8f901234567890abcdef1234 --out .gokui/quarantine
 gokui inspect .gokui/quarantine/pdf-helper --format human
-gokui install .gokui/quarantine/pdf-helper --target codex --profile strict
-gokui update --target codex --dry-run
+gokui install .gokui/quarantine/pdf-helper --target codex --profile strict --format human
+gokui update --target codex --dry-run --format human
 ```
 
 The intended flow is:
