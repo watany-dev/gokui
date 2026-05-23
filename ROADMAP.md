@@ -16,6 +16,7 @@ tests/CI:
 - Lock/source-metadata/report read-path hardening with symlink component rejection
 - Source metadata write-path hardening with symlink component rejection
 - Install atomic finalize hardening for symlinked target entries
+- Fetch atomic finalize hardening for symlinked output entries
 - Update dry-run hardening for symlinked target entries and symlinked URL/executable scan inputs
 - Commit-pinned GitHub source fetch and install/update/verify provenance checks
 - Atomic install with `.gokui-report.json` and `gokui.lock`

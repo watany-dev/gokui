@@ -90,7 +90,7 @@ against a rejected fixture and uploads the SARIF artifact for review.
 `fetch` now supports commit-pinned GitHub sources and materializes them into a
 quarantine output root via `--out`, and records `.gokui-source.json`
 provenance metadata. In JSON mode, fetch failures return `error_code` for
-automation. Fetch output roots must not be symlink paths.
+automation. Fetch output roots and output entries must not be symlink paths.
 GitHub source syntax is now strictly validated as
 `github:owner/repo//path/to/skill@ref`; `install` requires commit-pinned refs
 for GitHub sources and rejects floating refs. `install` and `update` validate

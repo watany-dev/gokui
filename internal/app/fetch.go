@@ -51,6 +51,7 @@ const (
 )
 
 const ruleFetchOutputSymlink = "FETCH_OUTPUT_SYMLINK_DETECTED"
+const ruleFetchOutputEntrySymlink = "FETCH_OUTPUT_ENTRY_SYMLINK_DETECTED"
 
 var (
 	fetchSkillAtomicFunc = fetchSkillAtomic
@@ -398,6 +399,9 @@ func parseFetchArgs(args []string) (fetchArgs, error) {
 
 func fetchSkillAtomic(skillRoot string, outRoot string, skillName string) (string, error) {
 	finalPath := filepath.Join(outRoot, skillName)
+	if err := rejectSymlinkPath(finalPath, "fetch output entry", ruleFetchOutputEntrySymlink); err != nil {
+		return "", err
+	}
 	if _, err := os.Stat(finalPath); err == nil {
 		return "", fmt.Errorf("fetch output already contains skill: %s", finalPath)
 	} else if !os.IsNotExist(err) {

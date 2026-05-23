@@ -512,6 +512,69 @@ func TestRunFetchRejectsSymlinkOutputRoot(t *testing.T) {
 	}
 }
 
+func TestRunFetchRejectsSymlinkOutputEntry(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlink permissions differ on windows")
+	}
+
+	origFetch := fetchGitHubSkill
+	t.Cleanup(func() { fetchGitHubSkill = origFetch })
+
+	sourceDir := createSkillSourceForInstallTest(t, "fetch-symlink-entry")
+	fetchGitHubSkill = func(spec srcpkg.GitHubSpec) (string, func(), error) {
+		return sourceDir, nil, nil
+	}
+
+	base := t.TempDir()
+	outRoot := filepath.Join(base, "out")
+	if err := os.Mkdir(outRoot, 0o755); err != nil {
+		t.Fatalf("mkdir out root: %v", err)
+	}
+	realExisting := filepath.Join(base, "real-existing")
+	if err := os.Mkdir(realExisting, 0o755); err != nil {
+		t.Fatalf("mkdir real existing dir: %v", err)
+	}
+	if err := os.Symlink("../real-existing", filepath.Join(outRoot, "fetch-symlink-entry")); err != nil {
+		t.Fatalf("create output entry symlink: %v", err)
+	}
+
+	var stdout strings.Builder
+	var stderr strings.Builder
+	code := runFetch([]string{
+		"github:org/repo//skills/fetch-symlink-entry@8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
+		"--out", outRoot,
+		"--format", "json",
+	}, &stdout, &stderr)
+	if code != 1 {
+		t.Fatalf("runFetch(symlink output entry) code = %d, want 1\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("stderr should be empty for json errors, got %q", stderr.String())
+	}
+	if !strings.Contains(stdout.String(), "\"error_code\": \""+fetchErrorCodeCopyFailed+"\"") {
+		t.Fatalf("stdout should include copy-failed error code, got %q", stdout.String())
+	}
+	if !strings.Contains(stdout.String(), "\"rule_id\": \""+ruleFetchOutputEntrySymlink+"\"") {
+		t.Fatalf("stdout should include output-entry symlink rule_id, got %q", stdout.String())
+	}
+
+	stdout.Reset()
+	stderr.Reset()
+	code = runFetch([]string{
+		"github:org/repo//skills/fetch-symlink-entry@8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
+		"--out", outRoot,
+	}, &stdout, &stderr)
+	if code != 1 {
+		t.Fatalf("runFetch(human symlink output entry) code = %d, want 1\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
+	}
+	if stdout.Len() != 0 {
+		t.Fatalf("stdout should be empty for human errors, got %q", stdout.String())
+	}
+	if !strings.Contains(stderr.String(), ruleFetchOutputEntrySymlink) {
+		t.Fatalf("stderr should include output-entry symlink rule marker, got %q", stderr.String())
+	}
+}
+
 func TestFetchHelperFunctions(t *testing.T) {
 	if !fetchArgsRequestJSON([]string{"--format", "json"}) {
 		t.Fatal("expected json format detection")
@@ -598,6 +661,24 @@ func TestFetchSkillAtomic(t *testing.T) {
 		_, err = fetchSkillAtomic(sourceDir, outRoot, "nested/path")
 		if err == nil || !strings.Contains(err.Error(), "failed to finalize fetch") {
 			t.Fatalf("expected rename error for nested path, got %v", err)
+		}
+
+		if runtime.GOOS != "windows" {
+			symlinkOut := filepath.Join(t.TempDir(), "out")
+			if err := os.Mkdir(symlinkOut, 0o755); err != nil {
+				t.Fatalf("mkdir symlink out: %v", err)
+			}
+			realExisting := filepath.Join(t.TempDir(), "real-existing")
+			if err := os.Mkdir(realExisting, 0o755); err != nil {
+				t.Fatalf("mkdir real existing: %v", err)
+			}
+			if err := os.Symlink(realExisting, filepath.Join(symlinkOut, "fetch-atomic-fail")); err != nil {
+				t.Fatalf("create output entry symlink: %v", err)
+			}
+			_, err = fetchSkillAtomic(sourceDir, symlinkOut, "fetch-atomic-fail")
+			if err == nil || !strings.Contains(err.Error(), ruleFetchOutputEntrySymlink) {
+				t.Fatalf("expected output-entry symlink rejection, got %v", err)
+			}
 		}
 	})
 }
