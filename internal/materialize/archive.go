@@ -291,6 +291,9 @@ func safeJoin(root, name string) (string, error) {
 	if cleanName == "." {
 		return "", fmt.Errorf("archive contains invalid path: %s", name)
 	}
+	if hasWindowsDrivePrefix(cleanName) {
+		return "", fmt.Errorf("%s: archive contains absolute path: %s", ruleArchivePathEscape, name)
+	}
 	if cleanName == ".." || strings.HasPrefix(cleanName, "../") {
 		return "", fmt.Errorf("%s: archive path escapes destination: %s", ruleArchivePathEscape, name)
 	}

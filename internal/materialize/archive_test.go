@@ -585,6 +585,11 @@ func TestSafeJoinRejectsAbsoluteAndDot(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "absolute path") {
 		t.Fatalf("expected windows-drive absolute-path error, got %v", err)
 	}
+
+	_, err = safeJoin(root, "safe/../C:/Windows/System32/drivers/etc/hosts")
+	if err == nil || !strings.Contains(err.Error(), "absolute path") {
+		t.Fatalf("expected normalized windows-drive absolute-path error, got %v", err)
+	}
 }
 
 func TestSafeJoinPropertyNoEscapeNoPanic(t *testing.T) {
