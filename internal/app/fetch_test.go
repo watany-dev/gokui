@@ -356,6 +356,20 @@ func TestRunFetch(t *testing.T) {
 		stdout.Reset()
 		stderr.Reset()
 
+		// source download/materialize failure with https rule-prefixed error
+		fetchGitHubSkill = func(spec srcpkg.GitHubSpec) (string, func(), error) {
+			return "", nil, errors.New("GITHUB_ARCHIVE_SCHEME_INVALID: github archive URL must use https")
+		}
+		code = runFetch([]string{"github:org/repo//skills/x@8f3c2d1a4b5c6d7e8f901234567890abcdef1234", "--out", t.TempDir(), "--format", "json"}, &stdout, &stderr)
+		if code != 1 || !strings.Contains(stdout.String(), fetchErrorCodeSourceDownloadFailed) {
+			t.Fatalf("expected source-download-failed code for https rule-prefixed error, got code=%d stdout=%q stderr=%q", code, stdout.String(), stderr.String())
+		}
+		if !strings.Contains(stdout.String(), "\"rule_id\": \"GITHUB_ARCHIVE_SCHEME_INVALID\"") {
+			t.Fatalf("stdout should include https rule_id, got %q", stdout.String())
+		}
+		stdout.Reset()
+		stderr.Reset()
+
 		// invalid skill frontmatter
 		badSkill := t.TempDir()
 		if err := os.WriteFile(filepath.Join(badSkill, "SKILL.md"), []byte("# bad"), 0o644); err != nil {
