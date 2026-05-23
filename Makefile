@@ -1,6 +1,7 @@
 GO ?= go
 COVERAGE_THRESHOLD ?= 95
 RELEASE_CHECK_VULN ?= 1
+INSPECT_SARIF_OUT ?= inspect-results.sarif
 GOFMT_TARGETS := cmd internal
 MAIN_PKG := ./cmd/gokui
 CACHE_DIR ?= $(CURDIR)/.cache
@@ -68,6 +69,7 @@ actionlint:
 check: fmt-check lint typecheck deadcode coverage
 
 release-check: check test test-race build
+	$(MAKE) inspect-sarif INSPECT_SARIF_OUT=$(CACHE_DIR)/inspect-results.sarif
 ifeq ($(RELEASE_CHECK_VULN),1)
 	$(MAKE) vuln
 else
@@ -81,4 +83,4 @@ release-evidence:
 	./scripts/new-release-evidence.sh
 
 inspect-sarif:
-	./scripts/generate-inspect-sarif.sh
+	./scripts/generate-inspect-sarif.sh "$(INSPECT_SARIF_OUT)"

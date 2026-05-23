@@ -30,6 +30,7 @@ This runs:
 - full tests
 - race tests
 - build
+- inspect SARIF smoke generation (`make inspect-sarif`)
 - `govulncheck`
 
 ## 3) Offline Fallback

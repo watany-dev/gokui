@@ -225,7 +225,7 @@ func TestReleaseCheckDocumentationSync(t *testing.T) {
 		"make release-check RELEASE_CHECK_VULN=0",
 		"make release-check-offline",
 		"make inspect-sarif",
-		"fmt/lint/typecheck/deadcode/coverage/test/test-race/build and govulncheck",
+		"inspect-sarif smoke generation, and govulncheck",
 	}
 	for _, line := range required {
 		if !strings.Contains(readme, line) {
