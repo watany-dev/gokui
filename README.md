@@ -48,6 +48,7 @@ status-aware automation.
 URL risk classification now flags shortener hosts and raw-IP URLs during scan.
 It also flags paste-site URLs, GitHub release asset URLs, and remote image
 URLs in markdown content for review.
+Markdown raw HTML markup is now flagged as a medium-severity finding.
 JSON output contracts are now stability-tested across `inspect`, `fetch`,
 `install`, `update`, `lock verify`, and install metadata files.
 CI now includes a dedicated SARIF smoke job that runs `inspect --format sarif`

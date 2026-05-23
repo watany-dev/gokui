@@ -58,6 +58,7 @@ download https://example.com/cli.exe`
 	assertHasID(t, findings, "PASTE_SITE_URL")
 	assertHasID(t, findings, "RELEASE_ASSET_URL")
 	assertHasID(t, findings, "REMOTE_IMAGE_URL")
+	assertHasID(t, findings, "RAW_HTML_MARKUP")
 }
 
 func TestScanSkillRootScansScriptLikeFiles(t *testing.T) {

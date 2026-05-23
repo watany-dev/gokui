@@ -30,6 +30,7 @@ var (
 
 	externalBinaryPattern = regexp.MustCompile(`(?i)\bhttps?://\S+\.(?:zip|exe|msi|dmg|pkg|tar\.gz|tgz)\b`)
 	urlPattern            = regexp.MustCompile(`(?i)\bhttps?://[^\s<>"')\]]+`)
+	rawHTMLPattern        = regexp.MustCompile(`(?i)<\s*(?:script|iframe|object|embed|form|link|meta|img|svg|video|audio)\b`)
 
 	fakePrereqPattern = regexp.MustCompile(`(?i)\b(?:required|required prerequisite|you must|before use)\b.{0,120}\b(?:download|install)\b.{0,200}\b(?:run|execute|bash|sh|powershell|chmod \+x)\b`)
 )
@@ -238,6 +239,15 @@ func scanTextFile(target scanTarget) ([]Finding, error) {
 				File:     target.Relative,
 				Line:     lineNum,
 				Summary:  "prompt override language detected",
+			})
+		}
+		if rawHTMLPattern.MatchString(line) {
+			findings = append(findings, Finding{
+				ID:       "RAW_HTML_MARKUP",
+				Severity: "medium",
+				File:     target.Relative,
+				Line:     lineNum,
+				Summary:  "raw HTML markup detected in markdown content",
 			})
 		}
 	}
