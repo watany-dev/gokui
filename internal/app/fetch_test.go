@@ -289,6 +289,9 @@ func TestRunFetch(t *testing.T) {
 		if !strings.Contains(stdout.String(), "\"error_code\": \""+fetchErrorCodeArgsInvalid+"\"") {
 			t.Fatalf("stdout should include parse error_code, got %q", stdout.String())
 		}
+		if strings.Contains(stdout.String(), "\"rule_id\":") {
+			t.Fatalf("stdout should omit rule_id for non-rule parse errors, got %q", stdout.String())
+		}
 
 		stdout.Reset()
 		stderr.Reset()
@@ -301,6 +304,9 @@ func TestRunFetch(t *testing.T) {
 		}
 		if !strings.Contains(stdout.String(), "\"error_code\": \""+fetchErrorCodeSourceUnsupported+"\"") {
 			t.Fatalf("stdout should include source unsupported error_code, got %q", stdout.String())
+		}
+		if strings.Contains(stdout.String(), "\"rule_id\":") {
+			t.Fatalf("stdout should omit rule_id for non-rule source errors, got %q", stdout.String())
 		}
 	})
 
