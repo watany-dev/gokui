@@ -29,6 +29,7 @@ jobs:
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
         with:
           go-version-file: go.mod
+          check-latest: true
 
       - run: go mod download
       - run: make fmt-check
@@ -56,6 +57,7 @@ jobs:
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
         with:
           go-version-file: go.mod
+          check-latest: true
 
       - name: Verify git is available
         run: git --version
@@ -103,6 +105,7 @@ jobs:
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
         with:
           go-version-file: go.mod
+          check-latest: true
 
       - run: go mod download
 
@@ -131,6 +134,7 @@ jobs:
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
         with:
           go-version-file: go.mod
+          check-latest: true
 
       - run: go mod download
       - run: make vuln
@@ -165,6 +169,7 @@ jobs:
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
         with:
           go-version-file: go.mod
+          check-latest: true
 
       - run: go mod download
 
@@ -190,6 +195,7 @@ jobs:
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
         with:
           go-version-file: go.mod
+          check-latest: true
 
       - run: go mod download
       - name: Lint workflow files (actionlint)

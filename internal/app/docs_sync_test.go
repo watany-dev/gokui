@@ -182,6 +182,7 @@ func TestReleaseChecklistDocumentationSync(t *testing.T) {
 		"make inspect-sarif",
 		"make release-evidence",
 		"make vuln",
+		"VULN_GOTOOLCHAIN=go1.26.3+auto",
 	}
 	for _, line := range required {
 		if !strings.Contains(releaseDoc, line) {
@@ -230,6 +231,41 @@ func TestReleaseCheckDocumentationSync(t *testing.T) {
 	for _, line := range required {
 		if !strings.Contains(readme, line) {
 			t.Fatalf("README missing release-check documentation line: %q", line)
+		}
+	}
+}
+
+func TestCISetupGoUsesLatestPatch(t *testing.T) {
+	ciBytes, err := os.ReadFile("../../.github/workflows/ci.yml")
+	if err != nil {
+		t.Fatalf("failed to read ci workflow: %v", err)
+	}
+	ci := string(ciBytes)
+	if !strings.Contains(ci, "check-latest: true") {
+		t.Fatal("ci workflow should set check-latest: true for setup-go")
+	}
+
+	setupGoCount := strings.Count(ci, "uses: actions/setup-go@")
+	checkLatestCount := strings.Count(ci, "check-latest: true")
+	if checkLatestCount < setupGoCount {
+		t.Fatalf("ci workflow should set check-latest for every setup-go step: setup-go=%d check-latest=%d", setupGoCount, checkLatestCount)
+	}
+}
+
+func TestMakefileVulnToolchainBaselineSync(t *testing.T) {
+	makefileBytes, err := os.ReadFile("../../Makefile")
+	if err != nil {
+		t.Fatalf("failed to read Makefile: %v", err)
+	}
+	makefile := string(makefileBytes)
+
+	required := []string{
+		"VULN_GOTOOLCHAIN ?= go1.26.3+auto",
+		"GOTOOLCHAIN=$(VULN_GOTOOLCHAIN) $(GO) tool govulncheck ./...",
+	}
+	for _, line := range required {
+		if !strings.Contains(makefile, line) {
+			t.Fatalf("Makefile missing vuln toolchain baseline line: %q", line)
 		}
 	}
 }

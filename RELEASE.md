@@ -47,7 +47,9 @@ Before final release publication, rerun:
 make vuln
 ```
 
-with network access and record the result.
+with network access and record the result. The default target runs with
+`VULN_GOTOOLCHAIN=go1.26.3+auto` so standard-library checks use a patched
+toolchain baseline.
 
 ## 4) Contract Spot-Checks
 

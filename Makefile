@@ -2,6 +2,7 @@ GO ?= go
 COVERAGE_THRESHOLD ?= 95
 RELEASE_CHECK_VULN ?= 1
 INSPECT_SARIF_OUT ?= inspect-results.sarif
+VULN_GOTOOLCHAIN ?= go1.26.3+auto
 GOFMT_TARGETS := cmd internal
 MAIN_PKG := ./cmd/gokui
 CACHE_DIR ?= $(CURDIR)/.cache
@@ -61,7 +62,7 @@ coverage:
 	COVERAGE_THRESHOLD=$(COVERAGE_THRESHOLD) bash ./scripts/check-coverage.sh
 
 vuln:
-	$(GO) tool govulncheck ./...
+	GOTOOLCHAIN=$(VULN_GOTOOLCHAIN) $(GO) tool govulncheck ./...
 
 actionlint:
 	$(GO) tool actionlint

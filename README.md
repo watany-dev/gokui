@@ -107,6 +107,11 @@ make inspect-sarif
 make release-evidence
 ```
 
+CI is configured to resolve the latest available patch release for the selected
+Go minor version (`actions/setup-go` with `check-latest: true`).
+`make vuln` also defaults to a minimum patched toolchain via
+`VULN_GOTOOLCHAIN=go1.26.3+auto` (override on demand).
+
 Release execution checklist: [RELEASE.md](RELEASE.md)
 
 ## Threat Model
