@@ -51,6 +51,7 @@ URLs in markdown content for review.
 Markdown raw HTML markup is now flagged as a medium-severity finding.
 Markdown links with host-mismatched display URL/target URL are flagged as high
 severity link-spoofing findings.
+Unicode Tags and bidi controls in scanned text are now flagged as critical.
 JSON output contracts are now stability-tested across `inspect`, `fetch`,
 `install`, `update`, `lock verify`, and install metadata files.
 CI now includes a dedicated SARIF smoke job that runs `inspect --format sarif`

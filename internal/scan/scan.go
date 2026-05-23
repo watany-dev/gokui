@@ -210,6 +210,7 @@ func scanTextFile(target scanTarget) ([]Finding, error) {
 			})
 		}
 		findings = append(findings, classifyURLRisks(line, target.Relative, lineNum, target.Kind == "markdown")...)
+		findings = append(findings, classifyUnicodeThreats(line, target.Relative, lineNum)...)
 
 		if target.Kind != "markdown" {
 			continue
@@ -392,6 +393,44 @@ func isImagePath(path string) bool {
 		strings.HasSuffix(lower, ".svg") ||
 		strings.HasSuffix(lower, ".bmp") ||
 		strings.HasSuffix(lower, ".ico")
+}
+
+func classifyUnicodeThreats(line string, relPath string, lineNum int) []Finding {
+	out := make([]Finding, 0, 2)
+	hasUnicodeTag := false
+	hasBidi := false
+
+	for _, r := range line {
+		if !hasUnicodeTag && r >= 0xE0000 && r <= 0xE007F {
+			hasUnicodeTag = true
+			out = append(out, Finding{
+				ID:       "UNICODE_TAG_IN_INSTRUCTIONS",
+				Severity: "critical",
+				File:     relPath,
+				Line:     lineNum,
+				Summary:  "Unicode Tags detected in text",
+			})
+		}
+		if !hasBidi && isBidiControlRune(r) {
+			hasBidi = true
+			out = append(out, Finding{
+				ID:       "BIDI_CONTROL_IN_TEXT",
+				Severity: "critical",
+				File:     relPath,
+				Line:     lineNum,
+				Summary:  "bidi control character detected in text",
+			})
+		}
+		if hasUnicodeTag && hasBidi {
+			break
+		}
+	}
+
+	return out
+}
+
+func isBidiControlRune(r rune) bool {
+	return (r >= 0x202A && r <= 0x202E) || (r >= 0x2066 && r <= 0x2069)
 }
 
 func classifyMarkdownLinkSpoofing(line string, relPath string, lineNum int) []Finding {

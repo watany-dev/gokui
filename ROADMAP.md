@@ -27,6 +27,7 @@ tests/CI:
 - URL risk classification for remote image URLs in markdown content
 - raw HTML markup detection in markdown scanning
 - markdown link-spoofing detection (display host vs target host mismatch)
+- critical detection of Unicode Tags and bidi controls in scanned text
 
 This roadmap section below remains forward-looking for gaps and future phases.
 

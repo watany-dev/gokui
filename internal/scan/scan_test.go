@@ -31,7 +31,7 @@ download release from https://github.com/org/repo/releases/download/v1.0.0/tool.
 ![badge](https://example.com/badge.png)
 <img src="https://example.com/assets/logo.webp" />
 Use [https://trusted.example.com/guide](https://evil.example.net/guide) as prerequisite docs.
-`
+` + "unicode tag here: \U000E0001\n" + "bidi control here: abc\u202Etxt\n"
 	if err := os.WriteFile(filepath.Join(root, "SKILL.md"), []byte(skill), 0o644); err != nil {
 		t.Fatalf("write SKILL.md: %v", err)
 	}
@@ -61,6 +61,8 @@ download https://example.com/cli.exe`
 	assertHasID(t, findings, "REMOTE_IMAGE_URL")
 	assertHasID(t, findings, "RAW_HTML_MARKUP")
 	assertHasID(t, findings, "LINK_SPOOFING_URL_MISMATCH")
+	assertHasID(t, findings, "UNICODE_TAG_IN_INSTRUCTIONS")
+	assertHasID(t, findings, "BIDI_CONTROL_IN_TEXT")
 }
 
 func TestScanSkillRootScansScriptLikeFiles(t *testing.T) {
@@ -154,6 +156,22 @@ func TestClassifyMarkdownLinkSpoofing(t *testing.T) {
 		findings := classifyMarkdownLinkSpoofing(line, "SKILL.md", 13)
 		if len(findings) != 0 {
 			t.Fatalf("expected no findings for non-host label, got %+v", findings)
+		}
+	})
+}
+
+func TestClassifyUnicodeThreats(t *testing.T) {
+	t.Run("detects unicode tag and bidi controls", func(t *testing.T) {
+		line := "x\U000E0001 y\u202E z"
+		findings := classifyUnicodeThreats(line, "SKILL.md", 20)
+		assertHasID(t, findings, "UNICODE_TAG_IN_INSTRUCTIONS")
+		assertHasID(t, findings, "BIDI_CONTROL_IN_TEXT")
+	})
+
+	t.Run("returns empty for plain text", func(t *testing.T) {
+		findings := classifyUnicodeThreats("plain text only", "SKILL.md", 21)
+		if len(findings) != 0 {
+			t.Fatalf("expected no findings, got %+v", findings)
 		}
 	})
 }
