@@ -107,6 +107,7 @@ func TestScanSkillRootScansScriptLikeFiles(t *testing.T) {
 	assertHasID(t, findings, "WRITES_HOME_CONFIG")
 	assertHasID(t, findings, "SECRET_EXFIL")
 	assertHasID(t, findings, "UNPINNED_RUNTIME_TOOL")
+	assertHasID(t, findings, "UNKNOWN_FILE_TYPE")
 }
 
 func TestScanSkillRootDetectsNormalizedThreatPatterns(t *testing.T) {

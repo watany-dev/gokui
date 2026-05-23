@@ -142,6 +142,16 @@ func ScanSkillRoot(skillRoot string) ([]Finding, error) {
 	findings := make([]Finding, 0)
 	for _, target := range targets {
 		findings = append(findings, classifyPathRisks(target.Relative)...)
+		if target.Kind == "unknown" {
+			findings = append(findings, Finding{
+				ID:       "UNKNOWN_FILE_TYPE",
+				Severity: "medium",
+				File:     target.Relative,
+				Line:     1,
+				Summary:  "unclassified file type requires manual review",
+			})
+			continue
+		}
 		fileFindings, err := scanTextFile(target)
 		if err != nil {
 			return nil, err
@@ -262,7 +272,13 @@ func scanTargets(skillRoot string) ([]scanTarget, error) {
 				Relative: rel,
 				Kind:     "script",
 			})
+			return nil
 		}
+		entries = append(entries, scanTarget{
+			Absolute: path,
+			Relative: rel,
+			Kind:     "unknown",
+		})
 		return nil
 	})
 	if err != nil {
