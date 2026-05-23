@@ -843,60 +843,74 @@ func isUnpinnedRuntimeToolLine(line string) bool {
 
 	for i := 0; i < len(fields); i++ {
 		token := fields[i]
-		switch token {
-		case "npx", "uvx", "bunx":
-			packageRef, ok := nextNonFlagField(fields, i+1)
+		if token == "corepack" {
+			launcher, launcherIndex, ok := nextNonFlagFieldWithIndex(fields, i+1)
 			if !ok {
 				continue
 			}
-			if isUnpinnedPackageRef(packageRef) {
+			if isUnpinnedLauncherCommand(fields, launcher, launcherIndex) {
 				return true
 			}
-		case "pnpm", "yarn":
-			subcommand, subcommandIndex, ok := nextNonFlagFieldWithIndex(fields, i+1)
-			if !ok || subcommand != "dlx" {
-				continue
-			}
-			packageRef, ok := nextNonFlagField(fields, subcommandIndex+1)
-			if !ok {
-				continue
-			}
-			if isUnpinnedPackageRef(packageRef) {
-				return true
-			}
-		case "npm":
-			subcommand, subcommandIndex, ok := nextNonFlagFieldWithIndex(fields, i+1)
-			if !ok || subcommand != "exec" {
-				continue
-			}
-			packageRef, ok := nextNonFlagField(fields, subcommandIndex+1)
-			if !ok {
-				continue
-			}
-			if packageRef == "--" {
-				packageRef, ok = nextNonFlagField(fields, subcommandIndex+2)
-				if !ok {
-					continue
-				}
-			}
-			if isUnpinnedPackageRef(packageRef) {
-				return true
-			}
-		case "go":
-			if i+2 >= len(fields) || fields[i+1] != "run" {
-				continue
-			}
-			for j := i + 2; j < len(fields); j++ {
-				part := fields[j]
-				if strings.HasPrefix(part, "-") {
-					continue
-				}
-				return strings.HasSuffix(part, "@latest")
-			}
+			continue
+		}
+
+		if isUnpinnedLauncherCommand(fields, token, i) {
+			return true
 		}
 	}
 
 	return false
+}
+
+func isUnpinnedLauncherCommand(fields []string, token string, tokenIndex int) bool {
+	switch token {
+	case "npx", "uvx", "bunx":
+		packageRef, ok := nextNonFlagField(fields, tokenIndex+1)
+		if !ok {
+			return false
+		}
+		return isUnpinnedPackageRef(packageRef)
+	case "pnpm", "yarn":
+		subcommand, subcommandIndex, ok := nextNonFlagFieldWithIndex(fields, tokenIndex+1)
+		if !ok || subcommand != "dlx" {
+			return false
+		}
+		packageRef, ok := nextNonFlagField(fields, subcommandIndex+1)
+		if !ok {
+			return false
+		}
+		return isUnpinnedPackageRef(packageRef)
+	case "npm":
+		subcommand, subcommandIndex, ok := nextNonFlagFieldWithIndex(fields, tokenIndex+1)
+		if !ok || subcommand != "exec" {
+			return false
+		}
+		packageRef, ok := nextNonFlagField(fields, subcommandIndex+1)
+		if !ok {
+			return false
+		}
+		if packageRef == "--" {
+			packageRef, ok = nextNonFlagField(fields, subcommandIndex+2)
+			if !ok {
+				return false
+			}
+		}
+		return isUnpinnedPackageRef(packageRef)
+	case "go":
+		if tokenIndex+2 >= len(fields) || fields[tokenIndex+1] != "run" {
+			return false
+		}
+		for j := tokenIndex + 2; j < len(fields); j++ {
+			part := fields[j]
+			if strings.HasPrefix(part, "-") {
+				continue
+			}
+			return strings.HasSuffix(part, "@latest")
+		}
+		return false
+	default:
+		return false
+	}
 }
 
 func isRemoteScriptImportLine(lowerLine string) bool {

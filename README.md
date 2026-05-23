@@ -66,7 +66,8 @@ Unknown/unclassified file types are now flagged as medium severity for manual
 review.
 Remote script import patterns (for example `source <(curl ...)` and
 `deno run https://...`) plus floating runtime launchers (for example `bunx`,
-`pnpm dlx`, `yarn dlx`, and `npm exec`) are now flagged under
+`pnpm dlx`, `yarn dlx`, and `npm exec`, including `corepack`-wrapped forms)
+are now flagged under
 `UNPINNED_RUNTIME_TOOL`.
 Unicode Tags, bidi controls, variation selectors, and ANSI/OSC escapes in
 scanned text are now flagged as critical. Zero-width and disallowed C0/C1
@@ -413,7 +414,7 @@ Critical patterns include:
   user config directories
 - unpinned runtime tools such as `npx foo`, `uvx foo`, `bunx foo`,
   `pnpm dlx foo`, `yarn dlx foo`, `npm exec foo`, `go run ...@latest`, or
-  remote script imports
+  remote script imports (including `corepack pnpm/yarn/npm ...` wrappers)
 
 ### Archives
 
