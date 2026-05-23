@@ -81,6 +81,9 @@ const (
 )
 
 const ruleUpdateTargetSymlink = "UPDATE_TARGET_SYMLINK_DETECTED"
+const ruleUpdateTargetEntrySymlink = "UPDATE_TARGET_ENTRY_SYMLINK_DETECTED"
+const ruleUpdateURLScanSymlink = "UPDATE_URL_SCAN_SYMLINK_DETECTED"
+const ruleUpdateExecutableScanSymlink = "UPDATE_EXECUTABLE_SCAN_SYMLINK_DETECTED"
 
 type updateDiff struct {
 	Added   []string `json:"added"`
@@ -298,6 +301,9 @@ func buildUpdateReport(targetRoot string) (updateReport, error) {
 
 	skills := make([]updateSkillItem, 0, len(entries))
 	for _, entry := range entries {
+		if entry.Type()&os.ModeSymlink != 0 {
+			return updateReport{}, fmt.Errorf("%s: update target entry must not be a symlink: %s", ruleUpdateTargetEntrySymlink, filepath.Join(cleanTarget, entry.Name()))
+		}
 		if !entry.IsDir() {
 			continue
 		}
@@ -567,6 +573,13 @@ func collectURLs(root string) ([]string, error) {
 		if d.IsDir() {
 			return nil
 		}
+		if d.Type()&os.ModeSymlink != 0 {
+			rel, relErr := filepath.Rel(root, path)
+			if relErr == nil {
+				path = filepath.ToSlash(rel)
+			}
+			return fmt.Errorf("%s: URL scan input contains symlink: %s", ruleUpdateURLScanSymlink, path)
+		}
 		if !isMarkdownLikeFile(d.Name()) {
 			return nil
 		}
@@ -610,6 +623,13 @@ func collectExecutableFiles(root string) ([]string, error) {
 		}
 		if d.IsDir() {
 			return nil
+		}
+		if d.Type()&os.ModeSymlink != 0 {
+			rel, relErr := filepath.Rel(root, path)
+			if relErr == nil {
+				path = filepath.ToSlash(rel)
+			}
+			return fmt.Errorf("%s: executable scan input contains symlink: %s", ruleUpdateExecutableScanSymlink, path)
 		}
 		scannedFiles++
 		if scannedFiles > updateMaxScanFiles {

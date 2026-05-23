@@ -789,6 +789,39 @@ func TestRunUpdateJSONFatalErrors(t *testing.T) {
 			t.Fatalf("stdout should include target-read-failed code, got %q", stdout.String())
 		}
 	})
+
+	t.Run("symlink entry under target emits report-build rule_id", func(t *testing.T) {
+		if runtime.GOOS == "windows" {
+			t.Skip("symlink permissions differ on windows")
+		}
+
+		targetRoot := filepath.Join(t.TempDir(), "skills")
+		if err := os.MkdirAll(targetRoot, 0o755); err != nil {
+			t.Fatalf("mkdir target root: %v", err)
+		}
+		if err := os.Mkdir(filepath.Join(targetRoot, "real-entry"), 0o755); err != nil {
+			t.Fatalf("mkdir real entry: %v", err)
+		}
+		if err := os.Symlink("real-entry", filepath.Join(targetRoot, "link-entry")); err != nil {
+			t.Fatalf("create entry symlink: %v", err)
+		}
+
+		var stdout strings.Builder
+		var stderr strings.Builder
+		code := runUpdate([]string{"--dry-run", "--target", "custom:" + targetRoot, "--format", "json"}, &stdout, &stderr)
+		if code != 1 {
+			t.Fatalf("runUpdate(json target entry symlink) code = %d, want 1\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
+		}
+		if stderr.Len() != 0 {
+			t.Fatalf("stderr should be empty for json build errors, got %q", stderr.String())
+		}
+		if !strings.Contains(stdout.String(), "\"error_code\": \""+updateFatalCodeReportBuild+"\"") {
+			t.Fatalf("stdout should include report-build error_code, got %q", stdout.String())
+		}
+		if !strings.Contains(stdout.String(), "\"rule_id\": \""+ruleUpdateTargetEntrySymlink+"\"") {
+			t.Fatalf("stdout should include target-entry symlink rule_id, got %q", stdout.String())
+		}
+	})
 }
 
 func TestWriteUpdateJSONErrorRuleID(t *testing.T) {
@@ -987,6 +1020,46 @@ func TestUpdateHelpers(t *testing.T) {
 			if err == nil {
 				t.Fatal("collectURLs should fail for unreadable markdown file")
 			}
+		}
+	})
+
+	t.Run("collectURLs rejects symlink markdown inputs", func(t *testing.T) {
+		if runtime.GOOS == "windows" {
+			t.Skip("symlink permissions differ on windows")
+		}
+
+		root := t.TempDir()
+		target := filepath.Join(root, "real.md")
+		if err := os.WriteFile(target, []byte("https://example.com"), 0o644); err != nil {
+			t.Fatalf("write target markdown: %v", err)
+		}
+		if err := os.Symlink("real.md", filepath.Join(root, "link.md")); err != nil {
+			t.Fatalf("create markdown symlink: %v", err)
+		}
+
+		_, err := collectURLs(root)
+		if err == nil || !strings.Contains(err.Error(), ruleUpdateURLScanSymlink) {
+			t.Fatalf("expected URL-scan symlink rejection, got %v", err)
+		}
+	})
+
+	t.Run("collectExecutableFiles rejects symlink inputs", func(t *testing.T) {
+		if runtime.GOOS == "windows" {
+			t.Skip("symlink permissions differ on windows")
+		}
+
+		root := t.TempDir()
+		target := filepath.Join(root, "run.sh")
+		if err := os.WriteFile(target, []byte("#!/bin/sh\necho hi\n"), 0o755); err != nil {
+			t.Fatalf("write executable target: %v", err)
+		}
+		if err := os.Symlink("run.sh", filepath.Join(root, "link.sh")); err != nil {
+			t.Fatalf("create executable symlink: %v", err)
+		}
+
+		_, err := collectExecutableFiles(root)
+		if err == nil || !strings.Contains(err.Error(), ruleUpdateExecutableScanSymlink) {
+			t.Fatalf("expected executable-scan symlink rejection, got %v", err)
 		}
 	})
 
