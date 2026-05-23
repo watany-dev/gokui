@@ -1,6 +1,7 @@
 package app
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -954,16 +955,22 @@ func readInstallLock(path string) (installLock, error) {
 	if !linkInfo.Mode().IsRegular() {
 		return installLock{}, fmt.Errorf("%s: install lockfile must be a regular file: %s", ruleLockfileSpecialFile, path)
 	}
-	if linkInfo.Size() > maxInstallLockFileBytes {
-		return installLock{}, fmt.Errorf("%s: install lockfile exceeds size limit: %s", ruleLockfileTooLarge, path)
-	}
 
-	raw, err := os.ReadFile(path)
+	f, err := os.Open(path)
 	if err != nil {
 		return installLock{}, fmt.Errorf("failed to read install lockfile: %s", path)
 	}
+	defer f.Close()
+	var raw bytes.Buffer
+	if _, err := limitio.CopyWithStrictLimit(&raw, f, maxInstallLockFileBytes); err != nil {
+		if errors.Is(err, limitio.ErrSizeExceeded) {
+			return installLock{}, fmt.Errorf("%s: install lockfile exceeds size limit: %s", ruleLockfileTooLarge, path)
+		}
+		return installLock{}, fmt.Errorf("failed to read install lockfile: %s", path)
+	}
+
 	var lock installLock
-	if err := json.Unmarshal(raw, &lock); err != nil {
+	if err := json.Unmarshal(raw.Bytes(), &lock); err != nil {
 		return installLock{}, fmt.Errorf("invalid install lockfile JSON: %s", path)
 	}
 	if lock.Schema != lockSchemaVersion {
