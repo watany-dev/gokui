@@ -138,6 +138,28 @@ func TestVerifyLockErrorsAndDiff(t *testing.T) {
 		t.Fatalf("expected missing lockfile error, got %v", err)
 	}
 
+	if runtime.GOOS != "windows" {
+		t.Run("verify root path is symlink", func(t *testing.T) {
+			base := t.TempDir()
+			real := filepath.Join(base, "real-skill")
+			if err := os.Mkdir(real, 0o755); err != nil {
+				t.Fatalf("mkdir real skill: %v", err)
+			}
+			if err := os.WriteFile(filepath.Join(real, installLockFile), []byte(`{"schema":"gokui.lock/v1"}`), 0o644); err != nil {
+				t.Fatalf("write lockfile: %v", err)
+			}
+			link := filepath.Join(base, "skill-link")
+			if err := os.Symlink("real-skill", link); err != nil {
+				t.Fatalf("create symlink: %v", err)
+			}
+
+			_, err := verifyLock(link)
+			if err == nil || !strings.Contains(err.Error(), ruleLockVerifyPathSymlink) {
+				t.Fatalf("expected symlinked verify path rejection, got %v", err)
+			}
+		})
+	}
+
 	dir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(dir, installLockFile), []byte("{"), 0o644); err != nil {
 		t.Fatalf("write broken lock: %v", err)
@@ -236,6 +258,48 @@ func TestRunLockVerifyErrorPathsAndDriftKinds(t *testing.T) {
 	}
 
 	if runtime.GOOS != "windows" {
+		stdout.Reset()
+		stderr.Reset()
+		symlinkPathBase := t.TempDir()
+		symlinkPathReal := filepath.Join(symlinkPathBase, "real-skill")
+		if err := os.Mkdir(symlinkPathReal, 0o755); err != nil {
+			t.Fatalf("mkdir real lock-verify path: %v", err)
+		}
+		if err := os.WriteFile(filepath.Join(symlinkPathReal, installLockFile), []byte(`{"schema":"gokui.lock/v1"}`), 0o644); err != nil {
+			t.Fatalf("write lock in real path: %v", err)
+		}
+		symlinkPath := filepath.Join(symlinkPathBase, "skill-link")
+		if err := os.Symlink("real-skill", symlinkPath); err != nil {
+			t.Fatalf("create lock-verify path symlink: %v", err)
+		}
+
+		code = runLockVerify([]string{symlinkPath}, &stdout, &stderr)
+		if code != 1 {
+			t.Fatalf("runLockVerify(path symlink human) code = %d, want 1", code)
+		}
+		if stdout.Len() != 0 {
+			t.Fatalf("stdout should be empty for human error output, got %q", stdout.String())
+		}
+		if !strings.Contains(stderr.String(), ruleLockVerifyPathSymlink) {
+			t.Fatalf("stderr should include lock-verify path symlink rule, got %q", stderr.String())
+		}
+
+		stdout.Reset()
+		stderr.Reset()
+		code = runLockVerify([]string{symlinkPath, "--format", "json"}, &stdout, &stderr)
+		if code != 1 {
+			t.Fatalf("runLockVerify(path symlink json) code = %d, want 1", code)
+		}
+		if stderr.Len() != 0 {
+			t.Fatalf("stderr should be empty for json error output, got %q", stderr.String())
+		}
+		if !strings.Contains(stdout.String(), "\"status\": \"ERROR\"") {
+			t.Fatalf("stdout should include error status, got %q", stdout.String())
+		}
+		if !strings.Contains(stdout.String(), "\"rule_id\": \""+ruleLockVerifyPathSymlink+"\"") {
+			t.Fatalf("stdout should include lock-verify path symlink rule_id, got %q", stdout.String())
+		}
+
 		stdout.Reset()
 		stderr.Reset()
 		symlinkDir := t.TempDir()

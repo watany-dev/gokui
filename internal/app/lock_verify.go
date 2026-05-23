@@ -52,6 +52,7 @@ var (
 
 const ruleInstallReportTooLarge = "INSTALL_REPORT_TOO_LARGE"
 const ruleInstallReportSymlink = "INSTALL_REPORT_SYMLINK_DETECTED"
+const ruleLockVerifyPathSymlink = "LOCK_VERIFY_PATH_SYMLINK_DETECTED"
 
 const (
 	lockVerifyCodeSchema         = "LOCK_SCHEMA"
@@ -176,6 +177,9 @@ func parseLockVerifyArgs(args []string) (lockVerifyArgs, error) {
 
 func verifyLock(skillPath string) (lockVerifyReport, error) {
 	cleanPath := filepath.Clean(skillPath)
+	if err := rejectSymlinkPath(cleanPath, "lock verify path", ruleLockVerifyPathSymlink); err != nil {
+		return lockVerifyReport{}, err
+	}
 	lockPath := filepath.Join(cleanPath, installLockFile)
 	linkInfo, lstatErr := os.Lstat(lockPath)
 	if lstatErr != nil {
