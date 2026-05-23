@@ -2,6 +2,7 @@ package app
 
 import (
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -186,6 +187,22 @@ func TestRunLockVerifyErrorPathsAndDriftKinds(t *testing.T) {
 		t.Fatalf("stderr should include missing lockfile error, got %q", stderr.String())
 	}
 
+	stdout.Reset()
+	stderr.Reset()
+	code = runLockVerify([]string{filepath.Join(t.TempDir(), "missing-skill-json"), "--format", "json"}, &stdout, &stderr)
+	if code != 1 {
+		t.Fatalf("runLockVerify(missing lock json) code = %d, want 1", code)
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("stderr should be empty for json error output, got %q", stderr.String())
+	}
+	if !strings.Contains(stdout.String(), "\"status\": \"ERROR\"") {
+		t.Fatalf("stdout should include error status, got %q", stdout.String())
+	}
+	if !strings.Contains(stdout.String(), "\"error_code\": \""+lockVerifyErrorCodeReadLockfile+"\"") {
+		t.Fatalf("stdout should include read-lockfile error code, got %q", stdout.String())
+	}
+
 	src := createSkillSourceForInstallTest(t, "drift-kinds-skill")
 	targetRoot := filepath.Join(t.TempDir(), "skills")
 	if err := os.MkdirAll(targetRoot, 0o755); err != nil {
@@ -219,6 +236,24 @@ func TestRunLockVerifyErrorPathsAndDriftKinds(t *testing.T) {
 	}
 	if !strings.Contains(stdout.String(), "unexpected: extra.txt") {
 		t.Fatalf("stdout should include unexpected files, got %q", stdout.String())
+	}
+}
+
+func TestClassifyLockVerifyError(t *testing.T) {
+	cases := []struct {
+		msg  string
+		want string
+	}{
+		{msg: "failed to read lockfile: /x/gokui.lock", want: lockVerifyErrorCodeReadLockfile},
+		{msg: "invalid lockfile JSON: /x/gokui.lock", want: lockVerifyErrorCodeInvalidLockfile},
+		{msg: "failed to digest installed files: x", want: lockVerifyErrorCodeDigestFailed},
+		{msg: "other", want: lockVerifyErrorCodeUnknown},
+	}
+	for _, tc := range cases {
+		got := classifyLockVerifyError(errors.New(tc.msg))
+		if got != tc.want {
+			t.Fatalf("classifyLockVerifyError(%q) = %q, want %q", tc.msg, got, tc.want)
+		}
 	}
 }
 

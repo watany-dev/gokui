@@ -214,6 +214,32 @@ func TestLockVerifyJSONContract(t *testing.T) {
 	})
 }
 
+func TestLockVerifyJSONErrorContract(t *testing.T) {
+	var stdout strings.Builder
+	var stderr strings.Builder
+
+	code := runLockVerify([]string{filepath.Join(t.TempDir(), "missing"), "--format", "json"}, &stdout, &stderr)
+	if code != 1 {
+		t.Fatalf("runLockVerify(json error) code = %d, want 1\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("stderr should be empty for json error output, got %q", stderr.String())
+	}
+
+	var top map[string]json.RawMessage
+	if err := json.Unmarshal([]byte(stdout.String()), &top); err != nil {
+		t.Fatalf("json unmarshal lock verify error output: %v", err)
+	}
+	assertJSONHasKeysContract(t, top, []string{
+		"schema_version",
+		"skill_path",
+		"status",
+		"error_code",
+		"message",
+		"note",
+	})
+}
+
 func assertJSONHasKeysContract(t *testing.T, obj map[string]json.RawMessage, keys []string) {
 	t.Helper()
 	for _, key := range keys {

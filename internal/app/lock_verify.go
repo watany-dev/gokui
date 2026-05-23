@@ -28,6 +28,15 @@ type lockVerifyReport struct {
 	Note          string              `json:"note"`
 }
 
+type lockVerifyErrorReport struct {
+	SchemaVersion string `json:"schema_version"`
+	SkillPath     string `json:"skill_path"`
+	Status        string `json:"status"`
+	ErrorCode     string `json:"error_code"`
+	Message       string `json:"message"`
+	Note          string `json:"note"`
+}
+
 type lockVerifyCheck struct {
 	Code   string `json:"code"`
 	Name   string `json:"name"`
@@ -46,6 +55,13 @@ const (
 	lockVerifyCodeRootHash       = "ROOT_HASH"
 )
 
+const (
+	lockVerifyErrorCodeReadLockfile    = "LOCKFILE_READ_FAILED"
+	lockVerifyErrorCodeInvalidLockfile = "LOCKFILE_INVALID_JSON"
+	lockVerifyErrorCodeDigestFailed    = "FILE_DIGEST_BUILD_FAILED"
+	lockVerifyErrorCodeUnknown         = "LOCK_VERIFY_FAILED"
+)
+
 type lockVerifyDriftInfo struct {
 	MissingFiles    []string `json:"missing_files"`
 	ChangedFiles    []string `json:"changed_files"`
@@ -61,6 +77,23 @@ func runLockVerify(args []string, stdout io.Writer, stderr io.Writer) int {
 
 	report, verifyErr := verifyLock(parsed.Path)
 	if verifyErr != nil {
+		if parsed.Format == "json" {
+			errReport := lockVerifyErrorReport{
+				SchemaVersion: reportSchemaVersion,
+				SkillPath:     filepath.Clean(parsed.Path),
+				Status:        "ERROR",
+				ErrorCode:     classifyLockVerifyError(verifyErr),
+				Message:       verifyErr.Error(),
+				Note:          "lock verify failed before producing drift report",
+			}
+			out, err := json.MarshalIndent(errReport, "", "  ")
+			if err != nil {
+				_, _ = fmt.Fprintln(stderr, "failed to render lock verify error report")
+				return 1
+			}
+			_, _ = fmt.Fprintf(stdout, "%s\n", out)
+			return 1
+		}
 		_, _ = fmt.Fprintln(stderr, verifyErr.Error())
 		return 1
 	}
@@ -232,6 +265,20 @@ func verifyLock(skillPath string) (lockVerifyReport, error) {
 		},
 		Note: "pre-release lock verify checks installed file integrity against gokui.lock",
 	}, nil
+}
+
+func classifyLockVerifyError(err error) string {
+	msg := err.Error()
+	switch {
+	case strings.Contains(msg, "failed to read lockfile"):
+		return lockVerifyErrorCodeReadLockfile
+	case strings.Contains(msg, "invalid lockfile JSON"):
+		return lockVerifyErrorCodeInvalidLockfile
+	case strings.Contains(msg, "failed to digest installed files"):
+		return lockVerifyErrorCodeDigestFailed
+	default:
+		return lockVerifyErrorCodeUnknown
+	}
 }
 
 func diffLockFiles(expected []lockFileHash, actual []lockFileHash) (missing []string, changed []string, unexpected []string) {

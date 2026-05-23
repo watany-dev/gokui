@@ -32,7 +32,7 @@ different-provenance installs. It also supports commit-pinned GitHub sources
 field consistency (including strict GitHub source syntax and commit pinning),
 validates lock/report structural integrity, validates GitHub source metadata
 integrity, reports drift, and emits per-check `code` fields in JSON output for
-automation
+automation. On fatal verify errors, JSON output includes top-level `error_code`.
 (missing/changed/unexpected files).
 `update --dry-run` now re-evaluates installed skills from lockfile source
 provenance for local-dir/zip/tar sources, reports added/removed/changed files,
