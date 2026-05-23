@@ -342,6 +342,7 @@ func extractFetchSourceArg(args []string) string {
 }
 
 func writeFetchJSONError(stdout io.Writer, stderr io.Writer, report fetchErrorReport) int {
+	report.Status = "ERROR"
 	if report.RuleID == "" {
 		report.RuleID = inferRuleIDForJSONError(report.Message)
 	}

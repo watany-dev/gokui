@@ -239,6 +239,7 @@ func extractUpdateTargetArg(args []string) string {
 }
 
 func writeUpdateJSONError(stdout io.Writer, stderr io.Writer, report updateErrorReport) int {
+	report.Status = "ERROR"
 	if report.RuleID == "" {
 		report.RuleID = inferRuleIDForJSONError(report.Message)
 	}

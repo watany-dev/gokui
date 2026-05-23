@@ -649,6 +649,7 @@ func extractInspectSourceArg(args []string) string {
 }
 
 func writeInspectJSONError(stdout io.Writer, stderr io.Writer, report inspectErrorReport) int {
+	report.Status = "ERROR"
 	if report.RuleID == "" {
 		report.RuleID = inferRuleIDForJSONError(report.Message)
 	}

@@ -502,6 +502,7 @@ func extractInstallProfileArg(args []string) string {
 }
 
 func writeInstallJSONError(stdout io.Writer, stderr io.Writer, report installErrorReport) int {
+	report.Status = "ERROR"
 	if report.RuleID == "" {
 		report.RuleID = inferRuleIDForJSONError(report.Message)
 	}
