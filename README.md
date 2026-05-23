@@ -19,8 +19,9 @@ does. gokui treats all of those layers as security-relevant.
 gokui is pre-release software under active hardening. Current commands are
 implemented with stable automation contracts, while security coverage and policy
 depth continue to expand. `inspect` now performs pre-release structural validation and
-basic markdown threat scanning, and emits a draft JSON/human report with
-`PASS`/`REJECTED` decisions. In JSON mode, fatal inspect failures emit
+basic markdown threat scanning, emits draft human/JSON reports, and supports
+`--format sarif` for CI/code-scanning pipelines. Decisions remain
+`PASS`/`REJECTED`. In JSON mode, fatal inspect failures emit
 machine-readable top-level `error_code` for automation. For GitHub sources, floating refs remain
 inspect-only pre-release stubs, while commit-pinned refs are fetched and
 scanned.
@@ -78,7 +79,7 @@ Current pre-release CLI syntax:
 
 ```sh
 gokui fetch github:owner/repo//path/to/skill@commit --out <quarantine-dir> [--format human|json]
-gokui inspect <local-dir|zip|github-source> [--format human|json]
+gokui inspect <local-dir|zip|github-source> [--format human|json|sarif]
 gokui install <source> --target codex --profile strict [--format human|json]
 gokui update --dry-run [--target codex|custom:/path] [--format human|json]
 gokui lock verify [path] [--format human|json]

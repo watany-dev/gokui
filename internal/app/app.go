@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 	"unicode/utf8"
 
@@ -29,6 +30,75 @@ type inspectReport struct {
 	Decision      string           `json:"decision"`
 	Findings      []inspectFinding `json:"findings"`
 	Note          string           `json:"note"`
+}
+
+type inspectSARIFReport struct {
+	Version string            `json:"version"`
+	Schema  string            `json:"$schema"`
+	Runs    []inspectSARIFRun `json:"runs"`
+}
+
+type inspectSARIFRun struct {
+	Tool        inspectSARIFTool         `json:"tool"`
+	Results     []inspectSARIFResult     `json:"results"`
+	Invocations []inspectSARIFInvocation `json:"invocations,omitempty"`
+	Properties  inspectSARIFProperties   `json:"properties"`
+}
+
+type inspectSARIFTool struct {
+	Driver inspectSARIFDriver `json:"driver"`
+}
+
+type inspectSARIFDriver struct {
+	Name    string             `json:"name"`
+	Version string             `json:"version"`
+	Rules   []inspectSARIFRule `json:"rules,omitempty"`
+}
+
+type inspectSARIFRule struct {
+	ID               string                       `json:"id"`
+	ShortDescription inspectSARIFMessageContainer `json:"shortDescription"`
+}
+
+type inspectSARIFMessageContainer struct {
+	Text string `json:"text"`
+}
+
+type inspectSARIFResult struct {
+	RuleID    string                       `json:"ruleId"`
+	Level     string                       `json:"level"`
+	Message   inspectSARIFMessageContainer `json:"message"`
+	Locations []inspectSARIFLocation       `json:"locations,omitempty"`
+}
+
+type inspectSARIFLocation struct {
+	PhysicalLocation inspectSARIFPhysicalLocation `json:"physicalLocation"`
+}
+
+type inspectSARIFPhysicalLocation struct {
+	ArtifactLocation inspectSARIFArtifactLocation `json:"artifactLocation"`
+	Region           *inspectSARIFRegion          `json:"region,omitempty"`
+}
+
+type inspectSARIFArtifactLocation struct {
+	URI string `json:"uri"`
+}
+
+type inspectSARIFRegion struct {
+	StartLine int `json:"startLine"`
+}
+
+type inspectSARIFInvocation struct {
+	ExecutionSuccessful bool `json:"executionSuccessful"`
+}
+
+type inspectSARIFProperties struct {
+	SchemaVersion string `json:"schema_version"`
+	PreRelease    bool   `json:"pre_release"`
+	SourceInput   string `json:"source_input"`
+	SourceKind    string `json:"source_kind"`
+	Decision      string `json:"decision"`
+	Note          string `json:"note"`
 }
 
 type inspectErrorReport struct {
@@ -131,7 +201,7 @@ gokui is pre-release software.
 usage:
   gokui version
   gokui fetch github:owner/repo//path/to/skill@commit --out <quarantine-dir> [--format human|json]
-  gokui inspect <local-dir|zip|github-source> [--format human|json]
+  gokui inspect <local-dir|zip|github-source> [--format human|json|sarif]
   gokui install <source> --target codex --profile strict [--format human|json]
   gokui update --dry-run [--target codex|custom:/path] [--format human|json]
   gokui lock verify [path] [--format human|json]`)
@@ -321,6 +391,18 @@ func runInspect(args []string, stdout io.Writer, stderr io.Writer) int {
 		}
 		return 0
 	}
+	if format == "sarif" {
+		out, marshalErr := json.MarshalIndent(buildInspectSARIFReport(report), "", "  ")
+		if marshalErr != nil {
+			_, _ = fmt.Fprintln(stderr, "failed to render inspect SARIF report")
+			return 1
+		}
+		_, _ = fmt.Fprintf(stdout, "%s\n", out)
+		if report.Decision == "REJECTED" {
+			return 2
+		}
+		return 0
+	}
 
 	_, _ = fmt.Fprintln(stdout, "gokui inspect report (pre-release)")
 	_, _ = fmt.Fprintf(stdout, "source: %s (%s)\n", report.Source.Input, report.Source.Kind)
@@ -434,10 +516,94 @@ func parseInspectArgs(args []string) (input string, format string, err error) {
 	if input == "" {
 		return "", "", fmt.Errorf("inspect source is required")
 	}
-	if format != "human" && format != "json" {
+	if format != "human" && format != "json" && format != "sarif" {
 		return "", "", fmt.Errorf("unsupported inspect format: %s", format)
 	}
 	return input, format, nil
+}
+
+func buildInspectSARIFReport(report inspectReport) inspectSARIFReport {
+	rules := make([]inspectSARIFRule, 0)
+	seen := make(map[string]struct{}, len(report.Findings))
+	for _, finding := range report.Findings {
+		if _, ok := seen[finding.ID]; ok {
+			continue
+		}
+		seen[finding.ID] = struct{}{}
+		rules = append(rules, inspectSARIFRule{
+			ID: finding.ID,
+			ShortDescription: inspectSARIFMessageContainer{
+				Text: finding.Summary,
+			},
+		})
+	}
+	sort.Slice(rules, func(i, j int) bool {
+		return rules[i].ID < rules[j].ID
+	})
+
+	results := make([]inspectSARIFResult, 0, len(report.Findings))
+	for _, finding := range report.Findings {
+		result := inspectSARIFResult{
+			RuleID:  finding.ID,
+			Level:   inspectSeverityToSARIFLevel(finding.Severity),
+			Message: inspectSARIFMessageContainer{Text: finding.Summary},
+		}
+		location := inspectSARIFLocation{
+			PhysicalLocation: inspectSARIFPhysicalLocation{
+				ArtifactLocation: inspectSARIFArtifactLocation{
+					URI: finding.File,
+				},
+			},
+		}
+		if finding.Line > 0 {
+			location.PhysicalLocation.Region = &inspectSARIFRegion{StartLine: finding.Line}
+		}
+		if finding.File != "" {
+			result.Locations = []inspectSARIFLocation{location}
+		}
+		results = append(results, result)
+	}
+
+	return inspectSARIFReport{
+		Version: "2.1.0",
+		Schema:  "https://json.schemastore.org/sarif-2.1.0.json",
+		Runs: []inspectSARIFRun{
+			{
+				Tool: inspectSARIFTool{
+					Driver: inspectSARIFDriver{
+						Name:    "gokui",
+						Version: "pre-release",
+						Rules:   rules,
+					},
+				},
+				Results: []inspectSARIFResult(results),
+				Invocations: []inspectSARIFInvocation{
+					{ExecutionSuccessful: report.Decision != "REJECTED"},
+				},
+				Properties: inspectSARIFProperties{
+					SchemaVersion: report.SchemaVersion,
+					PreRelease:    report.PreRelease,
+					SourceInput:   report.Source.Input,
+					SourceKind:    report.Source.Kind,
+					Decision:      report.Decision,
+					Note:          report.Note,
+				},
+			},
+		},
+	}
+}
+
+func inspectSeverityToSARIFLevel(severity string) string {
+	switch severity {
+	case "critical", "high":
+		return "error"
+	case "medium":
+		return "warning"
+	case "low":
+		return "note"
+	default:
+		return "warning"
+	}
 }
 
 func inspectArgsRequestJSON(args []string) bool {

@@ -174,6 +174,47 @@ func TestRun(t *testing.T) {
 		}
 	})
 
+	t.Run("inspect sarif emits stable pre-release report", func(t *testing.T) {
+		var stdout bytes.Buffer
+		var stderr bytes.Buffer
+
+		fixturePath := filepath.FromSlash("../../fixtures/clean-skill")
+		code := Run([]string{"inspect", fixturePath, "--format", "sarif"}, &stdout, &stderr, cfg)
+		if code != 0 {
+			t.Fatalf("Run() code = %d, want 0", code)
+		}
+
+		if stderr.Len() != 0 {
+			t.Fatalf("stderr should be empty, got %q", stderr.String())
+		}
+
+		var got inspectSARIFReport
+		if err := json.Unmarshal(stdout.Bytes(), &got); err != nil {
+			t.Fatalf("inspect sarif should be valid: %v\nstdout=%q", err, stdout.String())
+		}
+		if got.Version != "2.1.0" {
+			t.Fatalf("version = %q, want %q", got.Version, "2.1.0")
+		}
+		if got.Schema != "https://json.schemastore.org/sarif-2.1.0.json" {
+			t.Fatalf("schema = %q, want SARIF schema URL", got.Schema)
+		}
+		if len(got.Runs) != 1 {
+			t.Fatalf("runs length = %d, want 1", len(got.Runs))
+		}
+		if got.Runs[0].Tool.Driver.Name != "gokui" {
+			t.Fatalf("tool.driver.name = %q, want %q", got.Runs[0].Tool.Driver.Name, "gokui")
+		}
+		if got.Runs[0].Properties.Decision != "PASS" {
+			t.Fatalf("decision = %q, want %q", got.Runs[0].Properties.Decision, "PASS")
+		}
+		if got.Runs[0].Properties.SourceKind != "local-dir" {
+			t.Fatalf("source_kind = %q, want %q", got.Runs[0].Properties.SourceKind, "local-dir")
+		}
+		if len(got.Runs[0].Results) != 0 {
+			t.Fatalf("results length = %d, want 0", len(got.Runs[0].Results))
+		}
+	})
+
 	t.Run("inspect requires source", func(t *testing.T) {
 		var stdout bytes.Buffer
 		var stderr bytes.Buffer
@@ -452,6 +493,44 @@ func TestRun(t *testing.T) {
 		}
 		if !strings.Contains(stdout.String(), "FAKE_PREREQ_EXECUTION") {
 			t.Fatalf("stdout should include finding id, got %q", stdout.String())
+		}
+	})
+
+	t.Run("inspect sarif surfaces rejected findings", func(t *testing.T) {
+		var stdout bytes.Buffer
+		var stderr bytes.Buffer
+
+		fixturePath := filepath.FromSlash("../../fixtures/fake-prereq-skill")
+		code := Run([]string{"inspect", fixturePath, "--format", "sarif"}, &stdout, &stderr, cfg)
+		if code != 2 {
+			t.Fatalf("Run() code = %d, want 2", code)
+		}
+		if stderr.Len() != 0 {
+			t.Fatalf("stderr should be empty, got %q", stderr.String())
+		}
+
+		var got inspectSARIFReport
+		if err := json.Unmarshal(stdout.Bytes(), &got); err != nil {
+			t.Fatalf("inspect sarif should be valid: %v", err)
+		}
+		if len(got.Runs) != 1 {
+			t.Fatalf("runs length = %d, want 1", len(got.Runs))
+		}
+		if got.Runs[0].Properties.Decision != "REJECTED" {
+			t.Fatalf("decision = %q, want REJECTED", got.Runs[0].Properties.Decision)
+		}
+		if len(got.Runs[0].Results) == 0 {
+			t.Fatal("expected at least one SARIF result for rejected fixture")
+		}
+		hasFakePrereq := false
+		for _, result := range got.Runs[0].Results {
+			if result.RuleID == "FAKE_PREREQ_EXECUTION" {
+				hasFakePrereq = true
+				break
+			}
+		}
+		if !hasFakePrereq {
+			t.Fatalf("expected FAKE_PREREQ_EXECUTION result, got %+v", got.Runs[0].Results)
 		}
 	})
 
@@ -768,6 +847,16 @@ func TestParseInspectArgs(t *testing.T) {
 		}
 	})
 
+	t.Run("parses sarif format", func(t *testing.T) {
+		input, format, err := parseInspectArgs([]string{"./skill", "--format", "sarif"})
+		if err != nil {
+			t.Fatalf("parseInspectArgs() error = %v", err)
+		}
+		if input != "./skill" || format != "sarif" {
+			t.Fatalf("got (%q, %q), want (%q, %q)", input, format, "./skill", "sarif")
+		}
+	})
+
 	t.Run("errors when format value is missing", func(t *testing.T) {
 		_, _, err := parseInspectArgs([]string{"./skill", "--format"})
 		if err == nil || !strings.Contains(err.Error(), "missing value for --format") {
@@ -820,6 +909,99 @@ func TestDetectSourceKind(t *testing.T) {
 	for _, tc := range cases {
 		if got := detectSourceKind(tc.in); got != tc.want {
 			t.Fatalf("detectSourceKind(%q) = %q, want %q", tc.in, got, tc.want)
+		}
+	}
+}
+
+func TestBuildInspectSARIFReport(t *testing.T) {
+	report := inspectReport{
+		SchemaVersion: reportSchemaVersion,
+		PreRelease:    true,
+		Source: source{
+			Input: "./fixture-skill",
+			Kind:  "local-dir",
+		},
+		Decision: "REJECTED",
+		Note:     "test note",
+		Findings: []inspectFinding{
+			{
+				ID:       "Z_RULE",
+				Severity: "medium",
+				File:     "SKILL.md",
+				Line:     7,
+				Summary:  "medium severity finding",
+			},
+			{
+				ID:       "A_RULE",
+				Severity: "critical",
+				File:     "refs/guide.md",
+				Line:     2,
+				Summary:  "critical severity finding",
+			},
+			{
+				ID:       "A_RULE",
+				Severity: "low",
+				File:     "",
+				Line:     0,
+				Summary:  "duplicate rule id should not duplicate rules",
+			},
+		},
+	}
+
+	got := buildInspectSARIFReport(report)
+	if got.Version != "2.1.0" {
+		t.Fatalf("version = %q, want 2.1.0", got.Version)
+	}
+	if len(got.Runs) != 1 {
+		t.Fatalf("runs length = %d, want 1", len(got.Runs))
+	}
+	run := got.Runs[0]
+	if run.Properties.Decision != "REJECTED" {
+		t.Fatalf("properties.decision = %q, want REJECTED", run.Properties.Decision)
+	}
+	if len(run.Invocations) != 1 || run.Invocations[0].ExecutionSuccessful {
+		t.Fatalf("executionSuccessful should be false for rejected decision, got %+v", run.Invocations)
+	}
+	if len(run.Tool.Driver.Rules) != 2 {
+		t.Fatalf("rules length = %d, want 2 (deduplicated)", len(run.Tool.Driver.Rules))
+	}
+	if run.Tool.Driver.Rules[0].ID != "A_RULE" || run.Tool.Driver.Rules[1].ID != "Z_RULE" {
+		t.Fatalf("rules should be sorted by id, got %+v", run.Tool.Driver.Rules)
+	}
+	if len(run.Results) != 3 {
+		t.Fatalf("results length = %d, want 3", len(run.Results))
+	}
+	if run.Results[0].Level != "warning" {
+		t.Fatalf("first result level = %q, want warning", run.Results[0].Level)
+	}
+	if len(run.Results[0].Locations) != 1 {
+		t.Fatalf("first result should include one location, got %d", len(run.Results[0].Locations))
+	}
+	if run.Results[0].Locations[0].PhysicalLocation.Region == nil || run.Results[0].Locations[0].PhysicalLocation.Region.StartLine != 7 {
+		t.Fatalf("first result should include start line 7, got %+v", run.Results[0].Locations[0].PhysicalLocation.Region)
+	}
+	if run.Results[2].Level != "note" {
+		t.Fatalf("third result level = %q, want note", run.Results[2].Level)
+	}
+	if len(run.Results[2].Locations) != 0 {
+		t.Fatalf("result without file should not include locations, got %+v", run.Results[2].Locations)
+	}
+}
+
+func TestInspectSeverityToSARIFLevel(t *testing.T) {
+	cases := []struct {
+		in   string
+		want string
+	}{
+		{in: "critical", want: "error"},
+		{in: "high", want: "error"},
+		{in: "medium", want: "warning"},
+		{in: "low", want: "note"},
+		{in: "unknown", want: "warning"},
+	}
+	for _, tc := range cases {
+		if got := inspectSeverityToSARIFLevel(tc.in); got != tc.want {
+			t.Fatalf("inspectSeverityToSARIFLevel(%q) = %q, want %q", tc.in, got, tc.want)
 		}
 	}
 }

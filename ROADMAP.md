@@ -16,6 +16,7 @@ tests/CI:
 - Lock drift verification with per-check machine-readable codes
 - Stable JSON output contracts for all MVP commands
 - Machine-readable `error_code` support across command failure paths
+- SARIF output for `inspect` (`--format sarif`) for CI/code scanning integration
 
 This roadmap section below remains forward-looking for gaps and future phases.
 
@@ -251,7 +252,7 @@ Exit criteria:
 
 Goal: make gokui useful in CI and team review.
 
-- Add SARIF output.
+- Expand SARIF output coverage beyond `inspect`.
 - Add compact summary output for CI logs.
 - Add `gokui vet` for skill authors.
 - Add baseline support for repositories with many skills.
