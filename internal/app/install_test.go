@@ -502,6 +502,35 @@ func TestRunInstallJSONOutput(t *testing.T) {
 			}, installErrorCodeSourceMetadataFailed)
 		})
 
+		t.Run("install write failure includes copy limit rule_id", func(t *testing.T) {
+			origLimit := installMaxCopyFiles
+			installMaxCopyFiles = 1
+			t.Cleanup(func() { installMaxCopyFiles = origLimit })
+
+			limitedSource := createSkillSourceForInstallTest(t, "json-copy-limit")
+
+			var stdout strings.Builder
+			var stderr strings.Builder
+			code := runInstall([]string{
+				limitedSource,
+				"--target", "custom:" + filepath.Join(t.TempDir(), "skills"),
+				"--profile", "strict",
+				"--format", "json",
+			}, &stdout, &stderr)
+			if code != 1 {
+				t.Fatalf("runInstall(json copy-limit) code = %d, want 1\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
+			}
+			if stderr.Len() != 0 {
+				t.Fatalf("stderr should be empty for json errors, got %q", stderr.String())
+			}
+			if !strings.Contains(stdout.String(), "\"error_code\": \""+installErrorCodeWriteFailed+"\"") {
+				t.Fatalf("stdout should include write-failed error_code, got %q", stdout.String())
+			}
+			if !strings.Contains(stdout.String(), "\"rule_id\": \""+ruleInstallSourceFileCountExceeded+"\"") {
+				t.Fatalf("stdout should include copy-limit rule_id, got %q", stdout.String())
+			}
+		})
+
 		assertJSONErrorCode(t, []string{
 			source,
 			"--target", "unknown",
