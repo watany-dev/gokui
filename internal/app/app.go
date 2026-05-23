@@ -105,6 +105,7 @@ type inspectErrorReport struct {
 	SchemaVersion string `json:"schema_version"`
 	Status        string `json:"status"`
 	ErrorCode     string `json:"error_code"`
+	RuleID        string `json:"rule_id,omitempty"`
 	Message       string `json:"message"`
 	Source        source `json:"source"`
 	Note          string `json:"note"`
@@ -133,6 +134,7 @@ var (
 	descriptionURLPattern      = regexp.MustCompile(`(?i)\b(?:https?://|ftp://|www\.)\S+`)
 	descriptionCommandPattern  = regexp.MustCompile(`(?i)\b(run|execute|exec|invoke|call|use)\b.{0,30}\b(bash|sh|zsh|pwsh|powershell|python|node|npm|npx|uvx|go|curl|wget|terminal|command)\b`)
 	descriptionOverridePattern = regexp.MustCompile(`(?i)\b(ignore|override|bypass)\b.{0,40}\b(previous|prior|system|higher|earlier)\b.{0,20}\b(instruction|instructions|prompt|prompts)\b`)
+	ruleIDPrefixPattern        = regexp.MustCompile(`^([A-Z][A-Z0-9_]+):\s`)
 )
 
 const (
@@ -638,6 +640,9 @@ func extractInspectSourceArg(args []string) string {
 }
 
 func writeInspectJSONError(stdout io.Writer, stderr io.Writer, report inspectErrorReport) int {
+	if report.RuleID == "" {
+		report.RuleID = inferRuleIDFromMessage(report.Message)
+	}
 	out, err := json.MarshalIndent(report, "", "  ")
 	if err != nil {
 		_, _ = fmt.Fprintln(stderr, "failed to render inspect error report")
@@ -645,6 +650,14 @@ func writeInspectJSONError(stdout io.Writer, stderr io.Writer, report inspectErr
 	}
 	_, _ = fmt.Fprintf(stdout, "%s\n", out)
 	return 1
+}
+
+func inferRuleIDFromMessage(message string) string {
+	match := ruleIDPrefixPattern.FindStringSubmatch(strings.TrimSpace(message))
+	if len(match) != 2 {
+		return ""
+	}
+	return match[1]
 }
 
 func detectSourceKind(input string) string {
