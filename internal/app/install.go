@@ -185,22 +185,42 @@ func runInstall(args []string, stdout io.Writer, stderr io.Writer) int {
 
 	if _, statErr := os.Stat(parsed.Source); statErr != nil {
 		if sourceKind != "github-source" {
+			if errors.Is(statErr, os.ErrNotExist) {
+				if jsonOutput {
+					return writeInstallJSONError(stdout, stderr, installErrorReport{
+						SchemaVersion: reportSchemaVersion,
+						Status:        "ERROR",
+						ErrorCode:     installErrorCodeSourceNotFound,
+						Message:       fmt.Sprintf("install source not found: %s", parsed.Source),
+						Source: source{
+							Input: parsed.Source,
+							Kind:  sourceKind,
+						},
+						Target:        parsed.Target,
+						PolicyProfile: parsed.Profile,
+						Note:          "install source must exist before policy evaluation",
+					})
+				}
+				_, _ = fmt.Fprintf(stderr, "install source not found: %s\n", parsed.Source)
+				return 1
+			}
+			accessErr := fmt.Sprintf("failed to access install source: %v", statErr)
 			if jsonOutput {
 				return writeInstallJSONError(stdout, stderr, installErrorReport{
 					SchemaVersion: reportSchemaVersion,
 					Status:        "ERROR",
-					ErrorCode:     installErrorCodeSourceNotFound,
-					Message:       fmt.Sprintf("install source not found: %s", parsed.Source),
+					ErrorCode:     installErrorCodeSourcePrepareFailed,
+					Message:       accessErr,
 					Source: source{
 						Input: parsed.Source,
 						Kind:  sourceKind,
 					},
 					Target:        parsed.Target,
 					PolicyProfile: parsed.Profile,
-					Note:          "install source must exist before policy evaluation",
+					Note:          "install source access check failed",
 				})
 			}
-			_, _ = fmt.Fprintf(stderr, "install source not found: %s\n", parsed.Source)
+			_, _ = fmt.Fprintln(stderr, accessErr)
 			return 1
 		}
 	}

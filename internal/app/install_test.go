@@ -533,6 +533,40 @@ func TestRunInstallJSONOutput(t *testing.T) {
 		}
 	})
 
+	t.Run("json source stat access error uses source-prepare-failed code", func(t *testing.T) {
+		if runtime.GOOS == "windows" {
+			t.Skip("permission behavior differs on windows")
+		}
+
+		base := t.TempDir()
+		locked := filepath.Join(base, "locked")
+		if err := os.Mkdir(locked, 0o755); err != nil {
+			t.Fatalf("mkdir locked dir: %v", err)
+		}
+		if err := os.Chmod(locked, 0o000); err != nil {
+			t.Fatalf("chmod locked dir: %v", err)
+		}
+		defer os.Chmod(locked, 0o755)
+
+		var stdout strings.Builder
+		var stderr strings.Builder
+		code := runInstall([]string{
+			filepath.Join(locked, "skill"),
+			"--target", "codex",
+			"--profile", "strict",
+			"--format", "json",
+		}, &stdout, &stderr)
+		if code != 1 {
+			t.Fatalf("runInstall(json source access fail) code = %d, want 1\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
+		}
+		if stderr.Len() != 0 {
+			t.Fatalf("stderr should be empty for json errors, got %q", stderr.String())
+		}
+		if !strings.Contains(stdout.String(), "\"error_code\": \""+installErrorCodeSourcePrepareFailed+"\"") {
+			t.Fatalf("stdout should include source-prepare-failed code, got %q", stdout.String())
+		}
+	})
+
 	t.Run("json failure codes cover major branches", func(t *testing.T) {
 		assertJSONErrorCode := func(t *testing.T, args []string, wantCode string) {
 			t.Helper()
