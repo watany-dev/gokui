@@ -11,6 +11,7 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"testing/quick"
 )
 
 func TestExtractArchiveZipSuccessAndDetectSkillRoot(t *testing.T) {
@@ -578,6 +579,51 @@ func TestSafeJoinRejectsAbsoluteAndDot(t *testing.T) {
 	_, err = safeJoin(root, ".")
 	if err == nil || !strings.Contains(err.Error(), "invalid path") {
 		t.Fatalf("expected invalid-path error, got %v", err)
+	}
+
+	_, err = safeJoin(root, "C:/Windows/System32/drivers/etc/hosts")
+	if err == nil || !strings.Contains(err.Error(), "absolute path") {
+		t.Fatalf("expected windows-drive absolute-path error, got %v", err)
+	}
+}
+
+func TestSafeJoinPropertyNoEscapeNoPanic(t *testing.T) {
+	root := t.TempDir()
+	prop := func(name string) (ok bool) {
+		defer func() {
+			if recover() != nil {
+				ok = false
+			}
+		}()
+
+		joined, err := safeJoin(root, name)
+		if err != nil {
+			return true
+		}
+		rel, relErr := filepath.Rel(root, joined)
+		if relErr != nil {
+			return false
+		}
+		if rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+			return false
+		}
+		return true
+	}
+
+	if err := quick.Check(prop, &quick.Config{MaxCount: 1000}); err != nil {
+		t.Fatalf("safeJoin property failed: %v", err)
+	}
+}
+
+func TestSafeJoinPropertyRejectsParentTraversal(t *testing.T) {
+	root := t.TempDir()
+	prop := func(depth uint8) bool {
+		name := strings.Repeat("../", int(depth)+1) + "escape.txt"
+		_, err := safeJoin(root, name)
+		return err != nil
+	}
+	if err := quick.Check(prop, &quick.Config{MaxCount: 500}); err != nil {
+		t.Fatalf("safeJoin traversal-rejection property failed: %v", err)
 	}
 }
 

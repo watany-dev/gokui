@@ -284,7 +284,7 @@ func writeTarFile(header *tar.Header, tarReader *tar.Reader, outPath string, max
 
 func safeJoin(root, name string) (string, error) {
 	normalized := strings.ReplaceAll(name, "\\", "/")
-	if strings.HasPrefix(normalized, "/") || filepath.IsAbs(name) {
+	if strings.HasPrefix(normalized, "/") || filepath.IsAbs(name) || hasWindowsDrivePrefix(normalized) {
 		return "", fmt.Errorf("%s: archive contains absolute path: %s", ruleArchivePathEscape, name)
 	}
 	cleanName := path.Clean(normalized)
@@ -304,4 +304,15 @@ func safeJoin(root, name string) (string, error) {
 		return "", fmt.Errorf("%s: archive path escapes destination: %s", ruleArchivePathEscape, name)
 	}
 	return joined, nil
+}
+
+func hasWindowsDrivePrefix(path string) bool {
+	if len(path) < 3 {
+		return false
+	}
+	drive := path[0]
+	if (drive < 'a' || drive > 'z') && (drive < 'A' || drive > 'Z') {
+		return false
+	}
+	return path[1] == ':' && path[2] == '/'
 }
