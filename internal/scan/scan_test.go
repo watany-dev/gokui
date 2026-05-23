@@ -478,10 +478,14 @@ func TestHasBashWildcardPermission(t *testing.T) {
 		want bool
 	}{
 		{line: "allowed_tools: Bash(*)", want: true},
+		{line: "allowedTools: [Bash(*)]", want: true},
+		{line: "allowed-tools = Bash: all", want: true},
 		{line: "tool permissions: bash: *", want: true},
 		{line: "allowed tools -> bash: all", want: true},
+		{line: "bash: * // allowed_tools", want: true},
 		{line: "bash ./install.sh", want: false},
 		{line: "allowed tools: python", want: false},
+		{line: "bash: all", want: false},
 	}
 	for _, tc := range cases {
 		if got := hasBashWildcardPermission(tc.line); got != tc.want {

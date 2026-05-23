@@ -131,6 +131,12 @@ var secretPathHints = []string{
 }
 
 var secretExfilNetworkCommand = regexp.MustCompile(`(?i)\b(?:curl|wget|invoke-webrequest|invoke-restmethod|requests\.post|netcat|nc)\b`)
+var bashWildcardPermissionPatterns = []*regexp.Regexp{
+	regexp.MustCompile(`(?i)\ballowed(?:[_ -]?tools?)\b.*\bbash\b.*(?:\*|\ball\b)`),
+	regexp.MustCompile(`(?i)\bbash\b.*(?:\*|\ball\b).*allowed(?:[_ -]?tools?)\b`),
+	regexp.MustCompile(`(?i)\btool(?:[_ -]?permissions?)\b.*\bbash\b.*(?:\*|\ball\b)`),
+	regexp.MustCompile(`(?i)\bbash\s*\(\s*\*\s*\)`),
+}
 
 // ScanSkillRoot scans markdown instruction files under skillRoot.
 func ScanSkillRoot(skillRoot string) ([]Finding, error) {
@@ -760,20 +766,12 @@ func hasBashWildcardPermission(line string) bool {
 	if !strings.Contains(lower, "bash") {
 		return false
 	}
-	if !containsAnyString(lower, []string{"allowed", "tools", "permissions"}) {
-		return false
+	for _, pattern := range bashWildcardPermissionPatterns {
+		if pattern.MatchString(line) {
+			return true
+		}
 	}
-	wildcardHints := []string{
-		"bash(*)",
-		"bash:*",
-		"bash: *",
-		"bash [*]",
-		"bash=*",
-		"bash = *",
-		"bash all",
-		"bash: all",
-	}
-	return containsAnyString(lower, wildcardHints)
+	return false
 }
 
 func tokenizeWords(line string) []string {
