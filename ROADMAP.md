@@ -30,6 +30,7 @@ tests/CI:
 - critical detection of Unicode Tags and bidi controls in scanned text
 - critical detection of zero-width and disallowed C0/C1 controls in scanned text
 - critical detection of variation selectors and ANSI/OSC escapes in scanned text
+- medium-severity detection of NFKC normalization text drift with normalized rescanning
 - medium-severity detection of mixed-script filename patterns
 - high-severity detection of password-protected archive instructions
 
@@ -325,7 +326,6 @@ High findings reject under `strict`:
 | `EXTERNAL_BINARY_DOWNLOAD` | release asset or binary download instruction |
 | `PASSWORD_PROTECTED_ARCHIVE` | password-protected archive instruction |
 | `RAW_IP_URL` | URL host is an IP address |
-| `SHORTENER_URL` | shortener or paste-site URL |
 | `ALLOWED_TOOLS_BASH_WILDCARD` | broad `Bash` or wildcard tool permission |
 | `WRITES_HOME_CONFIG` | writes to shell rc, ssh, cron, launch agents, or similar |
 
@@ -333,8 +333,12 @@ Medium findings warn under `strict`:
 
 | Rule | Condition |
 | --- | --- |
-| `REMOTE_IMAGE_OR_HTML` | remote Markdown image or raw HTML |
-| `LARGE_TEXT_OR_BINARY` | unusually large file for a skill |
+| `URL_SHORTENER` | shortener URL |
+| `PASTE_SITE_URL` | paste-site URL |
+| `RELEASE_ASSET_URL` | GitHub release asset URL |
+| `REMOTE_IMAGE_URL` | remote Markdown image URL |
+| `RAW_HTML_MARKUP` | raw HTML markup in markdown |
+| `LARGE_TEXT_FILE` | unusually large text file for scan |
 | `UNKNOWN_FILE_TYPE` | binary or unclassified file |
 | `NFKC_CHANGES_TEXT` | Unicode normalization changes text |
 | `MIXED_SCRIPT_FILENAME` | filename uses mixed scripts or confusable text |

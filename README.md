@@ -54,6 +54,9 @@ severity link-spoofing findings.
 Unicode Tags, bidi controls, variation selectors, and ANSI/OSC escapes in
 scanned text are now flagged as critical. Zero-width and disallowed C0/C1
 control characters are also flagged as critical findings.
+Lines whose Unicode compatibility normalization changes instruction text are now
+flagged as medium-severity `NFKC_CHANGES_TEXT` findings, and normalized text is
+rescanned to catch fullwidth compatibility evasion patterns.
 Mixed-script filename patterns that can mimic trusted names are now flagged as
 medium severity findings.
 Password-protected archive instructions are now flagged as high severity.
@@ -330,6 +333,8 @@ In strict mode, instruction text rejects:
 - variation selectors in text
 - ANSI/OSC escape sequences
 - C0/C1 controls except tab and normal line endings
+- compatibility-normalization drift (`NFKC_CHANGES_TEXT`) with normalized
+  rescanning
 
 Review output must be neutralized. Dangerous runes are rendered as escaped code
 points such as `\u{E0049}` instead of being passed raw to another agent.
