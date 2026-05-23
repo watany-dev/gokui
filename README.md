@@ -217,6 +217,18 @@ Fatal command-level errors (`status=ERROR`) use:
 | `UPDATE_TARGET_READ_FAILED` | resolved target path cannot be read |
 | `UPDATE_REPORT_BUILD_FAILED` | update report build failed for other reasons |
 
+## Exit Code Contract
+
+CLI exit codes are stable for automation:
+
+| Command | `0` | `1` | `2` |
+| --- | --- | --- | --- |
+| `gokui fetch` | fetched successfully | fatal error | n/a |
+| `gokui inspect` | pass or inspect-only pre-release result | fatal error | policy rejected (`decision=REJECTED`) |
+| `gokui install` | installed / already installed (matching provenance) | fatal error | policy rejected (`decision=REJECTED`) |
+| `gokui update --dry-run` | no rejected or error skill items | at least one `ERROR` item | at least one `REJECTED` item and no `ERROR` items |
+| `gokui lock verify` | verified | fatal error | drift detected |
+
 Status and error-code combinations are constrained as:
 
 | `skills[].status` | Allowed `skills[].error_code` |
