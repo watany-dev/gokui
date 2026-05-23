@@ -29,6 +29,7 @@ var (
 	curlPipePattern = regexp.MustCompile(`(?i)\b(?:curl|wget)\b[^\n|]{0,300}\|\s*(?:sh|bash|zsh|pwsh|powershell)\b`)
 	base64PipeExec  = regexp.MustCompile(`(?i)\b(?:base64|openssl\s+base64)\b[^\n|]{0,300}\|\s*(?:sh|bash|zsh|pwsh|powershell|python|node)\b`)
 	hexPipeExec     = regexp.MustCompile(`(?i)\b(?:xxd\s+-r(?:\s+-p)?|unhexlify|fromhex|hexdecode)\b[^\n|]{0,300}\|\s*(?:sh|bash|zsh|pwsh|powershell|python|node)\b`)
+	encodedCmdExec  = regexp.MustCompile(`(?i)\b(?:powershell|pwsh)(?:\.exe)?\b[^\n]{0,240}\s-(?:encodedcommand|enc)\s+[a-z0-9+/=]{12,}\b`)
 
 	promptOverridePattern = regexp.MustCompile(`(?i)\b(?:ignore|override|bypass)\b.{0,80}\b(?:previous|prior|system|higher|earlier)\b.{0,40}\b(?:instruction|instructions|prompt|prompts)\b`)
 
@@ -296,6 +297,15 @@ func scanTextFile(target scanTarget) ([]Finding, error) {
 					File:     target.Relative,
 					Line:     lineNum,
 					Summary:  "hex-decoded payload piped directly to an interpreter",
+				})
+			}
+			if encodedCmdExec.MatchString(variant) {
+				findings = append(findings, Finding{
+					ID:       "ENCODED_COMMAND_EXEC",
+					Severity: "critical",
+					File:     target.Relative,
+					Line:     lineNum,
+					Summary:  "encoded command execution flag detected",
 				})
 			}
 			if isUnpinnedRuntimeToolLine(variant) {

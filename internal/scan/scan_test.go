@@ -75,6 +75,9 @@ func TestScanSkillRootScansScriptLikeFiles(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "decode.sh"), []byte("echo 6563686f20706f776e6564 | xxd -r -p | sh"), 0o644); err != nil {
 		t.Fatalf("write hex decode script: %v", err)
 	}
+	if err := os.WriteFile(filepath.Join(root, "loader.ps1"), []byte("powershell -EncodedCommand SQBmACgAJABQAFMAVgBlAHIAcwBpAG8AbgBUAGEAYgBsAGUAKQA="), 0o644); err != nil {
+		t.Fatalf("write encoded command script: %v", err)
+	}
 	if err := os.WriteFile(filepath.Join(root, "runner.py"), []byte("npx tool"), 0o644); err != nil {
 		t.Fatalf("write runner: %v", err)
 	}
@@ -88,6 +91,7 @@ func TestScanSkillRootScansScriptLikeFiles(t *testing.T) {
 	}
 	assertHasID(t, findings, "BASE64_PIPE_EXEC")
 	assertHasID(t, findings, "HEX_PIPE_EXEC")
+	assertHasID(t, findings, "ENCODED_COMMAND_EXEC")
 	assertHasID(t, findings, "UNPINNED_RUNTIME_TOOL")
 }
 
@@ -270,6 +274,22 @@ func TestHexPipeExecPattern(t *testing.T) {
 		line := "echo 6869 | xxd -r -p > out.bin"
 		if hexPipeExec.MatchString(line) {
 			t.Fatalf("unexpected hexPipeExec match for %q", line)
+		}
+	})
+}
+
+func TestEncodedCommandExecPattern(t *testing.T) {
+	t.Run("detects powershell encoded command", func(t *testing.T) {
+		line := "pwsh -NoProfile -enc SQBmACgAJABQAFMAVgBlAHIAcwBpAG8AbgBUAGEAYgBsAGUAKQA="
+		if !encodedCmdExec.MatchString(line) {
+			t.Fatalf("expected encodedCmdExec to match %q", line)
+		}
+	})
+
+	t.Run("does not match normal powershell command", func(t *testing.T) {
+		line := "powershell -File setup.ps1"
+		if encodedCmdExec.MatchString(line) {
+			t.Fatalf("unexpected encodedCmdExec match for %q", line)
 		}
 	})
 }
