@@ -448,7 +448,7 @@ func prepareInspectSource(input string, sourceKind string) (skillRoot string, cl
 	case "zip", "tar":
 		return prepareArchiveInspectSource(input, sourceKind)
 	default:
-		return "", nil, nil
+		return "", nil, fmt.Errorf("unsupported inspect source kind: %s", sourceKind)
 	}
 }
 

@@ -381,24 +381,21 @@ func evaluateUpdateSkill(item updateSkillItem, lock installLock) (updateSkillIte
 		defer cleanup()
 	}
 	if err != nil {
-		if kind == "github-source" {
-			message := err.Error()
-			status := "ERROR"
-			code := updateCodeSourcePrepareError
-			if strings.Contains(message, "commit-pinned ref") {
-				status = "REJECTED"
-				code = updateCodeGitHubRefFloating
-			}
-			item.Status = status
-			item.ErrorCode = code
-			item.Message = message
-			item.Risk = updateRisk{
-				Previous: lock.Findings,
-				Current:  lock.Findings,
-			}
-			return item, nil
+		message := err.Error()
+		status := "ERROR"
+		code := updateCodeSourcePrepareError
+		if kind == "github-source" && strings.Contains(message, "commit-pinned ref") {
+			status = "REJECTED"
+			code = updateCodeGitHubRefFloating
 		}
-		return updateSkillItem{}, err
+		item.Status = status
+		item.ErrorCode = code
+		item.Message = message
+		item.Risk = updateRisk{
+			Previous: lock.Findings,
+			Current:  lock.Findings,
+		}
+		return item, nil
 	}
 
 	findings, decision, err := evaluateSkill(skillRoot)

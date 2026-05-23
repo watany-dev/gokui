@@ -577,6 +577,52 @@ func TestRunUpdateDryRunRejectedAndError(t *testing.T) {
 			t.Fatalf("stdout should include invalid-source error_code, got %q", stdout.String())
 		}
 	})
+
+	t.Run("unsupported source kind in lock is source-prepare error", func(t *testing.T) {
+		targetRoot := filepath.Join(t.TempDir(), "skills")
+		if err := os.MkdirAll(filepath.Join(targetRoot, "unknown-kind"), 0o755); err != nil {
+			t.Fatalf("mkdir unknown-kind skill dir: %v", err)
+		}
+		lock := installLock{
+			Schema: "gokui.lock/v1",
+			Name:   "unknown-kind",
+			Source: lockSource{
+				Type:  "local",
+				Input: t.TempDir(),
+				Kind:  "weird-kind",
+			},
+			Policy: lockPolicy{Profile: "strict", Decision: "pass"},
+			Skill: lockSkill{
+				RootSHA256: strings.Repeat("a", 64),
+				Files: []lockFileHash{
+					{Path: "SKILL.md", SHA256: strings.Repeat("b", 64), Bytes: 1},
+				},
+			},
+		}
+		raw, err := json.MarshalIndent(lock, "", "  ")
+		if err != nil {
+			t.Fatalf("marshal lock: %v", err)
+		}
+		if err := os.WriteFile(filepath.Join(targetRoot, "unknown-kind", installLockFile), raw, 0o644); err != nil {
+			t.Fatalf("write lock: %v", err)
+		}
+
+		var stdout strings.Builder
+		var stderr strings.Builder
+		code := runUpdate([]string{"--dry-run", "--target", "custom:" + targetRoot, "--format", "json"}, &stdout, &stderr)
+		if code != 1 {
+			t.Fatalf("runUpdate(unsupported source kind) code = %d, want 1\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
+		}
+		if stderr.Len() != 0 {
+			t.Fatalf("stderr should be empty, got %q", stderr.String())
+		}
+		if !strings.Contains(stdout.String(), "\"status\": \"ERROR\"") {
+			t.Fatalf("stdout should include ERROR status, got %q", stdout.String())
+		}
+		if !strings.Contains(stdout.String(), "\"error_code\": \""+updateCodeSourcePrepareError+"\"") {
+			t.Fatalf("stdout should include source-prepare error_code, got %q", stdout.String())
+		}
+	})
 }
 
 func TestRunUpdateJSONFatalErrors(t *testing.T) {
@@ -918,6 +964,48 @@ func TestUpdateHelpers(t *testing.T) {
 		}
 	})
 
+	t.Run("buildUpdateReport captures installed-tree evaluation errors", func(t *testing.T) {
+		if runtime.GOOS == "windows" {
+			t.Skip("permission behavior differs on windows")
+		}
+
+		targetRoot := filepath.Join(t.TempDir(), "skills")
+		if err := os.MkdirAll(targetRoot, 0o755); err != nil {
+			t.Fatalf("mkdir target root: %v", err)
+		}
+
+		src := createSkillSourceForInstallTest(t, "eval-error-skill")
+		report := installReport{
+			SchemaVersion: "0.1.0-draft",
+			Source:        source{Input: src, Kind: "local-dir"},
+			PolicyProfile: "strict",
+			Decision:      "PASS",
+		}
+		installedPath, _, err := installSkillAtomic(src, targetRoot, "eval-error-skill", report)
+		if err != nil {
+			t.Fatalf("installSkillAtomic() error = %v", err)
+		}
+		blocked := filepath.Join(installedPath, "blocked.md")
+		if err := os.WriteFile(blocked, []byte("blocked"), 0o644); err != nil {
+			t.Fatalf("write blocked file: %v", err)
+		}
+		if err := os.Chmod(blocked, 0o000); err != nil {
+			t.Fatalf("chmod blocked file: %v", err)
+		}
+		defer os.Chmod(blocked, 0o644)
+
+		got, err := buildUpdateReport(targetRoot)
+		if err != nil {
+			t.Fatalf("buildUpdateReport() error = %v", err)
+		}
+		if got.Summary.Errors != 1 {
+			t.Fatalf("expected one evaluation error, got %+v", got.Summary)
+		}
+		if got.Skills[0].ErrorCode != updateCodeEvaluationError {
+			t.Fatalf("expected evaluation error code, got %+v", got.Skills[0])
+		}
+	})
+
 	t.Run("buildUpdateReport sorts skill names", func(t *testing.T) {
 		targetRoot := filepath.Join(t.TempDir(), "skills")
 		if err := os.MkdirAll(filepath.Join(targetRoot, "z-skill"), 0o755); err != nil {
@@ -1025,7 +1113,7 @@ func TestEvaluateUpdateSkillAdditionalBranches(t *testing.T) {
 		}
 	})
 
-	t.Run("returns error when source cannot be prepared", func(t *testing.T) {
+	t.Run("source preparation failure returns ERROR status", func(t *testing.T) {
 		lock := installLock{
 			Schema: "gokui.lock/v1",
 			Name:   "missing-source-skill",
@@ -1048,9 +1136,15 @@ func TestEvaluateUpdateSkillAdditionalBranches(t *testing.T) {
 				Changed: []string{},
 			},
 		}
-		_, err := evaluateUpdateSkill(item, lock)
-		if err == nil {
-			t.Fatal("expected source preparation error")
+		got, err := evaluateUpdateSkill(item, lock)
+		if err != nil {
+			t.Fatalf("evaluateUpdateSkill() error = %v", err)
+		}
+		if got.Status != "ERROR" || got.ErrorCode != updateCodeSourcePrepareError {
+			t.Fatalf("unexpected result for source prepare failure: %+v", got)
+		}
+		if !strings.Contains(got.Message, "source not found") {
+			t.Fatalf("unexpected source prepare message: %+v", got)
 		}
 	})
 

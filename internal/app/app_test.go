@@ -1584,16 +1584,16 @@ func TestParseFrontmatterYAML(t *testing.T) {
 }
 
 func TestPrepareInspectSource(t *testing.T) {
-	t.Run("github source returns empty root with no error", func(t *testing.T) {
+	t.Run("unsupported source kind fails closed", func(t *testing.T) {
 		root, cleanup, err := prepareInspectSource("github:org/repo//skill@main", "github-source")
-		if err != nil {
-			t.Fatalf("prepareInspectSource() error = %v", err)
+		if err == nil || !strings.Contains(err.Error(), "unsupported inspect source kind") {
+			t.Fatalf("expected unsupported source kind error, got %v", err)
 		}
 		if root != "" {
 			t.Fatalf("root = %q, want empty", root)
 		}
 		if cleanup != nil {
-			t.Fatal("cleanup should be nil for github source")
+			t.Fatal("cleanup should be nil for unsupported source kind")
 		}
 	})
 

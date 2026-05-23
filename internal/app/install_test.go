@@ -922,6 +922,37 @@ func TestWriteInstallMetadataGitHubSource(t *testing.T) {
 			t.Fatalf("expected source metadata write error, got %v", err)
 		}
 	})
+
+	t.Run("returns error when github source digest build fails", func(t *testing.T) {
+		if runtime.GOOS == "windows" {
+			t.Skip("permission behavior differs on windows")
+		}
+
+		skillRoot := createSkillSourceForInstallTest(t, "write-meta-digest-error")
+		blocked := filepath.Join(skillRoot, "blocked.md")
+		if err := os.WriteFile(blocked, []byte("blocked"), 0o644); err != nil {
+			t.Fatalf("write blocked file: %v", err)
+		}
+		if err := os.Chmod(blocked, 0o000); err != nil {
+			t.Fatalf("chmod blocked file: %v", err)
+		}
+		defer os.Chmod(blocked, 0o644)
+
+		report := installReport{
+			SchemaVersion: "0.1.0-draft",
+			Source: source{
+				Input: "github:org/repo//skills/write-meta-digest-error@8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
+				Kind:  "github-source",
+			},
+			PolicyProfile: "strict",
+			Decision:      "PASS",
+			Installed:     true,
+			InstalledPath: skillRoot,
+		}
+		if err := writeInstallMetadata(skillRoot, report); err == nil {
+			t.Fatal("expected digest build error for unreadable file")
+		}
+	})
 }
 
 func TestInstallSkillAtomicExistingTargetValidation(t *testing.T) {
