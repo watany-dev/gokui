@@ -129,6 +129,7 @@ const (
 	installErrorCodeTargetPrepareFailed  = "INSTALL_TARGET_PREPARE_FAILED"
 	installErrorCodeWriteFailed          = "INSTALL_WRITE_FAILED"
 	installErrorCodePolicyRejected       = "INSTALL_POLICY_REJECTED"
+	installErrorCodeUnknown              = "INSTALL_FAILED"
 )
 
 func runInstall(args []string, stdout io.Writer, stderr io.Writer) int {
@@ -503,6 +504,7 @@ func extractInstallProfileArg(args []string) string {
 
 func writeInstallJSONError(stdout io.Writer, stderr io.Writer, report installErrorReport) int {
 	report.Status = "ERROR"
+	report.ErrorCode = normalizeJSONErrorCode(report.ErrorCode, installErrorCodeUnknown)
 	if report.RuleID == "" {
 		report.RuleID = inferRuleIDForJSONError(report.Message)
 	}

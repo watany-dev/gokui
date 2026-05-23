@@ -97,6 +97,7 @@ func runLockVerify(args []string, stdout io.Writer, stderr io.Writer) int {
 				Message:       verifyErr.Error(),
 				Note:          "lock verify failed before producing drift report",
 			}
+			errReport.ErrorCode = normalizeJSONErrorCode(errReport.ErrorCode, lockVerifyErrorCodeUnknown)
 			errReport.RuleID = inferRuleIDForJSONError(errReport.Message)
 			out, err := json.MarshalIndent(errReport, "", "  ")
 			if err != nil {

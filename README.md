@@ -220,6 +220,7 @@ rule-prefixed validation error is available.
 | `INSPECT_SOURCE_INVALID` | GitHub source syntax is invalid |
 | `INSPECT_SOURCE_PREPARE_FAILED` | source materialization/structure validation failed |
 | `INSPECT_SCAN_FAILED` | scan phase failed |
+| `INSPECT_FAILED` | fallback when inspect fatal error classification is unavailable |
 
 When available, inspect JSON fatal errors also include optional `rule_id`
 derived from rule-prefixed validation messages (for example
@@ -239,6 +240,7 @@ derived from rule-prefixed validation messages (for example
 | `FETCH_COPY_FAILED` | staging/copy step failed |
 | `FETCH_DIGEST_FAILED` | digest generation failed |
 | `FETCH_SOURCE_METADATA_WRITE_FAILED` | source metadata write failed |
+| `FETCH_FAILED` | fallback when fetch fatal error classification is unavailable |
 
 When available, fetch JSON fatal errors also include optional `rule_id`
 derived from rule-prefixed source/materialization validation errors.
@@ -261,6 +263,7 @@ Fatal errors:
 | `INSTALL_TARGET_INVALID` | target spec is invalid |
 | `INSTALL_TARGET_PREPARE_FAILED` | target root preparation failed |
 | `INSTALL_WRITE_FAILED` | install write/staging/finalize failed |
+| `INSTALL_FAILED` | fallback when install fatal error classification is unavailable |
 
 When available, install JSON fatal errors also include optional `rule_id`
 derived from rule-prefixed source/materialization validation errors.
@@ -309,6 +312,7 @@ Fatal command-level errors (`status=ERROR`) use:
 | `UPDATE_TARGET_INVALID` | update target spec is invalid |
 | `UPDATE_TARGET_READ_FAILED` | resolved target path cannot be read |
 | `UPDATE_REPORT_BUILD_FAILED` | update report build failed for other reasons |
+| `UPDATE_FAILED` | fallback when update fatal error classification is unavailable |
 
 When available, update JSON fatal errors also include optional `rule_id`
 derived from rule-prefixed target/report validation messages.

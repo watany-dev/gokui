@@ -14,6 +14,7 @@ func TestAutomationErrorCodesUniqueAndFormat(t *testing.T) {
 		inspectErrorCodeSourceInvalid,
 		inspectErrorCodeSourcePrepareFailed,
 		inspectErrorCodeScanFailed,
+		inspectErrorCodeUnknown,
 
 		fetchErrorCodeArgsInvalid,
 		fetchErrorCodeSourceUnsupported,
@@ -25,6 +26,7 @@ func TestAutomationErrorCodesUniqueAndFormat(t *testing.T) {
 		fetchErrorCodeCopyFailed,
 		fetchErrorCodeDigestFailed,
 		fetchErrorCodeMetadataWriteFailed,
+		fetchErrorCodeUnknown,
 
 		installErrorCodeArgsInvalid,
 		installErrorCodeProfileUnsupported,
@@ -36,6 +38,7 @@ func TestAutomationErrorCodesUniqueAndFormat(t *testing.T) {
 		installErrorCodeTargetPrepareFailed,
 		installErrorCodeWriteFailed,
 		installErrorCodePolicyRejected,
+		installErrorCodeUnknown,
 
 		lockVerifyErrorCodeReadLockfile,
 		lockVerifyErrorCodeInvalidLockfile,
@@ -56,6 +59,7 @@ func TestAutomationErrorCodesUniqueAndFormat(t *testing.T) {
 		updateFatalCodeTargetInvalid,
 		updateFatalCodeTargetReadFail,
 		updateFatalCodeReportBuild,
+		updateFatalCodeUnknown,
 	}
 
 	pattern := regexp.MustCompile(`^[A-Z0-9_]+$`)
@@ -115,6 +119,7 @@ func TestAutomationErrorCodesDocumentedInREADME(t *testing.T) {
 		inspectErrorCodeSourceInvalid,
 		inspectErrorCodeSourcePrepareFailed,
 		inspectErrorCodeScanFailed,
+		inspectErrorCodeUnknown,
 
 		fetchErrorCodeArgsInvalid,
 		fetchErrorCodeSourceUnsupported,
@@ -126,6 +131,7 @@ func TestAutomationErrorCodesDocumentedInREADME(t *testing.T) {
 		fetchErrorCodeCopyFailed,
 		fetchErrorCodeDigestFailed,
 		fetchErrorCodeMetadataWriteFailed,
+		fetchErrorCodeUnknown,
 
 		installErrorCodeArgsInvalid,
 		installErrorCodeProfileUnsupported,
@@ -137,6 +143,7 @@ func TestAutomationErrorCodesDocumentedInREADME(t *testing.T) {
 		installErrorCodeTargetPrepareFailed,
 		installErrorCodeWriteFailed,
 		installErrorCodePolicyRejected,
+		installErrorCodeUnknown,
 
 		lockVerifyErrorCodeReadLockfile,
 		lockVerifyErrorCodeInvalidLockfile,
@@ -157,6 +164,7 @@ func TestAutomationErrorCodesDocumentedInREADME(t *testing.T) {
 		updateFatalCodeTargetInvalid,
 		updateFatalCodeTargetReadFail,
 		updateFatalCodeReportBuild,
+		updateFatalCodeUnknown,
 	}
 
 	for _, code := range codes {

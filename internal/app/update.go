@@ -78,6 +78,7 @@ const (
 	updateFatalCodeTargetInvalid  = "UPDATE_TARGET_INVALID"
 	updateFatalCodeTargetReadFail = "UPDATE_TARGET_READ_FAILED"
 	updateFatalCodeReportBuild    = "UPDATE_REPORT_BUILD_FAILED"
+	updateFatalCodeUnknown        = "UPDATE_FAILED"
 )
 
 const ruleUpdateTargetSymlink = "UPDATE_TARGET_SYMLINK_DETECTED"
@@ -240,6 +241,7 @@ func extractUpdateTargetArg(args []string) string {
 
 func writeUpdateJSONError(stdout io.Writer, stderr io.Writer, report updateErrorReport) int {
 	report.Status = "ERROR"
+	report.ErrorCode = normalizeJSONErrorCode(report.ErrorCode, updateFatalCodeUnknown)
 	if report.RuleID == "" {
 		report.RuleID = inferRuleIDForJSONError(report.Message)
 	}

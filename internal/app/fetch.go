@@ -48,6 +48,7 @@ const (
 	fetchErrorCodeCopyFailed           = "FETCH_COPY_FAILED"
 	fetchErrorCodeDigestFailed         = "FETCH_DIGEST_FAILED"
 	fetchErrorCodeMetadataWriteFailed  = "FETCH_SOURCE_METADATA_WRITE_FAILED"
+	fetchErrorCodeUnknown              = "FETCH_FAILED"
 )
 
 const ruleFetchOutputSymlink = "FETCH_OUTPUT_SYMLINK_DETECTED"
@@ -343,6 +344,7 @@ func extractFetchSourceArg(args []string) string {
 
 func writeFetchJSONError(stdout io.Writer, stderr io.Writer, report fetchErrorReport) int {
 	report.Status = "ERROR"
+	report.ErrorCode = normalizeJSONErrorCode(report.ErrorCode, fetchErrorCodeUnknown)
 	if report.RuleID == "" {
 		report.RuleID = inferRuleIDForJSONError(report.Message)
 	}

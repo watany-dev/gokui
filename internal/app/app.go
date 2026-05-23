@@ -136,6 +136,7 @@ var (
 	descriptionOverridePattern       = regexp.MustCompile(`(?i)\b(ignore|override|bypass)\b.{0,40}\b(previous|prior|system|higher|earlier)\b.{0,20}\b(instruction|instructions|prompt|prompts)\b`)
 	ruleIDPrefixPattern              = regexp.MustCompile(`^([A-Z][A-Z0-9_]+):\s`)
 	ruleIDAnywherePattern            = regexp.MustCompile(`(?:^|[^A-Z0-9_])([A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+):\s`)
+	errorCodePattern                 = regexp.MustCompile(`^[A-Z0-9_]+$`)
 	maxSkillFrontmatterBytes   int64 = 1_000_000
 )
 
@@ -153,6 +154,7 @@ const (
 	inspectErrorCodeSourceInvalid       = "INSPECT_SOURCE_INVALID"
 	inspectErrorCodeSourcePrepareFailed = "INSPECT_SOURCE_PREPARE_FAILED"
 	inspectErrorCodeScanFailed          = "INSPECT_SCAN_FAILED"
+	inspectErrorCodeUnknown             = "INSPECT_FAILED"
 )
 
 func BuildVersionString(cfg Config) string {
@@ -650,6 +652,7 @@ func extractInspectSourceArg(args []string) string {
 
 func writeInspectJSONError(stdout io.Writer, stderr io.Writer, report inspectErrorReport) int {
 	report.Status = "ERROR"
+	report.ErrorCode = normalizeJSONErrorCode(report.ErrorCode, inspectErrorCodeUnknown)
 	if report.RuleID == "" {
 		report.RuleID = inferRuleIDForJSONError(report.Message)
 	}
@@ -679,6 +682,18 @@ func inferRuleIDForJSONError(message string) string {
 		return ""
 	}
 	return match[1]
+}
+
+func normalizeJSONErrorCode(code string, fallback string) string {
+	cleanedCode := strings.TrimSpace(code)
+	if errorCodePattern.MatchString(cleanedCode) {
+		return cleanedCode
+	}
+	cleanedFallback := strings.TrimSpace(fallback)
+	if errorCodePattern.MatchString(cleanedFallback) {
+		return cleanedFallback
+	}
+	return "UNKNOWN_ERROR"
 }
 
 func detectSourceKind(input string) string {
