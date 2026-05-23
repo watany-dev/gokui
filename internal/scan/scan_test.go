@@ -161,13 +161,15 @@ func TestClassifyMarkdownLinkSpoofing(t *testing.T) {
 }
 
 func TestClassifyUnicodeThreats(t *testing.T) {
-	t.Run("detects unicode tag, bidi, zero-width, and control", func(t *testing.T) {
-		line := "x\U000E0001 y\u202E z\u200B q\u0001"
+	t.Run("detects unicode tag, bidi, zero-width, control, variation selector, and ansi/osc", func(t *testing.T) {
+		line := "x\U000E0001 y\u202E z\u200B q\u0001 v\uFE0F ansi\x1b[31mred\x1b[0m"
 		findings := classifyUnicodeThreats(line, "SKILL.md", 20)
 		assertHasID(t, findings, "UNICODE_TAG_IN_INSTRUCTIONS")
 		assertHasID(t, findings, "BIDI_CONTROL_IN_TEXT")
 		assertHasID(t, findings, "ZERO_WIDTH_CHAR_IN_TEXT")
 		assertHasID(t, findings, "CONTROL_CHAR_IN_TEXT")
+		assertHasID(t, findings, "VARIATION_SELECTOR_IN_TEXT")
+		assertHasID(t, findings, "ANSI_OSC_ESCAPE_IN_TEXT")
 	})
 
 	t.Run("returns empty for plain text", func(t *testing.T) {
