@@ -1484,7 +1484,7 @@ func TestBuildFileDigestsAndSourceType(t *testing.T) {
 
 func TestCopyFileWithModeAndHashErrors(t *testing.T) {
 	t.Run("copyFileWithMode source missing", func(t *testing.T) {
-		_, err := copyFileWithMode(filepath.Join(t.TempDir(), "missing"), filepath.Join(t.TempDir(), "out"), 0o644, 1024)
+		_, err := copyFileWithModeChecked(filepath.Join(t.TempDir(), "missing"), filepath.Join(t.TempDir(), "out"), 0o644, 1024, nil)
 		if err == nil || !strings.Contains(err.Error(), "failed to open source file") {
 			t.Fatalf("expected source-open error, got %v", err)
 		}
@@ -1499,7 +1499,7 @@ func TestCopyFileWithModeAndHashErrors(t *testing.T) {
 		if err := os.Mkdir(dst, 0o755); err != nil {
 			t.Fatalf("mkdir dst dir: %v", err)
 		}
-		_, err := copyFileWithMode(src, dst, 0o644, 1024)
+		_, err := copyFileWithModeChecked(src, dst, 0o644, 1024, nil)
 		if err == nil || !strings.Contains(err.Error(), "failed to create destination file") {
 			t.Fatalf("expected destination create error, got %v", err)
 		}
@@ -1511,7 +1511,7 @@ func TestCopyFileWithModeAndHashErrors(t *testing.T) {
 			t.Fatalf("write src: %v", err)
 		}
 		dst := filepath.Join(t.TempDir(), "out.txt")
-		_, err := copyFileWithMode(src, dst, 0o644, 1)
+		_, err := copyFileWithModeChecked(src, dst, 0o644, 1, nil)
 		if err == nil || !strings.Contains(err.Error(), ruleInstallSourceFileTooLarge) {
 			t.Fatalf("expected max-bytes copy error, got %v", err)
 		}
@@ -1523,7 +1523,7 @@ func TestCopyFileWithModeAndHashErrors(t *testing.T) {
 	t.Run("copyFileWithMode removes destination on copy read error", func(t *testing.T) {
 		srcDir := t.TempDir()
 		dst := filepath.Join(t.TempDir(), "out.txt")
-		_, err := copyFileWithMode(srcDir, dst, 0o644, 1024)
+		_, err := copyFileWithModeChecked(srcDir, dst, 0o644, 1024, nil)
 		if err == nil || !strings.Contains(err.Error(), "failed to copy file contents") {
 			t.Fatalf("expected copy read error, got %v", err)
 		}
@@ -1538,9 +1538,9 @@ func TestCopyFileWithModeAndHashErrors(t *testing.T) {
 			t.Fatalf("write src: %v", err)
 		}
 		dst := filepath.Join(t.TempDir(), "out.txt")
-		written, err := copyFileWithMode(src, dst, 0o640, 1024)
+		written, err := copyFileWithModeChecked(src, dst, 0o640, 1024, nil)
 		if err != nil {
-			t.Fatalf("copyFileWithMode() error = %v", err)
+			t.Fatalf("copyFileWithModeChecked() error = %v", err)
 		}
 		if written != 5 {
 			t.Fatalf("written = %d, want 5", written)
@@ -1554,8 +1554,47 @@ func TestCopyFileWithModeAndHashErrors(t *testing.T) {
 		}
 	})
 
+	t.Run("copyFileWithModeChecked detects source replacement", func(t *testing.T) {
+		root := t.TempDir()
+		first := filepath.Join(root, "first.txt")
+		if err := os.WriteFile(first, []byte("one"), 0o644); err != nil {
+			t.Fatalf("write first: %v", err)
+		}
+		second := filepath.Join(root, "second.txt")
+		if err := os.WriteFile(second, []byte("two"), 0o644); err != nil {
+			t.Fatalf("write second: %v", err)
+		}
+		firstInfo, err := os.Lstat(first)
+		if err != nil {
+			t.Fatalf("lstat first: %v", err)
+		}
+
+		dst := filepath.Join(root, "out.txt")
+		_, err = copyFileWithModeChecked(second, dst, 0o644, 1024, firstInfo)
+		if err == nil || !strings.Contains(err.Error(), ruleInstallSourceChanged) {
+			t.Fatalf("expected source-changed copy error, got %v", err)
+		}
+		if _, statErr := os.Stat(dst); !os.IsNotExist(statErr) {
+			t.Fatalf("destination should not be created on source-changed error, stat err=%v", statErr)
+		}
+	})
+
+	t.Run("ensureInstallSourceStableFromOpen handles stat errors", func(t *testing.T) {
+		src := filepath.Join(t.TempDir(), "src.txt")
+		if err := os.WriteFile(src, []byte("x"), 0o644); err != nil {
+			t.Fatalf("write src: %v", err)
+		}
+		info, err := os.Lstat(src)
+		if err != nil {
+			t.Fatalf("lstat src: %v", err)
+		}
+		if err := ensureInstallSourceStableFromOpen(info, installErrorStatter{err: errors.New("stat fail")}, src); err == nil || !strings.Contains(err.Error(), "failed to open source file") {
+			t.Fatalf("expected source stat error, got %v", err)
+		}
+	})
+
 	t.Run("hashFile source missing", func(t *testing.T) {
-		_, _, err := hashFile(filepath.Join(t.TempDir(), "missing"))
+		_, _, err := hashFileWithLimitChecked(filepath.Join(t.TempDir(), "missing"), installMaxDigestFileBytes, nil)
 		if err == nil || !strings.Contains(err.Error(), "failed to open file for hashing") {
 			t.Fatalf("expected hash open error, got %v", err)
 		}
@@ -1566,9 +1605,43 @@ func TestCopyFileWithModeAndHashErrors(t *testing.T) {
 		if err := os.WriteFile(path, []byte("ab"), 0o644); err != nil {
 			t.Fatalf("write data: %v", err)
 		}
-		_, _, err := hashFileWithLimit(path, 1)
+		_, _, err := hashFileWithLimitChecked(path, 1, nil)
 		if err == nil || !errors.Is(err, limitio.ErrSizeExceeded) {
 			t.Fatalf("expected size exceeded error, got %v", err)
+		}
+	})
+
+	t.Run("hashFileWithLimitChecked detects source replacement", func(t *testing.T) {
+		root := t.TempDir()
+		first := filepath.Join(root, "first.bin")
+		if err := os.WriteFile(first, []byte("one"), 0o644); err != nil {
+			t.Fatalf("write first: %v", err)
+		}
+		second := filepath.Join(root, "second.bin")
+		if err := os.WriteFile(second, []byte("two"), 0o644); err != nil {
+			t.Fatalf("write second: %v", err)
+		}
+		firstInfo, err := os.Lstat(first)
+		if err != nil {
+			t.Fatalf("lstat first: %v", err)
+		}
+		_, _, err = hashFileWithLimitChecked(second, 1024, firstInfo)
+		if err == nil || !strings.Contains(err.Error(), ruleInstallDigestSourceChanged) {
+			t.Fatalf("expected digest source-changed error, got %v", err)
+		}
+	})
+
+	t.Run("ensureInstallDigestStableFromOpen handles stat errors", func(t *testing.T) {
+		path := filepath.Join(t.TempDir(), "data.bin")
+		if err := os.WriteFile(path, []byte("x"), 0o644); err != nil {
+			t.Fatalf("write data: %v", err)
+		}
+		info, err := os.Lstat(path)
+		if err != nil {
+			t.Fatalf("lstat data: %v", err)
+		}
+		if err := ensureInstallDigestStableFromOpen(info, installErrorStatter{err: errors.New("stat fail")}, path); err == nil || !strings.Contains(err.Error(), "failed to open file for hashing") {
+			t.Fatalf("expected digest stat error, got %v", err)
 		}
 	})
 }
@@ -1921,7 +1994,7 @@ func TestWriteInstallMetadataAndBuildDigestsErrors(t *testing.T) {
 
 func TestHashFileCopyError(t *testing.T) {
 	dir := t.TempDir()
-	_, _, err := hashFile(dir)
+	_, _, err := hashFileWithLimitChecked(dir, installMaxDigestFileBytes, nil)
 	if err == nil || !strings.Contains(err.Error(), "failed to hash file") {
 		t.Fatalf("expected hash copy error for directory input, got %v", err)
 	}

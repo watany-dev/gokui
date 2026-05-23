@@ -45,11 +45,13 @@ const (
 	ruleInstallSourceTotalBytesExceeded = "INSTALL_SOURCE_TOTAL_BYTES_EXCEEDED"
 	ruleInstallSourceFileTooLarge       = "INSTALL_SOURCE_FILE_TOO_LARGE"
 	ruleInstallSourceSpecialFile        = "INSTALL_SOURCE_SPECIAL_FILE"
+	ruleInstallSourceChanged            = "INSTALL_SOURCE_CHANGED_DURING_COPY"
 	ruleInstallDigestSymlink            = "INSTALL_DIGEST_SYMLINK_DETECTED"
 	ruleInstallDigestFileCountExceeded  = "INSTALL_DIGEST_FILE_COUNT_EXCEEDED"
 	ruleInstallDigestTotalBytesExceeded = "INSTALL_DIGEST_TOTAL_BYTES_EXCEEDED"
 	ruleInstallDigestFileTooLarge       = "INSTALL_DIGEST_FILE_TOO_LARGE"
 	ruleInstallDigestSpecialFile        = "INSTALL_DIGEST_SPECIAL_FILE"
+	ruleInstallDigestSourceChanged      = "INSTALL_DIGEST_SOURCE_CHANGED_DURING_HASH"
 )
 
 type installArgs struct {
@@ -704,7 +706,7 @@ func copyTreeNormalized(srcRoot string, dstRoot string) error {
 		if err := os.MkdirAll(filepath.Dir(destPath), 0o755); err != nil {
 			return fmt.Errorf("failed to create install directory: %w", err)
 		}
-		written, err := copyFileWithMode(path, destPath, 0o644, maxCopyBytes)
+		written, err := copyFileWithModeChecked(path, destPath, 0o644, maxCopyBytes, srcInfo)
 		if err != nil {
 			return err
 		}
@@ -713,12 +715,17 @@ func copyTreeNormalized(srcRoot string, dstRoot string) error {
 	})
 }
 
-func copyFileWithMode(src string, dst string, mode os.FileMode, maxBytes int64) (int64, error) {
+func copyFileWithModeChecked(src string, dst string, mode os.FileMode, maxBytes int64, expectedInfo os.FileInfo) (int64, error) {
 	in, err := os.Open(src)
 	if err != nil {
 		return 0, fmt.Errorf("failed to open source file: %w", err)
 	}
 	defer in.Close()
+	if expectedInfo != nil {
+		if err := ensureInstallSourceStableFromOpen(expectedInfo, in, src); err != nil {
+			return 0, err
+		}
+	}
 
 	out, err := os.OpenFile(dst, os.O_CREATE|os.O_EXCL|os.O_WRONLY, mode)
 	if err != nil {
@@ -897,7 +904,7 @@ func buildFileDigestsFiltered(root string, exclude map[string]struct{}) ([]lockF
 		if totalBytes > installMaxDigestTotalBytes {
 			return fmt.Errorf("%s: digest input exceeds max total bytes: %d", ruleInstallDigestTotalBytesExceeded, installMaxDigestTotalBytes)
 		}
-		sum, size, err := hashFile(path)
+		sum, size, err := hashFileWithLimitChecked(path, installMaxDigestFileBytes, info)
 		if err != nil {
 			if errors.Is(err, limitio.ErrSizeExceeded) {
 				return fmt.Errorf("%s: digest input file exceeds size limit: %s", ruleInstallDigestFileTooLarge, rel)
@@ -929,16 +936,17 @@ func buildFileDigestsFiltered(root string, exclude map[string]struct{}) ([]lockF
 	return files, hex.EncodeToString(rootHasher.Sum(nil)), nil
 }
 
-func hashFile(path string) (sum string, size int64, err error) {
-	return hashFileWithLimit(path, installMaxDigestFileBytes)
-}
-
-func hashFileWithLimit(path string, maxBytes int64) (sum string, size int64, err error) {
+func hashFileWithLimitChecked(path string, maxBytes int64, expectedInfo os.FileInfo) (sum string, size int64, err error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return "", 0, fmt.Errorf("failed to open file for hashing: %w", err)
 	}
 	defer f.Close()
+	if expectedInfo != nil {
+		if err := ensureInstallDigestStableFromOpen(expectedInfo, f, path); err != nil {
+			return "", 0, err
+		}
+	}
 
 	hasher := sha256.New()
 	var n int64
@@ -954,6 +962,28 @@ func hashFileWithLimit(path string, maxBytes int64) (sum string, size int64, err
 		return "", 0, fmt.Errorf("failed to hash file: %w", err)
 	}
 	return hex.EncodeToString(hasher.Sum(nil)), n, nil
+}
+
+func ensureInstallSourceStableFromOpen(previous os.FileInfo, opened fileInfoStatter, src string) error {
+	current, err := opened.Stat()
+	if err != nil {
+		return fmt.Errorf("failed to open source file: %s", src)
+	}
+	if os.SameFile(previous, current) {
+		return nil
+	}
+	return fmt.Errorf("%s: install source file changed during copy: %s", ruleInstallSourceChanged, src)
+}
+
+func ensureInstallDigestStableFromOpen(previous os.FileInfo, opened fileInfoStatter, path string) error {
+	current, err := opened.Stat()
+	if err != nil {
+		return fmt.Errorf("failed to open file for hashing: %s", path)
+	}
+	if os.SameFile(previous, current) {
+		return nil
+	}
+	return fmt.Errorf("%s: digest input file changed during hash: %s", ruleInstallDigestSourceChanged, path)
 }
 
 func readInstallLock(path string) (installLock, error) {
