@@ -206,6 +206,10 @@ For machine integration, JSON outputs use stable uppercase `error_code` values.
 | `INSPECT_SOURCE_PREPARE_FAILED` | source materialization/structure validation failed |
 | `INSPECT_SCAN_FAILED` | scan phase failed |
 
+When available, inspect JSON fatal errors also include optional `rule_id`
+derived from rule-prefixed validation messages (for example
+`ARCHIVE_PATH_ESCAPE`, `SYMLINK_IN_ARCHIVE`, `DESCRIPTION_TOOL_INJECTION`).
+
 ### fetch (`--format json`, fatal errors)
 
 | error_code | Meaning |
