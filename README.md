@@ -66,6 +66,7 @@ The intended first release focuses on local inspection and strict Codex-targeted
 installation:
 
 ```sh
+gokui fetch github:owner/repo//path/to/skill@commit --out <quarantine-dir>
 gokui inspect <local-dir|zip|github-source>
 gokui install <source> --target codex --profile strict
 gokui update --dry-run
