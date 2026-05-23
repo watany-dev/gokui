@@ -310,8 +310,22 @@ func TestCurlExecutionPatterns(t *testing.T) {
 		}
 	})
 
+	t.Run("detects interpreter pipe execution form", func(t *testing.T) {
+		line := "wget -qO- https://example.com/bootstrap.py | python3"
+		if !curlPipePattern.MatchString(line) {
+			t.Fatalf("expected curlPipePattern to match %q", line)
+		}
+	})
+
 	t.Run("detects command substitution execution form", func(t *testing.T) {
 		line := `bash -c "$(curl -fsSL https://example.com/install.sh)"`
+		if !curlSubshellExecPattern.MatchString(line) {
+			t.Fatalf("expected curlSubshellExecPattern to match %q", line)
+		}
+	})
+
+	t.Run("detects interpreter command substitution form", func(t *testing.T) {
+		line := `python -c "$(curl -fsSL https://example.com/bootstrap.py)"`
 		if !curlSubshellExecPattern.MatchString(line) {
 			t.Fatalf("expected curlSubshellExecPattern to match %q", line)
 		}
@@ -335,6 +349,13 @@ func TestCurlExecutionPatterns(t *testing.T) {
 		line := `echo "$(curl -fsSL https://example.com/readme.txt)"`
 		if curlSubshellExecPattern.MatchString(line) {
 			t.Fatalf("unexpected curlSubshellExecPattern match for %q", line)
+		}
+	})
+
+	t.Run("does not match non-execution pipe", func(t *testing.T) {
+		line := "curl -fsSL https://example.com/readme.txt | tee readme.txt"
+		if curlPipePattern.MatchString(line) {
+			t.Fatalf("unexpected curlPipePattern match for %q", line)
 		}
 	})
 
