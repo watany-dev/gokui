@@ -92,7 +92,7 @@ GitHub source syntax is now strictly validated as
 for GitHub sources and rejects floating refs. `install` and `update` validate
 fetched source metadata for GitHub-origin skills.
 Local directory inspect already enforces that `SKILL.md` exists at the skill
-root, and rejects symlinked source roots or symlinked `SKILL.md`.
+root, and rejects symlinked source paths/components or symlinked `SKILL.md`.
 It also validates strict YAML frontmatter rules (no duplicate keys, anchors,
 aliases, merge keys, or custom tags), requires a valid `name` that matches the
 directory name, and enforces safety-oriented `description` checks.

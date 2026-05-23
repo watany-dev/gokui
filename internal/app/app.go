@@ -682,6 +682,9 @@ func detectSourceKind(input string) string {
 }
 
 func validateLocalDirInspectSource(input string) error {
+	if err := rejectSymlinkPath(input, "inspect local source", ruleInspectSourceSymlink); err != nil {
+		return err
+	}
 	info, lstatErr := os.Lstat(input)
 	if lstatErr != nil {
 		return fmt.Errorf("inspect source not found: %s", input)
@@ -694,6 +697,9 @@ func validateLocalDirInspectSource(input string) error {
 	}
 
 	skillPath := filepath.Join(input, "SKILL.md")
+	if err := rejectSymlinkPath(skillPath, "inspect local source SKILL.md", ruleSkillFrontmatterSymlink); err != nil {
+		return err
+	}
 	skillInfo, skillErr := os.Lstat(skillPath)
 	if skillErr != nil || skillInfo.IsDir() {
 		return fmt.Errorf("inspect local dir must contain SKILL.md at root: %s", input)

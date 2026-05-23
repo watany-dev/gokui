@@ -1294,6 +1294,35 @@ func TestValidateLocalDirInspectSource(t *testing.T) {
 		}
 	})
 
+	t.Run("rejects source path when ancestor directory is symlink", func(t *testing.T) {
+		if runtime.GOOS == "windows" {
+			t.Skip("symlink permissions differ on windows")
+		}
+
+		base := t.TempDir()
+		realParent := filepath.Join(base, "real-parent")
+		if err := os.Mkdir(realParent, 0o755); err != nil {
+			t.Fatalf("mkdir real parent: %v", err)
+		}
+		realSkill := filepath.Join(realParent, "ancestor-skill")
+		if err := os.Mkdir(realSkill, 0o755); err != nil {
+			t.Fatalf("mkdir real skill dir: %v", err)
+		}
+		if err := os.WriteFile(filepath.Join(realSkill, "SKILL.md"), []byte("---\nname: ancestor-skill\ndescription: Use when testing ancestor symlink source rejection.\n---\n"), 0o644); err != nil {
+			t.Fatalf("write SKILL.md: %v", err)
+		}
+
+		linkParent := filepath.Join(base, "link-parent")
+		if err := os.Symlink("real-parent", linkParent); err != nil {
+			t.Fatalf("create ancestor symlink: %v", err)
+		}
+
+		err := validateLocalDirInspectSource(filepath.Join(linkParent, "ancestor-skill"))
+		if err == nil || !strings.Contains(err.Error(), ruleInspectSourceSymlink) {
+			t.Fatalf("expected ancestor source symlink rejection, got %v", err)
+		}
+	})
+
 	t.Run("rejects symlinked SKILL.md in source directory", func(t *testing.T) {
 		if runtime.GOOS == "windows" {
 			t.Skip("symlink permissions differ on windows")
@@ -1521,6 +1550,46 @@ func TestRunInspectJSONErrorCodes(t *testing.T) {
 		}
 		if !strings.Contains(stdout.String(), inspectErrorCodeScanFailed) {
 			t.Fatalf("stdout should include %q, got %q", inspectErrorCodeScanFailed, stdout.String())
+		}
+	})
+
+	t.Run("ancestor symlink source path emits prepare-failed with rule_id", func(t *testing.T) {
+		if runtime.GOOS == "windows" {
+			t.Skip("symlink permissions differ on windows")
+		}
+
+		base := t.TempDir()
+		realParent := filepath.Join(base, "real-parent")
+		if err := os.Mkdir(realParent, 0o755); err != nil {
+			t.Fatalf("mkdir real parent: %v", err)
+		}
+		realSkill := filepath.Join(realParent, "json-ancestor-skill")
+		if err := os.Mkdir(realSkill, 0o755); err != nil {
+			t.Fatalf("mkdir real skill: %v", err)
+		}
+		if err := os.WriteFile(filepath.Join(realSkill, "SKILL.md"), []byte("---\nname: json-ancestor-skill\ndescription: Use when testing inspect json rule_id on ancestor symlink.\n---\n"), 0o644); err != nil {
+			t.Fatalf("write SKILL.md: %v", err)
+		}
+		linkParent := filepath.Join(base, "link-parent")
+		if err := os.Symlink("real-parent", linkParent); err != nil {
+			t.Fatalf("create parent symlink: %v", err)
+		}
+		inspectPath := filepath.Join(linkParent, "json-ancestor-skill")
+
+		var stdout bytes.Buffer
+		var stderr bytes.Buffer
+		code := Run([]string{"inspect", inspectPath, "--format", "json"}, &stdout, &stderr, cfg)
+		if code != 1 {
+			t.Fatalf("Run() code = %d, want 1\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
+		}
+		if stderr.Len() != 0 {
+			t.Fatalf("stderr should be empty for json error output, got %q", stderr.String())
+		}
+		if !strings.Contains(stdout.String(), "\"error_code\": \""+inspectErrorCodeSourcePrepareFailed+"\"") {
+			t.Fatalf("stdout should include source-prepare-failed code, got %q", stdout.String())
+		}
+		if !strings.Contains(stdout.String(), "\"rule_id\": \""+ruleInspectSourceSymlink+"\"") {
+			t.Fatalf("stdout should include source symlink rule_id, got %q", stdout.String())
 		}
 	})
 
