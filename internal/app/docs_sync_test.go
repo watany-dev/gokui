@@ -186,6 +186,26 @@ func TestReleaseChecklistDocumentationSync(t *testing.T) {
 			t.Fatalf("RELEASE.md missing checklist command: %q", line)
 		}
 	}
+	if !strings.Contains(releaseDoc, "[RELEASE_EVIDENCE_TEMPLATE.md](RELEASE_EVIDENCE_TEMPLATE.md)") {
+		t.Fatal("RELEASE.md should link RELEASE_EVIDENCE_TEMPLATE.md")
+	}
+
+	templateBytes, err := os.ReadFile("../../RELEASE_EVIDENCE_TEMPLATE.md")
+	if err != nil {
+		t.Fatalf("failed to read RELEASE_EVIDENCE_TEMPLATE.md: %v", err)
+	}
+	template := string(templateBytes)
+	templateRequired := []string{
+		"Candidate commit SHA:",
+		"`make release-check`:",
+		"`make vuln` (required before final publication):",
+		"Ready for release: `yes/no`",
+	}
+	for _, line := range templateRequired {
+		if !strings.Contains(template, line) {
+			t.Fatalf("RELEASE_EVIDENCE_TEMPLATE.md missing line: %q", line)
+		}
+	}
 }
 
 func TestReleaseCheckDocumentationSync(t *testing.T) {

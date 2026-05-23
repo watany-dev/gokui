@@ -65,3 +65,15 @@ If `gokui` binary is generated locally during checks, remove it after validation
 ```sh
 rm -f gokui
 ```
+
+## 6) Release Evidence Record
+
+Record release evidence using:
+
+- [RELEASE_EVIDENCE_TEMPLATE.md](RELEASE_EVIDENCE_TEMPLATE.md)
+
+At minimum, capture:
+- commit SHA
+- executed commands
+- pass/fail result per gate
+- vulnerability check result (or offline exception with follow-up run)
