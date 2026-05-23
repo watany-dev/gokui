@@ -530,18 +530,38 @@ func TestEnsureEmptyDirReadFailure(t *testing.T) {
 }
 
 func TestDetectSkillRootRejectsAmbiguousLayout(t *testing.T) {
-	dir := t.TempDir()
-	if err := os.Mkdir(filepath.Join(dir, "a"), 0o755); err != nil {
-		t.Fatalf("mkdir a: %v", err)
-	}
-	if err := os.Mkdir(filepath.Join(dir, "b"), 0o755); err != nil {
-		t.Fatalf("mkdir b: %v", err)
-	}
+	t.Run("multiple top-level directories", func(t *testing.T) {
+		dir := t.TempDir()
+		if err := os.Mkdir(filepath.Join(dir, "a"), 0o755); err != nil {
+			t.Fatalf("mkdir a: %v", err)
+		}
+		if err := os.Mkdir(filepath.Join(dir, "b"), 0o755); err != nil {
+			t.Fatalf("mkdir b: %v", err)
+		}
 
-	_, err := DetectSkillRoot(dir)
-	if err == nil || !strings.Contains(err.Error(), "single top-level directory") {
-		t.Fatalf("expected ambiguous layout error, got %v", err)
-	}
+		_, err := DetectSkillRoot(dir)
+		if err == nil || !strings.Contains(err.Error(), "single top-level directory") {
+			t.Fatalf("expected ambiguous layout error, got %v", err)
+		}
+	})
+
+	t.Run("single top-level directory with extra top-level file", func(t *testing.T) {
+		dir := t.TempDir()
+		if err := os.Mkdir(filepath.Join(dir, "skill"), 0o755); err != nil {
+			t.Fatalf("mkdir skill: %v", err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, "skill", "SKILL.md"), []byte("---\nname: skill\ndescription: d\n---\n"), 0o644); err != nil {
+			t.Fatalf("write SKILL.md: %v", err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, "README.md"), []byte("extra"), 0o644); err != nil {
+			t.Fatalf("write README.md: %v", err)
+		}
+
+		_, err := DetectSkillRoot(dir)
+		if err == nil || !strings.Contains(err.Error(), "single top-level directory") {
+			t.Fatalf("expected extra-top-level-file rejection, got %v", err)
+		}
+	})
 }
 
 func TestDetectSkillRootErrorCases(t *testing.T) {

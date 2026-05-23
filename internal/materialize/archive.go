@@ -59,19 +59,11 @@ func DetectSkillRoot(extractedDir string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to read extracted archive: %w", err)
 	}
-
-	var dirs []os.DirEntry
-	for _, entry := range entries {
-		if entry.IsDir() {
-			dirs = append(dirs, entry)
-		}
-	}
-
-	if len(dirs) != 1 {
+	if len(entries) != 1 || !entries[0].IsDir() {
 		return "", fmt.Errorf("archive must contain SKILL.md at root or in a single top-level directory")
 	}
 
-	candidate := filepath.Join(extractedDir, dirs[0].Name())
+	candidate := filepath.Join(extractedDir, entries[0].Name())
 	candidateSkill := filepath.Join(candidate, "SKILL.md")
 	if info, err := os.Stat(candidateSkill); err == nil && !info.IsDir() {
 		return candidate, nil
