@@ -21,9 +21,25 @@ const (
 	installLockFile   = "gokui.lock"
 )
 
-var maxInstallLockFileBytes int64 = 1_000_000
+var (
+	maxInstallLockFileBytes    int64 = 1_000_000
+	installMaxCopyFiles              = 10_000
+	installMaxCopyTotalBytes   int64 = 200 * 1024 * 1024
+	installMaxCopyFileBytes    int64 = 20 * 1024 * 1024
+	installMaxDigestFiles            = 10_000
+	installMaxDigestTotalBytes int64 = 200 * 1024 * 1024
+	installMaxDigestFileBytes  int64 = 20 * 1024 * 1024
+)
 
-const ruleLockfileTooLarge = "LOCKFILE_TOO_LARGE"
+const (
+	ruleLockfileTooLarge                = "LOCKFILE_TOO_LARGE"
+	ruleInstallSourceFileCountExceeded  = "INSTALL_SOURCE_FILE_COUNT_EXCEEDED"
+	ruleInstallSourceTotalBytesExceeded = "INSTALL_SOURCE_TOTAL_BYTES_EXCEEDED"
+	ruleInstallSourceFileTooLarge       = "INSTALL_SOURCE_FILE_TOO_LARGE"
+	ruleInstallDigestFileCountExceeded  = "INSTALL_DIGEST_FILE_COUNT_EXCEEDED"
+	ruleInstallDigestTotalBytesExceeded = "INSTALL_DIGEST_TOTAL_BYTES_EXCEEDED"
+	ruleInstallDigestFileTooLarge       = "INSTALL_DIGEST_FILE_TOO_LARGE"
+)
 
 type installArgs struct {
 	Source  string
@@ -584,6 +600,8 @@ func installSkillAtomic(skillRoot string, targetRoot string, skillName string, r
 }
 
 func copyTreeNormalized(srcRoot string, dstRoot string) error {
+	files := 0
+	var totalBytes int64
 	return filepath.WalkDir(srcRoot, func(path string, d os.DirEntry, walkErr error) error {
 		if walkErr != nil {
 			return walkErr
@@ -609,15 +627,26 @@ func copyTreeNormalized(srcRoot string, dstRoot string) error {
 		if d.IsDir() {
 			return os.MkdirAll(destPath, 0o755)
 		}
+		if srcInfo.Size() > installMaxCopyFileBytes {
+			return fmt.Errorf("%s: install source file exceeds size limit: %s", ruleInstallSourceFileTooLarge, rel)
+		}
+		files++
+		if files > installMaxCopyFiles {
+			return fmt.Errorf("%s: install source exceeds max file count: %d", ruleInstallSourceFileCountExceeded, installMaxCopyFiles)
+		}
+		totalBytes += srcInfo.Size()
+		if totalBytes > installMaxCopyTotalBytes {
+			return fmt.Errorf("%s: install source exceeds max total bytes: %d", ruleInstallSourceTotalBytesExceeded, installMaxCopyTotalBytes)
+		}
 
 		if err := os.MkdirAll(filepath.Dir(destPath), 0o755); err != nil {
 			return fmt.Errorf("failed to create install directory: %w", err)
 		}
-		return copyFileWithMode(path, destPath, 0o644)
+		return copyFileWithMode(path, destPath, 0o644, installMaxCopyFileBytes)
 	})
 }
 
-func copyFileWithMode(src string, dst string, mode os.FileMode) error {
+func copyFileWithMode(src string, dst string, mode os.FileMode, maxBytes int64) error {
 	in, err := os.Open(src)
 	if err != nil {
 		return fmt.Errorf("failed to open source file: %w", err)
@@ -630,8 +659,13 @@ func copyFileWithMode(src string, dst string, mode os.FileMode) error {
 	}
 	defer out.Close()
 
-	if _, err := io.Copy(out, in); err != nil {
+	limited := io.LimitReader(in, maxBytes+1)
+	written, err := io.Copy(out, limited)
+	if err != nil {
 		return fmt.Errorf("failed to copy file contents: %w", err)
+	}
+	if written > maxBytes {
+		return fmt.Errorf("%s: install source file exceeds size limit during copy: %s", ruleInstallSourceFileTooLarge, src)
 	}
 	return nil
 }
@@ -751,6 +785,8 @@ func buildFileDigestsForLock(root string) ([]lockFileHash, string, error) {
 
 func buildFileDigestsFiltered(root string, exclude map[string]struct{}) ([]lockFileHash, string, error) {
 	files := make([]lockFileHash, 0, 32)
+	digestedFiles := 0
+	var totalBytes int64
 	err := filepath.WalkDir(root, func(path string, d os.DirEntry, walkErr error) error {
 		if walkErr != nil {
 			return walkErr
@@ -766,6 +802,21 @@ func buildFileDigestsFiltered(root string, exclude map[string]struct{}) ([]lockF
 		rel = filepath.ToSlash(rel)
 		if _, skip := exclude[rel]; skip {
 			return nil
+		}
+		info, err := d.Info()
+		if err != nil {
+			return fmt.Errorf("failed to stat file for digest: %w", err)
+		}
+		if info.Size() > installMaxDigestFileBytes {
+			return fmt.Errorf("%s: digest input file exceeds size limit: %s", ruleInstallDigestFileTooLarge, rel)
+		}
+		digestedFiles++
+		if digestedFiles > installMaxDigestFiles {
+			return fmt.Errorf("%s: digest input exceeds max file count: %d", ruleInstallDigestFileCountExceeded, installMaxDigestFiles)
+		}
+		totalBytes += info.Size()
+		if totalBytes > installMaxDigestTotalBytes {
+			return fmt.Errorf("%s: digest input exceeds max total bytes: %d", ruleInstallDigestTotalBytesExceeded, installMaxDigestTotalBytes)
 		}
 		sum, size, err := hashFile(path)
 		if err != nil {

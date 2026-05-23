@@ -1148,7 +1148,7 @@ func TestBuildFileDigestsAndSourceType(t *testing.T) {
 
 func TestCopyFileWithModeAndHashErrors(t *testing.T) {
 	t.Run("copyFileWithMode source missing", func(t *testing.T) {
-		err := copyFileWithMode(filepath.Join(t.TempDir(), "missing"), filepath.Join(t.TempDir(), "out"), 0o644)
+		err := copyFileWithMode(filepath.Join(t.TempDir(), "missing"), filepath.Join(t.TempDir(), "out"), 0o644, 1024)
 		if err == nil || !strings.Contains(err.Error(), "failed to open source file") {
 			t.Fatalf("expected source-open error, got %v", err)
 		}
@@ -1163,9 +1163,21 @@ func TestCopyFileWithModeAndHashErrors(t *testing.T) {
 		if err := os.Mkdir(dst, 0o755); err != nil {
 			t.Fatalf("mkdir dst dir: %v", err)
 		}
-		err := copyFileWithMode(src, dst, 0o644)
+		err := copyFileWithMode(src, dst, 0o644, 1024)
 		if err == nil || !strings.Contains(err.Error(), "failed to create destination file") {
 			t.Fatalf("expected destination create error, got %v", err)
+		}
+	})
+
+	t.Run("copyFileWithMode enforces max bytes", func(t *testing.T) {
+		src := filepath.Join(t.TempDir(), "src.txt")
+		if err := os.WriteFile(src, []byte("xx"), 0o644); err != nil {
+			t.Fatalf("write src: %v", err)
+		}
+		dst := filepath.Join(t.TempDir(), "out.txt")
+		err := copyFileWithMode(src, dst, 0o644, 1)
+		if err == nil || !strings.Contains(err.Error(), ruleInstallSourceFileTooLarge) {
+			t.Fatalf("expected max-bytes copy error, got %v", err)
 		}
 	})
 
@@ -1275,6 +1287,54 @@ func TestWriteInstallMetadataAndBuildDigestsErrors(t *testing.T) {
 		}
 	})
 
+	t.Run("buildFileDigests enforces max file count", func(t *testing.T) {
+		origLimit := installMaxDigestFiles
+		installMaxDigestFiles = 1
+		t.Cleanup(func() { installMaxDigestFiles = origLimit })
+
+		root := t.TempDir()
+		if err := os.WriteFile(filepath.Join(root, "a.txt"), []byte("a"), 0o644); err != nil {
+			t.Fatalf("write a.txt: %v", err)
+		}
+		if err := os.WriteFile(filepath.Join(root, "b.txt"), []byte("b"), 0o644); err != nil {
+			t.Fatalf("write b.txt: %v", err)
+		}
+		_, _, err := buildFileDigestsFiltered(root, nil)
+		if err == nil || !strings.Contains(err.Error(), ruleInstallDigestFileCountExceeded) {
+			t.Fatalf("expected max-file-count digest error, got %v", err)
+		}
+	})
+
+	t.Run("buildFileDigests enforces max total bytes", func(t *testing.T) {
+		origLimit := installMaxDigestTotalBytes
+		installMaxDigestTotalBytes = 1
+		t.Cleanup(func() { installMaxDigestTotalBytes = origLimit })
+
+		root := t.TempDir()
+		if err := os.WriteFile(filepath.Join(root, "a.txt"), []byte("ab"), 0o644); err != nil {
+			t.Fatalf("write a.txt: %v", err)
+		}
+		_, _, err := buildFileDigestsFiltered(root, nil)
+		if err == nil || !strings.Contains(err.Error(), ruleInstallDigestTotalBytesExceeded) {
+			t.Fatalf("expected max-total-bytes digest error, got %v", err)
+		}
+	})
+
+	t.Run("buildFileDigests enforces max file bytes", func(t *testing.T) {
+		origLimit := installMaxDigestFileBytes
+		installMaxDigestFileBytes = 1
+		t.Cleanup(func() { installMaxDigestFileBytes = origLimit })
+
+		root := t.TempDir()
+		if err := os.WriteFile(filepath.Join(root, "a.txt"), []byte("ab"), 0o644); err != nil {
+			t.Fatalf("write a.txt: %v", err)
+		}
+		_, _, err := buildFileDigestsFiltered(root, nil)
+		if err == nil || !strings.Contains(err.Error(), ruleInstallDigestFileTooLarge) {
+			t.Fatalf("expected max-file-bytes digest error, got %v", err)
+		}
+	})
+
 	t.Run("buildInstallLock propagates digest errors", func(t *testing.T) {
 		_, err := buildInstallLock(filepath.Join(t.TempDir(), "missing"), installReport{})
 		if err == nil || !strings.Contains(err.Error(), "failed to digest installed files") {
@@ -1329,6 +1389,56 @@ func TestCopyTreeNormalizedRejectsSymlink(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "contains symlink") {
 		t.Fatalf("expected symlink rejection, got %v", err)
 	}
+}
+
+func TestCopyTreeNormalizedLimitGuards(t *testing.T) {
+	t.Run("enforces max file count", func(t *testing.T) {
+		origLimit := installMaxCopyFiles
+		installMaxCopyFiles = 1
+		t.Cleanup(func() { installMaxCopyFiles = origLimit })
+
+		src := t.TempDir()
+		if err := os.WriteFile(filepath.Join(src, "a.txt"), []byte("a"), 0o644); err != nil {
+			t.Fatalf("write a.txt: %v", err)
+		}
+		if err := os.WriteFile(filepath.Join(src, "b.txt"), []byte("b"), 0o644); err != nil {
+			t.Fatalf("write b.txt: %v", err)
+		}
+		err := copyTreeNormalized(src, filepath.Join(t.TempDir(), "dst"))
+		if err == nil || !strings.Contains(err.Error(), ruleInstallSourceFileCountExceeded) {
+			t.Fatalf("expected max-file-count copy error, got %v", err)
+		}
+	})
+
+	t.Run("enforces max total bytes", func(t *testing.T) {
+		origLimit := installMaxCopyTotalBytes
+		installMaxCopyTotalBytes = 1
+		t.Cleanup(func() { installMaxCopyTotalBytes = origLimit })
+
+		src := t.TempDir()
+		if err := os.WriteFile(filepath.Join(src, "a.txt"), []byte("ab"), 0o644); err != nil {
+			t.Fatalf("write a.txt: %v", err)
+		}
+		err := copyTreeNormalized(src, filepath.Join(t.TempDir(), "dst"))
+		if err == nil || !strings.Contains(err.Error(), ruleInstallSourceTotalBytesExceeded) {
+			t.Fatalf("expected max-total-bytes copy error, got %v", err)
+		}
+	})
+
+	t.Run("enforces max file bytes", func(t *testing.T) {
+		origLimit := installMaxCopyFileBytes
+		installMaxCopyFileBytes = 1
+		t.Cleanup(func() { installMaxCopyFileBytes = origLimit })
+
+		src := t.TempDir()
+		if err := os.WriteFile(filepath.Join(src, "a.txt"), []byte("ab"), 0o644); err != nil {
+			t.Fatalf("write a.txt: %v", err)
+		}
+		err := copyTreeNormalized(src, filepath.Join(t.TempDir(), "dst"))
+		if err == nil || !strings.Contains(err.Error(), ruleInstallSourceFileTooLarge) {
+			t.Fatalf("expected max-file-bytes copy error, got %v", err)
+		}
+	})
 }
 
 func createSkillSourceForInstallTest(t *testing.T, name string) string {
