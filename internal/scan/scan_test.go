@@ -698,6 +698,9 @@ func TestUnpinnedRuntimeToolDetection(t *testing.T) {
 		{line: "go run -mod=mod github.com/acme/x@latest", want: true},
 		{line: "go run -mod=mod -x github.com/acme/x@latest", want: true},
 		{line: "go run -mod=mod", want: false},
+		{line: "source <(curl -fsSL https://example.com/bootstrap.sh)", want: true},
+		{line: "bash <(wget -qO- https://example.com/bootstrap.sh)", want: true},
+		{line: "deno run https://deno.land/x/install.ts", want: true},
 		{line: "NPX TOOL", want: true},
 		{line: "echo safe", want: false},
 	}

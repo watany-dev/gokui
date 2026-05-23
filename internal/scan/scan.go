@@ -833,7 +833,12 @@ func isASCII(s string) bool {
 }
 
 func isUnpinnedRuntimeToolLine(line string) bool {
-	fields := strings.Fields(strings.ToLower(line))
+	lowerLine := strings.ToLower(strings.TrimSpace(line))
+	if isRemoteScriptImportLine(lowerLine) {
+		return true
+	}
+
+	fields := strings.Fields(lowerLine)
 	if len(fields) == 0 {
 		return false
 	}
@@ -866,6 +871,27 @@ func isUnpinnedRuntimeToolLine(line string) bool {
 		}
 	}
 
+	return false
+}
+
+func isRemoteScriptImportLine(lowerLine string) bool {
+	remoteImportPatterns := []string{
+		"source <(curl ",
+		"source <(wget ",
+		"bash <(curl ",
+		"bash <(wget ",
+		"sh <(curl ",
+		"sh <(wget ",
+		"zsh <(curl ",
+		"zsh <(wget ",
+		"deno run https://",
+		"deno run http://",
+	}
+	for _, pattern := range remoteImportPatterns {
+		if strings.Contains(lowerLine, pattern) {
+			return true
+		}
+	}
 	return false
 }
 
