@@ -112,6 +112,34 @@ func TestSourceMetadataHelpers(t *testing.T) {
 			if _, _, err := readSourceMetadata(dirWithSymlink); err == nil || !strings.Contains(err.Error(), ruleSourceMetadataSymlink) {
 				t.Fatalf("expected source metadata symlink rejection, got %v", err)
 			}
+
+			base := t.TempDir()
+			realParent := filepath.Join(base, "real-parent")
+			if err := os.Mkdir(realParent, 0o755); err != nil {
+				t.Fatalf("mkdir real parent: %v", err)
+			}
+			realSkill := filepath.Join(realParent, "skill")
+			if err := os.Mkdir(realSkill, 0o755); err != nil {
+				t.Fatalf("mkdir real skill: %v", err)
+			}
+			validMeta := []byte(`{
+  "schema": "gokui.source/v1",
+  "source_input": "github:org/repo//skills/skill@8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
+  "source_kind": "github-source",
+  "resolved_ref": "8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
+  "fetched_at": "2026-05-23T00:00:00Z",
+  "skill_root_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+}`)
+			if err := os.WriteFile(filepath.Join(realSkill, sourceMetadataFile), validMeta, 0o644); err != nil {
+				t.Fatalf("write valid metadata: %v", err)
+			}
+			linkParent := filepath.Join(base, "link-parent")
+			if err := os.Symlink("real-parent", linkParent); err != nil {
+				t.Fatalf("create parent symlink: %v", err)
+			}
+			if _, _, err := readSourceMetadata(filepath.Join(linkParent, "skill")); err == nil || !strings.Contains(err.Error(), ruleSourceMetadataSymlink) {
+				t.Fatalf("expected ancestor source metadata symlink rejection, got %v", err)
+			}
 		}
 
 		dirWithInvalidFields := t.TempDir()

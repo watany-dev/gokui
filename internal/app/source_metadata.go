@@ -39,6 +39,9 @@ func writeSourceMetadata(skillRoot string, meta sourceMetadata) error {
 
 func readSourceMetadata(skillRoot string) (sourceMetadata, bool, error) {
 	path := filepath.Join(skillRoot, sourceMetadataFile)
+	if err := rejectSymlinkPath(path, "source metadata file", ruleSourceMetadataSymlink); err != nil {
+		return sourceMetadata{}, false, err
+	}
 	linkInfo, lstatErr := os.Lstat(path)
 	if lstatErr != nil {
 		if os.IsNotExist(lstatErr) {

@@ -892,6 +892,9 @@ func hashFile(path string) (sum string, size int64, err error) {
 }
 
 func readInstallLock(path string) (installLock, error) {
+	if err := rejectSymlinkPath(path, "install lockfile", ruleLockfileSymlink); err != nil {
+		return installLock{}, err
+	}
 	linkInfo, lstatErr := os.Lstat(path)
 	if lstatErr != nil {
 		return installLock{}, fmt.Errorf("failed to read install lockfile: %s", path)

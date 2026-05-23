@@ -1216,6 +1216,26 @@ func TestReadInstallLockAndProvenanceMatches(t *testing.T) {
 			if _, err := readInstallLock(symlink); err == nil || !strings.Contains(err.Error(), ruleLockfileSymlink) {
 				t.Fatalf("expected lockfile symlink rejection, got %v", err)
 			}
+
+			realParent := filepath.Join(dir, "real-parent")
+			if err := os.Mkdir(realParent, 0o755); err != nil {
+				t.Fatalf("mkdir real parent: %v", err)
+			}
+			realNested := filepath.Join(realParent, "nested")
+			if err := os.Mkdir(realNested, 0o755); err != nil {
+				t.Fatalf("mkdir real nested: %v", err)
+			}
+			realNestedLock := filepath.Join(realNested, "nested.lock")
+			if err := os.WriteFile(realNestedLock, raw, 0o644); err != nil {
+				t.Fatalf("write nested lock: %v", err)
+			}
+			linkParent := filepath.Join(dir, "link-parent")
+			if err := os.Symlink("real-parent", linkParent); err != nil {
+				t.Fatalf("create parent symlink: %v", err)
+			}
+			if _, err := readInstallLock(filepath.Join(linkParent, "nested", "nested.lock")); err == nil || !strings.Contains(err.Error(), ruleLockfileSymlink) {
+				t.Fatalf("expected ancestor symlink lockfile rejection, got %v", err)
+			}
 		}
 
 		origLimit := maxInstallLockFileBytes

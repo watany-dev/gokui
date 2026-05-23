@@ -430,6 +430,9 @@ func verifyLockStructure(lock installLock) (bool, string) {
 
 func verifyInstallReport(skillPath string, lock installLock) (bool, string) {
 	reportPath := filepath.Join(skillPath, installReportFile)
+	if err := rejectSymlinkPath(reportPath, "install report file", ruleInstallReportSymlink); err != nil {
+		return false, err.Error()
+	}
 	linkInfo, lstatErr := os.Lstat(reportPath)
 	if lstatErr != nil {
 		return false, fmt.Sprintf("failed to read install report: %s", reportPath)

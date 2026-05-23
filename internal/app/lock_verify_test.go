@@ -853,6 +853,49 @@ func TestVerifyInstallReportValidationBranches(t *testing.T) {
 		}
 	})
 
+	t.Run("report path under ancestor symlink", func(t *testing.T) {
+		if runtime.GOOS == "windows" {
+			t.Skip("symlink permissions differ on windows")
+		}
+
+		base := t.TempDir()
+		realParent := filepath.Join(base, "real-parent")
+		if err := os.Mkdir(realParent, 0o755); err != nil {
+			t.Fatalf("mkdir real parent: %v", err)
+		}
+		realSkill := filepath.Join(realParent, "skill")
+		if err := os.Mkdir(realSkill, 0o755); err != nil {
+			t.Fatalf("mkdir real skill: %v", err)
+		}
+		valid := installReport{
+			SchemaVersion: "0.1.0-draft",
+			Source: source{
+				Input: "/tmp/src",
+				Kind:  "local-dir",
+			},
+			PolicyProfile: "strict",
+			Decision:      "PASS",
+			InstalledPath: filepath.Join(base, "link-parent", "skill"),
+			Installed:     true,
+		}
+		raw, err := json.MarshalIndent(valid, "", "  ")
+		if err != nil {
+			t.Fatalf("marshal report: %v", err)
+		}
+		if err := os.WriteFile(filepath.Join(realSkill, installReportFile), raw, 0o644); err != nil {
+			t.Fatalf("write report: %v", err)
+		}
+		linkParent := filepath.Join(base, "link-parent")
+		if err := os.Symlink("real-parent", linkParent); err != nil {
+			t.Fatalf("create parent symlink: %v", err)
+		}
+
+		ok, detail := verifyInstallReport(filepath.Join(linkParent, "skill"), lock)
+		if ok || !strings.Contains(detail, ruleInstallReportSymlink) {
+			t.Fatalf("expected ancestor report symlink rejection, got ok=%v detail=%q", ok, detail)
+		}
+	})
+
 	valid := installReport{
 		SchemaVersion: "0.1.0-draft",
 		Source: source{
