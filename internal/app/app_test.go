@@ -11,6 +11,7 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"testing/quick"
 
 	srcpkg "github.com/watany-dev/gokui/internal/source"
 	yaml "go.yaml.in/yaml/v4"
@@ -1209,6 +1210,21 @@ func TestValidateSkillFrontmatter(t *testing.T) {
 			t.Fatalf("expected oversized frontmatter error, got %v", err)
 		}
 	})
+}
+
+func TestValidateSkillDescriptionPropertyNoPanic(t *testing.T) {
+	prop := func(in string) (ok bool) {
+		defer func() {
+			if recover() != nil {
+				ok = false
+			}
+		}()
+		_ = validateSkillDescription(in)
+		return true
+	}
+	if err := quick.Check(prop, &quick.Config{MaxCount: 500}); err != nil {
+		t.Fatalf("validateSkillDescription panic-safety property failed: %v", err)
+	}
 }
 
 func TestValidateLocalDirInspectSource(t *testing.T) {
