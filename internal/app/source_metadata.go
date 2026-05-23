@@ -31,6 +31,9 @@ type sourceMetadata struct {
 func writeSourceMetadata(skillRoot string, meta sourceMetadata) error {
 	raw, _ := json.MarshalIndent(meta, "", "  ")
 	path := filepath.Join(skillRoot, sourceMetadataFile)
+	if err := rejectSymlinkPath(path, "source metadata file", ruleSourceMetadataSymlink); err != nil {
+		return err
+	}
 	if err := os.WriteFile(path, raw, 0o644); err != nil {
 		return fmt.Errorf("failed to write source metadata: %w", err)
 	}

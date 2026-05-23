@@ -434,6 +434,21 @@ func TestRunFetch(t *testing.T) {
 			t.Fatalf("expected metadata-write-failed code, got code=%d stdout=%q stderr=%q", code, stdout.String(), stderr.String())
 		}
 		writeSourceMetaFunc = writeSourceMetadata
+		stdout.Reset()
+		stderr.Reset()
+
+		// source metadata write failure with rule-prefixed error
+		writeSourceMetaFunc = func(skillRoot string, meta sourceMetadata) error {
+			return errors.New(ruleSourceMetadataSymlink + ": source metadata file must not be a symlink")
+		}
+		code = runFetch([]string{"github:org/repo//skills/json-error-skill@8f3c2d1a4b5c6d7e8f901234567890abcdef1234", "--out", t.TempDir(), "--format", "json"}, &stdout, &stderr)
+		if code != 1 || !strings.Contains(stdout.String(), fetchErrorCodeMetadataWriteFailed) {
+			t.Fatalf("expected metadata-write-failed code for rule-prefixed error, got code=%d stdout=%q stderr=%q", code, stdout.String(), stderr.String())
+		}
+		if !strings.Contains(stdout.String(), "\"rule_id\": \""+ruleSourceMetadataSymlink+"\"") {
+			t.Fatalf("stdout should include metadata-write rule_id, got %q", stdout.String())
+		}
+		writeSourceMetaFunc = writeSourceMetadata
 	})
 }
 

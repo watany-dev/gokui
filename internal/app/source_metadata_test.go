@@ -140,6 +140,42 @@ func TestSourceMetadataHelpers(t *testing.T) {
 			if _, _, err := readSourceMetadata(filepath.Join(linkParent, "skill")); err == nil || !strings.Contains(err.Error(), ruleSourceMetadataSymlink) {
 				t.Fatalf("expected ancestor source metadata symlink rejection, got %v", err)
 			}
+
+			writeSymlinkDir := t.TempDir()
+			writeTarget := filepath.Join(writeSymlinkDir, "real-target.json")
+			if err := os.WriteFile(writeTarget, []byte("original"), 0o644); err != nil {
+				t.Fatalf("write metadata write target: %v", err)
+			}
+			if err := os.Symlink("real-target.json", filepath.Join(writeSymlinkDir, sourceMetadataFile)); err != nil {
+				t.Fatalf("create write-path metadata symlink: %v", err)
+			}
+			if err := writeSourceMetadata(writeSymlinkDir, sourceMetadata{Schema: sourceMetadataSchemaVersion}); err == nil || !strings.Contains(err.Error(), ruleSourceMetadataSymlink) {
+				t.Fatalf("expected metadata write symlink rejection, got %v", err)
+			}
+			targetAfterWrite, err := os.ReadFile(writeTarget)
+			if err != nil {
+				t.Fatalf("read metadata write target after rejection: %v", err)
+			}
+			if string(targetAfterWrite) != "original" {
+				t.Fatalf("metadata write should not follow symlink target, got %q", string(targetAfterWrite))
+			}
+
+			writeAncestorBase := t.TempDir()
+			writeRealParent := filepath.Join(writeAncestorBase, "real-parent")
+			if err := os.Mkdir(writeRealParent, 0o755); err != nil {
+				t.Fatalf("mkdir write real parent: %v", err)
+			}
+			writeRealSkill := filepath.Join(writeRealParent, "skill")
+			if err := os.Mkdir(writeRealSkill, 0o755); err != nil {
+				t.Fatalf("mkdir write real skill: %v", err)
+			}
+			writeLinkParent := filepath.Join(writeAncestorBase, "link-parent")
+			if err := os.Symlink("real-parent", writeLinkParent); err != nil {
+				t.Fatalf("create write parent symlink: %v", err)
+			}
+			if err := writeSourceMetadata(filepath.Join(writeLinkParent, "skill"), sourceMetadata{Schema: sourceMetadataSchemaVersion}); err == nil || !strings.Contains(err.Error(), ruleSourceMetadataSymlink) {
+				t.Fatalf("expected ancestor metadata write symlink rejection, got %v", err)
+			}
 		}
 
 		dirWithInvalidFields := t.TempDir()
