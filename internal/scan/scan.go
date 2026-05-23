@@ -16,6 +16,13 @@ import (
 
 const maxScanFileBytes = 500_000
 
+var scanMaxFiles = 10_000
+
+const (
+	ruleScanSymlinkInSource = "SYMLINK_IN_SCAN_SOURCE"
+	ruleScanFileCount       = "SCAN_FILE_COUNT_EXCEEDED"
+)
+
 // Finding represents one scan result.
 type Finding struct {
 	ID       string
@@ -260,6 +267,7 @@ func runeScriptGroup(r rune) (string, bool) {
 
 func scanTargets(skillRoot string) ([]scanTarget, error) {
 	entries := make([]scanTarget, 0, 16)
+	scannedFiles := 0
 	err := filepath.WalkDir(skillRoot, func(path string, d os.DirEntry, walkErr error) error {
 		if walkErr != nil {
 			return walkErr
@@ -272,8 +280,15 @@ func scanTargets(skillRoot string) ([]scanTarget, error) {
 		if rel == "." {
 			return nil
 		}
+		if d.Type()&os.ModeSymlink != 0 {
+			return fmt.Errorf("%s: scan source contains symlink: %s", ruleScanSymlinkInSource, rel)
+		}
 		if d.IsDir() {
 			return nil
+		}
+		scannedFiles++
+		if scannedFiles > scanMaxFiles {
+			return fmt.Errorf("%s: scan source exceeded max file count: %d", ruleScanFileCount, scanMaxFiles)
 		}
 		lower := strings.ToLower(d.Name())
 		if strings.HasSuffix(lower, ".md") {

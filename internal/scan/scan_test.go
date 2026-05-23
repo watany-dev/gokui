@@ -1,6 +1,7 @@
 package scan
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -848,6 +849,45 @@ func TestScanSkillRootWalkError(t *testing.T) {
 	_, err := ScanSkillRoot(filepath.Join(t.TempDir(), "missing"))
 	if err == nil || !strings.Contains(err.Error(), "failed walking skill files") {
 		t.Fatalf("expected walk error, got %v", err)
+	}
+}
+
+func TestScanSkillRootRejectsSymlinkSource(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlink permissions differ on windows")
+	}
+
+	root := t.TempDir()
+	target := filepath.Join(t.TempDir(), "target.md")
+	if err := os.WriteFile(target, []byte("# external"), 0o644); err != nil {
+		t.Fatalf("write target file: %v", err)
+	}
+	if err := os.Symlink(target, filepath.Join(root, "linked.md")); err != nil {
+		t.Fatalf("create symlink: %v", err)
+	}
+
+	_, err := ScanSkillRoot(root)
+	if err == nil || !strings.Contains(err.Error(), ruleScanSymlinkInSource) {
+		t.Fatalf("expected symlink rule error, got %v", err)
+	}
+}
+
+func TestScanSkillRootEnforcesMaxFileCount(t *testing.T) {
+	origLimit := scanMaxFiles
+	scanMaxFiles = 2
+	t.Cleanup(func() { scanMaxFiles = origLimit })
+
+	root := t.TempDir()
+	for i := 0; i < 3; i++ {
+		path := filepath.Join(root, fmt.Sprintf("doc-%d.md", i))
+		if err := os.WriteFile(path, []byte("# test"), 0o644); err != nil {
+			t.Fatalf("write markdown %d: %v", i, err)
+		}
+	}
+
+	_, err := ScanSkillRoot(root)
+	if err == nil || !strings.Contains(err.Error(), ruleScanFileCount) {
+		t.Fatalf("expected max-file rule error, got %v", err)
 	}
 }
 
