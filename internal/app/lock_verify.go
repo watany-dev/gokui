@@ -505,17 +505,23 @@ func verifyInstallReport(skillPath string, lock installLock) (bool, string) {
 	if !linkInfo.Mode().IsRegular() {
 		return false, fmt.Sprintf("%s: install report file must be a regular file: %s", ruleInstallReportSpecialFile, reportPath)
 	}
-	if linkInfo.Size() > maxInstallReportFileBytes {
-		return false, fmt.Sprintf("%s: install report exceeds size limit: %s", ruleInstallReportTooLarge, reportPath)
-	}
 
-	raw, err := os.ReadFile(reportPath)
+	f, err := os.Open(reportPath)
 	if err != nil {
+		return false, fmt.Sprintf("failed to read install report: %s", reportPath)
+	}
+	defer f.Close()
+
+	var raw bytes.Buffer
+	if _, err := limitio.CopyWithStrictLimit(&raw, f, maxInstallReportFileBytes); err != nil {
+		if errors.Is(err, limitio.ErrSizeExceeded) {
+			return false, fmt.Sprintf("%s: install report exceeds size limit: %s", ruleInstallReportTooLarge, reportPath)
+		}
 		return false, fmt.Sprintf("failed to read install report: %s", reportPath)
 	}
 
 	var report installReport
-	if err := json.Unmarshal(raw, &report); err != nil {
+	if err := json.Unmarshal(raw.Bytes(), &report); err != nil {
 		return false, "invalid install report JSON"
 	}
 	if strings.TrimSpace(report.SchemaVersion) == "" {
