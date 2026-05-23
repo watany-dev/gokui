@@ -431,10 +431,8 @@ beside the installed skill.
   "installed_at": "2026-05-21T00:00:00Z",
   "source": {
     "type": "github",
-    "repo": "org/repo",
-    "path": "skills/pdf-helper",
-    "commit": "8f3c2d1a4b5c6d7e8f901234567890abcdef1234...",
-    "archive_sha256": "..."
+    "input": "github:org/repo//skills/pdf-helper@8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
+    "kind": "github-source"
   },
   "skill": {
     "root_sha256": "...",
@@ -448,7 +446,7 @@ beside the installed skill.
   },
   "policy": {
     "profile": "strict",
-    "decision": "pass-with-warnings"
+    "decision": "pass"
   },
   "findings": {
     "critical": 0,

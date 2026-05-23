@@ -62,3 +62,45 @@ func TestCLIUsageSyntaxDocumentationSync(t *testing.T) {
 		}
 	}
 }
+
+func TestLockfileExampleSchemaSync(t *testing.T) {
+	readmeBytes, err := os.ReadFile("../../README.md")
+	if err != nil {
+		t.Fatalf("failed to read README.md: %v", err)
+	}
+	readme := string(readmeBytes)
+	start := strings.Index(readme, "## Lockfile and Provenance")
+	if start < 0 {
+		t.Fatal("README missing Lockfile and Provenance section")
+	}
+	end := strings.Index(readme[start:], "## Non-Goals")
+	if end < 0 {
+		t.Fatal("README missing Non-Goals section after Lockfile and Provenance")
+	}
+	section := readme[start : start+end]
+
+	required := []string{
+		`"schema": "gokui.lock/v1"`,
+		`"source": {`,
+		`"type": "github"`,
+		`"input": "github:org/repo//skills/pdf-helper@8f3c2d1a4b5c6d7e8f901234567890abcdef1234"`,
+		`"kind": "github-source"`,
+	}
+	for _, line := range required {
+		if !strings.Contains(section, line) {
+			t.Fatalf("README lockfile example missing line: %q", line)
+		}
+	}
+
+	legacyKeys := []string{
+		`"repo":`,
+		`"path": "skills/pdf-helper"`,
+		`"commit":`,
+		`"archive_sha256":`,
+	}
+	for _, key := range legacyKeys {
+		if strings.Contains(section, key) {
+			t.Fatalf("README lockfile example still contains legacy key: %q", key)
+		}
+	}
+}
