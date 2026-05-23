@@ -99,6 +99,11 @@ func TestResolveInstallTarget(t *testing.T) {
 			t.Fatalf("expected empty custom target error, got %v", err)
 		}
 
+		_, err = resolveInstallTarget("custom:relative/skills")
+		if err == nil || !strings.Contains(err.Error(), "must be absolute") {
+			t.Fatalf("expected relative custom target error, got %v", err)
+		}
+
 		_, err = resolveInstallTarget("unknown")
 		if err == nil || !strings.Contains(err.Error(), "unsupported install target") {
 			t.Fatalf("expected unsupported target error, got %v", err)

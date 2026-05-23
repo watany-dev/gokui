@@ -510,7 +510,11 @@ func resolveInstallTarget(target string) (string, error) {
 		if custom == "" {
 			return "", fmt.Errorf("custom target path is required: custom:/path/to/skills")
 		}
-		return custom, nil
+		cleaned := filepath.Clean(custom)
+		if !filepath.IsAbs(cleaned) {
+			return "", fmt.Errorf("custom target path must be absolute: %s", custom)
+		}
+		return cleaned, nil
 	}
 
 	return "", fmt.Errorf("unsupported install target: %s", target)
