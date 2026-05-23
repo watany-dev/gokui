@@ -1,6 +1,7 @@
 package app
 
 import (
+	"bytes"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -12,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/watany-dev/gokui/internal/limitio"
 	srcpkg "github.com/watany-dev/gokui/internal/source"
 )
 
@@ -244,17 +246,22 @@ func verifyLock(skillPath string) (lockVerifyReport, error) {
 	if !linkInfo.Mode().IsRegular() {
 		return lockVerifyReport{}, fmt.Errorf("%s: %w (regular file required): %s", ruleLockfileSpecialFile, errLockfileReadFailed, lockPath)
 	}
-	if linkInfo.Size() > maxLockVerifyLockFileBytes {
-		return lockVerifyReport{}, fmt.Errorf("%s: %w (size exceeds limit): %s", ruleLockfileTooLarge, errLockfileReadFailed, lockPath)
-	}
 
-	lockRaw, err := os.ReadFile(lockPath)
+	f, err := os.Open(lockPath)
 	if err != nil {
+		return lockVerifyReport{}, fmt.Errorf("%w: %s", errLockfileReadFailed, lockPath)
+	}
+	defer f.Close()
+	var lockRaw bytes.Buffer
+	if _, err := limitio.CopyWithStrictLimit(&lockRaw, f, maxLockVerifyLockFileBytes); err != nil {
+		if errors.Is(err, limitio.ErrSizeExceeded) {
+			return lockVerifyReport{}, fmt.Errorf("%s: %w (size exceeds limit): %s", ruleLockfileTooLarge, errLockfileReadFailed, lockPath)
+		}
 		return lockVerifyReport{}, fmt.Errorf("%w: %s", errLockfileReadFailed, lockPath)
 	}
 
 	var lock installLock
-	if err := json.Unmarshal(lockRaw, &lock); err != nil {
+	if err := json.Unmarshal(lockRaw.Bytes(), &lock); err != nil {
 		return lockVerifyReport{}, fmt.Errorf("%w: %s", errLockfileInvalidJSON, lockPath)
 	}
 

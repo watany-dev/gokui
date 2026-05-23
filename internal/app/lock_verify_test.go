@@ -217,6 +217,27 @@ func TestVerifyLockErrorsAndDiff(t *testing.T) {
 		}
 	})
 
+	t.Run("lockfile is unreadable", func(t *testing.T) {
+		if runtime.GOOS == "windows" {
+			t.Skip("permission behavior differs on windows")
+		}
+
+		dir := t.TempDir()
+		lockPath := filepath.Join(dir, installLockFile)
+		if err := os.WriteFile(lockPath, []byte(`{"schema":"gokui.lock/v1"}`), 0o600); err != nil {
+			t.Fatalf("write lockfile: %v", err)
+		}
+		if err := os.Chmod(lockPath, 0o000); err != nil {
+			t.Fatalf("chmod lockfile: %v", err)
+		}
+		defer os.Chmod(lockPath, 0o600)
+
+		_, err := verifyLock(dir)
+		if err == nil || !strings.Contains(err.Error(), "failed to read lockfile") {
+			t.Fatalf("expected unreadable lockfile read error, got %v", err)
+		}
+	})
+
 	missing, changed, unexpected := diffLockFiles(
 		[]lockFileHash{
 			{Path: "a.txt", SHA256: "1", Bytes: 1},
