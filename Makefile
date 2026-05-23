@@ -21,7 +21,7 @@ LDFLAGS := -s -w \
 	-X main.commit=$(COMMIT) \
 	-X main.date=$(DATE)
 
-.PHONY: build fmt fmt-check lint typecheck deadcode test test-race coverage vuln actionlint check release-check
+.PHONY: build fmt fmt-check lint typecheck deadcode test test-race coverage vuln actionlint check release-check release-check-offline
 
 build:
 	$(GO) build -trimpath -buildvcs=true -ldflags='$(LDFLAGS)' -o gokui $(MAIN_PKG)
@@ -73,3 +73,6 @@ ifeq ($(RELEASE_CHECK_VULN),1)
 else
 	@echo "Skipping vuln check (RELEASE_CHECK_VULN=$(RELEASE_CHECK_VULN))"
 endif
+
+release-check-offline:
+	$(MAKE) release-check RELEASE_CHECK_VULN=0
