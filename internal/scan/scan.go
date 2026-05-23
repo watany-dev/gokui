@@ -114,6 +114,24 @@ var homeConfigPathHints = []string{
 	"/var/spool/cron/",
 }
 
+var secretPathHints = []string{
+	".env",
+	"~/.ssh/",
+	"/.ssh/",
+	"~/.aws/",
+	"/.aws/",
+	"id_rsa",
+	"id_ed25519",
+	"credentials",
+	"api_key",
+	"token",
+	"cookies",
+	"keychain",
+	"wallet",
+}
+
+var secretExfilNetworkCommand = regexp.MustCompile(`(?i)\b(?:curl|wget|invoke-webrequest|invoke-restmethod|requests\.post|netcat|nc)\b`)
+
 // ScanSkillRoot scans markdown instruction files under skillRoot.
 func ScanSkillRoot(skillRoot string) ([]Finding, error) {
 	targets, err := scanTargets(skillRoot)
@@ -344,6 +362,15 @@ func scanTextFile(target scanTarget) ([]Finding, error) {
 					File:     target.Relative,
 					Line:     lineNum,
 					Summary:  "writes to shell/ssh/cron/launch-agent configuration path",
+				})
+			}
+			if hasSecretExfilLine(variant) {
+				findings = append(findings, Finding{
+					ID:       "SECRET_EXFIL",
+					Severity: "critical",
+					File:     target.Relative,
+					Line:     lineNum,
+					Summary:  "secret path access combined with network exfiltration command",
 				})
 			}
 			if isUnpinnedRuntimeToolLine(variant) {
@@ -675,6 +702,32 @@ func containsAnyString(s string, needles []string) bool {
 		}
 	}
 	return false
+}
+
+func hasSecretExfilLine(line string) bool {
+	lower := strings.ToLower(line)
+	if !containsAnyString(lower, secretPathHints) {
+		return false
+	}
+	if !secretExfilNetworkCommand.MatchString(lower) {
+		return false
+	}
+	if !strings.Contains(lower, "http://") && !strings.Contains(lower, "https://") {
+		return false
+	}
+	if strings.Contains(lower, "| curl") || strings.Contains(lower, "|curl") || strings.Contains(lower, "| wget") || strings.Contains(lower, "|wget") {
+		return true
+	}
+	sendHints := []string{
+		"-d ",
+		"--data",
+		"--upload-file",
+		"requests.post",
+		"invoke-restmethod",
+		"invoke-webrequest",
+		"-f ",
+	}
+	return containsAnyString(lower, sendHints)
 }
 
 func tokenizeWords(line string) []string {
