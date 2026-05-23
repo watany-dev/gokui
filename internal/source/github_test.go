@@ -1,6 +1,12 @@
 package source
 
-import "testing"
+import (
+	"fmt"
+	"regexp"
+	"strings"
+	"testing"
+	"testing/quick"
+)
 
 func TestParseGitHubSource(t *testing.T) {
 	t.Run("parses valid source", func(t *testing.T) {
@@ -29,6 +35,8 @@ func TestParseGitHubSource(t *testing.T) {
 			"github:owner/repo//@",
 			"github:owner/repo///abs@ref",
 			"github:owner/repo//./@ref",
+			"github:owner/repo//path@ 8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
+			"github:owner/repo//path@8f3c2d1a4b5c6d7e8f901234567890abcdef1234 ",
 		}
 		for _, in := range cases {
 			if _, err := ParseGitHubSource(in); err == nil {
@@ -36,6 +44,22 @@ func TestParseGitHubSource(t *testing.T) {
 			}
 		}
 	})
+}
+
+func TestParseGitHubSourcePropertyNoPanic(t *testing.T) {
+	prop := func(input string) (ok bool) {
+		defer func() {
+			if r := recover(); r != nil {
+				ok = false
+			}
+		}()
+		_, _ = ParseGitHubSource(input)
+		return true
+	}
+
+	if err := quick.Check(prop, &quick.Config{MaxCount: 1000}); err != nil {
+		t.Fatalf("ParseGitHubSource panic-safety property failed: %v", err)
+	}
 }
 
 func TestNormalizeGitHubPath(t *testing.T) {
@@ -74,5 +98,34 @@ func TestIsCommitPinnedRef(t *testing.T) {
 	}
 	if IsCommitPinnedRef("8f3c2z1") {
 		t.Fatal("non-hex ref should not be pinned")
+	}
+}
+
+func TestIsCommitPinnedRefProperty(t *testing.T) {
+	hex40 := regexp.MustCompile(`^[0-9a-fA-F]{40}$`)
+	prop := func(raw string) bool {
+		got := IsCommitPinnedRef(raw)
+		trimmed := strings.TrimSpace(raw)
+		if got {
+			return hex40.MatchString(trimmed)
+		}
+		if hex40.MatchString(trimmed) {
+			return false
+		}
+		return true
+	}
+
+	if err := quick.Check(prop, &quick.Config{MaxCount: 1000}); err != nil {
+		t.Fatalf("IsCommitPinnedRef property failed: %v", err)
+	}
+}
+
+func TestIsCommitPinnedRefPropertyKnownTrueCases(t *testing.T) {
+	prop := func(suffix uint32) bool {
+		ref := fmt.Sprintf("8f3c2d1a4b5c6d7e8f901234567890ab%08x", suffix)
+		return IsCommitPinnedRef(ref)
+	}
+	if err := quick.Check(prop, &quick.Config{MaxCount: 200}); err != nil {
+		t.Fatalf("IsCommitPinnedRef true-case property failed: %v", err)
 	}
 }

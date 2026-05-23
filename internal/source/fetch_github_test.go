@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestFetchGitHubSkill(t *testing.T) {
@@ -198,12 +199,38 @@ func TestFetchGitHubSkillErrors(t *testing.T) {
 		}
 	})
 
+	t.Run("downloadGitHubArchive rejects oversized content-length", func(t *testing.T) {
+		spec := GitHubSpec{Owner: "o", Repo: "r", Path: "skills/x", Ref: "8f3c2d1a4b5c6d7e8f901234567890abcdef1234"}
+		githubCodeloadBaseURL = "https://mock.codeload.local"
+		githubHTTPClient = &http.Client{
+			Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+				resp := httpResponse(http.StatusOK, []byte("x"))
+				resp.ContentLength = maxGitHubArchiveBytes + 1
+				return resp, nil
+			}),
+		}
+
+		err := downloadGitHubArchive(spec, filepath.Join(t.TempDir(), "archive.tar.gz"))
+		if err == nil || !strings.Contains(err.Error(), "exceeds max size") {
+			t.Fatalf("expected max-size error, got %v", err)
+		}
+	})
+
 	t.Run("detectSingleTopLevelDirectory handles read error", func(t *testing.T) {
 		_, err := detectSingleTopLevelDirectory(filepath.Join(t.TempDir(), "missing"))
 		if err == nil || !strings.Contains(err.Error(), "failed to read extracted github archive") {
 			t.Fatalf("expected read error, got %v", err)
 		}
 	})
+}
+
+func TestGitHubHTTPClientDefaultTimeout(t *testing.T) {
+	if githubHTTPClient == nil {
+		t.Fatal("githubHTTPClient must be initialized")
+	}
+	if githubHTTPClient.Timeout != 30*time.Second {
+		t.Fatalf("githubHTTPClient timeout = %v, want %v", githubHTTPClient.Timeout, 30*time.Second)
+	}
 }
 
 type roundTripFunc func(*http.Request) (*http.Response, error)

@@ -35,6 +35,9 @@ func ParseGitHubSource(input string) (GitHubSpec, error) {
 	}
 	location := rest[:at]
 	ref := rest[at+1:]
+	if strings.TrimSpace(ref) != ref {
+		return GitHubSpec{}, fmt.Errorf("github source ref must not contain surrounding spaces")
+	}
 
 	parts := strings.SplitN(location, "//", 2)
 	if len(parts) != 2 {

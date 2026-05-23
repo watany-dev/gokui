@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/watany-dev/gokui/internal/materialize"
 )
@@ -17,7 +18,7 @@ const (
 
 var (
 	githubCodeloadBaseURL = "https://codeload.github.com"
-	githubHTTPClient      = &http.Client{}
+	githubHTTPClient      = &http.Client{Timeout: 30 * time.Second}
 )
 
 // FetchGitHubSkill downloads and materializes a commit-pinned GitHub skill source
@@ -97,6 +98,9 @@ func downloadGitHubArchive(spec GitHubSpec, archivePath string) error {
 
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("failed to download github archive: unexpected status %d", resp.StatusCode)
+	}
+	if resp.ContentLength > maxGitHubArchiveBytes {
+		return fmt.Errorf("github archive exceeds max size")
 	}
 
 	out, err := os.OpenFile(archivePath, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o644)
