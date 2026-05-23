@@ -63,10 +63,12 @@ func TestFetchGitHubSkillErrors(t *testing.T) {
 	origBase := githubCodeloadBaseURL
 	origClient := githubHTTPClient
 	origMaxArchive := maxGitHubArchiveBytes
+	origMaxRedirects := maxGitHubRedirects
 	t.Cleanup(func() {
 		githubCodeloadBaseURL = origBase
 		githubHTTPClient = origClient
 		maxGitHubArchiveBytes = origMaxArchive
+		maxGitHubRedirects = origMaxRedirects
 	})
 
 	t.Run("requires commit pinned ref", func(t *testing.T) {
@@ -468,6 +470,35 @@ func TestFetchGitHubSkillErrors(t *testing.T) {
 
 		if err := downloadGitHubArchive(spec, filepath.Join(t.TempDir(), "archive.tar.gz")); err != nil {
 			t.Fatalf("expected same-host default-port redirect success, got %v", err)
+		}
+	})
+
+	t.Run("downloadGitHubArchive enforces redirect limit before permissive custom policy", func(t *testing.T) {
+		origMax := maxGitHubRedirects
+		maxGitHubRedirects = 3
+		t.Cleanup(func() { maxGitHubRedirects = origMax })
+
+		previousCalls := 0
+		spec := GitHubSpec{Owner: "o", Repo: "r", Path: "skills/x", Ref: "8f3c2d1a4b5c6d7e8f901234567890abcdef1234"}
+		githubCodeloadBaseURL = "https://mock.codeload.local"
+		githubHTTPClient = &http.Client{
+			CheckRedirect: func(req *http.Request, via []*http.Request) error {
+				previousCalls++
+				return nil
+			},
+			Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+				resp := httpResponse(http.StatusFound, []byte("redirect"))
+				resp.Header.Set("Location", "https://mock.codeload.local/loop")
+				return resp, nil
+			}),
+		}
+
+		err := downloadGitHubArchive(spec, filepath.Join(t.TempDir(), "archive.tar.gz"))
+		if err == nil || !strings.Contains(err.Error(), "stopped after 3 redirects") {
+			t.Fatalf("expected redirect-limit error, got %v", err)
+		}
+		if previousCalls == 0 {
+			t.Fatal("expected previous CheckRedirect to be invoked before limit is hit")
 		}
 	})
 

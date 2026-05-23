@@ -27,6 +27,7 @@ var (
 	githubCodeloadBaseURL       = "https://codeload.github.com"
 	githubHTTPClient            = &http.Client{Timeout: 30 * time.Second}
 	maxGitHubArchiveBytes int64 = 100 * 1024 * 1024
+	maxGitHubRedirects          = 10
 )
 
 // FetchGitHubSkill downloads and materializes a commit-pinned GitHub skill source
@@ -109,6 +110,9 @@ func downloadGitHubArchive(spec GitHubSpec, archivePath string) error {
 	client := *githubHTTPClient
 	previousCheckRedirect := client.CheckRedirect
 	client.CheckRedirect = func(next *http.Request, via []*http.Request) error {
+		if len(via) >= maxGitHubRedirects {
+			return fmt.Errorf("stopped after %d redirects", maxGitHubRedirects)
+		}
 		if !strings.EqualFold(next.URL.Scheme, expectedScheme) {
 			return fmt.Errorf("%s: github archive redirected to unexpected scheme: %s", ruleGitHubRedirectScheme, next.URL.Scheme)
 		}
@@ -124,9 +128,6 @@ func downloadGitHubArchive(spec GitHubSpec, archivePath string) error {
 		}
 		if previousCheckRedirect != nil {
 			return previousCheckRedirect(next, via)
-		}
-		if len(via) >= 10 {
-			return fmt.Errorf("stopped after 10 redirects")
 		}
 		return nil
 	}
