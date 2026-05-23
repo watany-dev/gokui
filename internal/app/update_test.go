@@ -626,6 +626,54 @@ func TestRunUpdateJSONFatalErrors(t *testing.T) {
 	})
 }
 
+func TestWriteUpdateJSONErrorRuleID(t *testing.T) {
+	t.Run("infers rule_id from rule-prefixed message", func(t *testing.T) {
+		var stdout strings.Builder
+		var stderr strings.Builder
+
+		code := writeUpdateJSONError(&stdout, &stderr, updateErrorReport{
+			SchemaVersion: reportSchemaVersion,
+			Status:        "ERROR",
+			ErrorCode:     updateFatalCodeReportBuild,
+			Message:       "ARCHIVE_PATH_ESCAPE: archive entry escaped source root",
+			Target:        "codex",
+			Note:          "test",
+		})
+		if code != 1 {
+			t.Fatalf("writeUpdateJSONError() code = %d, want 1", code)
+		}
+		if stderr.Len() != 0 {
+			t.Fatalf("stderr should be empty, got %q", stderr.String())
+		}
+		if !strings.Contains(stdout.String(), "\"rule_id\": \"ARCHIVE_PATH_ESCAPE\"") {
+			t.Fatalf("stdout should include inferred rule_id, got %q", stdout.String())
+		}
+	})
+
+	t.Run("omits rule_id when message has no rule prefix", func(t *testing.T) {
+		var stdout strings.Builder
+		var stderr strings.Builder
+
+		code := writeUpdateJSONError(&stdout, &stderr, updateErrorReport{
+			SchemaVersion: reportSchemaVersion,
+			Status:        "ERROR",
+			ErrorCode:     updateFatalCodeArgsInvalid,
+			Message:       "update currently requires --dry-run",
+			Target:        "codex",
+			Note:          "test",
+		})
+		if code != 1 {
+			t.Fatalf("writeUpdateJSONError() code = %d, want 1", code)
+		}
+		if stderr.Len() != 0 {
+			t.Fatalf("stderr should be empty, got %q", stderr.String())
+		}
+		if strings.Contains(stdout.String(), "\"rule_id\":") {
+			t.Fatalf("stdout should omit rule_id, got %q", stdout.String())
+		}
+	})
+}
+
 func TestUpdateArgJSONHelpers(t *testing.T) {
 	if !updateArgsRequestJSON([]string{"--dry-run", "--format", "json"}) {
 		t.Fatal("updateArgsRequestJSON() should detect --format json")
