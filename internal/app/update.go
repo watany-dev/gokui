@@ -667,7 +667,7 @@ func collectExecutableFiles(root string) ([]string, error) {
 			}
 			return fmt.Errorf("%s: executable scan input contains symlink: %s", ruleUpdateExecutableScanSymlink, path)
 		}
-		info, err := d.Info()
+		info, err := os.Lstat(path)
 		if err != nil {
 			return err
 		}
