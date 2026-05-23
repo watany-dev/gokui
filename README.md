@@ -36,6 +36,7 @@ fatal errors emit a machine-readable error envelope with top-level `error_code`.
 Install/update target roots and lock-verify input paths reject symlink path components.
 Lock/source-metadata/install-report file reads also reject symlink path components.
 Source metadata writes also reject symlink path components.
+Install target entries also reject symlink path components.
 `lock verify` now validates installed files against `gokui.lock`, checks source
 field consistency (including strict GitHub source syntax and commit pinning),
 validates lock/report structural integrity, validates GitHub source metadata

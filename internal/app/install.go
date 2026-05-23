@@ -35,6 +35,7 @@ const (
 	ruleLockfileTooLarge                = "LOCKFILE_TOO_LARGE"
 	ruleLockfileSymlink                 = "LOCKFILE_SYMLINK_DETECTED"
 	ruleInstallTargetSymlink            = "INSTALL_TARGET_SYMLINK_DETECTED"
+	ruleInstallTargetEntrySymlink       = "INSTALL_TARGET_ENTRY_SYMLINK_DETECTED"
 	ruleInstallSourceFileCountExceeded  = "INSTALL_SOURCE_FILE_COUNT_EXCEEDED"
 	ruleInstallSourceTotalBytesExceeded = "INSTALL_SOURCE_TOTAL_BYTES_EXCEEDED"
 	ruleInstallSourceFileTooLarge       = "INSTALL_SOURCE_FILE_TOO_LARGE"
@@ -571,6 +572,9 @@ const (
 
 func installSkillAtomic(skillRoot string, targetRoot string, skillName string, report installReport) (string, installResult, error) {
 	finalPath := filepath.Join(targetRoot, skillName)
+	if err := rejectSymlinkPath(finalPath, "install target entry", ruleInstallTargetEntrySymlink); err != nil {
+		return "", "", err
+	}
 
 	stagingRoot, err := os.MkdirTemp(targetRoot, ".gokui-install-*")
 	if err != nil {

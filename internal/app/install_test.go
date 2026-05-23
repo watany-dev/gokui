@@ -361,6 +361,64 @@ func TestRunInstallRejectsSymlinkTargetRoot(t *testing.T) {
 	}
 }
 
+func TestRunInstallRejectsSymlinkTargetEntry(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlink permissions differ on windows")
+	}
+
+	source := createSkillSourceForInstallTest(t, "install-symlink-entry")
+	base := t.TempDir()
+	targetRoot := filepath.Join(base, "skills")
+	if err := os.Mkdir(targetRoot, 0o755); err != nil {
+		t.Fatalf("mkdir target root: %v", err)
+	}
+	realExisting := filepath.Join(base, "real-existing")
+	if err := os.Mkdir(realExisting, 0o755); err != nil {
+		t.Fatalf("mkdir real existing dir: %v", err)
+	}
+	if err := os.Symlink("../real-existing", filepath.Join(targetRoot, "install-symlink-entry")); err != nil {
+		t.Fatalf("create target entry symlink: %v", err)
+	}
+
+	var stdout strings.Builder
+	var stderr strings.Builder
+	code := runInstall([]string{
+		source,
+		"--target", "custom:" + targetRoot,
+		"--profile", "strict",
+		"--format", "json",
+	}, &stdout, &stderr)
+	if code != 1 {
+		t.Fatalf("runInstall(symlink target entry) code = %d, want 1\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("stderr should be empty for json errors, got %q", stderr.String())
+	}
+	if !strings.Contains(stdout.String(), "\"error_code\": \""+installErrorCodeWriteFailed+"\"") {
+		t.Fatalf("stdout should include write-failed error code, got %q", stdout.String())
+	}
+	if !strings.Contains(stdout.String(), "\"rule_id\": \""+ruleInstallTargetEntrySymlink+"\"") {
+		t.Fatalf("stdout should include target-entry symlink rule_id, got %q", stdout.String())
+	}
+
+	stdout.Reset()
+	stderr.Reset()
+	code = runInstall([]string{
+		source,
+		"--target", "custom:" + targetRoot,
+		"--profile", "strict",
+	}, &stdout, &stderr)
+	if code != 1 {
+		t.Fatalf("runInstall(human symlink target entry) code = %d, want 1\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
+	}
+	if stdout.Len() != 0 {
+		t.Fatalf("stdout should be empty for human errors, got %q", stdout.String())
+	}
+	if !strings.Contains(stderr.String(), ruleInstallTargetEntrySymlink) {
+		t.Fatalf("stderr should include target-entry symlink rule marker, got %q", stderr.String())
+	}
+}
+
 func TestRunInstallJSONOutput(t *testing.T) {
 	t.Run("json parse error uses machine-readable envelope", func(t *testing.T) {
 		var stdout strings.Builder
@@ -1129,6 +1187,31 @@ func TestInstallSkillAtomicExistingTargetValidation(t *testing.T) {
 		_, _, err := installSkillAtomic(src, targetRoot, "missing-lock-skill", report)
 		if err == nil || !strings.Contains(err.Error(), "missing/invalid lockfile") {
 			t.Fatalf("expected missing lockfile error, got %v", err)
+		}
+	})
+
+	t.Run("existing target path is a symlink", func(t *testing.T) {
+		if runtime.GOOS == "windows" {
+			t.Skip("symlink permissions differ on windows")
+		}
+
+		src := createSkillSourceForInstallTest(t, "symlink-target-entry-skill")
+		base := t.TempDir()
+		targetRoot := filepath.Join(base, "skills")
+		if err := os.Mkdir(targetRoot, 0o755); err != nil {
+			t.Fatalf("mkdir target root: %v", err)
+		}
+		realExisting := filepath.Join(base, "real-existing")
+		if err := os.Mkdir(realExisting, 0o755); err != nil {
+			t.Fatalf("mkdir real existing dir: %v", err)
+		}
+		if err := os.Symlink("../real-existing", filepath.Join(targetRoot, "symlink-target-entry-skill")); err != nil {
+			t.Fatalf("create target entry symlink: %v", err)
+		}
+
+		_, _, err := installSkillAtomic(src, targetRoot, "symlink-target-entry-skill", report)
+		if err == nil || !strings.Contains(err.Error(), ruleInstallTargetEntrySymlink) {
+			t.Fatalf("expected target-entry symlink rejection, got %v", err)
 		}
 	})
 }
