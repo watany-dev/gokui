@@ -17,6 +17,14 @@ import (
 	srcpkg "github.com/watany-dev/gokui/internal/source"
 )
 
+type installErrorStatter struct {
+	err error
+}
+
+func (s installErrorStatter) Stat() (os.FileInfo, error) {
+	return nil, s.err
+}
+
 func TestParseInstallArgs(t *testing.T) {
 	t.Run("parses defaults and flags", func(t *testing.T) {
 		got, err := parseInstallArgs([]string{"./skill", "--target", "codex"})
@@ -1369,6 +1377,37 @@ func TestReadInstallLockAndProvenanceMatches(t *testing.T) {
 		}
 		if _, err := readInstallLock(oversizedPath); err == nil || !strings.Contains(err.Error(), ruleLockfileTooLarge) {
 			t.Fatalf("expected oversized lockfile error, got %v", err)
+		}
+
+		firstInfo, err := os.Lstat(okPath)
+		if err != nil {
+			t.Fatalf("lstat ok lock: %v", err)
+		}
+		if err := ensureInstallLockStableFromOpen(firstInfo, installErrorStatter{err: errors.New("stat fail")}, okPath); err == nil || !strings.Contains(err.Error(), "failed to read install lockfile") {
+			t.Fatalf("expected install lock stat error, got %v", err)
+		}
+
+		opened, err := os.Open(okPath)
+		if err != nil {
+			t.Fatalf("open ok lock: %v", err)
+		}
+		defer opened.Close()
+
+		if err := ensureInstallLockStableFromOpen(firstInfo, opened, okPath); err != nil {
+			t.Fatalf("same install lock identity should pass, got %v", err)
+		}
+
+		secondPath := filepath.Join(dir, "other.lock")
+		if err := os.WriteFile(secondPath, raw, 0o644); err != nil {
+			t.Fatalf("write second lock: %v", err)
+		}
+		secondOpened, err := os.Open(secondPath)
+		if err != nil {
+			t.Fatalf("open second lock: %v", err)
+		}
+		defer secondOpened.Close()
+		if err := ensureInstallLockStableFromOpen(firstInfo, secondOpened, secondPath); err == nil || !strings.Contains(err.Error(), ruleLockfileSourceChanged) {
+			t.Fatalf("expected source-changed install lock error, got %v", err)
 		}
 	})
 

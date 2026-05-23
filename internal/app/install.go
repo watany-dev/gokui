@@ -976,6 +976,9 @@ func readInstallLock(path string) (installLock, error) {
 		return installLock{}, fmt.Errorf("failed to read install lockfile: %s", path)
 	}
 	defer f.Close()
+	if err := ensureInstallLockStableFromOpen(linkInfo, f, path); err != nil {
+		return installLock{}, err
+	}
 	var raw bytes.Buffer
 	if _, err := limitio.CopyWithStrictLimit(&raw, f, maxInstallLockFileBytes); err != nil {
 		if errors.Is(err, limitio.ErrSizeExceeded) {
@@ -992,6 +995,17 @@ func readInstallLock(path string) (installLock, error) {
 		return installLock{}, fmt.Errorf("unsupported install lockfile schema at %s: %s", path, lock.Schema)
 	}
 	return lock, nil
+}
+
+func ensureInstallLockStableFromOpen(previous os.FileInfo, opened fileInfoStatter, path string) error {
+	current, err := opened.Stat()
+	if err != nil {
+		return fmt.Errorf("failed to read install lockfile: %s", path)
+	}
+	if os.SameFile(previous, current) {
+		return nil
+	}
+	return fmt.Errorf("%s: install lockfile changed during read: %s", ruleLockfileSourceChanged, path)
 }
 
 func provenanceMatches(existing installLock, incoming installLock) bool {
