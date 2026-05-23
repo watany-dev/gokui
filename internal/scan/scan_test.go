@@ -28,6 +28,8 @@ download https://bit.ly/agent-helper for setup notes
 connect to https://192.168.0.21/bootstrap
 copy snippet from https://pastebin.com/raw/abc123
 download release from https://github.com/org/repo/releases/download/v1.0.0/tool.tgz
+![badge](https://example.com/badge.png)
+<img src="https://example.com/assets/logo.webp" />
 `
 	if err := os.WriteFile(filepath.Join(root, "SKILL.md"), []byte(skill), 0o644); err != nil {
 		t.Fatalf("write SKILL.md: %v", err)
@@ -55,6 +57,7 @@ download https://example.com/cli.exe`
 	assertHasID(t, findings, "RAW_IP_URL")
 	assertHasID(t, findings, "PASTE_SITE_URL")
 	assertHasID(t, findings, "RELEASE_ASSET_URL")
+	assertHasID(t, findings, "REMOTE_IMAGE_URL")
 }
 
 func TestScanSkillRootScansScriptLikeFiles(t *testing.T) {
@@ -78,25 +81,26 @@ func TestScanSkillRootScansScriptLikeFiles(t *testing.T) {
 }
 
 func TestClassifyURLRisks(t *testing.T) {
-	line := "visit https://bit.ly/example and https://192.168.1.44:8443/setup and https://pastebin.com/x and https://github.com/org/repo/releases/download/v1.0.0/a.tgz and https://example.com"
-	findings := classifyURLRisks(line, "SKILL.md", 12)
+	line := "visit https://bit.ly/example and https://192.168.1.44:8443/setup and https://pastebin.com/x and https://github.com/org/repo/releases/download/v1.0.0/a.tgz and ![x](https://example.com/x.png) and https://example.com"
+	findings := classifyURLRisks(line, "SKILL.md", 12, true)
 
 	assertHasID(t, findings, "URL_SHORTENER")
 	assertHasID(t, findings, "RAW_IP_URL")
 	assertHasID(t, findings, "PASTE_SITE_URL")
 	assertHasID(t, findings, "RELEASE_ASSET_URL")
+	assertHasID(t, findings, "REMOTE_IMAGE_URL")
 }
 
 func TestClassifyURLRisksEdgeCases(t *testing.T) {
 	t.Run("returns nil for non-url line", func(t *testing.T) {
-		if findings := classifyURLRisks("echo safe", "SKILL.md", 1); findings != nil {
+		if findings := classifyURLRisks("echo safe", "SKILL.md", 1, true); findings != nil {
 			t.Fatalf("expected nil findings for non-url line, got %+v", findings)
 		}
 	})
 
 	t.Run("ignores malformed and hostless URLs", func(t *testing.T) {
 		line := "bad https://[::1 and hostless https:///path only"
-		findings := classifyURLRisks(line, "SKILL.md", 2)
+		findings := classifyURLRisks(line, "SKILL.md", 2, true)
 		if len(findings) != 0 {
 			t.Fatalf("expected no findings for malformed/hostless URLs, got %+v", findings)
 		}
@@ -104,8 +108,18 @@ func TestClassifyURLRisksEdgeCases(t *testing.T) {
 
 	t.Run("normalizes shortener host case", func(t *testing.T) {
 		line := "open https://BIT.LY/abc"
-		findings := classifyURLRisks(line, "SKILL.md", 3)
+		findings := classifyURLRisks(line, "SKILL.md", 3, true)
 		assertHasID(t, findings, "URL_SHORTENER")
+	})
+
+	t.Run("does not flag remote image outside markdown context", func(t *testing.T) {
+		line := "curl https://example.com/image.png"
+		findings := classifyURLRisks(line, "script.sh", 4, false)
+		for _, f := range findings {
+			if f.ID == "REMOTE_IMAGE_URL" {
+				t.Fatalf("unexpected REMOTE_IMAGE_URL finding: %+v", findings)
+			}
+		}
 	})
 }
 

@@ -207,7 +207,7 @@ func scanTextFile(target scanTarget) ([]Finding, error) {
 				Summary:  "unpinned runtime tool execution detected",
 			})
 		}
-		findings = append(findings, classifyURLRisks(line, target.Relative, lineNum)...)
+		findings = append(findings, classifyURLRisks(line, target.Relative, lineNum, target.Kind == "markdown")...)
 
 		if target.Kind != "markdown" {
 			continue
@@ -299,7 +299,7 @@ func isUnpinnedPackageRef(ref string) bool {
 	return parts[1] == "" || parts[1] == "latest"
 }
 
-func classifyURLRisks(line string, relPath string, lineNum int) []Finding {
+func classifyURLRisks(line string, relPath string, lineNum int, isMarkdown bool) []Finding {
 	matches := urlPattern.FindAllString(line, -1)
 	if len(matches) == 0 {
 		return nil
@@ -352,8 +352,34 @@ func classifyURLRisks(line string, relPath string, lineNum int) []Finding {
 				Summary:  "release asset URL detected",
 			})
 		}
+		if isMarkdown && isRemoteImageLine(line) && isImagePath(parsed.Path) {
+			out = append(out, Finding{
+				ID:       "REMOTE_IMAGE_URL",
+				Severity: "medium",
+				File:     relPath,
+				Line:     lineNum,
+				Summary:  "remote image URL detected in markdown content",
+			})
+		}
 	}
 	return out
+}
+
+func isRemoteImageLine(line string) bool {
+	lower := strings.ToLower(line)
+	return strings.Contains(line, "![") || strings.Contains(lower, "<img")
+}
+
+func isImagePath(path string) bool {
+	lower := strings.ToLower(path)
+	return strings.HasSuffix(lower, ".png") ||
+		strings.HasSuffix(lower, ".jpg") ||
+		strings.HasSuffix(lower, ".jpeg") ||
+		strings.HasSuffix(lower, ".gif") ||
+		strings.HasSuffix(lower, ".webp") ||
+		strings.HasSuffix(lower, ".svg") ||
+		strings.HasSuffix(lower, ".bmp") ||
+		strings.HasSuffix(lower, ".ico")
 }
 
 func deduplicateFindings(in []Finding) []Finding {
