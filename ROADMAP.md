@@ -40,6 +40,7 @@ tests/CI:
 - high-severity detection of password-protected archive instructions
 - high-severity detection of shell/ssh/cron/launch-agent config writes
 - high-severity detection of broad Bash wildcard tool permissions
+- medium-severity detection of unknown/unclassified file types
 
 This roadmap section below remains forward-looking for gaps and future phases.
 
