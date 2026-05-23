@@ -3,10 +3,12 @@ package app
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"testing/quick"
 )
 
 func TestParseLockVerifyArgs(t *testing.T) {
@@ -851,12 +853,35 @@ func TestLockVerifyHelpers(t *testing.T) {
 			t.Fatalf("expected valid path: %s", p)
 		}
 	}
-	invalidPaths := []string{"", ".", "..", "../x", "/x", `..\x`, `a\b`}
+	invalidPaths := []string{"", ".", "..", "../x", "/x", `..\x`, `a\b`, "C:/x", "c:/x", "D:relative/path", "z:tmp"}
 	for _, p := range invalidPaths {
 		if isValidLockRelativePath(p) {
 			t.Fatalf("expected invalid path: %s", p)
 		}
 	}
+}
+
+func TestLockRelativePathProperties(t *testing.T) {
+	t.Run("windows drive prefixes are always invalid", func(t *testing.T) {
+		prop := func(letter uint8, tail string) bool {
+			drive := byte('A' + (letter % 26))
+			path := fmt.Sprintf("%c:%s", drive, tail)
+			return !isValidLockRelativePath(path)
+		}
+		if err := quick.Check(prop, &quick.Config{MaxCount: 500}); err != nil {
+			t.Fatalf("drive-prefix property failed: %v", err)
+		}
+	})
+
+	t.Run("paths with backslash are always invalid", func(t *testing.T) {
+		prop := func(a string, b string) bool {
+			path := a + `\` + b
+			return !isValidLockRelativePath(path)
+		}
+		if err := quick.Check(prop, &quick.Config{MaxCount: 500}); err != nil {
+			t.Fatalf("backslash property failed: %v", err)
+		}
+	})
 }
 
 func TestVerifyInstallReportDecisionAndFindingsInvariant(t *testing.T) {

@@ -468,5 +468,24 @@ func isValidLockRelativePath(in string) bool {
 	if strings.HasPrefix(cleaned, "/") {
 		return false
 	}
+	if hasWindowsDrivePathPrefix(cleaned) {
+		return false
+	}
 	return cleaned == in
+}
+
+func hasWindowsDrivePathPrefix(path string) bool {
+	if len(path) < 2 {
+		return false
+	}
+	drive := path[0]
+	if (drive < 'a' || drive > 'z') && (drive < 'A' || drive > 'Z') {
+		return false
+	}
+	if path[1] != ':' {
+		return false
+	}
+	// Treat both "C:foo" (drive-relative) and "C:/foo" (absolute) as invalid
+	// lock-relative paths for cross-platform safety.
+	return true
 }
