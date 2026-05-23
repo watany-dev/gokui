@@ -69,6 +69,15 @@ var urlShortenerHosts = map[string]struct{}{
 	"shorturl.at": {},
 }
 
+var pasteSiteHosts = map[string]struct{}{
+	"pastebin.com":               {},
+	"hastebin.com":               {},
+	"ghostbin.com":               {},
+	"dpaste.com":                 {},
+	"gist.github.com":            {},
+	"gist.githubusercontent.com": {},
+}
+
 // ScanSkillRoot scans markdown instruction files under skillRoot.
 func ScanSkillRoot(skillRoot string) ([]Finding, error) {
 	targets, err := scanTargets(skillRoot)
@@ -323,6 +332,24 @@ func classifyURLRisks(line string, relPath string, lineNum int) []Finding {
 				File:     relPath,
 				Line:     lineNum,
 				Summary:  "URL shortener host detected",
+			})
+		}
+		if _, ok := pasteSiteHosts[host]; ok {
+			out = append(out, Finding{
+				ID:       "PASTE_SITE_URL",
+				Severity: "medium",
+				File:     relPath,
+				Line:     lineNum,
+				Summary:  "paste site URL detected",
+			})
+		}
+		if host == "github.com" && strings.Contains(strings.ToLower(parsed.Path), "/releases/download/") {
+			out = append(out, Finding{
+				ID:       "RELEASE_ASSET_URL",
+				Severity: "medium",
+				File:     relPath,
+				Line:     lineNum,
+				Summary:  "release asset URL detected",
 			})
 		}
 	}

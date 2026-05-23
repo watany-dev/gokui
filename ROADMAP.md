@@ -23,6 +23,7 @@ tests/CI:
 - automated offline release evidence collection with per-step logs
 - automated online release evidence collection mode (includes vuln step)
 - URL risk classification for shortener hosts and raw-IP URLs
+- URL risk classification for paste-site URLs and GitHub release asset URLs
 
 This roadmap section below remains forward-looking for gaps and future phases.
 
