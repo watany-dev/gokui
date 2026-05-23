@@ -45,6 +45,7 @@ risk deltas, and new URL/executable signals. For GitHub sources, commit-pinned
 refs are evaluated and floating refs are rejected. JSON output now emits stable
 skill-item keys for automation-friendly parsing, including `error_code` for
 status-aware automation.
+URL risk classification now flags shortener hosts and raw-IP URLs during scan.
 JSON output contracts are now stability-tested across `inspect`, `fetch`,
 `install`, `update`, `lock verify`, and install metadata files.
 CI now includes a dedicated SARIF smoke job that runs `inspect --format sarif`

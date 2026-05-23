@@ -22,6 +22,7 @@ tests/CI:
 - `make vuln` hardened with patched Go toolchain baseline (`go1.26.3+auto`)
 - automated offline release evidence collection with per-step logs
 - automated online release evidence collection mode (includes vuln step)
+- URL risk classification for shortener hosts and raw-IP URLs
 
 This roadmap section below remains forward-looking for gaps and future phases.
 

@@ -2,6 +2,8 @@ package scan
 
 import (
 	"fmt"
+	"net"
+	neturl "net/url"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -27,6 +29,7 @@ var (
 	promptOverridePattern = regexp.MustCompile(`(?i)\b(?:ignore|override|bypass)\b.{0,80}\b(?:previous|prior|system|higher|earlier)\b.{0,40}\b(?:instruction|instructions|prompt|prompts)\b`)
 
 	externalBinaryPattern = regexp.MustCompile(`(?i)\bhttps?://\S+\.(?:zip|exe|msi|dmg|pkg|tar\.gz|tgz)\b`)
+	urlPattern            = regexp.MustCompile(`(?i)\bhttps?://[^\s<>"')\]]+`)
 
 	fakePrereqPattern = regexp.MustCompile(`(?i)\b(?:required|required prerequisite|you must|before use)\b.{0,120}\b(?:download|install)\b.{0,200}\b(?:run|execute|bash|sh|powershell|chmod \+x)\b`)
 )
@@ -51,6 +54,19 @@ var scriptLikeExtensions = map[string]struct{}{
 	".cjs":  {},
 	".rb":   {},
 	".go":   {},
+}
+
+var urlShortenerHosts = map[string]struct{}{
+	"bit.ly":      {},
+	"tinyurl.com": {},
+	"t.co":        {},
+	"goo.gl":      {},
+	"ow.ly":       {},
+	"is.gd":       {},
+	"buff.ly":     {},
+	"cutt.ly":     {},
+	"rb.gy":       {},
+	"shorturl.at": {},
 }
 
 // ScanSkillRoot scans markdown instruction files under skillRoot.
@@ -182,6 +198,7 @@ func scanTextFile(target scanTarget) ([]Finding, error) {
 				Summary:  "unpinned runtime tool execution detected",
 			})
 		}
+		findings = append(findings, classifyURLRisks(line, target.Relative, lineNum)...)
 
 		if target.Kind != "markdown" {
 			continue
@@ -271,6 +288,45 @@ func isUnpinnedPackageRef(ref string) bool {
 		return true
 	}
 	return parts[1] == "" || parts[1] == "latest"
+}
+
+func classifyURLRisks(line string, relPath string, lineNum int) []Finding {
+	matches := urlPattern.FindAllString(line, -1)
+	if len(matches) == 0 {
+		return nil
+	}
+
+	out := make([]Finding, 0, len(matches))
+	for _, raw := range matches {
+		parsed, err := neturl.Parse(raw)
+		if err != nil {
+			continue
+		}
+		host := strings.ToLower(parsed.Hostname())
+		if host == "" {
+			continue
+		}
+
+		if ip := net.ParseIP(host); ip != nil {
+			out = append(out, Finding{
+				ID:       "RAW_IP_URL",
+				Severity: "high",
+				File:     relPath,
+				Line:     lineNum,
+				Summary:  "URL points to a raw IP host",
+			})
+		}
+		if _, ok := urlShortenerHosts[host]; ok {
+			out = append(out, Finding{
+				ID:       "URL_SHORTENER",
+				Severity: "medium",
+				File:     relPath,
+				Line:     lineNum,
+				Summary:  "URL shortener host detected",
+			})
+		}
+	}
+	return out
 }
 
 func deduplicateFindings(in []Finding) []Finding {
