@@ -405,6 +405,9 @@ func TestRunInstallJSONOutput(t *testing.T) {
 		if !strings.Contains(stdout.String(), "\"error_code\": \""+installErrorCodeSourceNotFound+"\"") {
 			t.Fatalf("stdout should include source-not-found error code, got %q", stdout.String())
 		}
+		if strings.Contains(stdout.String(), "\"rule_id\":") {
+			t.Fatalf("stdout should omit rule_id for non-rule fatal errors, got %q", stdout.String())
+		}
 	})
 
 	t.Run("json failure codes cover major branches", func(t *testing.T) {
