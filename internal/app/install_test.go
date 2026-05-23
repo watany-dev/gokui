@@ -439,6 +439,34 @@ func TestRunInstallJSONOutput(t *testing.T) {
 			"--format", "json",
 		}, installErrorCodeSourcePrepareFailed)
 
+		t.Run("source-prepare archive errors include rule_id when available", func(t *testing.T) {
+			badTar := filepath.Join(t.TempDir(), "escape.tar")
+			createTarArchive(t, badTar, []testTarEntry{
+				{name: "../evil.txt", body: "bad"},
+			})
+
+			var stdout strings.Builder
+			var stderr strings.Builder
+			code := runInstall([]string{
+				badTar,
+				"--target", "custom:" + filepath.Join(t.TempDir(), "skills"),
+				"--profile", "strict",
+				"--format", "json",
+			}, &stdout, &stderr)
+			if code != 1 {
+				t.Fatalf("runInstall(json archive escape) code = %d, want 1\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
+			}
+			if stderr.Len() != 0 {
+				t.Fatalf("stderr should be empty for json errors, got %q", stderr.String())
+			}
+			if !strings.Contains(stdout.String(), "\"error_code\": \""+installErrorCodeSourcePrepareFailed+"\"") {
+				t.Fatalf("stdout should include source-prepare error_code, got %q", stdout.String())
+			}
+			if !strings.Contains(stdout.String(), "\"rule_id\": \"ARCHIVE_PATH_ESCAPE\"") {
+				t.Fatalf("stdout should include archive rule_id, got %q", stdout.String())
+			}
+		})
+
 		metaSource := createSkillSourceForInstallTest(t, "json-meta-invalid")
 		if err := writeSourceMetadata(metaSource, sourceMetadata{
 			Schema:          "gokui.source/v1",

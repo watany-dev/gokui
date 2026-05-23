@@ -34,6 +34,7 @@ type updateErrorReport struct {
 	SchemaVersion string `json:"schema_version"`
 	Status        string `json:"status"`
 	ErrorCode     string `json:"error_code"`
+	RuleID        string `json:"rule_id,omitempty"`
 	Message       string `json:"message"`
 	Target        string `json:"target"`
 	Note          string `json:"note"`
@@ -211,6 +212,9 @@ func extractUpdateTargetArg(args []string) string {
 }
 
 func writeUpdateJSONError(stdout io.Writer, stderr io.Writer, report updateErrorReport) int {
+	if report.RuleID == "" {
+		report.RuleID = inferRuleIDFromMessage(report.Message)
+	}
 	out, err := json.MarshalIndent(report, "", "  ")
 	if err != nil {
 		_, _ = fmt.Fprintln(stderr, "failed to render update error report")

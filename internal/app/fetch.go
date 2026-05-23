@@ -30,6 +30,7 @@ type fetchErrorReport struct {
 	SchemaVersion string `json:"schema_version"`
 	Status        string `json:"status"`
 	ErrorCode     string `json:"error_code"`
+	RuleID        string `json:"rule_id,omitempty"`
 	Message       string `json:"message"`
 	Source        source `json:"source"`
 	Output        string `json:"output"`
@@ -320,6 +321,9 @@ func extractFetchSourceArg(args []string) string {
 }
 
 func writeFetchJSONError(stdout io.Writer, stderr io.Writer, report fetchErrorReport) int {
+	if report.RuleID == "" {
+		report.RuleID = inferRuleIDFromMessage(report.Message)
+	}
 	out, err := json.MarshalIndent(report, "", "  ")
 	if err != nil {
 		_, _ = fmt.Fprintln(stderr, "failed to render fetch error report")

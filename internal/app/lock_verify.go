@@ -33,6 +33,7 @@ type lockVerifyErrorReport struct {
 	SkillPath     string `json:"skill_path"`
 	Status        string `json:"status"`
 	ErrorCode     string `json:"error_code"`
+	RuleID        string `json:"rule_id,omitempty"`
 	Message       string `json:"message"`
 	Note          string `json:"note"`
 }
@@ -86,6 +87,7 @@ func runLockVerify(args []string, stdout io.Writer, stderr io.Writer) int {
 				Message:       verifyErr.Error(),
 				Note:          "lock verify failed before producing drift report",
 			}
+			errReport.RuleID = inferRuleIDFromMessage(errReport.Message)
 			out, err := json.MarshalIndent(errReport, "", "  ")
 			if err != nil {
 				_, _ = fmt.Fprintln(stderr, "failed to render lock verify error report")

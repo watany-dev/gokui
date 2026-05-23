@@ -43,6 +43,7 @@ type installErrorReport struct {
 	SchemaVersion string `json:"schema_version"`
 	Status        string `json:"status"`
 	ErrorCode     string `json:"error_code"`
+	RuleID        string `json:"rule_id,omitempty"`
 	Message       string `json:"message"`
 	Source        source `json:"source"`
 	Target        string `json:"target"`
@@ -457,6 +458,9 @@ func extractInstallProfileArg(args []string) string {
 }
 
 func writeInstallJSONError(stdout io.Writer, stderr io.Writer, report installErrorReport) int {
+	if report.RuleID == "" {
+		report.RuleID = inferRuleIDFromMessage(report.Message)
+	}
 	out, err := json.MarshalIndent(report, "", "  ")
 	if err != nil {
 		_, _ = fmt.Fprintln(stderr, "failed to render install error report")
