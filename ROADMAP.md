@@ -33,6 +33,7 @@ tests/CI:
 - critical detection of variation selectors and ANSI/OSC escapes in scanned text
 - critical detection of hex decode pipelines into interpreter execution
 - critical detection of PowerShell encoded-command execution flags
+- critical detection of chmod-then-execute local artifact chains
 - medium-severity detection of NFKC normalization text drift with normalized rescanning
 - medium-severity detection of mixed-script filename patterns
 - high-severity detection of password-protected archive instructions
@@ -317,6 +318,7 @@ Critical findings reject in all profiles:
 | `BASE64_PIPE_EXEC` | decoded payload reaches shell, interpreter, or eval |
 | `HEX_PIPE_EXEC` | hex-decoded payload reaches shell, interpreter, or eval |
 | `ENCODED_COMMAND_EXEC` | PowerShell encoded-command execution flag detected |
+| `CHMOD_EXEC_CHAIN` | chmod +x followed by execution of the same local artifact |
 | `ARCHIVE_PATH_ESCAPE` | archive entry resolves outside quarantine |
 | `SYMLINK_IN_ARCHIVE` | archive contains symlink or hardlink |
 | `SECRET_EXFIL` | secret read combined with network send |

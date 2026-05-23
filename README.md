@@ -55,6 +55,8 @@ Prompt-override language detection now includes bounded fuzzy/typoglycemia
 matching for common injection phrases.
 PowerShell `-EncodedCommand` / `-enc` execution flags are now flagged as
 critical findings.
+`chmod +x` followed by execution of the same local artifact is now flagged as
+critical.
 Unicode Tags, bidi controls, variation selectors, and ANSI/OSC escapes in
 scanned text are now flagged as critical. Zero-width and disallowed C0/C1
 control characters are also flagged as critical findings.
@@ -373,6 +375,7 @@ Critical patterns include:
 
 - `curl | sh`, `wget | bash`, or equivalent network-to-interpreter flows
 - `base64 -d | sh`, `xxd -r -p | sh`, `eval`, `EncodedCommand`, and similar obfuscation
+- `chmod +x` followed by local execution of the same artifact
 - access to `.env`, `~/.ssh`, `~/.aws`, browser profiles, keychains, wallets,
   cookies, or API tokens combined with network send
 - persistence through shell startup files, cron, launch agents, services, or
