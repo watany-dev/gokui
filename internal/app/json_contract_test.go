@@ -42,6 +42,32 @@ func TestInspectJSONContract(t *testing.T) {
 	assertJSONHasKeysContract(t, sourceObj, []string{"input", "kind"})
 }
 
+func TestInspectJSONErrorContract(t *testing.T) {
+	var stdout strings.Builder
+	var stderr strings.Builder
+
+	code := runInspect([]string{"--format", "json"}, &stdout, &stderr)
+	if code != 1 {
+		t.Fatalf("runInspect(json error) code = %d, want 1\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("stderr should be empty for json error output, got %q", stderr.String())
+	}
+
+	var top map[string]json.RawMessage
+	if err := json.Unmarshal([]byte(stdout.String()), &top); err != nil {
+		t.Fatalf("json unmarshal inspect error output: %v", err)
+	}
+	assertJSONHasKeysContract(t, top, []string{
+		"schema_version",
+		"status",
+		"error_code",
+		"message",
+		"source",
+		"note",
+	})
+}
+
 func TestFetchJSONContract(t *testing.T) {
 	origFetch := fetchGitHubSkill
 	t.Cleanup(func() { fetchGitHubSkill = origFetch })

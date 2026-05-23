@@ -19,7 +19,8 @@ does. gokui treats all of those layers as security-relevant.
 gokui is currently in early design. The repository does not yet contain a
 working release. `inspect` now performs pre-release structural validation and
 basic markdown threat scanning, and emits a draft JSON/human report with
-`PASS`/`REJECTED` decisions. For GitHub sources, floating refs remain
+`PASS`/`REJECTED` decisions. In JSON mode, fatal inspect failures emit
+machine-readable top-level `error_code` for automation. For GitHub sources, floating refs remain
 inspect-only pre-release stubs, while commit-pinned refs are fetched and
 scanned.
 `install` now supports local-dir/zip/tar sources with `--profile strict`,

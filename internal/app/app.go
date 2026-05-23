@@ -31,6 +31,15 @@ type inspectReport struct {
 	Note          string           `json:"note"`
 }
 
+type inspectErrorReport struct {
+	SchemaVersion string `json:"schema_version"`
+	Status        string `json:"status"`
+	ErrorCode     string `json:"error_code"`
+	Message       string `json:"message"`
+	Source        source `json:"source"`
+	Note          string `json:"note"`
+}
+
 type source struct {
 	Input string `json:"input"`
 	Kind  string `json:"kind"`
@@ -54,6 +63,14 @@ var (
 	descriptionURLPattern      = regexp.MustCompile(`(?i)\b(?:https?://|ftp://|www\.)\S+`)
 	descriptionCommandPattern  = regexp.MustCompile(`(?i)\b(run|execute|exec|invoke|call|use)\b.{0,30}\b(bash|sh|zsh|pwsh|powershell|python|node|npm|npx|uvx|go|curl|wget|terminal|command)\b`)
 	descriptionOverridePattern = regexp.MustCompile(`(?i)\b(ignore|override|bypass)\b.{0,40}\b(previous|prior|system|higher|earlier)\b.{0,20}\b(instruction|instructions|prompt|prompts)\b`)
+)
+
+const (
+	inspectErrorCodeArgsInvalid         = "INSPECT_ARGS_INVALID"
+	inspectErrorCodeSourceNotFound      = "INSPECT_SOURCE_NOT_FOUND"
+	inspectErrorCodeSourceInvalid       = "INSPECT_SOURCE_INVALID"
+	inspectErrorCodeSourcePrepareFailed = "INSPECT_SOURCE_PREPARE_FAILED"
+	inspectErrorCodeScanFailed          = "INSPECT_SCAN_FAILED"
 )
 
 func BuildVersionString(cfg Config) string {
@@ -121,16 +138,45 @@ usage:
 }
 
 func runInspect(args []string, stdout io.Writer, stderr io.Writer) int {
+	requestedJSON := inspectArgsRequestJSON(args)
 	input, format, err := parseInspectArgs(args)
 	if err != nil {
+		if requestedJSON {
+			sourceArg := extractInspectSourceArg(args)
+			return writeInspectJSONError(stdout, stderr, inspectErrorReport{
+				SchemaVersion: reportSchemaVersion,
+				Status:        "ERROR",
+				ErrorCode:     inspectErrorCodeArgsInvalid,
+				Message:       err.Error(),
+				Source: source{
+					Input: sourceArg,
+					Kind:  detectSourceKind(sourceArg),
+				},
+				Note: "inspect failed before source evaluation",
+			})
+		}
 		_, _ = fmt.Fprintf(stderr, "%s\n\n%s\n", err.Error(), usage())
 		return 1
 	}
+	jsonOutput := format == "json"
 
 	sourceKind := detectSourceKind(input)
 
 	if sourceKind != "github-source" {
 		if _, statErr := os.Stat(input); statErr != nil {
+			if jsonOutput {
+				return writeInspectJSONError(stdout, stderr, inspectErrorReport{
+					SchemaVersion: reportSchemaVersion,
+					Status:        "ERROR",
+					ErrorCode:     inspectErrorCodeSourceNotFound,
+					Message:       fmt.Sprintf("inspect source not found: %s", input),
+					Source: source{
+						Input: input,
+						Kind:  sourceKind,
+					},
+					Note: "inspect source must exist before validation",
+				})
+			}
 			_, _ = fmt.Fprintf(stderr, "inspect source not found: %s\n", input)
 			return 1
 		}
@@ -142,6 +188,19 @@ func runInspect(args []string, stdout io.Writer, stderr io.Writer) int {
 	if sourceKind == "github-source" {
 		spec, parseErr := srcpkg.ParseGitHubSource(input)
 		if parseErr != nil {
+			if jsonOutput {
+				return writeInspectJSONError(stdout, stderr, inspectErrorReport{
+					SchemaVersion: reportSchemaVersion,
+					Status:        "ERROR",
+					ErrorCode:     inspectErrorCodeSourceInvalid,
+					Message:       fmt.Sprintf("invalid github source: %v", parseErr),
+					Source: source{
+						Input: input,
+						Kind:  sourceKind,
+					},
+					Note: "inspect github source syntax validation failed",
+				})
+			}
 			_, _ = fmt.Fprintf(stderr, "invalid github source: %v\n", parseErr)
 			return 1
 		}
@@ -154,11 +213,37 @@ func runInspect(args []string, stdout io.Writer, stderr io.Writer) int {
 				defer cleanup()
 			}
 			if prepErr != nil {
+				if jsonOutput {
+					return writeInspectJSONError(stdout, stderr, inspectErrorReport{
+						SchemaVersion: reportSchemaVersion,
+						Status:        "ERROR",
+						ErrorCode:     inspectErrorCodeSourcePrepareFailed,
+						Message:       prepErr.Error(),
+						Source: source{
+							Input: input,
+							Kind:  sourceKind,
+						},
+						Note: "inspect source preparation failed",
+					})
+				}
 				_, _ = fmt.Fprintln(stderr, prepErr.Error())
 				return 1
 			}
 			scanFindings, scanErr := scan.ScanSkillRoot(skillRoot)
 			if scanErr != nil {
+				if jsonOutput {
+					return writeInspectJSONError(stdout, stderr, inspectErrorReport{
+						SchemaVersion: reportSchemaVersion,
+						Status:        "ERROR",
+						ErrorCode:     inspectErrorCodeScanFailed,
+						Message:       scanErr.Error(),
+						Source: source{
+							Input: input,
+							Kind:  sourceKind,
+						},
+						Note: "inspect scanning failed",
+					})
+				}
 				_, _ = fmt.Fprintln(stderr, scanErr.Error())
 				return 1
 			}
@@ -171,11 +256,41 @@ func runInspect(args []string, stdout io.Writer, stderr io.Writer) int {
 			defer cleanup()
 		}
 		if validateErr != nil {
+			if jsonOutput {
+				errorCode := inspectErrorCodeSourcePrepareFailed
+				if strings.Contains(validateErr.Error(), "inspect source not found") {
+					errorCode = inspectErrorCodeSourceNotFound
+				}
+				return writeInspectJSONError(stdout, stderr, inspectErrorReport{
+					SchemaVersion: reportSchemaVersion,
+					Status:        "ERROR",
+					ErrorCode:     errorCode,
+					Message:       validateErr.Error(),
+					Source: source{
+						Input: input,
+						Kind:  sourceKind,
+					},
+					Note: "inspect source preparation failed",
+				})
+			}
 			_, _ = fmt.Fprintln(stderr, validateErr.Error())
 			return 1
 		}
 		scanFindings, scanErr := scan.ScanSkillRoot(skillRoot)
 		if scanErr != nil {
+			if jsonOutput {
+				return writeInspectJSONError(stdout, stderr, inspectErrorReport{
+					SchemaVersion: reportSchemaVersion,
+					Status:        "ERROR",
+					ErrorCode:     inspectErrorCodeScanFailed,
+					Message:       scanErr.Error(),
+					Source: source{
+						Input: input,
+						Kind:  sourceKind,
+					},
+					Note: "inspect scanning failed",
+				})
+			}
 			_, _ = fmt.Fprintln(stderr, scanErr.Error())
 			return 1
 		}
@@ -323,6 +438,46 @@ func parseInspectArgs(args []string) (input string, format string, err error) {
 		return "", "", fmt.Errorf("unsupported inspect format: %s", format)
 	}
 	return input, format, nil
+}
+
+func inspectArgsRequestJSON(args []string) bool {
+	for i := 0; i < len(args); i++ {
+		if args[i] == "--format" && i+1 < len(args) && args[i+1] == "json" {
+			return true
+		}
+		if strings.HasPrefix(args[i], "--format=") && strings.TrimPrefix(args[i], "--format=") == "json" {
+			return true
+		}
+	}
+	return false
+}
+
+func extractInspectSourceArg(args []string) string {
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
+		if arg == "--format" {
+			i++
+			continue
+		}
+		if strings.HasPrefix(arg, "--format=") {
+			continue
+		}
+		if strings.HasPrefix(arg, "-") {
+			continue
+		}
+		return arg
+	}
+	return ""
+}
+
+func writeInspectJSONError(stdout io.Writer, stderr io.Writer, report inspectErrorReport) int {
+	out, err := json.MarshalIndent(report, "", "  ")
+	if err != nil {
+		_, _ = fmt.Fprintln(stderr, "failed to render inspect error report")
+		return 1
+	}
+	_, _ = fmt.Fprintf(stdout, "%s\n", out)
+	return 1
 }
 
 func detectSourceKind(input string) string {

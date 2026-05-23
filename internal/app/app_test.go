@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -181,11 +182,11 @@ func TestRun(t *testing.T) {
 		if code != 1 {
 			t.Fatalf("Run() code = %d, want 1", code)
 		}
-		if stdout.Len() != 0 {
-			t.Fatalf("stdout should be empty, got %q", stdout.String())
+		if stderr.Len() != 0 {
+			t.Fatalf("stderr should be empty, got %q", stderr.String())
 		}
-		if !strings.Contains(stderr.String(), "inspect source is required") {
-			t.Fatalf("stderr should include argument error, got %q", stderr.String())
+		if !strings.Contains(stdout.String(), "\"error_code\": \""+inspectErrorCodeArgsInvalid+"\"") {
+			t.Fatalf("stdout should include args-invalid error code, got %q", stdout.String())
 		}
 	})
 
@@ -229,11 +230,11 @@ func TestRun(t *testing.T) {
 		if code != 1 {
 			t.Fatalf("Run() code = %d, want 1", code)
 		}
-		if stdout.Len() != 0 {
-			t.Fatalf("stdout should be empty, got %q", stdout.String())
+		if stderr.Len() != 0 {
+			t.Fatalf("stderr should be empty, got %q", stderr.String())
 		}
-		if !strings.Contains(stderr.String(), "inspect source not found: ./does-not-exist") {
-			t.Fatalf("stderr should include source-not-found, got %q", stderr.String())
+		if !strings.Contains(stdout.String(), "\"error_code\": \""+inspectErrorCodeSourceNotFound+"\"") {
+			t.Fatalf("stdout should include source-not-found error code, got %q", stdout.String())
 		}
 	})
 
@@ -269,11 +270,11 @@ func TestRun(t *testing.T) {
 		if code != 1 {
 			t.Fatalf("Run() code = %d, want 1", code)
 		}
-		if stdout.Len() != 0 {
-			t.Fatalf("stdout should be empty, got %q", stdout.String())
+		if stderr.Len() != 0 {
+			t.Fatalf("stderr should be empty, got %q", stderr.String())
 		}
-		if !strings.Contains(stderr.String(), "inspect local dir must contain SKILL.md at root") {
-			t.Fatalf("stderr should include missing root SKILL.md, got %q", stderr.String())
+		if !strings.Contains(stdout.String(), "\"error_code\": \""+inspectErrorCodeSourcePrepareFailed+"\"") {
+			t.Fatalf("stdout should include source-prepare-failed code, got %q", stdout.String())
 		}
 	})
 
@@ -303,11 +304,11 @@ func TestRun(t *testing.T) {
 		if code != 1 {
 			t.Fatalf("Run() code = %d, want 1", code)
 		}
-		if stdout.Len() != 0 {
-			t.Fatalf("stdout should be empty, got %q", stdout.String())
+		if stderr.Len() != 0 {
+			t.Fatalf("stderr should be empty, got %q", stderr.String())
 		}
-		if !strings.Contains(stderr.String(), "SKILL.md must start with YAML frontmatter") {
-			t.Fatalf("stderr should include frontmatter error, got %q", stderr.String())
+		if !strings.Contains(stdout.String(), "\"error_code\": \""+inspectErrorCodeSourcePrepareFailed+"\"") {
+			t.Fatalf("stdout should include source-prepare-failed code, got %q", stdout.String())
 		}
 	})
 
@@ -320,11 +321,11 @@ func TestRun(t *testing.T) {
 		if code != 1 {
 			t.Fatalf("Run() code = %d, want 1", code)
 		}
-		if stdout.Len() != 0 {
-			t.Fatalf("stdout should be empty, got %q", stdout.String())
+		if stderr.Len() != 0 {
+			t.Fatalf("stderr should be empty, got %q", stderr.String())
 		}
-		if !strings.Contains(stderr.String(), "frontmatter must include non-empty string fields: name and description") {
-			t.Fatalf("stderr should include required-field error, got %q", stderr.String())
+		if !strings.Contains(stdout.String(), "\"error_code\": \""+inspectErrorCodeSourcePrepareFailed+"\"") {
+			t.Fatalf("stdout should include source-prepare-failed code, got %q", stdout.String())
 		}
 	})
 
@@ -367,11 +368,11 @@ func TestRun(t *testing.T) {
 		if code != 1 {
 			t.Fatalf("Run() code = %d, want 1", code)
 		}
-		if stdout.Len() != 0 {
-			t.Fatalf("stdout should be empty, got %q", stdout.String())
+		if stderr.Len() != 0 {
+			t.Fatalf("stderr should be empty, got %q", stderr.String())
 		}
-		if !strings.Contains(stderr.String(), "escapes destination") {
-			t.Fatalf("stderr should include archive escape rejection, got %q", stderr.String())
+		if !strings.Contains(stdout.String(), "\"error_code\": \""+inspectErrorCodeSourcePrepareFailed+"\"") {
+			t.Fatalf("stdout should include source-prepare-failed code, got %q", stdout.String())
 		}
 	})
 
@@ -782,6 +783,28 @@ func TestParseInspectArgs(t *testing.T) {
 	})
 }
 
+func TestInspectArgJSONHelpers(t *testing.T) {
+	if !inspectArgsRequestJSON([]string{"./skill", "--format", "json"}) {
+		t.Fatal("inspectArgsRequestJSON() should detect --format json")
+	}
+	if !inspectArgsRequestJSON([]string{"./skill", "--format=json"}) {
+		t.Fatal("inspectArgsRequestJSON() should detect --format=json")
+	}
+	if inspectArgsRequestJSON([]string{"./skill", "--format", "human"}) {
+		t.Fatal("inspectArgsRequestJSON() should be false for non-json format")
+	}
+
+	if got := extractInspectSourceArg([]string{"./skill", "--format", "json"}); got != "./skill" {
+		t.Fatalf("extractInspectSourceArg() = %q, want %q", got, "./skill")
+	}
+	if got := extractInspectSourceArg([]string{"--format=json", "./skill"}); got != "./skill" {
+		t.Fatalf("extractInspectSourceArg() with equals = %q, want %q", got, "./skill")
+	}
+	if got := extractInspectSourceArg([]string{"--format", "json"}); got != "" {
+		t.Fatalf("extractInspectSourceArg() without source = %q, want empty", got)
+	}
+}
+
 func TestDetectSourceKind(t *testing.T) {
 	cases := []struct {
 		in   string
@@ -1004,11 +1027,11 @@ func TestRunInspectGitHubSourceRejectsInvalidSyntax(t *testing.T) {
 	if code != 1 {
 		t.Fatalf("Run() code = %d, want 1", code)
 	}
-	if stdout.Len() != 0 {
-		t.Fatalf("stdout should be empty, got %q", stdout.String())
+	if stderr.Len() != 0 {
+		t.Fatalf("stderr should be empty, got %q", stderr.String())
 	}
-	if !strings.Contains(stderr.String(), "invalid github source") {
-		t.Fatalf("stderr should include github syntax error, got %q", stderr.String())
+	if !strings.Contains(stdout.String(), "\"error_code\": \""+inspectErrorCodeSourceInvalid+"\"") {
+		t.Fatalf("stdout should include source-invalid error code, got %q", stdout.String())
 	}
 }
 
@@ -1081,6 +1104,186 @@ func TestRunInspectGitHubSourceCommitPinnedEvaluatesContent(t *testing.T) {
 		var stdout bytes.Buffer
 		var stderr bytes.Buffer
 		code := Run([]string{"inspect", "github:org/repo//skills/clean-skill@8f3c2d1a4b5c6d7e8f901234567890abcdef1234", "--format", "json"}, &stdout, &stderr, cfg)
+		if code != 1 {
+			t.Fatalf("Run() code = %d, want 1", code)
+		}
+		if stderr.Len() != 0 {
+			t.Fatalf("stderr should be empty, got %q", stderr.String())
+		}
+		if !strings.Contains(stdout.String(), "\"error_code\": \""+inspectErrorCodeSourcePrepareFailed+"\"") {
+			t.Fatalf("stdout should include source-prepare-failed code, got %q", stdout.String())
+		}
+	})
+}
+
+func TestRunInspectJSONErrorCodes(t *testing.T) {
+	cfg := Config{
+		Version: "v0.1.0",
+		Commit:  "abc123",
+		Date:    "2026-05-22T00:00:00Z",
+	}
+
+	t.Run("parse error emits args-invalid code", func(t *testing.T) {
+		var stdout bytes.Buffer
+		var stderr bytes.Buffer
+		code := Run([]string{"inspect", "--format", "json"}, &stdout, &stderr, cfg)
+		if code != 1 {
+			t.Fatalf("Run() code = %d, want 1", code)
+		}
+		if stderr.Len() != 0 {
+			t.Fatalf("stderr should be empty, got %q", stderr.String())
+		}
+		if !strings.Contains(stdout.String(), inspectErrorCodeArgsInvalid) {
+			t.Fatalf("stdout should include %q, got %q", inspectErrorCodeArgsInvalid, stdout.String())
+		}
+	})
+
+	t.Run("human mode source-not-found writes stderr", func(t *testing.T) {
+		var stdout bytes.Buffer
+		var stderr bytes.Buffer
+		code := Run([]string{"inspect", "./does-not-exist"}, &stdout, &stderr, cfg)
+		if code != 1 {
+			t.Fatalf("Run() code = %d, want 1", code)
+		}
+		if stdout.Len() != 0 {
+			t.Fatalf("stdout should be empty, got %q", stdout.String())
+		}
+		if !strings.Contains(stderr.String(), "inspect source not found") {
+			t.Fatalf("stderr should include source-not-found, got %q", stderr.String())
+		}
+	})
+
+	t.Run("local scan failure emits scan-failed code", func(t *testing.T) {
+		if runtime.GOOS == "windows" {
+			t.Skip("permission behavior differs on windows")
+		}
+
+		skillRoot := createSkillSourceForInstallTest(t, "inspect-local-scan-fail")
+		refDir := filepath.Join(skillRoot, "references")
+		if err := os.Mkdir(refDir, 0o755); err != nil {
+			t.Fatalf("mkdir references: %v", err)
+		}
+		blocked := filepath.Join(refDir, "blocked.md")
+		if err := os.WriteFile(blocked, []byte("blocked"), 0o644); err != nil {
+			t.Fatalf("write blocked file: %v", err)
+		}
+		if err := os.Chmod(blocked, 0o000); err != nil {
+			t.Fatalf("chmod blocked file: %v", err)
+		}
+		defer os.Chmod(blocked, 0o644)
+
+		var stdout bytes.Buffer
+		var stderr bytes.Buffer
+		code := Run([]string{"inspect", skillRoot, "--format", "json"}, &stdout, &stderr, cfg)
+		if code != 1 {
+			t.Fatalf("Run() code = %d, want 1\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
+		}
+		if stderr.Len() != 0 {
+			t.Fatalf("stderr should be empty, got %q", stderr.String())
+		}
+		if !strings.Contains(stdout.String(), inspectErrorCodeScanFailed) {
+			t.Fatalf("stdout should include %q, got %q", inspectErrorCodeScanFailed, stdout.String())
+		}
+	})
+
+	t.Run("local scan failure in human mode writes stderr", func(t *testing.T) {
+		if runtime.GOOS == "windows" {
+			t.Skip("permission behavior differs on windows")
+		}
+
+		skillRoot := createSkillSourceForInstallTest(t, "inspect-local-scan-fail-human")
+		refDir := filepath.Join(skillRoot, "references")
+		if err := os.Mkdir(refDir, 0o755); err != nil {
+			t.Fatalf("mkdir references: %v", err)
+		}
+		blocked := filepath.Join(refDir, "blocked.md")
+		if err := os.WriteFile(blocked, []byte("blocked"), 0o644); err != nil {
+			t.Fatalf("write blocked file: %v", err)
+		}
+		if err := os.Chmod(blocked, 0o000); err != nil {
+			t.Fatalf("chmod blocked file: %v", err)
+		}
+		defer os.Chmod(blocked, 0o644)
+
+		var stdout bytes.Buffer
+		var stderr bytes.Buffer
+		code := Run([]string{"inspect", skillRoot}, &stdout, &stderr, cfg)
+		if code != 1 {
+			t.Fatalf("Run() code = %d, want 1\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
+		}
+		if stdout.Len() != 0 {
+			t.Fatalf("stdout should be empty, got %q", stdout.String())
+		}
+		if !strings.Contains(stderr.String(), "failed to read scan file") {
+			t.Fatalf("stderr should include scan failure, got %q", stderr.String())
+		}
+	})
+
+	t.Run("github scan failure emits scan-failed code", func(t *testing.T) {
+		if runtime.GOOS == "windows" {
+			t.Skip("permission behavior differs on windows")
+		}
+
+		origFetch := fetchGitHubSkill
+		t.Cleanup(func() { fetchGitHubSkill = origFetch })
+
+		skillRoot := createSkillSourceForInstallTest(t, "inspect-github-scan-fail")
+		refDir := filepath.Join(skillRoot, "references")
+		if err := os.Mkdir(refDir, 0o755); err != nil {
+			t.Fatalf("mkdir references: %v", err)
+		}
+		blocked := filepath.Join(refDir, "blocked.md")
+		if err := os.WriteFile(blocked, []byte("blocked"), 0o644); err != nil {
+			t.Fatalf("write blocked file: %v", err)
+		}
+		if err := os.Chmod(blocked, 0o000); err != nil {
+			t.Fatalf("chmod blocked file: %v", err)
+		}
+		defer os.Chmod(blocked, 0o644)
+
+		fetchGitHubSkill = func(spec srcpkg.GitHubSpec) (string, func(), error) {
+			return skillRoot, nil, nil
+		}
+
+		var stdout bytes.Buffer
+		var stderr bytes.Buffer
+		code := Run([]string{"inspect", "github:org/repo//skills/inspect-github-scan-fail@8f3c2d1a4b5c6d7e8f901234567890abcdef1234", "--format", "json"}, &stdout, &stderr, cfg)
+		if code != 1 {
+			t.Fatalf("Run() code = %d, want 1\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
+		}
+		if stderr.Len() != 0 {
+			t.Fatalf("stderr should be empty, got %q", stderr.String())
+		}
+		if !strings.Contains(stdout.String(), inspectErrorCodeScanFailed) {
+			t.Fatalf("stdout should include %q, got %q", inspectErrorCodeScanFailed, stdout.String())
+		}
+	})
+
+	t.Run("github invalid syntax in human mode writes stderr", func(t *testing.T) {
+		var stdout bytes.Buffer
+		var stderr bytes.Buffer
+		code := Run([]string{"inspect", "github:org/repo/path@main"}, &stdout, &stderr, cfg)
+		if code != 1 {
+			t.Fatalf("Run() code = %d, want 1", code)
+		}
+		if stdout.Len() != 0 {
+			t.Fatalf("stdout should be empty, got %q", stdout.String())
+		}
+		if !strings.Contains(stderr.String(), "invalid github source") {
+			t.Fatalf("stderr should include github source error, got %q", stderr.String())
+		}
+	})
+
+	t.Run("github fetch failure in human mode writes stderr", func(t *testing.T) {
+		origFetch := fetchGitHubSkill
+		t.Cleanup(func() { fetchGitHubSkill = origFetch })
+		fetchGitHubSkill = func(spec srcpkg.GitHubSpec) (string, func(), error) {
+			return "", nil, os.ErrNotExist
+		}
+
+		var stdout bytes.Buffer
+		var stderr bytes.Buffer
+		code := Run([]string{"inspect", "github:org/repo//skills/clean-skill@8f3c2d1a4b5c6d7e8f901234567890abcdef1234"}, &stdout, &stderr, cfg)
 		if code != 1 {
 			t.Fatalf("Run() code = %d, want 1", code)
 		}
