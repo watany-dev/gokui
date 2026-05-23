@@ -51,6 +51,7 @@ var (
 )
 
 const ruleInstallReportTooLarge = "INSTALL_REPORT_TOO_LARGE"
+const ruleInstallReportSymlink = "INSTALL_REPORT_SYMLINK_DETECTED"
 
 const (
 	lockVerifyCodeSchema         = "LOCK_SCHEMA"
@@ -176,11 +177,14 @@ func parseLockVerifyArgs(args []string) (lockVerifyArgs, error) {
 func verifyLock(skillPath string) (lockVerifyReport, error) {
 	cleanPath := filepath.Clean(skillPath)
 	lockPath := filepath.Join(cleanPath, installLockFile)
-	info, err := os.Stat(lockPath)
-	if err != nil {
+	linkInfo, lstatErr := os.Lstat(lockPath)
+	if lstatErr != nil {
 		return lockVerifyReport{}, fmt.Errorf("failed to read lockfile: %s", lockPath)
 	}
-	if info.Size() > maxLockVerifyLockFileBytes {
+	if linkInfo.Mode()&os.ModeSymlink != 0 {
+		return lockVerifyReport{}, fmt.Errorf("%s: failed to read lockfile (symlink is not allowed): %s", ruleLockfileSymlink, lockPath)
+	}
+	if linkInfo.Size() > maxLockVerifyLockFileBytes {
 		return lockVerifyReport{}, fmt.Errorf("%s: failed to read lockfile (size exceeds limit): %s", ruleLockfileTooLarge, lockPath)
 	}
 
@@ -422,11 +426,14 @@ func verifyLockStructure(lock installLock) (bool, string) {
 
 func verifyInstallReport(skillPath string, lock installLock) (bool, string) {
 	reportPath := filepath.Join(skillPath, installReportFile)
-	info, err := os.Stat(reportPath)
-	if err != nil {
+	linkInfo, lstatErr := os.Lstat(reportPath)
+	if lstatErr != nil {
 		return false, fmt.Sprintf("failed to read install report: %s", reportPath)
 	}
-	if info.Size() > maxInstallReportFileBytes {
+	if linkInfo.Mode()&os.ModeSymlink != 0 {
+		return false, fmt.Sprintf("%s: install report file must not be a symlink: %s", ruleInstallReportSymlink, reportPath)
+	}
+	if linkInfo.Size() > maxInstallReportFileBytes {
 		return false, fmt.Sprintf("%s: install report exceeds size limit: %s", ruleInstallReportTooLarge, reportPath)
 	}
 

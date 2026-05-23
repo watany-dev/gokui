@@ -626,6 +626,31 @@ func TestInstallArgExtractionHelpers(t *testing.T) {
 	}
 }
 
+func TestWriteInstallJSONErrorPreservesExplicitRuleID(t *testing.T) {
+	var stdout strings.Builder
+	var stderr strings.Builder
+	code := writeInstallJSONError(&stdout, &stderr, installErrorReport{
+		SchemaVersion: reportSchemaVersion,
+		Status:        "ERROR",
+		ErrorCode:     installErrorCodeWriteFailed,
+		RuleID:        "EXPLICIT_RULE",
+		Message:       "EXPLICIT_RULE: synthetic install error",
+		Source: source{
+			Input: "/tmp/skill",
+			Kind:  "local-dir",
+		},
+		Target:        "custom:/tmp/skills",
+		PolicyProfile: "strict",
+		Note:          "test",
+	})
+	if code != 1 {
+		t.Fatalf("writeInstallJSONError() code = %d, want 1", code)
+	}
+	if !strings.Contains(stdout.String(), "\"rule_id\": \"EXPLICIT_RULE\"") {
+		t.Fatalf("stdout should preserve explicit rule_id, got %q", stdout.String())
+	}
+}
+
 func TestInstallSkillAtomicAndCopyErrors(t *testing.T) {
 	t.Run("install fails for symlink in source tree", func(t *testing.T) {
 		if runtime.GOOS == "windows" {
@@ -1090,6 +1115,20 @@ func TestReadInstallLockAndProvenanceMatches(t *testing.T) {
 		}
 		if _, err := readInstallLock(lockDirPath); err == nil || !strings.Contains(err.Error(), "failed to read install lockfile") {
 			t.Fatalf("expected read error for directory lockfile path, got %v", err)
+		}
+
+		if runtime.GOOS != "windows" {
+			target := filepath.Join(dir, "real.lock")
+			if err := os.WriteFile(target, raw, 0o644); err != nil {
+				t.Fatalf("write real lock: %v", err)
+			}
+			symlink := filepath.Join(dir, "symlink.lock")
+			if err := os.Symlink("real.lock", symlink); err != nil {
+				t.Fatalf("create lock symlink: %v", err)
+			}
+			if _, err := readInstallLock(symlink); err == nil || !strings.Contains(err.Error(), ruleLockfileSymlink) {
+				t.Fatalf("expected lockfile symlink rejection, got %v", err)
+			}
 		}
 
 		origLimit := maxInstallLockFileBytes

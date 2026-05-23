@@ -235,6 +235,32 @@ func TestRunLockVerifyErrorPathsAndDriftKinds(t *testing.T) {
 		t.Fatalf("stdout should omit rule_id when no rule-prefixed error is present, got %q", stdout.String())
 	}
 
+	if runtime.GOOS != "windows" {
+		stdout.Reset()
+		stderr.Reset()
+		symlinkDir := t.TempDir()
+		realLock := filepath.Join(symlinkDir, "real.lock")
+		if err := os.WriteFile(realLock, []byte(`{"schema":"gokui.lock/v1"}`), 0o644); err != nil {
+			t.Fatalf("write real lock: %v", err)
+		}
+		if err := os.Symlink("real.lock", filepath.Join(symlinkDir, installLockFile)); err != nil {
+			t.Fatalf("create lock symlink: %v", err)
+		}
+		code = runLockVerify([]string{symlinkDir, "--format", "json"}, &stdout, &stderr)
+		if code != 1 {
+			t.Fatalf("runLockVerify(lockfile symlink json) code = %d, want 1", code)
+		}
+		if stderr.Len() != 0 {
+			t.Fatalf("stderr should be empty for json error output, got %q", stderr.String())
+		}
+		if !strings.Contains(stdout.String(), "\"error_code\": \""+lockVerifyErrorCodeReadLockfile+"\"") {
+			t.Fatalf("stdout should include read-lockfile error code, got %q", stdout.String())
+		}
+		if !strings.Contains(stdout.String(), "\"rule_id\": \""+ruleLockfileSymlink+"\"") {
+			t.Fatalf("stdout should include lockfile symlink rule_id, got %q", stdout.String())
+		}
+	}
+
 	stdout.Reset()
 	stderr.Reset()
 	origLimit := maxLockVerifyLockFileBytes
@@ -736,6 +762,30 @@ func TestVerifyInstallReportValidationBranches(t *testing.T) {
 		}
 		if err := os.Remove(reportPath); err != nil {
 			t.Fatalf("remove report directory: %v", err)
+		}
+	})
+
+	t.Run("report path is symlink", func(t *testing.T) {
+		if runtime.GOOS == "windows" {
+			t.Skip("symlink permissions differ on windows")
+		}
+		reportPath := filepath.Join(skillPath, installReportFile)
+		if err := os.Remove(reportPath); err != nil && !os.IsNotExist(err) {
+			t.Fatalf("remove report file: %v", err)
+		}
+		target := filepath.Join(skillPath, "real-report.json")
+		if err := os.WriteFile(target, []byte(`{"schema_version":"0.1.0-draft"}`), 0o644); err != nil {
+			t.Fatalf("write real report: %v", err)
+		}
+		if err := os.Symlink("real-report.json", reportPath); err != nil {
+			t.Fatalf("create report symlink: %v", err)
+		}
+		ok, detail := verifyInstallReport(skillPath, lock)
+		if ok || !strings.Contains(detail, ruleInstallReportSymlink) {
+			t.Fatalf("expected report symlink rejection, got ok=%v detail=%q", ok, detail)
+		}
+		if err := os.Remove(reportPath); err != nil {
+			t.Fatalf("remove report symlink: %v", err)
 		}
 	})
 

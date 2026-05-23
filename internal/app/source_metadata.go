@@ -17,6 +17,7 @@ const sourceMetadataFile = ".gokui-source.json"
 var maxSourceMetadataFileBytes int64 = 1_000_000
 
 const ruleSourceMetadataFileTooLarge = "SOURCE_METADATA_FILE_TOO_LARGE"
+const ruleSourceMetadataSymlink = "SOURCE_METADATA_SYMLINK_DETECTED"
 
 type sourceMetadata struct {
 	Schema          string `json:"schema"`
@@ -38,14 +39,17 @@ func writeSourceMetadata(skillRoot string, meta sourceMetadata) error {
 
 func readSourceMetadata(skillRoot string) (sourceMetadata, bool, error) {
 	path := filepath.Join(skillRoot, sourceMetadataFile)
-	info, err := os.Stat(path)
-	if err != nil {
-		if os.IsNotExist(err) {
+	linkInfo, lstatErr := os.Lstat(path)
+	if lstatErr != nil {
+		if os.IsNotExist(lstatErr) {
 			return sourceMetadata{}, false, nil
 		}
-		return sourceMetadata{}, false, fmt.Errorf("failed to read source metadata: %w", err)
+		return sourceMetadata{}, false, fmt.Errorf("failed to read source metadata: %w", lstatErr)
 	}
-	if info.Size() > maxSourceMetadataFileBytes {
+	if linkInfo.Mode()&os.ModeSymlink != 0 {
+		return sourceMetadata{}, false, fmt.Errorf("%s: source metadata file must not be a symlink: %s", ruleSourceMetadataSymlink, path)
+	}
+	if linkInfo.Size() > maxSourceMetadataFileBytes {
 		return sourceMetadata{}, false, fmt.Errorf("%s: source metadata exceeds size limit: %s", ruleSourceMetadataFileTooLarge, path)
 	}
 

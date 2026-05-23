@@ -33,6 +33,7 @@ var (
 
 const (
 	ruleLockfileTooLarge                = "LOCKFILE_TOO_LARGE"
+	ruleLockfileSymlink                 = "LOCKFILE_SYMLINK_DETECTED"
 	ruleInstallSourceFileCountExceeded  = "INSTALL_SOURCE_FILE_COUNT_EXCEEDED"
 	ruleInstallSourceTotalBytesExceeded = "INSTALL_SOURCE_TOTAL_BYTES_EXCEEDED"
 	ruleInstallSourceFileTooLarge       = "INSTALL_SOURCE_FILE_TOO_LARGE"
@@ -867,11 +868,14 @@ func hashFile(path string) (sum string, size int64, err error) {
 }
 
 func readInstallLock(path string) (installLock, error) {
-	info, statErr := os.Stat(path)
-	if statErr != nil {
+	linkInfo, lstatErr := os.Lstat(path)
+	if lstatErr != nil {
 		return installLock{}, fmt.Errorf("failed to read install lockfile: %s", path)
 	}
-	if info.Size() > maxInstallLockFileBytes {
+	if linkInfo.Mode()&os.ModeSymlink != 0 {
+		return installLock{}, fmt.Errorf("%s: install lockfile must not be a symlink: %s", ruleLockfileSymlink, path)
+	}
+	if linkInfo.Size() > maxInstallLockFileBytes {
 		return installLock{}, fmt.Errorf("%s: install lockfile exceeds size limit: %s", ruleLockfileTooLarge, path)
 	}
 

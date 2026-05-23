@@ -100,6 +100,20 @@ func TestSourceMetadataHelpers(t *testing.T) {
 			t.Fatalf("expected read error, got %v", err)
 		}
 
+		if runtime.GOOS != "windows" {
+			dirWithSymlink := t.TempDir()
+			target := filepath.Join(dirWithSymlink, "real-source.json")
+			if err := os.WriteFile(target, []byte(`{"schema":"gokui.source/v1"}`), 0o644); err != nil {
+				t.Fatalf("write real metadata file: %v", err)
+			}
+			if err := os.Symlink("real-source.json", filepath.Join(dirWithSymlink, sourceMetadataFile)); err != nil {
+				t.Fatalf("create metadata symlink: %v", err)
+			}
+			if _, _, err := readSourceMetadata(dirWithSymlink); err == nil || !strings.Contains(err.Error(), ruleSourceMetadataSymlink) {
+				t.Fatalf("expected source metadata symlink rejection, got %v", err)
+			}
+		}
+
 		dirWithInvalidFields := t.TempDir()
 		if err := os.WriteFile(filepath.Join(dirWithInvalidFields, sourceMetadataFile), []byte(`{"schema":"gokui.source/v1"}`), 0o644); err != nil {
 			t.Fatalf("write invalid-field metadata: %v", err)

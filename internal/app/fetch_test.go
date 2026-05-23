@@ -455,6 +455,29 @@ func TestFetchHelperFunctions(t *testing.T) {
 	}
 }
 
+func TestWriteFetchJSONErrorPreservesExplicitRuleID(t *testing.T) {
+	var stdout strings.Builder
+	var stderr strings.Builder
+	code := writeFetchJSONError(&stdout, &stderr, fetchErrorReport{
+		SchemaVersion: reportSchemaVersion,
+		Status:        "ERROR",
+		ErrorCode:     fetchErrorCodeSourceDownloadFailed,
+		RuleID:        "EXPLICIT_RULE",
+		Message:       "EXPLICIT_RULE: synthetic fetch error",
+		Source: source{
+			Input: "github:org/repo//skills/x@8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
+			Kind:  "github-source",
+		},
+		Note: "test",
+	})
+	if code != 1 {
+		t.Fatalf("writeFetchJSONError() code = %d, want 1", code)
+	}
+	if !strings.Contains(stdout.String(), "\"rule_id\": \"EXPLICIT_RULE\"") {
+		t.Fatalf("stdout should preserve explicit rule_id, got %q", stdout.String())
+	}
+}
+
 func TestFetchSkillAtomic(t *testing.T) {
 	sourceDir := createSkillSourceForInstallTest(t, "atomic-fetch-skill")
 	outRoot := filepath.Join(t.TempDir(), "q")

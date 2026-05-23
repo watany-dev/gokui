@@ -68,6 +68,26 @@ func TestParseUpdateArgs(t *testing.T) {
 	})
 }
 
+func TestWriteUpdateJSONErrorPreservesExplicitRuleID(t *testing.T) {
+	var stdout strings.Builder
+	var stderr strings.Builder
+	code := writeUpdateJSONError(&stdout, &stderr, updateErrorReport{
+		SchemaVersion: reportSchemaVersion,
+		Status:        "ERROR",
+		ErrorCode:     updateFatalCodeReportBuild,
+		RuleID:        "EXPLICIT_RULE",
+		Message:       "EXPLICIT_RULE: synthetic update error",
+		Target:        "/tmp/skills",
+		Note:          "test",
+	})
+	if code != 1 {
+		t.Fatalf("writeUpdateJSONError() code = %d, want 1", code)
+	}
+	if !strings.Contains(stdout.String(), "\"rule_id\": \"EXPLICIT_RULE\"") {
+		t.Fatalf("stdout should preserve explicit rule_id, got %q", stdout.String())
+	}
+}
+
 func TestRunUpdateDryRunStatuses(t *testing.T) {
 	targetRoot := filepath.Join(t.TempDir(), "skills")
 	if err := os.MkdirAll(targetRoot, 0o755); err != nil {
