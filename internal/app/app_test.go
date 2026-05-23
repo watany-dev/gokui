@@ -1549,6 +1549,35 @@ func TestRunInspectJSONErrorCodes(t *testing.T) {
 		}
 	})
 
+	t.Run("source stat access error emits source-prepare-failed code", func(t *testing.T) {
+		if runtime.GOOS == "windows" {
+			t.Skip("permission behavior differs on windows")
+		}
+
+		base := t.TempDir()
+		locked := filepath.Join(base, "locked")
+		if err := os.Mkdir(locked, 0o755); err != nil {
+			t.Fatalf("mkdir locked dir: %v", err)
+		}
+		if err := os.Chmod(locked, 0o000); err != nil {
+			t.Fatalf("chmod locked dir: %v", err)
+		}
+		defer os.Chmod(locked, 0o755)
+
+		var stdout bytes.Buffer
+		var stderr bytes.Buffer
+		code := Run([]string{"inspect", filepath.Join(locked, "skill"), "--format", "json"}, &stdout, &stderr, cfg)
+		if code != 1 {
+			t.Fatalf("Run() code = %d, want 1\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
+		}
+		if stderr.Len() != 0 {
+			t.Fatalf("stderr should be empty, got %q", stderr.String())
+		}
+		if !strings.Contains(stdout.String(), inspectErrorCodeSourcePrepareFailed) {
+			t.Fatalf("stdout should include %q, got %q", inspectErrorCodeSourcePrepareFailed, stdout.String())
+		}
+	})
+
 	t.Run("local scan failure emits scan-failed code", func(t *testing.T) {
 		if runtime.GOOS == "windows" {
 			t.Skip("permission behavior differs on windows")

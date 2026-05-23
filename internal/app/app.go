@@ -250,20 +250,38 @@ func runInspect(args []string, stdout io.Writer, stderr io.Writer) int {
 
 	if sourceKind != "github-source" {
 		if _, statErr := os.Stat(input); statErr != nil {
+			if errors.Is(statErr, os.ErrNotExist) {
+				if jsonOutput {
+					return writeInspectJSONError(stdout, stderr, inspectErrorReport{
+						SchemaVersion: reportSchemaVersion,
+						Status:        "ERROR",
+						ErrorCode:     inspectErrorCodeSourceNotFound,
+						Message:       fmt.Sprintf("inspect source not found: %s", input),
+						Source: source{
+							Input: input,
+							Kind:  sourceKind,
+						},
+						Note: "inspect source must exist before validation",
+					})
+				}
+				_, _ = fmt.Fprintf(stderr, "inspect source not found: %s\n", input)
+				return 1
+			}
+			accessErr := fmt.Sprintf("failed to access inspect source: %v", statErr)
 			if jsonOutput {
 				return writeInspectJSONError(stdout, stderr, inspectErrorReport{
 					SchemaVersion: reportSchemaVersion,
 					Status:        "ERROR",
-					ErrorCode:     inspectErrorCodeSourceNotFound,
-					Message:       fmt.Sprintf("inspect source not found: %s", input),
+					ErrorCode:     inspectErrorCodeSourcePrepareFailed,
+					Message:       accessErr,
 					Source: source{
 						Input: input,
 						Kind:  sourceKind,
 					},
-					Note: "inspect source must exist before validation",
+					Note: "inspect source access check failed",
 				})
 			}
-			_, _ = fmt.Fprintf(stderr, "inspect source not found: %s\n", input)
+			_, _ = fmt.Fprintln(stderr, accessErr)
 			return 1
 		}
 	}
