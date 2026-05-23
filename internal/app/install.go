@@ -37,10 +37,12 @@ const (
 	ruleInstallSourceFileCountExceeded  = "INSTALL_SOURCE_FILE_COUNT_EXCEEDED"
 	ruleInstallSourceTotalBytesExceeded = "INSTALL_SOURCE_TOTAL_BYTES_EXCEEDED"
 	ruleInstallSourceFileTooLarge       = "INSTALL_SOURCE_FILE_TOO_LARGE"
+	ruleInstallSourceSpecialFile        = "INSTALL_SOURCE_SPECIAL_FILE"
 	ruleInstallDigestSymlink            = "INSTALL_DIGEST_SYMLINK_DETECTED"
 	ruleInstallDigestFileCountExceeded  = "INSTALL_DIGEST_FILE_COUNT_EXCEEDED"
 	ruleInstallDigestTotalBytesExceeded = "INSTALL_DIGEST_TOTAL_BYTES_EXCEEDED"
 	ruleInstallDigestFileTooLarge       = "INSTALL_DIGEST_FILE_TOO_LARGE"
+	ruleInstallDigestSpecialFile        = "INSTALL_DIGEST_SPECIAL_FILE"
 )
 
 type installArgs struct {
@@ -624,10 +626,12 @@ func copyTreeNormalized(srcRoot string, dstRoot string) error {
 		if srcInfo.Mode()&os.ModeSymlink != 0 {
 			return fmt.Errorf("install source contains symlink: %s", rel)
 		}
-
 		destPath := filepath.Join(dstRoot, rel)
 		if d.IsDir() {
 			return os.MkdirAll(destPath, 0o755)
+		}
+		if !srcInfo.Mode().IsRegular() {
+			return fmt.Errorf("%s: install source contains non-regular file: %s", ruleInstallSourceSpecialFile, rel)
 		}
 		if srcInfo.Size() > installMaxCopyFileBytes {
 			return fmt.Errorf("%s: install source file exceeds size limit: %s", ruleInstallSourceFileTooLarge, rel)
@@ -808,6 +812,9 @@ func buildFileDigestsFiltered(root string, exclude map[string]struct{}) ([]lockF
 		}
 		if info.Mode()&os.ModeSymlink != 0 {
 			return fmt.Errorf("%s: digest input contains symlink: %s", ruleInstallDigestSymlink, rel)
+		}
+		if !info.Mode().IsRegular() {
+			return fmt.Errorf("%s: digest input contains non-regular file: %s", ruleInstallDigestSpecialFile, rel)
 		}
 		if _, skip := exclude[rel]; skip {
 			return nil

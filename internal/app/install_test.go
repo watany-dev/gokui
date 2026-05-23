@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"syscall"
 	"testing"
 
 	srcpkg "github.com/watany-dev/gokui/internal/source"
@@ -528,6 +529,37 @@ func TestRunInstallJSONOutput(t *testing.T) {
 			}
 			if !strings.Contains(stdout.String(), "\"rule_id\": \""+ruleInstallSourceFileCountExceeded+"\"") {
 				t.Fatalf("stdout should include copy-limit rule_id, got %q", stdout.String())
+			}
+		})
+
+		t.Run("install write failure includes special-file rule_id", func(t *testing.T) {
+			if runtime.GOOS == "windows" {
+				t.Skip("fifo behavior differs on windows")
+			}
+			specialSource := createSkillSourceForInstallTest(t, "json-special-file")
+			if err := syscall.Mkfifo(filepath.Join(specialSource, "pipe.fifo"), 0o600); err != nil {
+				t.Fatalf("mkfifo: %v", err)
+			}
+
+			var stdout strings.Builder
+			var stderr strings.Builder
+			code := runInstall([]string{
+				specialSource,
+				"--target", "custom:" + filepath.Join(t.TempDir(), "skills"),
+				"--profile", "strict",
+				"--format", "json",
+			}, &stdout, &stderr)
+			if code != 1 {
+				t.Fatalf("runInstall(json special-file) code = %d, want 1\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
+			}
+			if stderr.Len() != 0 {
+				t.Fatalf("stderr should be empty for json errors, got %q", stderr.String())
+			}
+			if !strings.Contains(stdout.String(), "\"error_code\": \""+installErrorCodeWriteFailed+"\"") {
+				t.Fatalf("stdout should include write-failed error_code, got %q", stdout.String())
+			}
+			if !strings.Contains(stdout.String(), "\"rule_id\": \""+ruleInstallSourceSpecialFile+"\"") {
+				t.Fatalf("stdout should include special-file rule_id, got %q", stdout.String())
 			}
 		})
 
@@ -1373,6 +1405,21 @@ func TestWriteInstallMetadataAndBuildDigestsErrors(t *testing.T) {
 		}
 	})
 
+	t.Run("buildFileDigests rejects special file entries", func(t *testing.T) {
+		if runtime.GOOS == "windows" {
+			t.Skip("fifo behavior differs on windows")
+		}
+		root := t.TempDir()
+		fifo := filepath.Join(root, "pipe.fifo")
+		if err := syscall.Mkfifo(fifo, 0o600); err != nil {
+			t.Fatalf("mkfifo: %v", err)
+		}
+		_, _, err := buildFileDigestsFiltered(root, nil)
+		if err == nil || !strings.Contains(err.Error(), ruleInstallDigestSpecialFile) {
+			t.Fatalf("expected digest special-file error, got %v", err)
+		}
+	})
+
 	t.Run("buildFileDigests enforces max file count", func(t *testing.T) {
 		origLimit := installMaxDigestFiles
 		installMaxDigestFiles = 1
@@ -1474,6 +1521,24 @@ func TestCopyTreeNormalizedRejectsSymlink(t *testing.T) {
 	err := copyTreeNormalized(src, filepath.Join(dst, "copy"))
 	if err == nil || !strings.Contains(err.Error(), "contains symlink") {
 		t.Fatalf("expected symlink rejection, got %v", err)
+	}
+}
+
+func TestCopyTreeNormalizedRejectsSpecialFile(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fifo behavior differs on windows")
+	}
+
+	src := t.TempDir()
+	fifo := filepath.Join(src, "pipe.fifo")
+	if err := syscall.Mkfifo(fifo, 0o600); err != nil {
+		t.Fatalf("mkfifo: %v", err)
+	}
+
+	dst := t.TempDir()
+	err := copyTreeNormalized(src, filepath.Join(dst, "copy"))
+	if err == nil || !strings.Contains(err.Error(), ruleInstallSourceSpecialFile) {
+		t.Fatalf("expected special-file rejection, got %v", err)
 	}
 }
 
