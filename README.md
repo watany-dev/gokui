@@ -126,6 +126,8 @@ PowerShell `FromHexString(...)` decode routed to `IEX`/`Invoke-Expression` is
 now flagged as critical.
 Local base64 decode routed to `exec`/`eval` (for example Python `b64decode`
 or Node `atob`) is now flagged as critical.
+Local hex decode routed to `exec`/`eval` (for example Python `fromhex` or Node
+`Buffer.from(..., "hex")`) is now flagged as critical.
 `chmod +x` followed by execution of the same local artifact is now flagged as
 critical.
 Writes to shell rc, SSH config, cron, or launch-agent configuration paths are

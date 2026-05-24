@@ -55,9 +55,11 @@ var (
 	powerShellFetchEvalPattern      = regexp.MustCompile(`(?i)(?:\b(?:iwr|irm|invoke-webrequest|invoke-restmethod|curl(?:\.exe)?|wget(?:\.exe)?)\b[^\n]{0,260}https?://[^\n]{0,260}\b(?:iex|invoke-expression)\b|\bdownload(?:string|data)\b\s*\(\s*['"]?https?://[^\n]{0,260}\b(?:iex|invoke-expression)\b)`)
 	pythonRemoteExecPattern         = regexp.MustCompile(`(?i)\b(?:exec|eval)\s*\(\s*(?:requests\.get\s*\(\s*['"]https?://[^'"]+['"]\s*\)\.text|urllib\.request\.urlopen\s*\(\s*['"]https?://[^'"]+['"]\s*\)\.read\s*\(\s*\))`)
 	pythonBase64ExecPattern         = regexp.MustCompile(`(?i)\b(?:exec|eval)\s*\(\s*(?:__import__\(\s*['"]base64['"]\s*\)\.b64decode|base64\.b64decode|b64decode)\s*\(`)
+	pythonHexExecPattern            = regexp.MustCompile(`(?i)\b(?:exec|eval)\s*\(\s*(?:bytes\.fromhex|bytearray\.fromhex|binascii\.unhexlify)\s*\(`)
 	nodeRemoteEvalPattern           = regexp.MustCompile(`(?i)\beval\s*\(\s*(?:(?:await\s+)?fetch\s*\(\s*['"]https?://[^'"]+['"]\s*\)|(?:await\s+)?\(\s*await\s+fetch\s*\(\s*['"]https?://[^'"]+['"]\s*\)\s*\)\.text\s*\(\s*\)|\(\s*await\s+fetch\s*\(\s*['"]https?://[^'"]+['"]\s*\)\s*\)\.text\s*\(\s*\))`)
 	nodeRemoteFunctionExecPattern   = regexp.MustCompile(`(?i)\bnew\s+function\s*\(\s*(?:(?:await\s+)?\(\s*await\s+fetch\s*\(\s*['"]https?://[^'"]+['"]\s*\)\s*\)\.text\s*\(\s*\)|\(\s*await\s+fetch\s*\(\s*['"]https?://[^'"]+['"]\s*\)\s*\)\.text\s*\(\s*\))\s*\)\s*\(`)
 	nodeBase64EvalPattern           = regexp.MustCompile(`(?i)\b(?:eval|new\s+function)\s*\(\s*(?:atob\s*\(|buffer\s*\.\s*from\s*\([^)\n]{0,260}['"]base64['"]\s*\)\s*\.toString\s*\()`)
+	nodeHexEvalPattern              = regexp.MustCompile(`(?i)\b(?:eval|new\s+function)\s*\(\s*buffer\s*\.\s*from\s*\([^)\n]{0,260}['"]hex['"]\s*\)\s*\.toString\s*\(`)
 	rubyRemoteEvalPattern           = regexp.MustCompile(`(?i)\beval\s*\(\s*(?:net::http\.get\s*\(\s*uri\s*\(\s*['"]https?://[^'"]+['"]\s*\)\s*\)|uri\.open\s*\(\s*['"]https?://[^'"]+['"]\s*\)\.read)`)
 	base64PipeExec                  = regexp.MustCompile(`(?i)\b(?:base64|openssl\s+base64)\b[^\n|]{0,300}\|\s*(?:sh|bash|zsh|pwsh|powershell|python|node)\b`)
 	base64SubshellExec              = regexp.MustCompile(`(?i)\b(?:sh|bash|zsh|pwsh|powershell|eval|python3?|node|ruby|perl)\b[^\n]{0,220}\$\([^)\n]{0,260}\b(?:base64|openssl\s+base64)\b[^)\n]{0,200}\s(?:-d|--decode)\b[^)\n]{0,120}\)`)
@@ -535,7 +537,7 @@ func scanVariantThreatFindings(variant string, target scanTarget, lineNum int) [
 			Summary:  "decoded payload reaches interpreter execution",
 		})
 	}
-	if hexPipeExec.MatchString(variant) || hexSubshellExec.MatchString(variant) || powerShellFromHexExecPattern.MatchString(variant) {
+	if hexPipeExec.MatchString(variant) || hexSubshellExec.MatchString(variant) || powerShellFromHexExecPattern.MatchString(variant) || pythonHexExecPattern.MatchString(variant) || nodeHexEvalPattern.MatchString(variant) {
 		findings = append(findings, Finding{
 			ID:       "HEX_PIPE_EXEC",
 			Severity: "critical",
