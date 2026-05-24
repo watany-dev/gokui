@@ -1558,7 +1558,7 @@ func isUnpinnedDenoNpmRuntimeLine(lowerLine string) bool {
 	packageRefs := extractDenoNpmPackageRefs(fields, start, len(fields))
 	if len(packageRefs) > 0 {
 		for _, packageRef := range packageRefs {
-			if isUnpinnedDenoNpmSpecifier(packageRef) {
+			if isUnpinnedDenoRuntimeSpecifier(packageRef) {
 				return true
 			}
 		}
@@ -1569,7 +1569,7 @@ func isUnpinnedDenoNpmRuntimeLine(lowerLine string) bool {
 	if !ok {
 		return false
 	}
-	return isUnpinnedDenoNpmSpecifier(target)
+	return isUnpinnedDenoRuntimeSpecifier(target)
 }
 
 func extractDenoNpmPackageRefs(fields []string, start int, end int) []string {
@@ -1679,6 +1679,53 @@ func isUnpinnedDenoNpmSpecifier(ref string) bool {
 	if spec == "" {
 		return false
 	}
+	if strings.HasPrefix(spec, "@") {
+		scopeSlash := strings.Index(spec, "/")
+		if scopeSlash < 0 {
+			return true
+		}
+		lastAt := strings.LastIndex(spec, "@")
+		if lastAt <= scopeSlash || lastAt == len(spec)-1 {
+			return true
+		}
+		version := spec[lastAt+1:]
+		if slash := strings.Index(version, "/"); slash >= 0 {
+			version = version[:slash]
+		}
+		if version == "" {
+			return true
+		}
+		return !isPinnedPackageVersion(version)
+	}
+
+	at := strings.Index(spec, "@")
+	if at < 0 {
+		return true
+	}
+	version := spec[at+1:]
+	if slash := strings.Index(version, "/"); slash >= 0 {
+		version = version[:slash]
+	}
+	if version == "" {
+		return true
+	}
+	return !isPinnedPackageVersion(version)
+}
+
+func isUnpinnedDenoRuntimeSpecifier(ref string) bool {
+	return isUnpinnedDenoNpmSpecifier(ref) || isUnpinnedDenoJSRSpecifier(ref)
+}
+
+func isUnpinnedDenoJSRSpecifier(ref string) bool {
+	ref = strings.TrimSpace(sanitizeRuntimeToken(ref))
+	if !strings.HasPrefix(ref, "jsr:") {
+		return false
+	}
+	spec := strings.TrimPrefix(ref, "jsr:")
+	if spec == "" {
+		return false
+	}
+
 	if strings.HasPrefix(spec, "@") {
 		scopeSlash := strings.Index(spec, "/")
 		if scopeSlash < 0 {

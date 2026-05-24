@@ -2122,6 +2122,10 @@ func TestUnpinnedRuntimeToolDetection(t *testing.T) {
 		{line: "deno x -p npm:create-vite create-vite", want: true},
 		{line: "deno x --package npm:create-vite@5.2.0 create-vite", want: false},
 		{line: "deno x --package npm:create-vite create-vite", want: true},
+		{line: "deno x jsr:@std/http/file-server", want: true},
+		{line: "deno x jsr:@std/http@1.0.0/file-server", want: false},
+		{line: "deno x -p jsr:@std/http@1.0.0 file-server", want: false},
+		{line: "deno x -p jsr:@std/http file-server", want: true},
 		{line: "go run github.com/acme/x@latest", want: true},
 		{line: "go run github.com/acme/x@main", want: true},
 		{line: "go run github.com/acme/x@master", want: true},
@@ -2642,8 +2646,15 @@ func TestIsUnpinnedDenoNpmRuntimeLine(t *testing.T) {
 		{line: "deno x npm:create-vite@5.2.0", want: false},
 		{line: "deno x -p npm:create-vite@5.2.0 create-vite", want: false},
 		{line: "deno x -p npm:create-vite create-vite", want: true},
+		{line: "deno x jsr:@std/http/file-server", want: true},
+		{line: "deno x jsr:@std/http@1.0.0/file-server", want: false},
+		{line: "deno x -p jsr:@std/http@1.0.0 file-server", want: false},
+		{line: "deno x -p jsr:@std/http file-server", want: true},
+		{line: "deno x --package jsr:@std/http@1.0.0 file-server", want: false},
+		{line: "deno x --package jsr:@std/http file-server", want: true},
 		{line: "deno npm:create-vite@latest", want: true},
 		{line: "deno npm:create-vite@5.2.0", want: false},
+		{line: "deno", want: false},
 		{line: "deno task start", want: false},
 		{line: "echo deno run npm:create-vite", want: false},
 		{line: "deno run --allow-read", want: false},
@@ -2732,6 +2743,14 @@ func TestNextDenoRuntimeTarget(t *testing.T) {
 			ok:     false,
 		},
 		{
+			name:   "skips empty tokens",
+			fields: []string{"deno", "run", "", "npm:cowsay"},
+			start:  2,
+			end:    4,
+			want:   "npm:cowsay",
+			ok:     true,
+		},
+		{
 			name:   "skips equals-form flags",
 			fields: []string{"deno", "run", "--config=deno.json", "npm:cowsay"},
 			start:  2,
@@ -2796,6 +2815,13 @@ func TestNextDenoRuntimeTarget(t *testing.T) {
 			}
 		})
 	}
+
+	t.Run("returns false for invalid bounds", func(t *testing.T) {
+		fields := []string{"deno", "run", "npm:cowsay"}
+		if got, ok := nextDenoRuntimeTarget(fields, -1, 0); ok || got != "" {
+			t.Fatalf("nextDenoRuntimeTarget(%v, -1, 0) = (%q, %v), want (\"\", false)", fields, got, ok)
+		}
+	})
 }
 
 func TestIsUnpinnedDenoNpmSpecifier(t *testing.T) {
@@ -2820,6 +2846,49 @@ func TestIsUnpinnedDenoNpmSpecifier(t *testing.T) {
 	for _, tc := range cases {
 		if got := isUnpinnedDenoNpmSpecifier(tc.ref); got != tc.want {
 			t.Fatalf("isUnpinnedDenoNpmSpecifier(%q) = %v, want %v", tc.ref, got, tc.want)
+		}
+	}
+}
+
+func TestIsUnpinnedDenoRuntimeSpecifier(t *testing.T) {
+	cases := []struct {
+		ref  string
+		want bool
+	}{
+		{ref: "npm:create-vite", want: true},
+		{ref: "npm:create-vite@5.2.0", want: false},
+		{ref: "jsr:@std/http/file-server", want: true},
+		{ref: "jsr:@std/http@1.0.0/file-server", want: false},
+		{ref: "https://example.com/script.ts", want: false},
+	}
+	for _, tc := range cases {
+		if got := isUnpinnedDenoRuntimeSpecifier(tc.ref); got != tc.want {
+			t.Fatalf("isUnpinnedDenoRuntimeSpecifier(%q) = %v, want %v", tc.ref, got, tc.want)
+		}
+	}
+}
+
+func TestIsUnpinnedDenoJSRSpecifier(t *testing.T) {
+	cases := []struct {
+		ref  string
+		want bool
+	}{
+		{ref: "jsr:@std/http/file-server", want: true},
+		{ref: "jsr:@std/http@next/file-server", want: true},
+		{ref: "jsr:@std/http@1.0.0/file-server", want: false},
+		{ref: "jsr:@std", want: true},
+		{ref: "jsr:@std/http@", want: true},
+		{ref: "jsr:@std/http@", want: true},
+		{ref: "jsr:chalk", want: true},
+		{ref: "jsr:chalk@1.0.0", want: false},
+		{ref: "jsr:chalk@1.0.0/bin", want: false},
+		{ref: "jsr:chalk@next/bin", want: true},
+		{ref: "jsr:", want: false},
+		{ref: "npm:create-vite@latest", want: false},
+	}
+	for _, tc := range cases {
+		if got := isUnpinnedDenoJSRSpecifier(tc.ref); got != tc.want {
+			t.Fatalf("isUnpinnedDenoJSRSpecifier(%q) = %v, want %v", tc.ref, got, tc.want)
 		}
 	}
 }
