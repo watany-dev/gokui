@@ -1646,6 +1646,7 @@ func nextDenoRuntimeTarget(fields []string, start int, end int) (string, bool) {
 		"-r":                 {},
 		"--vendor":           {},
 		"--node-modules-dir": {},
+		"--allow-scripts":    {},
 	}
 
 	for i := start; i < end; i++ {
@@ -1716,6 +1717,13 @@ func isKnownDenoOptionalFlagValue(
 		case "auto", "manual", "none", "true", "false":
 			return true
 		}
+	case "--allow-scripts":
+		// Consume split allow-scripts values only when they are package-like
+		// tokens and another runtime candidate follows.
+		if !hasDenoRuntimeCandidateAfter(fields, nextStart, end) {
+			return false
+		}
+		return isDenoAllowScriptsValue(value)
 	}
 	return false
 }
@@ -1738,6 +1746,51 @@ func isDenoReloadBlocklistValue(value string) bool {
 	default:
 		return false
 	}
+}
+
+func isDenoAllowScriptsValue(value string) bool {
+	if value == "" || strings.HasPrefix(value, "-") {
+		return false
+	}
+
+	for _, part := range strings.Split(value, ",") {
+		token := strings.TrimSpace(part)
+		if token == "" || strings.HasPrefix(token, "-") {
+			return false
+		}
+		// Keep allow-scripts split-value handling conservative: skip ambiguous
+		// runtime specifier and path-like forms.
+		if strings.Contains(token, ":") {
+			return false
+		}
+		if strings.HasPrefix(token, "./") || strings.HasPrefix(token, "../") ||
+			strings.HasPrefix(token, "/") || strings.HasPrefix(token, ".\\") ||
+			strings.HasPrefix(token, "..\\") || strings.HasPrefix(token, "\\") {
+			return false
+		}
+		if !isScopedOrPackageRefToken(token) {
+			return false
+		}
+	}
+	return true
+}
+
+func isScopedOrPackageRefToken(token string) bool {
+	if token == "" {
+		return false
+	}
+	for i := 0; i < len(token); i++ {
+		ch := token[i]
+		switch {
+		case ch >= 'a' && ch <= 'z':
+		case ch >= 'A' && ch <= 'Z':
+		case ch >= '0' && ch <= '9':
+		case ch == '@', ch == '/', ch == '.', ch == '-', ch == '_':
+		default:
+			return false
+		}
+	}
+	return true
 }
 
 func hasDenoRuntimeCandidateAfter(fields []string, start int, end int) bool {

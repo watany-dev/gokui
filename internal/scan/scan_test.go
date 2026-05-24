@@ -2126,6 +2126,11 @@ func TestUnpinnedRuntimeToolDetection(t *testing.T) {
 		{line: "deno run --vendor true npm:create-next-app@latest", want: true},
 		{line: "deno run --node-modules-dir npm:create-next-app@latest", want: true},
 		{line: "deno run --node-modules-dir auto npm:create-next-app@latest", want: true},
+		{line: "deno run --allow-scripts sqlite3 npm:create-next-app@latest", want: true},
+		{line: "deno run --allow-scripts sqlite3 npm:create-next-app@15.4.1", want: false},
+		{line: "deno run --allow-scripts sqlite3 main.ts", want: false},
+		{line: "deno run --allow-scripts=npm:sqlite3 npm:create-next-app@latest", want: true},
+		{line: "deno run --allow-scripts=npm:sqlite3 npm:create-next-app@15.4.1", want: false},
 		{line: "deno x npm:create-vite", want: true},
 		{line: "deno x npm:create-vite@5.2.0", want: false},
 		{line: "deno x -p npm:create-vite@5.2.0 create-vite", want: false},
@@ -2690,6 +2695,11 @@ func TestIsUnpinnedDenoNpmRuntimeLine(t *testing.T) {
 		{line: "deno run --vendor true npm:create-next-app@latest", want: true},
 		{line: "deno run --node-modules-dir npm:create-next-app@latest", want: true},
 		{line: "deno run --node-modules-dir auto npm:create-next-app@latest", want: true},
+		{line: "deno run --allow-scripts sqlite3 npm:create-next-app@latest", want: true},
+		{line: "deno run --allow-scripts sqlite3 npm:create-next-app@15.4.1", want: false},
+		{line: "deno run --allow-scripts sqlite3 main.ts", want: false},
+		{line: "deno run --allow-scripts=npm:sqlite3 npm:create-next-app@latest", want: true},
+		{line: "deno run --allow-scripts=npm:sqlite3 npm:create-next-app@15.4.1", want: false},
 		{line: "deno npm:create-vite@latest", want: true},
 		{line: "deno npm:create-vite@5.2.0", want: false},
 		{line: "deno", want: false},
@@ -2920,6 +2930,22 @@ func TestNextDenoRuntimeTarget(t *testing.T) {
 			ok:     true,
 		},
 		{
+			name:   "consumes allow-scripts value and returns following target",
+			fields: []string{"deno", "run", "--allow-scripts", "sqlite3", "npm:create-next-app@latest"},
+			start:  2,
+			end:    5,
+			want:   "npm:create-next-app@latest",
+			ok:     true,
+		},
+		{
+			name:   "does not consume allow-scripts value when no following target exists",
+			fields: []string{"deno", "run", "--allow-scripts", "sqlite3"},
+			start:  2,
+			end:    4,
+			want:   "sqlite3",
+			ok:     true,
+		},
+		{
 			name:   "returns false when start exceeds end",
 			fields: []string{"deno", "run", "npm:cowsay"},
 			start:  5,
@@ -3081,6 +3107,23 @@ func TestIsKnownDenoOptionalFlagValue(t *testing.T) {
 		}
 	})
 
+	t.Run("allow-scripts consumes package-like value when candidate follows", func(t *testing.T) {
+		fields := []string{"deno", "run", "--allow-scripts", "sqlite3", "main.ts"}
+		if got := isKnownDenoOptionalFlagValue("--allow-scripts", "sqlite3", fields, 4, len(fields)); !got {
+			t.Fatalf("isKnownDenoOptionalFlagValue(--allow-scripts,sqlite3) = %v, want true", got)
+		}
+	})
+
+	t.Run("allow-scripts rejects ambiguous or invalid values", func(t *testing.T) {
+		fields := []string{"deno", "run", "--allow-scripts", "sqlite3", "main.ts"}
+		if got := isKnownDenoOptionalFlagValue("--allow-scripts", "npm:sqlite3", fields, 4, len(fields)); got {
+			t.Fatalf("isKnownDenoOptionalFlagValue(--allow-scripts,npm:sqlite3) = %v, want false", got)
+		}
+		if got := isKnownDenoOptionalFlagValue("--allow-scripts", "./local", fields, 4, len(fields)); got {
+			t.Fatalf("isKnownDenoOptionalFlagValue(--allow-scripts,./local) = %v, want false", got)
+		}
+	})
+
 	t.Run("rejects empty and flag-like values", func(t *testing.T) {
 		fields := []string{"deno", "run", "main.ts"}
 		if got := isKnownDenoOptionalFlagValue("--vendor", "", fields, 0, len(fields)); got {
@@ -3118,6 +3161,46 @@ func TestIsDenoReloadBlocklistValue(t *testing.T) {
 	for _, tc := range cases {
 		if got := isDenoReloadBlocklistValue(tc.value); got != tc.want {
 			t.Fatalf("isDenoReloadBlocklistValue(%q) = %v, want %v", tc.value, got, tc.want)
+		}
+	}
+}
+
+func TestIsDenoAllowScriptsValue(t *testing.T) {
+	cases := []struct {
+		value string
+		want  bool
+	}{
+		{value: "sqlite3", want: true},
+		{value: "@scope/pkg", want: true},
+		{value: "sqlite3,@scope/pkg", want: true},
+		{value: "npm:sqlite3", want: false},
+		{value: "jsr:@std/http", want: false},
+		{value: "https://example.com/mod.ts", want: false},
+		{value: "./local", want: false},
+		{value: "", want: false},
+	}
+	for _, tc := range cases {
+		if got := isDenoAllowScriptsValue(tc.value); got != tc.want {
+			t.Fatalf("isDenoAllowScriptsValue(%q) = %v, want %v", tc.value, got, tc.want)
+		}
+	}
+}
+
+func TestIsScopedOrPackageRefToken(t *testing.T) {
+	cases := []struct {
+		token string
+		want  bool
+	}{
+		{token: "sqlite3", want: true},
+		{token: "@scope/pkg", want: true},
+		{token: "pkg_name-1.2.3", want: true},
+		{token: "npm:sqlite3", want: false},
+		{token: "pkg name", want: false},
+		{token: "", want: false},
+	}
+	for _, tc := range cases {
+		if got := isScopedOrPackageRefToken(tc.token); got != tc.want {
+			t.Fatalf("isScopedOrPackageRefToken(%q) = %v, want %v", tc.token, got, tc.want)
 		}
 	}
 }

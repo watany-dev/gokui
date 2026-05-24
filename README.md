@@ -168,6 +168,8 @@ When `--package` is present for `deno x`, target specifiers are also evaluated.
 runtime specifier targets.
 For `--reload`/`-r`, split cache-blocklist values are interpreted before target
 resolution so a pinned blocklist value cannot mask a later unpinned runtime target.
+For split `--allow-scripts` forms, package-like values are interpreted
+conservatively so later runtime specifier targets are still evaluated for pinning.
 Bounded base64/base64url/hex payload deobfuscation now rescans decoded text artifacts
 (depth-limited and size-limited, never executed) to catch hidden execution
 chains and decoded Unicode control/NFKC-drift signals.
