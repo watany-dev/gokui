@@ -35,6 +35,9 @@ different-provenance installs. It also supports commit-pinned GitHub sources
 (`github:owner/repo//path@<sha>`) via safe tarball materialization. In JSON
 mode, rejected installs set report `error_code=INSTALL_POLICY_REJECTED`, and
 fatal errors emit a machine-readable error envelope with top-level `error_code`.
+`install --override RULE_ID` can explicitly downgrade matching high-severity
+findings for decision calculation, and records `severity_overrides` audit
+entries in install report/lock metadata.
 Install source copy now enforces strict per-file byte limits without writing
 overflow bytes and removes partial destination files on overflow/error.
 Install source-copy and digest roots now reject symlink or non-directory input
@@ -142,7 +145,7 @@ Current pre-release CLI syntax:
 gokui fetch github:owner/repo//path/to/skill@commit --out <quarantine-dir> [--format human|json|compact]
 gokui inspect <local-dir|zip|github-source> [--format human|json|sarif|compact]
 gokui vet <local-dir|zip|tar> [--format human|json|sarif|compact]
-gokui install <source> --target codex --profile strict [--format human|json|sarif|compact]
+gokui install <source> --target codex --profile strict [--format human|json|sarif|compact] [--override RULE_ID ...]
 gokui update --dry-run [--target codex|custom:/path] [--format human|json|sarif|compact]
 gokui lock verify [path] [--format human|json|sarif|compact]
 ```

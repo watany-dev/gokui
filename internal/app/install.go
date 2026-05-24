@@ -56,10 +56,11 @@ const (
 )
 
 type installArgs struct {
-	Source  string
-	Target  string
-	Profile string
-	Format  string
+	Source    string
+	Target    string
+	Profile   string
+	Format    string
+	Overrides []string
 }
 
 type installReport struct {
@@ -255,7 +256,7 @@ func runInstall(args []string, stdout io.Writer, stderr io.Writer) int {
 		return 1
 	}
 
-	findings, decision, err := evaluateSkill(skillRoot)
+	findings, decision, overrides, err := evaluateSkillWithOverrides(skillRoot, parsed.Overrides)
 	if err != nil {
 		if jsonOutput {
 			return writeInstallJSONError(stdout, stderr, installErrorReport{
@@ -303,7 +304,7 @@ func runInstall(args []string, stdout io.Writer, stderr io.Writer) int {
 		PolicyProfile:     parsed.Profile,
 		Decision:          decision,
 		Findings:          findings,
-		SeverityOverrides: []severityOverrideAudit{},
+		SeverityOverrides: overrides,
 		Installed:         false,
 		ErrorCode:         "",
 		Note:              "pre-release install applies strict structural and markdown checks",
@@ -474,6 +475,14 @@ func parseInstallArgs(args []string) (installArgs, error) {
 			i++
 		case strings.HasPrefix(arg, "--format="):
 			out.Format = strings.TrimPrefix(arg, "--format=")
+		case arg == "--override":
+			if i+1 >= len(args) {
+				return installArgs{}, fmt.Errorf("missing value for --override")
+			}
+			out.Overrides = append(out.Overrides, args[i+1])
+			i++
+		case strings.HasPrefix(arg, "--override="):
+			out.Overrides = append(out.Overrides, strings.TrimPrefix(arg, "--override="))
 		case strings.HasPrefix(arg, "-"):
 			return installArgs{}, fmt.Errorf("unknown install option: %s", arg)
 		default:
@@ -492,6 +501,23 @@ func parseInstallArgs(args []string) (installArgs, error) {
 	}
 	if out.Format != "human" && out.Format != "json" && out.Format != "sarif" && out.Format != "compact" {
 		return installArgs{}, fmt.Errorf("unsupported install format: %s", out.Format)
+	}
+	if len(out.Overrides) > 0 {
+		seen := make(map[string]struct{}, len(out.Overrides))
+		normalized := make([]string, 0, len(out.Overrides))
+		for _, override := range out.Overrides {
+			ruleID := strings.TrimSpace(override)
+			if !errorCodePattern.MatchString(ruleID) {
+				return installArgs{}, fmt.Errorf("invalid override rule id: %s", override)
+			}
+			if _, ok := seen[ruleID]; ok {
+				continue
+			}
+			seen[ruleID] = struct{}{}
+			normalized = append(normalized, ruleID)
+		}
+		sort.Strings(normalized)
+		out.Overrides = normalized
 	}
 	return out, nil
 }
@@ -622,13 +648,26 @@ func writeInstallJSONError(stdout io.Writer, stderr io.Writer, report installErr
 }
 
 func evaluateSkill(skillRoot string) ([]inspectFinding, string, error) {
+	findings, decision, _, err := evaluateSkillWithOverrides(skillRoot, nil)
+	return findings, decision, err
+}
+
+func evaluateSkillWithOverrides(skillRoot string, overrideRuleIDs []string) ([]inspectFinding, string, []severityOverrideAudit, error) {
 	scanFindings, err := scan.ScanSkillRoot(skillRoot)
 	if err != nil {
-		return nil, "", err
+		return nil, "", nil, err
 	}
 
 	findings := make([]inspectFinding, 0, len(scanFindings))
+	overrides := make([]severityOverrideAudit, 0, len(overrideRuleIDs))
+	overrideSet := make(map[string]struct{}, len(overrideRuleIDs))
+	overrideMatched := make(map[string]struct{}, len(overrideRuleIDs))
+	for _, ruleID := range overrideRuleIDs {
+		overrideSet[ruleID] = struct{}{}
+	}
+
 	decision := "PASS"
+	appliedAt := time.Now().UTC().Format(time.RFC3339)
 	for _, finding := range scanFindings {
 		findings = append(findings, inspectFinding{
 			ID:       finding.ID,
@@ -637,11 +676,36 @@ func evaluateSkill(skillRoot string) ([]inspectFinding, string, error) {
 			Line:     finding.Line,
 			Summary:  finding.Summary,
 		})
-		if scan.IsRejectable(finding) {
+		effectiveSeverity := finding.Severity
+		if _, ok := overrideSet[finding.ID]; ok {
+			overrideMatched[finding.ID] = struct{}{}
+			if finding.Severity == "high" {
+				effectiveSeverity = "medium"
+			}
+			overrides = append(overrides, severityOverrideAudit{
+				RuleID:            finding.ID,
+				PreviousSeverity:  finding.Severity,
+				EffectiveSeverity: effectiveSeverity,
+				Justification:     "explicit CLI override for install policy decision",
+				ApprovedBy:        "local-operator",
+				Source:            "cli-override",
+				AppliedAt:         appliedAt,
+			})
+		}
+		if effectiveSeverity == "high" || effectiveSeverity == "critical" {
 			decision = "REJECTED"
 		}
 	}
-	return findings, decision, nil
+	for _, ruleID := range overrideRuleIDs {
+		if _, ok := overrideMatched[ruleID]; ok {
+			continue
+		}
+		return nil, "", nil, fmt.Errorf("override rule not found in findings: %s", ruleID)
+	}
+	sort.Slice(overrides, func(i, j int) bool {
+		return overrides[i].RuleID < overrides[j].RuleID
+	})
+	return findings, decision, overrides, nil
 }
 
 func resolveInstallTarget(target string) (string, error) {

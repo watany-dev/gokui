@@ -38,6 +38,7 @@ tests/CI:
 - compact summary output for `fetch`/`inspect`/`vet`/`install`/`update`/`lock verify` (`--format compact`) for CI logs
 - README rule documentation with remediation notes for high-signal security findings
 - severity override audit-trail fields in install/update JSON and lock policy metadata
+- install `--override RULE_ID` support for explicit high-severity downgrade with audit trail recording
 - CI SARIF smoke job for inspect output generation and artifact capture
 - CI setup-go hardening to resolve the latest available Go patch release
 - `make vuln` hardened with patched Go toolchain baseline (`go1.26.3+auto`)
