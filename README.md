@@ -27,6 +27,8 @@ inspect and `vet` failures emit a single structured error result. For GitHub sou
 inspect-only pre-release stubs, while commit-pinned refs are fetched and
 scanned.
 `fetch`, `inspect`, `vet`, `install`, `update`, and `lock verify` also support `--format compact` for single-line CI summaries.
+`inspect` and `vet` also support `--format review-json`, a neutralized structured
+export for optional human/AI-assisted review pipelines.
 `fetch` also supports `--format sarif` for quarantine provenance export in CI.
 `install` also supports `--format sarif` for policy findings export in CI.
 In SARIF mode, fatal install failures emit a single structured error result.
@@ -34,18 +36,28 @@ In SARIF mode, fatal install failures emit a single structured error result.
 `strict|team|research`. `strict` and `team` reject high/critical findings;
 `research` rejects critical findings. It installs atomically to `--target codex`
 or `--target custom:/path`, writes `.gokui-report.json` and `gokui.lock`, allows
-idempotent reinstall only when provenance matches, and rejects same-name
+idempotent reinstall only when provenance matches and existing lock structure is valid, and rejects same-name
 different-provenance installs. It also supports commit-pinned GitHub sources
 (`github:owner/repo//path@<sha>`) via safe tarball materialization. In JSON
 mode, rejected installs set report `error_code=INSTALL_POLICY_REJECTED`, and
 fatal errors emit a machine-readable error envelope with top-level `error_code`.
+Idempotent reuse also verifies installed-file digests/root hash (and GitHub
+source metadata for GitHub-origin installs), and install-report integrity,
+rejecting drifted installations.
 When `--profile` is omitted, install can load `default_profile` from
 `~/.config/gokui/policy.toml` (or `GOKUI_POLICY_PATH`).
+Install and update can also load the nearest ancestor repository policy file
+named `.gokui-policy.toml` for `local-dir` sources; when found, it is used in
+preference to user policy for that skill evaluation.
 `policy.toml` can also control override behavior via `[overrides]`:
 `enabled = false` disables all CLI overrides, and `allowed_rule_ids = [...]`
 restricts overrides to an explicit allowlist.
 Profile-specific reject thresholds can be set via
 `[profiles.<name>].reject_severities = ["critical", ...]`.
+`vet` also resolves effective profile and reject severities from policy when
+`--profile` is omitted, using user policy by default and nearest-ancestor
+repository policy (`.gokui-policy.toml`) in preference for `local-dir`
+sources.
 `install --override RULE_ID` can explicitly downgrade matching high-severity
 findings for decision calculation, and records `severity_overrides` audit
 entries in install report/lock metadata.
@@ -61,7 +73,12 @@ Install target entries also reject symlink path components.
 `lock verify` now validates installed files against `gokui.lock`, checks source
 field consistency (including strict GitHub source syntax and commit pinning),
 validates lock/report structural integrity, validates GitHub source metadata
-integrity, reports drift, and emits per-check `code` fields in JSON output for
+integrity, enforces canonical lowercase lock digests (`root_sha256` and per-file
+`sha256`), enforces canonical `severity_overrides` audit entry fields
+(`rule_id`/`severity`/`source`/`applied_at`, with allowed `source` values
+`cli-override|policy-file`), enforces exact install-report schema version,
+validates non-negative findings summary counters,
+reports drift, and emits per-check `code` fields in JSON output for
 automation (including missing/changed/unexpected file drift details). On fatal
 verify errors, JSON output includes top-level `error_code`, and SARIF output
 emits a single structured error result. It also supports `--format sarif` for
@@ -69,13 +86,28 @@ drift/check export in CI pipelines.
 `update --dry-run` now re-evaluates installed skills from lockfile source
 provenance for local-dir/zip/tar sources, reports added/removed/changed files,
 risk deltas, and new URL/executable signals. For GitHub sources, commit-pinned
-refs are evaluated and floating refs are rejected. JSON output now emits stable
+refs are evaluated and floating refs are rejected. Lockfile source fields are
+also validated strictly (kind/input/type consistency + canonical lowercase form
+without surrounding whitespace), lock policy fields are validated for
+canonical form (`profile`/`decision`), and lock skill snapshot digests/paths
+are validated before evaluation. Lock envelope integrity (`schema`, `name`,
+`installed_at`, `severity_overrides`, and non-negative findings counters) is also validated before evaluating
+source diffs. When `.gokui-report.json` exists in the installed skill, update
+also requires it to match lock baseline fields before differential evaluation.
+JSON output now emits
+stable
 skill-item keys for automation-friendly parsing, including `error_code` for
 status-aware automation. Update target entries and URL/executable scan inputs
 must not contain symlink path entries, and URL/executable scan roots must be
 non-symlink directories.
-Update policy decisions also honor `policy.toml` profile-specific
-`reject_severities` when configured.
+For `github-source`, lock input must also be canonical
+(`github:owner/repo//clean/path@ref`) after parser normalization.
+The same canonical requirement applies to `.gokui-source.json`
+`source_input` during metadata validation. Source metadata also requires
+canonical lowercase/no-whitespace `resolved_ref` and `skill_root_sha256`.
+Update policy decisions also honor profile-specific `reject_severities`
+configured via user policy (`policy.toml`) or repository policy
+(`.gokui-policy.toml`) for `local-dir` sources.
 It also supports `--format sarif` for CI/code-scanning ingestion.
 In SARIF mode, fatal update failures emit a single structured error result.
 URL risk classification now flags shortener hosts and raw-IP URLs during scan.
@@ -162,8 +194,8 @@ Current pre-release CLI syntax:
 
 ```sh
 gokui fetch github:owner/repo//path/to/skill@commit --out <quarantine-dir> [--format human|json|sarif|compact]
-gokui inspect <local-dir|zip|github-source> [--format human|json|sarif|compact]
-gokui vet <local-dir|zip|tar> [--format human|json|sarif|compact]
+gokui inspect <local-dir|zip|github-source> [--format human|json|sarif|compact|review-json]
+gokui vet <local-dir|zip|tar> [--profile strict|team|research] [--format human|json|sarif|compact|review-json]
 gokui install <source> --target codex --profile strict|team|research [--format human|json|sarif|compact] [--override RULE_ID ...]
 gokui update --dry-run [--target codex|custom:/path] [--format human|json|sarif|compact]
 gokui lock verify [path] [--format human|json|sarif|compact]
@@ -261,6 +293,7 @@ rule-prefixed validation error is available.
 | `INSPECT_SOURCE_INVALID` | GitHub source syntax is invalid |
 | `INSPECT_SOURCE_PREPARE_FAILED` | source materialization/structure validation failed |
 | `INSPECT_SCAN_FAILED` | scan phase failed |
+| `INSPECT_POLICY_LOAD_FAILED` | policy file load/parse/validation failed |
 | `INSPECT_FAILED` | fallback when inspect fatal error classification is unavailable |
 
 When available, inspect JSON fatal errors also include optional `rule_id`
@@ -369,6 +402,9 @@ lock policy metadata for audit visibility.
 Update skill items also include `severity_override_diff` (`added`/`removed`)
 to show override applicability drift between installed snapshot and current
 source evaluation.
+Update skill items also include `risk_score` (`model`, `previous`, `current`,
+`delta`, `signals`) for differential risk scoring that combines severity-weighted
+finding changes with new URL/executable/file-delta/override-delta signals.
 
 ## Exit Code Contract
 

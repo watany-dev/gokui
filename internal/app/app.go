@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"unicode/utf8"
 
@@ -33,6 +34,33 @@ type inspectReport struct {
 	Decision      string           `json:"decision"`
 	Findings      []inspectFinding `json:"findings"`
 	Note          string           `json:"note"`
+}
+
+type inspectReviewReport struct {
+	SchemaVersion string                 `json:"schema_version"`
+	PreRelease    bool                   `json:"pre_release"`
+	Source        source                 `json:"source"`
+	Decision      string                 `json:"decision"`
+	Neutralized   bool                   `json:"neutralized"`
+	Findings      []inspectReviewFinding `json:"findings"`
+	Summary       inspectReviewSummary   `json:"summary"`
+	Note          string                 `json:"note"`
+}
+
+type inspectReviewFinding struct {
+	ID                 string `json:"id"`
+	Severity           string `json:"severity"`
+	FileNeutralized    string `json:"file_neutralized"`
+	Line               int    `json:"line"`
+	SummaryNeutralized string `json:"summary_neutralized"`
+}
+
+type inspectReviewSummary struct {
+	Total    int `json:"total"`
+	Critical int `json:"critical"`
+	High     int `json:"high"`
+	Medium   int `json:"medium"`
+	Low      int `json:"low"`
 }
 
 type inspectSARIFReport struct {
@@ -180,6 +208,7 @@ const (
 	inspectErrorCodeSourceInvalid       = "INSPECT_SOURCE_INVALID"
 	inspectErrorCodeSourcePrepareFailed = "INSPECT_SOURCE_PREPARE_FAILED"
 	inspectErrorCodeScanFailed          = "INSPECT_SCAN_FAILED"
+	inspectErrorCodePolicyLoadFailed    = "INSPECT_POLICY_LOAD_FAILED"
 	inspectErrorCodeUnknown             = "INSPECT_FAILED"
 )
 
@@ -243,8 +272,8 @@ gokui is pre-release software.
 usage:
   gokui version
   gokui fetch github:owner/repo//path/to/skill@commit --out <quarantine-dir> [--format human|json|sarif|compact]
-  gokui inspect <local-dir|zip|github-source> [--format human|json|sarif|compact]
-  gokui vet <local-dir|zip|tar> [--format human|json|sarif|compact]
+  gokui inspect <local-dir|zip|github-source> [--format human|json|sarif|compact|review-json]
+  gokui vet <local-dir|zip|tar> [--profile strict|team|research] [--format human|json|sarif|compact|review-json]
   gokui install <source> --target codex --profile strict|team|research [--format human|json|sarif|compact] [--override RULE_ID ...]
   gokui update --dry-run [--target codex|custom:/path] [--format human|json|sarif|compact]
   gokui lock verify [path] [--format human|json|sarif|compact]`)
@@ -253,7 +282,8 @@ usage:
 func runVet(args []string, stdout io.Writer, stderr io.Writer) int {
 	requestedJSON := inspectArgsRequestJSON(args)
 	requestedSARIF := inspectArgsRequestSARIF(args)
-	input, format, err := parseVetArgs(args)
+	requestedReviewJSON := inspectArgsRequestReviewJSON(args)
+	input, format, profile, profileSet, err := parseVetArgs(args)
 	if err != nil {
 		sourceArg := extractInspectSourceArg(args)
 		report := inspectErrorReport{
@@ -272,6 +302,9 @@ func runVet(args []string, stdout io.Writer, stderr io.Writer) int {
 		}
 		if requestedSARIF {
 			return writeInspectSARIFError(stdout, stderr, report)
+		}
+		if requestedReviewJSON {
+			return writeInspectJSONError(stdout, stderr, report)
 		}
 		_, _ = fmt.Fprintf(stderr, "%s\n\n%s\n", err.Error(), usage())
 		return 1
@@ -296,30 +329,170 @@ func runVet(args []string, stdout io.Writer, stderr io.Writer) int {
 		_, _ = fmt.Fprintf(stderr, "%s\n\n%s\n", msg, usage())
 		return 1
 	}
+	profile = normalizePolicyProfile(profile)
 
-	inspectArgs := []string{input}
-	if format != "human" {
-		inspectArgs = append(inspectArgs, "--format", format)
+	userPolicy, policyLoaded, policyErr := loadUserPolicyConfig()
+	if policyErr != nil {
+		if emitInspectStructuredError(format, stdout, stderr, inspectErrorReport{
+			SchemaVersion: reportSchemaVersion,
+			Status:        "ERROR",
+			ErrorCode:     inspectErrorCodePolicyLoadFailed,
+			Message:       policyErr.Error(),
+			Source: source{
+				Input: input,
+				Kind:  sourceKind,
+			},
+			Note: "vet failed while loading policy configuration",
+		}) {
+			return 1
+		}
+		_, _ = fmt.Fprintln(stderr, policyErr.Error())
+		return 1
 	}
-	if format == "json" || format == "sarif" {
-		return runInspect(inspectArgs, stdout, stderr)
+	effectivePolicy := userPolicy
+	effectivePolicyLoaded := policyLoaded
+	if shouldApplyRepositoryPolicy(sourceKind) {
+		repoPolicy, repoPolicyFound, repoPolicyErr := loadRepositoryPolicyConfig(input)
+		if repoPolicyErr != nil {
+			if emitInspectStructuredError(format, stdout, stderr, inspectErrorReport{
+				SchemaVersion: reportSchemaVersion,
+				Status:        "ERROR",
+				ErrorCode:     inspectErrorCodePolicyLoadFailed,
+				Message:       repoPolicyErr.Error(),
+				Source: source{
+					Input: input,
+					Kind:  sourceKind,
+				},
+				Note: "vet failed while loading repository policy configuration",
+			}) {
+				return 1
+			}
+			_, _ = fmt.Fprintln(stderr, repoPolicyErr.Error())
+			return 1
+		}
+		if repoPolicyFound {
+			effectivePolicy = repoPolicy
+			effectivePolicyLoaded = true
+		}
+	}
+	if !profileSet && effectivePolicyLoaded && strings.TrimSpace(effectivePolicy.DefaultProfile) != "" {
+		profile = effectivePolicy.DefaultProfile
+	}
+	profile = normalizePolicyProfile(profile)
+	if !isSupportedPolicyProfile(profile) {
+		msg := fmt.Sprintf("unsupported profile: %s (supported: %s)", profile, supportedPolicyProfilesCSV())
+		if emitInspectStructuredError(format, stdout, stderr, inspectErrorReport{
+			SchemaVersion: reportSchemaVersion,
+			Status:        "ERROR",
+			ErrorCode:     inspectErrorCodeArgsInvalid,
+			Message:       msg,
+			Source: source{
+				Input: input,
+				Kind:  sourceKind,
+			},
+			Note: "vet policy profile validation failed",
+		}) {
+			return 1
+		}
+		_, _ = fmt.Fprintf(stderr, "%s\n\n%s\n", msg, usage())
+		return 1
+	}
+	rejectSet, rejectSetErr := effectiveRejectSeveritySetForProfile(profile, effectivePolicyLoaded, effectivePolicy)
+	if rejectSetErr != nil {
+		if emitInspectStructuredError(format, stdout, stderr, inspectErrorReport{
+			SchemaVersion: reportSchemaVersion,
+			Status:        "ERROR",
+			ErrorCode:     inspectErrorCodePolicyLoadFailed,
+			Message:       rejectSetErr.Error(),
+			Source: source{
+				Input: input,
+				Kind:  sourceKind,
+			},
+			Note: "vet policy reject_severities configuration is invalid",
+		}) {
+			return 1
+		}
+		_, _ = fmt.Fprintln(stderr, rejectSetErr.Error())
+		return 1
 	}
 
-	var inspectOut bytes.Buffer
-	code := runInspect(inspectArgs, &inspectOut, stderr)
-	inspectText := inspectOut.String()
+	var inspectStdout bytes.Buffer
+	var inspectStderr bytes.Buffer
+	inspectCode := runInspect([]string{input, "--format", "json"}, &inspectStdout, &inspectStderr)
+	if inspectCode == 1 {
+		errorReport := decodeInspectErrorPayload(inspectStdout.Bytes())
+		if emitInspectStructuredError(format, stdout, stderr, errorReport) {
+			return 1
+		}
+		_, _ = fmt.Fprintln(stderr, errorReport.Message)
+		return 1
+	}
+
+	report := inspectReport{
+		SchemaVersion: reportSchemaVersion,
+		PreRelease:    true,
+		Source: source{
+			Input: input,
+			Kind:  sourceKind,
+		},
+		Decision: "REJECTED",
+		Findings: []inspectFinding{},
+		Note:     "vet failed to parse inspect report; fail-closed rejection applied",
+	}
+	_ = json.Unmarshal(inspectStdout.Bytes(), &report)
+	report.Decision = decisionForInspectFindings(report.Findings, rejectSet)
+	report.Note = fmt.Sprintf("%s (vet profile=%s)", report.Note, profile)
+
+	if format == "json" {
+		out, _ := json.MarshalIndent(report, "", "  ")
+		_, _ = fmt.Fprintf(stdout, "%s\n", out)
+		if report.Decision == "REJECTED" {
+			return 2
+		}
+		return 0
+	}
+	if format == "review-json" {
+		out, _ := json.MarshalIndent(buildInspectReviewReport(report), "", "  ")
+		_, _ = fmt.Fprintf(stdout, "%s\n", out)
+		if report.Decision == "REJECTED" {
+			return 2
+		}
+		return 0
+	}
+	if format == "sarif" {
+		out, _ := json.MarshalIndent(buildInspectSARIFReport(report), "", "  ")
+		_, _ = fmt.Fprintf(stdout, "%s\n", out)
+		if report.Decision == "REJECTED" {
+			return 2
+		}
+		return 0
+	}
 	if format == "compact" {
-		inspectText = strings.Replace(inspectText, "inspect ", "vet ", 1)
-	} else {
-		inspectText = strings.Replace(inspectText, "gokui inspect report (pre-release)\n", "gokui vet report (pre-release)\n", 1)
+		summary := strings.Replace(buildInspectCompactSummary(report), "inspect ", "vet ", 1)
+		_, _ = fmt.Fprintf(stdout, "%s\n", summary)
+		if report.Decision == "REJECTED" {
+			return 2
+		}
+		return 0
 	}
-	_, _ = io.WriteString(stdout, inspectText)
-	return code
+
+	_, _ = fmt.Fprintln(stdout, "gokui vet report (pre-release)")
+	_, _ = fmt.Fprintf(stdout, "source: %s (%s)\n", report.Source.Input, report.Source.Kind)
+	_, _ = fmt.Fprintf(stdout, "decision: %s\n", report.Decision)
+	_, _ = fmt.Fprintf(stdout, "findings: %d\n", len(report.Findings))
+	for _, finding := range report.Findings {
+		_, _ = fmt.Fprintf(stdout, "- [%s] %s %s:%d %s\n", strings.ToUpper(finding.Severity), finding.ID, finding.File, finding.Line, finding.Summary)
+	}
+	if report.Decision == "REJECTED" {
+		return 2
+	}
+	return 0
 }
 
 func runInspect(args []string, stdout io.Writer, stderr io.Writer) int {
 	requestedJSON := inspectArgsRequestJSON(args)
 	requestedSARIF := inspectArgsRequestSARIF(args)
+	requestedReviewJSON := inspectArgsRequestReviewJSON(args)
 	input, format, err := parseInspectArgs(args)
 	if err != nil {
 		sourceArg := extractInspectSourceArg(args)
@@ -340,10 +513,13 @@ func runInspect(args []string, stdout io.Writer, stderr io.Writer) int {
 		if requestedSARIF {
 			return writeInspectSARIFError(stdout, stderr, report)
 		}
+		if requestedReviewJSON {
+			return writeInspectJSONError(stdout, stderr, report)
+		}
 		_, _ = fmt.Fprintf(stderr, "%s\n\n%s\n", err.Error(), usage())
 		return 1
 	}
-	structuredOutput := format == "json" || format == "sarif"
+	structuredOutput := format == "json" || format == "sarif" || format == "review-json"
 
 	sourceKind := detectSourceKind(input)
 
@@ -524,6 +700,18 @@ func runInspect(args []string, stdout io.Writer, stderr io.Writer) int {
 		}
 		return 0
 	}
+	if format == "review-json" {
+		out, marshalErr := json.MarshalIndent(buildInspectReviewReport(report), "", "  ")
+		if marshalErr != nil {
+			_, _ = fmt.Fprintln(stderr, "failed to render inspect review report")
+			return 1
+		}
+		_, _ = fmt.Fprintf(stdout, "%s\n", out)
+		if report.Decision == "REJECTED" {
+			return 2
+		}
+		return 0
+	}
 	if format == "sarif" {
 		out, marshalErr := json.MarshalIndent(buildInspectSARIFReport(report), "", "  ")
 		if marshalErr != nil {
@@ -656,21 +844,31 @@ func parseInspectArgs(args []string) (input string, format string, err error) {
 	if input == "" {
 		return "", "", fmt.Errorf("inspect source is required")
 	}
-	if format != "human" && format != "json" && format != "sarif" && format != "compact" {
+	if format != "human" && format != "json" && format != "sarif" && format != "compact" && format != "review-json" {
 		return "", "", fmt.Errorf("unsupported inspect format: %s", format)
 	}
 	return input, format, nil
 }
 
-func parseVetArgs(args []string) (input string, format string, err error) {
+func parseVetArgs(args []string) (input string, format string, profile string, profileSet bool, err error) {
 	format = "human"
+	profile = policyProfileStrict
 	for i := 0; i < len(args); i++ {
 		arg := args[i]
 		if arg == "--format" {
 			if i+1 >= len(args) {
-				return "", "", fmt.Errorf("missing value for --format")
+				return "", "", "", false, fmt.Errorf("missing value for --format")
 			}
 			format = args[i+1]
+			i++
+			continue
+		}
+		if arg == "--profile" {
+			if i+1 >= len(args) {
+				return "", "", "", false, fmt.Errorf("missing value for --profile")
+			}
+			profile = args[i+1]
+			profileSet = true
 			i++
 			continue
 		}
@@ -678,22 +876,63 @@ func parseVetArgs(args []string) (input string, format string, err error) {
 			format = strings.TrimPrefix(arg, "--format=")
 			continue
 		}
+		if strings.HasPrefix(arg, "--profile=") {
+			profile = strings.TrimPrefix(arg, "--profile=")
+			profileSet = true
+			continue
+		}
 		if strings.HasPrefix(arg, "-") {
-			return "", "", fmt.Errorf("unknown vet option: %s", arg)
+			return "", "", "", false, fmt.Errorf("unknown vet option: %s", arg)
 		}
 		if input != "" {
-			return "", "", fmt.Errorf("vet accepts exactly one source")
+			return "", "", "", false, fmt.Errorf("vet accepts exactly one source")
 		}
 		input = arg
 	}
 
 	if input == "" {
-		return "", "", fmt.Errorf("vet source is required")
+		return "", "", "", false, fmt.Errorf("vet source is required")
 	}
-	if format != "human" && format != "json" && format != "sarif" && format != "compact" {
-		return "", "", fmt.Errorf("unsupported vet format: %s", format)
+	if format != "human" && format != "json" && format != "sarif" && format != "compact" && format != "review-json" {
+		return "", "", "", false, fmt.Errorf("unsupported vet format: %s", format)
 	}
-	return input, format, nil
+	return input, format, profile, profileSet, nil
+}
+
+func decisionForInspectFindings(findings []inspectFinding, rejectSet map[string]struct{}) string {
+	for _, finding := range findings {
+		sev := strings.ToLower(strings.TrimSpace(finding.Severity))
+		if _, reject := rejectSet[sev]; reject {
+			return "REJECTED"
+		}
+	}
+	return "PASS"
+}
+
+func decodeInspectErrorPayload(raw []byte) inspectErrorReport {
+	out := inspectErrorReport{
+		SchemaVersion: reportSchemaVersion,
+		Status:        "ERROR",
+		ErrorCode:     inspectErrorCodeUnknown,
+		Message:       "failed to process inspect error report",
+		Source: source{
+			Input: "",
+			Kind:  "local-dir",
+		},
+		Note: "vet failed while decoding inspect error report",
+	}
+	if err := json.Unmarshal(raw, &out); err != nil {
+		message := strings.TrimSpace(string(raw))
+		if message == "" {
+			return out
+		}
+		out.Message = message
+		return out
+	}
+	if strings.TrimSpace(out.Message) == "" {
+		out.Message = "inspect failed"
+	}
+	return out
 }
 
 func buildInspectCompactSummary(report inspectReport) string {
@@ -834,6 +1073,18 @@ func inspectArgsRequestSARIF(args []string) bool {
 	return false
 }
 
+func inspectArgsRequestReviewJSON(args []string) bool {
+	for i := 0; i < len(args); i++ {
+		if args[i] == "--format" && i+1 < len(args) && args[i+1] == "review-json" {
+			return true
+		}
+		if strings.HasPrefix(args[i], "--format=") && strings.TrimPrefix(args[i], "--format=") == "review-json" {
+			return true
+		}
+	}
+	return false
+}
+
 func extractInspectSourceArg(args []string) string {
 	for i := 0; i < len(args); i++ {
 		arg := args[i]
@@ -937,6 +1188,9 @@ func emitInspectStructuredError(format string, stdout io.Writer, stderr io.Write
 	case "sarif":
 		_ = writeInspectSARIFError(stdout, stderr, report)
 		return true
+	case "review-json":
+		_ = writeInspectJSONError(stdout, stderr, report)
+		return true
 	default:
 		return false
 	}
@@ -976,6 +1230,50 @@ func normalizeJSONErrorCode(code string, fallback string) string {
 		return cleanedFallback
 	}
 	return "UNKNOWN_ERROR"
+}
+
+func buildInspectReviewReport(report inspectReport) inspectReviewReport {
+	reviewFindings := make([]inspectReviewFinding, 0, len(report.Findings))
+	summary := inspectReviewSummary{}
+	for _, finding := range report.Findings {
+		reviewFindings = append(reviewFindings, inspectReviewFinding{
+			ID:                 finding.ID,
+			Severity:           finding.Severity,
+			FileNeutralized:    neutralizeReviewText(finding.File),
+			Line:               finding.Line,
+			SummaryNeutralized: neutralizeReviewText(finding.Summary),
+		})
+		summary.Total++
+		switch finding.Severity {
+		case "critical":
+			summary.Critical++
+		case "high":
+			summary.High++
+		case "medium":
+			summary.Medium++
+		case "low":
+			summary.Low++
+		}
+	}
+	return inspectReviewReport{
+		SchemaVersion: report.SchemaVersion,
+		PreRelease:    report.PreRelease,
+		Source: source{
+			Input: neutralizeReviewText(report.Source.Input),
+			Kind:  neutralizeReviewText(report.Source.Kind),
+		},
+		Decision:    report.Decision,
+		Neutralized: true,
+		Findings:    reviewFindings,
+		Summary:     summary,
+		Note:        report.Note,
+	}
+}
+
+func neutralizeReviewText(text string) string {
+	valid := strings.ToValidUTF8(text, "\uFFFD")
+	quoted := strconv.QuoteToASCII(valid)
+	return quoted[1 : len(quoted)-1]
 }
 
 func detectSourceKind(input string) string {

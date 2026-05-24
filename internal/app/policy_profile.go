@@ -30,6 +30,10 @@ func supportedPolicyProfilesCSV() string {
 	return "strict|team|research"
 }
 
+func shouldApplyRepositoryPolicy(sourceKind string) bool {
+	return strings.EqualFold(strings.TrimSpace(sourceKind), "local-dir")
+}
+
 func defaultRejectSeveritySetForProfile(profile string) map[string]struct{} {
 	out := map[string]struct{}{
 		"critical": {},

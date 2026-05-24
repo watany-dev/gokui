@@ -84,3 +84,18 @@ func TestEffectiveRejectSeveritySetForProfile(t *testing.T) {
 		}
 	})
 }
+
+func TestShouldApplyRepositoryPolicy(t *testing.T) {
+	if !shouldApplyRepositoryPolicy("local-dir") {
+		t.Fatal("local-dir should allow repository policy")
+	}
+	if shouldApplyRepositoryPolicy("zip") {
+		t.Fatal("zip should not allow repository policy")
+	}
+	if shouldApplyRepositoryPolicy("tar") {
+		t.Fatal("tar should not allow repository policy")
+	}
+	if shouldApplyRepositoryPolicy("github-source") {
+		t.Fatal("github-source should not allow repository policy")
+	}
+}

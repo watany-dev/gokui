@@ -35,6 +35,7 @@ var (
 	installMaxDigestFileBytes  int64 = 20 * 1024 * 1024
 	errDigestBuildFailed             = errors.New("failed to digest installed files")
 	loadUserPolicyConfig             = policypkg.LoadUserPolicy
+	loadRepositoryPolicyConfig       = policypkg.LoadRepositoryPolicy
 )
 
 const (
@@ -210,53 +211,7 @@ func runInstall(args []string, stdout io.Writer, stderr io.Writer) int {
 		_, _ = fmt.Fprintln(stderr, policyErr.Error())
 		return 1
 	}
-	userPolicy := loadedPolicy
-	policyLoaded := foundPolicy
-	if !parsed.ProfileSet && foundPolicy && strings.TrimSpace(userPolicy.DefaultProfile) != "" {
-		parsed.Profile = userPolicy.DefaultProfile
-	}
-
 	sourceKind := detectSourceKind(parsed.Source)
-	parsed.Profile = normalizePolicyProfile(parsed.Profile)
-
-	if !isSupportedPolicyProfile(parsed.Profile) {
-		if emitInstallStructuredError(parsed.Format, stdout, stderr, installErrorReport{
-			SchemaVersion: reportSchemaVersion,
-			Status:        "ERROR",
-			ErrorCode:     installErrorCodeProfileUnsupported,
-			Message:       fmt.Sprintf("unsupported profile: %s (supported: %s)", parsed.Profile, supportedPolicyProfilesCSV()),
-			Source: source{
-				Input: parsed.Source,
-				Kind:  sourceKind,
-			},
-			Target:        parsed.Target,
-			PolicyProfile: parsed.Profile,
-			Note:          "install policy profile validation failed",
-		}) {
-			return 1
-		}
-		_, _ = fmt.Fprintf(stderr, "unsupported profile: %s (supported: %s)\n", parsed.Profile, supportedPolicyProfilesCSV())
-		return 1
-	}
-	if err := validateInstallOverridesPolicy(parsed.Profile, parsed.Overrides, policyLoaded, userPolicy); err != nil {
-		if emitInstallStructuredError(parsed.Format, stdout, stderr, installErrorReport{
-			SchemaVersion: reportSchemaVersion,
-			Status:        "ERROR",
-			ErrorCode:     installErrorCodeOverrideNotAllowed,
-			Message:       err.Error(),
-			Source: source{
-				Input: parsed.Source,
-				Kind:  sourceKind,
-			},
-			Target:        parsed.Target,
-			PolicyProfile: parsed.Profile,
-			Note:          "install override policy validation failed",
-		}) {
-			return 1
-		}
-		_, _ = fmt.Fprintln(stderr, err.Error())
-		return 1
-	}
 
 	if _, statErr := os.Stat(parsed.Source); statErr != nil {
 		if sourceKind != "github-source" {
@@ -324,7 +279,79 @@ func runInstall(args []string, stdout io.Writer, stderr io.Writer) int {
 		return 1
 	}
 
-	rejectSet, err := effectiveRejectSeveritySetForProfile(parsed.Profile, policyLoaded, userPolicy)
+	effectivePolicy := loadedPolicy
+	effectivePolicyLoaded := foundPolicy
+	if shouldApplyRepositoryPolicy(sourceKind) {
+		repoPolicy, repoPolicyFound, repoPolicyErr := loadRepositoryPolicyConfig(skillRoot)
+		if repoPolicyErr != nil {
+			if emitInstallStructuredError(parsed.Format, stdout, stderr, installErrorReport{
+				SchemaVersion: reportSchemaVersion,
+				Status:        "ERROR",
+				ErrorCode:     installErrorCodePolicyLoadFailed,
+				Message:       repoPolicyErr.Error(),
+				Source: source{
+					Input: parsed.Source,
+					Kind:  sourceKind,
+				},
+				Target:        parsed.Target,
+				PolicyProfile: parsed.Profile,
+				Note:          "failed to load repository policy profile",
+			}) {
+				return 1
+			}
+			_, _ = fmt.Fprintln(stderr, repoPolicyErr.Error())
+			return 1
+		}
+		if repoPolicyFound {
+			effectivePolicy = repoPolicy
+			effectivePolicyLoaded = true
+		}
+	}
+	if !parsed.ProfileSet && effectivePolicyLoaded && strings.TrimSpace(effectivePolicy.DefaultProfile) != "" {
+		parsed.Profile = effectivePolicy.DefaultProfile
+	}
+	parsed.Profile = normalizePolicyProfile(parsed.Profile)
+
+	if !isSupportedPolicyProfile(parsed.Profile) {
+		if emitInstallStructuredError(parsed.Format, stdout, stderr, installErrorReport{
+			SchemaVersion: reportSchemaVersion,
+			Status:        "ERROR",
+			ErrorCode:     installErrorCodeProfileUnsupported,
+			Message:       fmt.Sprintf("unsupported profile: %s (supported: %s)", parsed.Profile, supportedPolicyProfilesCSV()),
+			Source: source{
+				Input: parsed.Source,
+				Kind:  sourceKind,
+			},
+			Target:        parsed.Target,
+			PolicyProfile: parsed.Profile,
+			Note:          "install policy profile validation failed",
+		}) {
+			return 1
+		}
+		_, _ = fmt.Fprintf(stderr, "unsupported profile: %s (supported: %s)\n", parsed.Profile, supportedPolicyProfilesCSV())
+		return 1
+	}
+	if err := validateInstallOverridesPolicy(parsed.Profile, parsed.Overrides, effectivePolicyLoaded, effectivePolicy); err != nil {
+		if emitInstallStructuredError(parsed.Format, stdout, stderr, installErrorReport{
+			SchemaVersion: reportSchemaVersion,
+			Status:        "ERROR",
+			ErrorCode:     installErrorCodeOverrideNotAllowed,
+			Message:       err.Error(),
+			Source: source{
+				Input: parsed.Source,
+				Kind:  sourceKind,
+			},
+			Target:        parsed.Target,
+			PolicyProfile: parsed.Profile,
+			Note:          "install override policy validation failed",
+		}) {
+			return 1
+		}
+		_, _ = fmt.Fprintln(stderr, err.Error())
+		return 1
+	}
+
+	rejectSet, err := effectiveRejectSeveritySetForProfile(parsed.Profile, effectivePolicyLoaded, effectivePolicy)
 	if err != nil {
 		if emitInstallStructuredError(parsed.Format, stdout, stderr, installErrorReport{
 			SchemaVersion: reportSchemaVersion,
@@ -989,8 +1016,14 @@ func installSkillAtomic(skillRoot string, targetRoot string, skillName string, r
 		if readErr != nil {
 			return "", "", fmt.Errorf("install target already contains skill with missing/invalid lockfile: %s", finalPath)
 		}
+		if validateErr := validateInstallLockForProvenanceReuse(existingLock, skillName); validateErr != nil {
+			return "", "", fmt.Errorf("install target already contains skill with missing/invalid lockfile: %s (%v)", finalPath, validateErr)
+		}
 		if !provenanceMatches(existingLock, stagedLock) {
 			return "", "", fmt.Errorf("install target already contains skill from different provenance: %s", finalPath)
+		}
+		if integrityErr := validateInstalledContentForIdempotentReuse(finalPath, existingLock); integrityErr != nil {
+			return "", "", fmt.Errorf("install target already contains skill with missing/invalid lockfile: %s (%v)", finalPath, integrityErr)
 		}
 		return finalPath, installResultAlreadyInstalled, nil
 	}
@@ -1427,4 +1460,158 @@ func provenanceMatches(existing installLock, incoming installLock) bool {
 		return false
 	}
 	return true
+}
+
+func validateInstallLockForProvenanceReuse(lock installLock, expectedSkillName string) error {
+	if lock.Schema != lockSchemaVersion {
+		return fmt.Errorf("unsupported install lock schema: %s", lock.Schema)
+	}
+	trimmedName := strings.TrimSpace(lock.Name)
+	if trimmedName == "" {
+		return fmt.Errorf("lock name is empty")
+	}
+	if trimmedName != lock.Name {
+		return fmt.Errorf("lock name must not contain leading or trailing whitespace")
+	}
+	if expectedSkillName != "" && lock.Name != expectedSkillName {
+		return fmt.Errorf("lock name does not match target skill directory: lock=%s target=%s", lock.Name, expectedSkillName)
+	}
+
+	trimmedInstalledAt := strings.TrimSpace(lock.InstalledAt)
+	if trimmedInstalledAt == "" {
+		return fmt.Errorf("lock installed_at is empty")
+	}
+	if trimmedInstalledAt != lock.InstalledAt {
+		return fmt.Errorf("lock installed_at must not contain leading or trailing whitespace")
+	}
+	if _, err := time.Parse(time.RFC3339, lock.InstalledAt); err != nil {
+		return fmt.Errorf("lock installed_at must be RFC3339")
+	}
+
+	trimmedProfile := strings.TrimSpace(lock.Policy.Profile)
+	if trimmedProfile == "" {
+		return fmt.Errorf("lock policy profile is empty")
+	}
+	if normalizePolicyProfile(trimmedProfile) != lock.Policy.Profile {
+		return fmt.Errorf("lock policy profile must be canonical lowercase without surrounding whitespace")
+	}
+	if !isSupportedPolicyProfile(lock.Policy.Profile) {
+		return fmt.Errorf("lock policy profile is unsupported: %s", lock.Policy.Profile)
+	}
+	if lock.Policy.Decision != "pass" {
+		return fmt.Errorf("lock policy decision must be canonical lowercase pass")
+	}
+	if err := validateLockFindingSummary(lock.Findings); err != nil {
+		return fmt.Errorf("lock findings summary is invalid: %v", err)
+	}
+	if err := validateSeverityOverrideAudit(lock.Policy.SeverityOverrides); err != nil {
+		return fmt.Errorf("lock policy severity_overrides is invalid: %v", err)
+	}
+
+	trimmedKind := strings.TrimSpace(lock.Source.Kind)
+	if trimmedKind == "" {
+		return fmt.Errorf("lock source kind is empty")
+	}
+	if trimmedKind != lock.Source.Kind {
+		return fmt.Errorf("lock source kind must not contain leading or trailing whitespace")
+	}
+	if trimmedKind != strings.ToLower(trimmedKind) {
+		return fmt.Errorf("lock source kind must be canonical lowercase")
+	}
+	trimmedInput := strings.TrimSpace(lock.Source.Input)
+	if trimmedInput == "" {
+		return fmt.Errorf("lock source input is empty")
+	}
+	if trimmedInput != lock.Source.Input {
+		return fmt.Errorf("lock source input must not contain leading or trailing whitespace")
+	}
+	if detectSourceKind(trimmedInput) != trimmedKind {
+		return fmt.Errorf("lock source kind does not match source input")
+	}
+
+	expectedType := sourceTypeFromKind(trimmedKind)
+	if expectedType == "unknown" {
+		return fmt.Errorf("unsupported lock source kind: %s", trimmedKind)
+	}
+	trimmedType := strings.TrimSpace(lock.Source.Type)
+	if trimmedType != lock.Source.Type {
+		return fmt.Errorf("lock source type must not contain leading or trailing whitespace")
+	}
+	if trimmedType != strings.ToLower(trimmedType) {
+		return fmt.Errorf("lock source type must be canonical lowercase")
+	}
+	if trimmedType != expectedType {
+		return fmt.Errorf("source type mismatch for kind %s: expected %s, got %s", trimmedKind, expectedType, trimmedType)
+	}
+
+	if trimmedKind == "github-source" {
+		spec, err := srcpkg.ParseGitHubSource(trimmedInput)
+		if err != nil {
+			return fmt.Errorf("invalid github source input in lock: %v", err)
+		}
+		if trimmedInput != canonicalGitHubSourceInput(spec) {
+			return fmt.Errorf("github lock source input must be canonical")
+		}
+		if !srcpkg.IsCommitPinnedRef(spec.Ref) {
+			return fmt.Errorf("github lock source must be commit-pinned")
+		}
+	} else {
+		if trimmedInput != filepath.Clean(trimmedInput) {
+			return fmt.Errorf("lock source input must be a canonical cleaned path for local/archive sources")
+		}
+	}
+
+	if !isCanonicalSHA256Hex(lock.Skill.RootSHA256) {
+		return fmt.Errorf("lock skill root_sha256 must be a canonical lowercase 64-char hex digest")
+	}
+	if len(lock.Skill.Files) == 0 {
+		return fmt.Errorf("lock skill files is empty")
+	}
+	seen := make(map[string]struct{}, len(lock.Skill.Files))
+	for _, file := range lock.Skill.Files {
+		if strings.TrimSpace(file.Path) == "" {
+			return fmt.Errorf("lock file path is empty")
+		}
+		if !isValidLockRelativePath(file.Path) {
+			return fmt.Errorf("lock file path is invalid: %s", file.Path)
+		}
+		if _, exists := seen[file.Path]; exists {
+			return fmt.Errorf("duplicate lock file path: %s", file.Path)
+		}
+		seen[file.Path] = struct{}{}
+		if !isCanonicalSHA256Hex(file.SHA256) {
+			return fmt.Errorf("lock file sha256 is invalid: %s", file.Path)
+		}
+		if file.Bytes < 0 {
+			return fmt.Errorf("lock file bytes is negative: %s", file.Path)
+		}
+	}
+
+	return nil
+}
+
+func validateInstalledContentForIdempotentReuse(skillPath string, lock installLock) error {
+	actualFiles, actualRootHash, err := buildFileDigestsForLock(skillPath)
+	if err != nil {
+		return fmt.Errorf("failed to verify installed skill content digests: %w", err)
+	}
+	missing, changed, unexpected := diffLockFiles(lock.Skill.Files, actualFiles)
+	if len(missing) > 0 || len(changed) > 0 || len(unexpected) > 0 {
+		return fmt.Errorf("installed skill content drift detected: missing=%d changed=%d unexpected=%d", len(missing), len(changed), len(unexpected))
+	}
+	if lock.Skill.RootSHA256 != actualRootHash {
+		return fmt.Errorf("installed skill root hash drift detected: expected %s, got %s", lock.Skill.RootSHA256, actualRootHash)
+	}
+	if ok, detail := verifyInstallReport(skillPath, lock); !ok {
+		return fmt.Errorf("install report integrity check failed: %s", detail)
+	}
+	if lock.Source.Kind == "github-source" {
+		if err := verifyInstalledSourceMetadata(skillPath, source{
+			Input: lock.Source.Input,
+			Kind:  lock.Source.Kind,
+		}); err != nil {
+			return fmt.Errorf("installed github source metadata drift detected: %w", err)
+		}
+	}
+	return nil
 }

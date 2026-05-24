@@ -2,7 +2,6 @@ package app
 
 import (
 	"bytes"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -117,8 +116,12 @@ func validateSourceMetadata(meta sourceMetadata) error {
 	if meta.Schema != sourceMetadataSchemaVersion {
 		return fmt.Errorf("unsupported source metadata schema: %s", meta.Schema)
 	}
-	if strings.TrimSpace(meta.SourceInput) == "" {
+	trimmedSourceInput := strings.TrimSpace(meta.SourceInput)
+	if trimmedSourceInput == "" {
 		return fmt.Errorf("source metadata source_input is empty")
+	}
+	if trimmedSourceInput != meta.SourceInput {
+		return fmt.Errorf("source metadata source_input must not contain leading or trailing whitespace")
 	}
 	if meta.SourceKind != "github-source" {
 		return fmt.Errorf("source metadata source_kind is unsupported: %s", meta.SourceKind)
@@ -127,16 +130,26 @@ func validateSourceMetadata(meta sourceMetadata) error {
 	if err != nil {
 		return fmt.Errorf("source metadata has invalid github source input: %w", err)
 	}
+	if meta.SourceInput != canonicalGitHubSourceInput(spec) {
+		return fmt.Errorf("source metadata source_input must be canonical")
+	}
 	if !srcpkg.IsCommitPinnedRef(spec.Ref) {
 		return fmt.Errorf("source metadata requires commit-pinned github ref")
 	}
-	if strings.TrimSpace(meta.ResolvedRef) == "" {
+	trimmedResolvedRef := strings.TrimSpace(meta.ResolvedRef)
+	if trimmedResolvedRef == "" {
 		return fmt.Errorf("source metadata resolved_ref is empty")
+	}
+	if trimmedResolvedRef != meta.ResolvedRef {
+		return fmt.Errorf("source metadata resolved_ref must not contain leading or trailing whitespace")
+	}
+	if trimmedResolvedRef != strings.ToLower(trimmedResolvedRef) {
+		return fmt.Errorf("source metadata resolved_ref must be canonical lowercase")
 	}
 	if !srcpkg.IsCommitPinnedRef(meta.ResolvedRef) {
 		return fmt.Errorf("source metadata resolved_ref must be commit-pinned")
 	}
-	if !strings.EqualFold(strings.TrimSpace(spec.Ref), strings.TrimSpace(meta.ResolvedRef)) {
+	if spec.Ref != meta.ResolvedRef {
 		return fmt.Errorf("source metadata resolved_ref does not match source_input ref")
 	}
 	if strings.TrimSpace(meta.FetchedAt) == "" {
@@ -149,9 +162,11 @@ func validateSourceMetadata(meta sourceMetadata) error {
 		return fmt.Errorf("source metadata skill_root_sha256 is empty")
 	}
 	rootHash := strings.TrimSpace(meta.SkillRootSHA256)
-	decoded, err := hex.DecodeString(rootHash)
-	if err != nil || len(decoded) != 32 {
-		return fmt.Errorf("source metadata skill_root_sha256 must be a 64-char hex digest")
+	if rootHash != meta.SkillRootSHA256 {
+		return fmt.Errorf("source metadata skill_root_sha256 must not contain leading or trailing whitespace")
+	}
+	if !isCanonicalSHA256Hex(rootHash) {
+		return fmt.Errorf("source metadata skill_root_sha256 must be a canonical lowercase 64-char hex digest")
 	}
 	return nil
 }

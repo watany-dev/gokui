@@ -974,6 +974,33 @@ func TestVerifyLockSourceChecks(t *testing.T) {
 	if ok, _ := verifyLockSource(lock); ok {
 		t.Fatal("empty input should fail")
 	}
+	lock.Source.Input = " /tmp/skill "
+	if ok, _ := verifyLockSource(lock); ok {
+		t.Fatal("input with surrounding whitespace should fail")
+	}
+	lock.Source.Input = "/tmp/skill"
+	lock.Source.Kind = " local-dir "
+	if ok, _ := verifyLockSource(lock); ok {
+		t.Fatal("kind with surrounding whitespace should fail")
+	}
+	lock.Source.Kind = "LOCAL-DIR"
+	if ok, _ := verifyLockSource(lock); ok {
+		t.Fatal("kind with uppercase letters should fail")
+	}
+	lock.Source.Kind = "local-dir"
+	lock.Source.Type = " local "
+	if ok, _ := verifyLockSource(lock); ok {
+		t.Fatal("type with surrounding whitespace should fail")
+	}
+	lock.Source.Type = "LOCAL"
+	if ok, _ := verifyLockSource(lock); ok {
+		t.Fatal("type with uppercase letters should fail")
+	}
+	lock.Source.Type = "local"
+	lock.Source.Input = "/tmp/skill/../skill"
+	if ok, _ := verifyLockSource(lock); ok {
+		t.Fatal("non-canonical local input path should fail")
+	}
 
 	lock.Source.Input = "/tmp/skill"
 	lock.Source.Kind = "unsupported"
@@ -987,11 +1014,22 @@ func TestVerifyLockSourceChecks(t *testing.T) {
 		t.Fatal("type/kind mismatch should fail")
 	}
 
+	lock.Source.Type = "local"
+	lock.Source.Input = "github:org/repo//skills/demo@abc1234a4b5c6d7e8f901234567890abcdef1234"
+	lock.Source.Kind = "local-dir"
+	if ok, _ := verifyLockSource(lock); ok {
+		t.Fatal("kind/input mismatch should fail")
+	}
+
 	lock.Source.Kind = "github-source"
 	lock.Source.Type = "github"
 	lock.Source.Input = "github:org/repo/path@abc1234a4b5c6d7e8f901234567890abcdef1234"
 	if ok, _ := verifyLockSource(lock); ok {
 		t.Fatal("invalid github source syntax should fail")
+	}
+	lock.Source.Input = "github:org/repo//skills/./demo@abc1234a4b5c6d7e8f901234567890abcdef1234"
+	if ok, _ := verifyLockSource(lock); ok {
+		t.Fatal("non-canonical github source input should fail")
 	}
 
 	lock.Source.Input = "github:org/repo//skills/demo@main"
@@ -1441,6 +1479,13 @@ func TestVerifyInstallReportValidationBranches(t *testing.T) {
 			detailHas: "schema_version is empty",
 		},
 		{
+			name: "unsupported schema",
+			mutate: func(r *installReport) {
+				r.SchemaVersion = "0.0.0-test"
+			},
+			detailHas: "schema_version is unsupported",
+		},
+		{
 			name: "empty profile",
 			mutate: func(r *installReport) {
 				r.PolicyProfile = ""
@@ -1455,11 +1500,32 @@ func TestVerifyInstallReportValidationBranches(t *testing.T) {
 			detailHas: "policy profile does not match",
 		},
 		{
+			name: "profile has surrounding whitespace",
+			mutate: func(r *installReport) {
+				r.PolicyProfile = " strict "
+			},
+			detailHas: "policy profile must not contain leading or trailing whitespace",
+		},
+		{
+			name: "profile not canonical lowercase",
+			mutate: func(r *installReport) {
+				r.PolicyProfile = "Strict"
+			},
+			detailHas: "policy profile must be canonical lowercase without surrounding whitespace",
+		},
+		{
 			name: "decision mismatch",
 			mutate: func(r *installReport) {
 				r.Decision = "REJECTED"
 			},
 			detailHas: "decision does not match",
+		},
+		{
+			name: "decision has surrounding whitespace",
+			mutate: func(r *installReport) {
+				r.Decision = " PASS "
+			},
+			detailHas: "decision must not contain leading or trailing whitespace",
 		},
 		{
 			name: "installed false",
@@ -1617,25 +1683,46 @@ func TestVerifyLockStructureValidationBranches(t *testing.T) {
 			detailIn: "policy profile is unsupported",
 		},
 		{
+			name: "non-canonical profile",
+			mutate: func(l *installLock) {
+				l.Policy.Profile = " Strict "
+			},
+			detailIn: "policy profile must be canonical lowercase without surrounding whitespace",
+		},
+		{
 			name: "invalid decision",
 			mutate: func(l *installLock) {
 				l.Policy.Decision = "warn"
 			},
-			detailIn: "lock policy decision must be pass",
+			detailIn: "lock policy decision must be canonical lowercase pass",
 		},
 		{
 			name: "rejected decision",
 			mutate: func(l *installLock) {
 				l.Policy.Decision = "rejected"
 			},
-			detailIn: "lock policy decision must be pass",
+			detailIn: "lock policy decision must be canonical lowercase pass",
+		},
+		{
+			name: "uppercase decision",
+			mutate: func(l *installLock) {
+				l.Policy.Decision = "PASS"
+			},
+			detailIn: "lock policy decision must be canonical lowercase pass",
 		},
 		{
 			name: "invalid root hash",
 			mutate: func(l *installLock) {
 				l.Skill.RootSHA256 = "x"
 			},
-			detailIn: "root_sha256 must be a 64-char hex digest",
+			detailIn: "root_sha256 must be a canonical lowercase 64-char hex digest",
+		},
+		{
+			name: "uppercase root hash",
+			mutate: func(l *installLock) {
+				l.Skill.RootSHA256 = "0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF"
+			},
+			detailIn: "root_sha256 must be a canonical lowercase 64-char hex digest",
 		},
 		{
 			name: "empty files",
@@ -1666,6 +1753,13 @@ func TestVerifyLockStructureValidationBranches(t *testing.T) {
 			detailIn: "file sha256 is invalid",
 		},
 		{
+			name: "uppercase file hash",
+			mutate: func(l *installLock) {
+				l.Skill.Files[0].SHA256 = "0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF"
+			},
+			detailIn: "file sha256 is invalid",
+		},
+		{
 			name: "negative bytes",
 			mutate: func(l *installLock) {
 				l.Skill.Files[0].Bytes = -1
@@ -1689,6 +1783,13 @@ func TestVerifyLockStructureValidationBranches(t *testing.T) {
 			},
 			detailIn: "severity_overrides is invalid",
 		},
+		{
+			name: "negative findings summary",
+			mutate: func(l *installLock) {
+				l.Findings.High = -1
+			},
+			detailIn: "findings summary is invalid",
+		},
 	}
 
 	for _, tc := range cases {
@@ -1705,11 +1806,17 @@ func TestVerifyLockStructureValidationBranches(t *testing.T) {
 }
 
 func TestLockVerifyHelpers(t *testing.T) {
-	if !isSHA256Hex("0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef") {
-		t.Fatal("expected valid hex digest")
+	if !isCanonicalSHA256Hex("0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef") {
+		t.Fatal("expected canonical digest to pass")
 	}
-	if isSHA256Hex("x") {
-		t.Fatal("invalid digest should fail")
+	if isCanonicalSHA256Hex("x") {
+		t.Fatal("invalid digest should fail canonical check")
+	}
+	if isCanonicalSHA256Hex("0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF") {
+		t.Fatal("uppercase digest should fail canonical check")
+	}
+	if isCanonicalSHA256Hex(" 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef ") {
+		t.Fatal("surrounding whitespace should fail canonical check")
 	}
 
 	validPaths := []string{"SKILL.md", "references/readme.md", ".gokui-report.json"}
@@ -1780,6 +1887,45 @@ func TestSeverityOverrideAuditHelpers(t *testing.T) {
 				detailPart: "previous_severity is empty",
 			},
 			{
+				name: "rule_id has surrounding whitespace",
+				override: severityOverrideAudit{
+					RuleID:            " PROMPT_OVERRIDE_LANGUAGE ",
+					PreviousSeverity:  "high",
+					EffectiveSeverity: "medium",
+					Justification:     "x",
+					ApprovedBy:        "y",
+					Source:            "policy-file",
+					AppliedAt:         "2026-05-24T00:00:00Z",
+				},
+				detailPart: "rule_id must not contain leading or trailing whitespace",
+			},
+			{
+				name: "rule_id must be uppercase snake case",
+				override: severityOverrideAudit{
+					RuleID:            "prompt_override_language",
+					PreviousSeverity:  "high",
+					EffectiveSeverity: "medium",
+					Justification:     "x",
+					ApprovedBy:        "y",
+					Source:            "policy-file",
+					AppliedAt:         "2026-05-24T00:00:00Z",
+				},
+				detailPart: "rule_id must be canonical uppercase snake case",
+			},
+			{
+				name: "previous severity must be canonical",
+				override: severityOverrideAudit{
+					RuleID:            "PROMPT_OVERRIDE_LANGUAGE",
+					PreviousSeverity:  "HIGH",
+					EffectiveSeverity: "medium",
+					Justification:     "x",
+					ApprovedBy:        "y",
+					Source:            "policy-file",
+					AppliedAt:         "2026-05-24T00:00:00Z",
+				},
+				detailPart: "previous_severity must be canonical severity",
+			},
+			{
 				name: "empty effective severity",
 				override: severityOverrideAudit{
 					RuleID:           "PROMPT_OVERRIDE_LANGUAGE",
@@ -1790,6 +1936,19 @@ func TestSeverityOverrideAuditHelpers(t *testing.T) {
 					AppliedAt:        "2026-05-24T00:00:00Z",
 				},
 				detailPart: "effective_severity is empty",
+			},
+			{
+				name: "effective severity must be canonical",
+				override: severityOverrideAudit{
+					RuleID:            "PROMPT_OVERRIDE_LANGUAGE",
+					PreviousSeverity:  "high",
+					EffectiveSeverity: "warn",
+					Justification:     "x",
+					ApprovedBy:        "y",
+					Source:            "policy-file",
+					AppliedAt:         "2026-05-24T00:00:00Z",
+				},
+				detailPart: "effective_severity must be canonical severity",
 			},
 			{
 				name: "empty justification",
@@ -1828,6 +1987,45 @@ func TestSeverityOverrideAuditHelpers(t *testing.T) {
 				detailPart: "source is empty",
 			},
 			{
+				name: "source has surrounding whitespace",
+				override: severityOverrideAudit{
+					RuleID:            "PROMPT_OVERRIDE_LANGUAGE",
+					PreviousSeverity:  "high",
+					EffectiveSeverity: "medium",
+					Justification:     "x",
+					ApprovedBy:        "y",
+					Source:            " policy-file ",
+					AppliedAt:         "2026-05-24T00:00:00Z",
+				},
+				detailPart: "source must not contain leading or trailing whitespace",
+			},
+			{
+				name: "source must be canonical lowercase",
+				override: severityOverrideAudit{
+					RuleID:            "PROMPT_OVERRIDE_LANGUAGE",
+					PreviousSeverity:  "high",
+					EffectiveSeverity: "medium",
+					Justification:     "x",
+					ApprovedBy:        "y",
+					Source:            "Policy-File",
+					AppliedAt:         "2026-05-24T00:00:00Z",
+				},
+				detailPart: "source must be canonical lowercase",
+			},
+			{
+				name: "source must be allowed origin",
+				override: severityOverrideAudit{
+					RuleID:            "PROMPT_OVERRIDE_LANGUAGE",
+					PreviousSeverity:  "high",
+					EffectiveSeverity: "medium",
+					Justification:     "x",
+					ApprovedBy:        "y",
+					Source:            "manual-edit",
+					AppliedAt:         "2026-05-24T00:00:00Z",
+				},
+				detailPart: "source must be an allowed origin",
+			},
+			{
 				name: "empty applied_at",
 				override: severityOverrideAudit{
 					RuleID:            "PROMPT_OVERRIDE_LANGUAGE",
@@ -1851,6 +2049,19 @@ func TestSeverityOverrideAuditHelpers(t *testing.T) {
 					AppliedAt:         "not-rfc3339",
 				},
 				detailPart: "applied_at must be RFC3339",
+			},
+			{
+				name: "applied_at has surrounding whitespace",
+				override: severityOverrideAudit{
+					RuleID:            "PROMPT_OVERRIDE_LANGUAGE",
+					PreviousSeverity:  "high",
+					EffectiveSeverity: "medium",
+					Justification:     "x",
+					ApprovedBy:        "y",
+					Source:            "policy-file",
+					AppliedAt:         " 2026-05-24T00:00:00Z ",
+				},
+				detailPart: "applied_at must not contain leading or trailing whitespace",
 			},
 		}
 

@@ -14,6 +14,7 @@ const (
 	envPolicyPath    = "GOKUI_POLICY_PATH"
 	maxPolicyBytes   = 1_000_000
 	defaultPolicyRel = ".config/gokui/policy.toml"
+	repoPolicyFile   = ".gokui-policy.toml"
 )
 
 // Config is the user policy contract loaded from policy.toml.
@@ -35,12 +36,68 @@ type ProfileConfig struct {
 // LoadUserPolicy loads a user policy from GOKUI_POLICY_PATH or
 // ~/.config/gokui/policy.toml. If no file exists, found=false and err=nil.
 func LoadUserPolicy() (cfg Config, found bool, err error) {
-	cfg.Overrides.Enabled = true
-
 	path, err := resolvePolicyPath()
 	if err != nil {
 		return Config{}, false, err
 	}
+	return loadPolicyFile(path)
+}
+
+// LoadRepositoryPolicy walks up from startPath and loads the nearest
+// .gokui-policy.toml file. If no file exists in any ancestor directory,
+// found=false and err=nil.
+func LoadRepositoryPolicy(startPath string) (cfg Config, found bool, err error) {
+	startDir, err := resolveRepositoryPolicyStartDir(startPath)
+	if err != nil {
+		return Config{}, false, err
+	}
+
+	dir := startDir
+	for {
+		candidate := filepath.Join(dir, repoPolicyFile)
+		cfg, found, err := loadPolicyFile(candidate)
+		if err != nil {
+			return Config{}, false, err
+		}
+		if found {
+			return cfg, true, nil
+		}
+
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			return Config{}, false, nil
+		}
+		dir = parent
+	}
+}
+
+func resolveRepositoryPolicyStartDir(startPath string) (string, error) {
+	cleaned := filepath.Clean(startPath)
+	if strings.TrimSpace(cleaned) == "" {
+		return "", fmt.Errorf("failed to resolve repository policy start path: empty path")
+	}
+	if cleaned == "." {
+		cwd, err := os.Getwd()
+		if err != nil {
+			return "", fmt.Errorf("failed to resolve repository policy start path: %w", err)
+		}
+		cleaned = cwd
+	}
+	info, err := os.Stat(cleaned)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return cleaned, nil
+		}
+		return "", fmt.Errorf("failed to resolve repository policy start path: %w", err)
+	}
+	if info.IsDir() {
+		return cleaned, nil
+	}
+	return filepath.Dir(cleaned), nil
+}
+
+func loadPolicyFile(path string) (cfg Config, found bool, err error) {
+	cfg.Overrides.Enabled = true
 	if err := rejectSymlinkPath(path); err != nil {
 		return Config{}, false, err
 	}

@@ -16,6 +16,9 @@ tests/CI:
 - Lock/source-metadata/report read-path hardening with symlink component rejection and regular-file enforcement
 - Source metadata write-path hardening with symlink component rejection and non-regular target rejection
 - Install atomic finalize hardening for symlinked target entries
+- Install idempotent-reuse hardening via strict existing-lock structural validation before provenance match
+- Install idempotent-reuse hardening via installed-content/root-hash drift verification (and GitHub metadata integrity for GitHub-origin installs)
+- Install idempotent-reuse hardening via install-report integrity verification during reuse checks
 - Install source-copy hardening with strict byte-limit writes and overflow cleanup
 - Install source-copy and digest root hardening for symlink/non-directory root rejection
 - Fetch atomic finalize hardening for symlinked output entries
@@ -29,8 +32,10 @@ tests/CI:
 - Atomic install with `.gokui-report.json` and `gokui.lock`
 - Built-in install policy profiles: `strict`, `team`, `research`
 - User policy loading from `~/.config/gokui/policy.toml` (`default_profile`)
+- Repository policy loading from nearest-ancestor `.gokui-policy.toml` for `local-dir` install/update source evaluation
 - Policy-driven CLI override controls via `policy.toml` (`overrides.enabled`, `overrides.allowed_rule_ids`)
 - Profile-specific reject severity controls via `policy.toml` (`profiles.<name>.reject_severities`)
+- `vet` policy resolution for effective profile/reject severities via user policy (`GOKUI_POLICY_PATH`/`~/.config/gokui/policy.toml`) and nearest-ancestor repository policy precedence for `local-dir` sources
 - Lock drift verification with per-check machine-readable codes
 - Stable JSON output contracts for all MVP commands
 - Machine-readable `error_code` support across command failure paths
@@ -46,6 +51,15 @@ tests/CI:
 - severity override audit-trail fields in install/update JSON and lock policy metadata
 - install `--override RULE_ID` support for explicit high-severity downgrade with audit trail recording
 - update dry-run reporting for severity override applicability drift (`severity_override_diff`)
+- update dry-run differential risk scoring (`risk_score`) with severity-and-signal model
+- update dry-run lock provenance consistency and canonical validation (`source.kind`/`source.input`/`source.type`, canonical `policy.profile`/`policy.decision`, lock skill snapshot digest/path sanity, and lock envelope integrity for `schema`/`name`/`installed_at`/`severity_overrides`/findings counters)
+- lock/source metadata canonical digest and ref validation (`root_sha256`/per-file `sha256`, metadata `resolved_ref`/`skill_root_sha256`)
+- canonical validation for severity override audit entries (`rule_id`, `previous_severity`, `effective_severity`, `source`, `applied_at`)
+- severity override audit source-origin allowlist validation (`cli-override|policy-file`)
+- non-negative lock findings summary validation for update/install/lock-verify guards
+- strict install-report schema version validation during lock verify / idempotent reuse integrity checks
+- update dry-run baseline integrity check against existing `.gokui-report.json` when present
+- neutralized structured review export for inspect/vet (`--format review-json`)
 - CI SARIF smoke job for inspect output generation and artifact capture
 - CI setup-go hardening to resolve the latest available Go patch release
 - `make vuln` hardened with patched Go toolchain baseline (`go1.26.3+auto`)
@@ -332,12 +346,12 @@ Goal: reduce bypasses and improve signal without moving trust into an LLM.
 
 - Improve fuzzy matching and typoglycemia detection.
 - Improve mixed-script and confusable detection using Unicode security data.
-- Add structured neutralized-review export for optional human or AI-assisted
-  review.
+- Expand neutralized structured-review exports for optional human or
+  AI-assisted review.
 - Add trusted publisher or signature support.
 - Add organization policy bundles.
-- Add repository-level `.gokui-policy.toml` for CI use.
-- Add differential risk scoring for updates.
+- Expand repository-level `.gokui-policy.toml` usage for CI and multi-skill repositories.
+- Expand differential risk scoring for updates with calibrated policy profiles.
 - Add signed report support.
 - Evaluate additional targets after Codex and custom target behavior is stable.
 

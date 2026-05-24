@@ -11,6 +11,7 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/watany-dev/gokui/internal/limitio"
 	policypkg "github.com/watany-dev/gokui/internal/policy"
@@ -60,6 +61,7 @@ type updateSkillItem struct {
 	Decision             string                     `json:"decision"`
 	Diff                 updateDiff                 `json:"diff"`
 	Risk                 updateRisk                 `json:"risk"`
+	RiskScore            updateRiskScore            `json:"risk_score"`
 	NewURLs              []string                   `json:"new_urls"`
 	NewExecutableFiles   []string                   `json:"new_executable_files"`
 	Findings             []inspectFinding           `json:"findings"`
@@ -113,6 +115,40 @@ type updateRisk struct {
 	Current  lockFindingSummary `json:"current"`
 	Delta    lockFindingSummary `json:"delta"`
 }
+
+type updateRiskScore struct {
+	Model    string `json:"model"`
+	Previous int    `json:"previous"`
+	Current  int    `json:"current"`
+	Delta    int    `json:"delta"`
+	Signals  int    `json:"signals"`
+}
+
+type updateRiskSignalInputs struct {
+	NewURLs         int
+	NewExecutables  int
+	FileDelta       int
+	OverrideAdded   int
+	OverrideRemoved int
+}
+
+const (
+	updateRiskScoreModel          = "severity-signals-v1"
+	updateRiskWeightCritical      = 100
+	updateRiskWeightHigh          = 25
+	updateRiskWeightMedium        = 7
+	updateRiskWeightLow           = 2
+	updateRiskWeightNewURL        = 6
+	updateRiskWeightNewExecutable = 15
+	updateRiskWeightFileDelta     = 2
+	updateRiskWeightOverrideAdd   = 10
+	updateRiskWeightOverrideDrop  = -6
+	updateRiskCapNewURL           = 60
+	updateRiskCapNewExecutable    = 90
+	updateRiskCapFileDelta        = 60
+	updateRiskCapOverrideAdd      = 40
+	updateRiskCapOverrideDrop     = 30
+)
 
 type updateSummary struct {
 	Total    int `json:"total"`
@@ -546,6 +582,7 @@ func buildUpdateReport(targetRoot string, policyLoaded bool, cfg policypkg.Confi
 			NewURLs:            []string{},
 			NewExecutableFiles: []string{},
 			Findings:           []inspectFinding{},
+			RiskScore:          zeroUpdateRiskScore(),
 			SeverityOverrides:  []severityOverrideAudit{},
 			SeverityOverrideDiff: updateSeverityOverrideDiff{
 				Added:   []string{},
@@ -600,11 +637,71 @@ func isUpdateTargetReadError(err error) bool {
 }
 
 func evaluateUpdateSkill(item updateSkillItem, lock installLock, policyLoaded bool, cfg policypkg.Config) (updateSkillItem, error) {
-	policyProfile := normalizePolicyProfile(lock.Policy.Profile)
+	item.RiskScore = computeUpdateRiskScore(lock.Findings, lock.Findings, updateRiskSignalInputs{})
+	if err := validateUpdateLockEnvelope(lock, item.Name); err != nil {
+		item.Status = "ERROR"
+		item.ErrorCode = updateCodeLockfileInvalid
+		item.Message = err.Error()
+		item.RuleID = inferRuleIDForJSONError(item.Message)
+		item.Risk = updateRisk{
+			Previous: lock.Findings,
+			Current:  lock.Findings,
+		}
+		return item, nil
+	}
+	policyProfileRaw := lock.Policy.Profile
+	policyProfile := normalizePolicyProfile(policyProfileRaw)
+	if policyProfileRaw != policyProfile {
+		item.Status = "ERROR"
+		item.ErrorCode = updateCodeLockfileInvalid
+		item.Message = "lock policy profile must be canonical lowercase without surrounding whitespace"
+		item.RuleID = inferRuleIDForJSONError(item.Message)
+		item.Risk = updateRisk{
+			Previous: lock.Findings,
+			Current:  lock.Findings,
+		}
+		return item, nil
+	}
 	if !isSupportedPolicyProfile(policyProfile) {
 		item.Status = "ERROR"
 		item.ErrorCode = updateCodeLockfileInvalid
-		item.Message = fmt.Sprintf("unsupported policy profile in lockfile: %s", lock.Policy.Profile)
+		item.Message = fmt.Sprintf("unsupported policy profile in lockfile: %s", policyProfileRaw)
+		item.RuleID = inferRuleIDForJSONError(item.Message)
+		item.Risk = updateRisk{
+			Previous: lock.Findings,
+			Current:  lock.Findings,
+		}
+		return item, nil
+	}
+	policyDecisionRaw := lock.Policy.Decision
+	if policyDecisionRaw != "pass" {
+		item.Status = "ERROR"
+		item.ErrorCode = updateCodeLockfileInvalid
+		item.Message = "lock policy decision must be canonical lowercase pass"
+		item.RuleID = inferRuleIDForJSONError(item.Message)
+		item.Risk = updateRisk{
+			Previous: lock.Findings,
+			Current:  lock.Findings,
+		}
+		return item, nil
+	}
+	sourceInputRaw := lock.Source.Input
+	sourceInput := strings.TrimSpace(sourceInputRaw)
+	if sourceInput == "" {
+		item.Status = "ERROR"
+		item.ErrorCode = updateCodeLockfileInvalid
+		item.Message = "lock source input is empty"
+		item.RuleID = inferRuleIDForJSONError(item.Message)
+		item.Risk = updateRisk{
+			Previous: lock.Findings,
+			Current:  lock.Findings,
+		}
+		return item, nil
+	}
+	if sourceInputRaw != sourceInput {
+		item.Status = "ERROR"
+		item.ErrorCode = updateCodeLockfileInvalid
+		item.Message = "lock source input must not contain leading or trailing whitespace"
 		item.RuleID = inferRuleIDForJSONError(item.Message)
 		item.Risk = updateRisk{
 			Previous: lock.Findings,
@@ -613,17 +710,131 @@ func evaluateUpdateSkill(item updateSkillItem, lock installLock, policyLoaded bo
 		return item, nil
 	}
 
-	kind := strings.TrimSpace(lock.Source.Kind)
+	kindRaw := lock.Source.Kind
+	kind := strings.TrimSpace(kindRaw)
+	detectedKind := detectSourceKind(sourceInput)
 	if kind == "" {
-		kind = detectSourceKind(lock.Source.Input)
-		item.Source.Kind = kind
+		item.Status = "ERROR"
+		item.ErrorCode = updateCodeLockfileInvalid
+		item.Message = "lock source kind is empty"
+		item.RuleID = inferRuleIDForJSONError(item.Message)
+		item.Risk = updateRisk{
+			Previous: lock.Findings,
+			Current:  lock.Findings,
+		}
+		return item, nil
+	}
+	if kindRaw != kind {
+		item.Status = "ERROR"
+		item.ErrorCode = updateCodeLockfileInvalid
+		item.Message = "lock source kind must not contain leading or trailing whitespace"
+		item.RuleID = inferRuleIDForJSONError(item.Message)
+		item.Risk = updateRisk{
+			Previous: lock.Findings,
+			Current:  lock.Findings,
+		}
+		return item, nil
+	}
+	if kind != strings.ToLower(kind) {
+		item.Status = "ERROR"
+		item.ErrorCode = updateCodeLockfileInvalid
+		item.Message = "lock source kind must be canonical lowercase"
+		item.RuleID = inferRuleIDForJSONError(item.Message)
+		item.Risk = updateRisk{
+			Previous: lock.Findings,
+			Current:  lock.Findings,
+		}
+		return item, nil
+	}
+	expectedType := sourceTypeFromKind(kind)
+	if expectedType == "unknown" {
+		item.Status = "ERROR"
+		item.ErrorCode = updateCodeLockfileInvalid
+		item.Message = fmt.Sprintf("unsupported source kind in lockfile: %s", kind)
+		item.RuleID = inferRuleIDForJSONError(item.Message)
+		item.Risk = updateRisk{
+			Previous: lock.Findings,
+			Current:  lock.Findings,
+		}
+		return item, nil
+	}
+	if expectedType != "github" {
+		cleanedInput := filepath.Clean(sourceInput)
+		if sourceInput != cleanedInput {
+			item.Status = "ERROR"
+			item.ErrorCode = updateCodeLockfileInvalid
+			item.Message = "lock source input must be a canonical cleaned path for local/archive sources"
+			item.RuleID = inferRuleIDForJSONError(item.Message)
+			item.Risk = updateRisk{
+				Previous: lock.Findings,
+				Current:  lock.Findings,
+			}
+			return item, nil
+		}
+	}
+	if kind != detectedKind {
+		item.Status = "ERROR"
+		item.ErrorCode = updateCodeSourceMetadataBad
+		item.Message = fmt.Sprintf("lock source kind does not match source input: kind=%s detected=%s", kind, detectedKind)
+		item.RuleID = inferRuleIDForJSONError(item.Message)
+		item.Risk = updateRisk{
+			Previous: lock.Findings,
+			Current:  lock.Findings,
+		}
+		return item, nil
+	}
+	sourceTypeRaw := lock.Source.Type
+	sourceType := strings.TrimSpace(sourceTypeRaw)
+	if sourceTypeRaw != sourceType {
+		item.Status = "ERROR"
+		item.ErrorCode = updateCodeLockfileInvalid
+		item.Message = "lock source type must not contain leading or trailing whitespace"
+		item.RuleID = inferRuleIDForJSONError(item.Message)
+		item.Risk = updateRisk{
+			Previous: lock.Findings,
+			Current:  lock.Findings,
+		}
+		return item, nil
+	}
+	if sourceType != strings.ToLower(sourceType) {
+		item.Status = "ERROR"
+		item.ErrorCode = updateCodeLockfileInvalid
+		item.Message = "lock source type must be canonical lowercase"
+		item.RuleID = inferRuleIDForJSONError(item.Message)
+		item.Risk = updateRisk{
+			Previous: lock.Findings,
+			Current:  lock.Findings,
+		}
+		return item, nil
+	}
+	if sourceType != expectedType {
+		item.Status = "ERROR"
+		item.ErrorCode = updateCodeLockfileInvalid
+		item.Message = fmt.Sprintf("source type mismatch for kind %s: expected %s, got %s", kind, expectedType, sourceType)
+		item.RuleID = inferRuleIDForJSONError(item.Message)
+		item.Risk = updateRisk{
+			Previous: lock.Findings,
+			Current:  lock.Findings,
+		}
+		return item, nil
 	}
 	if kind == "github-source" {
-		spec, parseErr := srcpkg.ParseGitHubSource(lock.Source.Input)
+		spec, parseErr := srcpkg.ParseGitHubSource(sourceInput)
 		if parseErr != nil {
 			item.Status = "ERROR"
 			item.ErrorCode = updateCodeGitHubSourceBad
 			item.Message = fmt.Sprintf("invalid github source in lockfile: %v", parseErr)
+			item.RuleID = inferRuleIDForJSONError(item.Message)
+			item.Risk = updateRisk{
+				Previous: lock.Findings,
+				Current:  lock.Findings,
+			}
+			return item, nil
+		}
+		if sourceInput != canonicalGitHubSourceInput(spec) {
+			item.Status = "ERROR"
+			item.ErrorCode = updateCodeLockfileInvalid
+			item.Message = "github lock source input must be canonical"
 			item.RuleID = inferRuleIDForJSONError(item.Message)
 			item.Risk = updateRisk{
 				Previous: lock.Findings,
@@ -643,7 +854,7 @@ func evaluateUpdateSkill(item updateSkillItem, lock installLock, policyLoaded bo
 			return item, nil
 		}
 		if err := verifyInstalledSourceMetadata(item.Path, source{
-			Input: lock.Source.Input,
+			Input: sourceInput,
 			Kind:  kind,
 		}); err != nil {
 			item.Status = "ERROR"
@@ -657,8 +868,30 @@ func evaluateUpdateSkill(item updateSkillItem, lock installLock, policyLoaded bo
 			return item, nil
 		}
 	}
+	if err := validateUpdateLockSkillSnapshot(lock); err != nil {
+		item.Status = "ERROR"
+		item.ErrorCode = updateCodeLockfileInvalid
+		item.Message = err.Error()
+		item.RuleID = inferRuleIDForJSONError(item.Message)
+		item.Risk = updateRisk{
+			Previous: lock.Findings,
+			Current:  lock.Findings,
+		}
+		return item, nil
+	}
+	if err := validateUpdateLockAgainstInstallReport(item.Path, lock); err != nil {
+		item.Status = "ERROR"
+		item.ErrorCode = updateCodeLockfileInvalid
+		item.Message = err.Error()
+		item.RuleID = inferRuleIDForJSONError(item.Message)
+		item.Risk = updateRisk{
+			Previous: lock.Findings,
+			Current:  lock.Findings,
+		}
+		return item, nil
+	}
 
-	skillRoot, cleanup, err := preparePolicyEvaluationSource(lock.Source.Input, kind)
+	skillRoot, cleanup, err := preparePolicyEvaluationSource(sourceInput, kind)
 	if cleanup != nil {
 		defer cleanup()
 	}
@@ -676,7 +909,28 @@ func evaluateUpdateSkill(item updateSkillItem, lock installLock, policyLoaded bo
 		return item, nil
 	}
 
-	rejectSet, err := effectiveRejectSeveritySetForProfile(policyProfile, policyLoaded, cfg)
+	effectivePolicy := cfg
+	effectivePolicyLoaded := policyLoaded
+	if shouldApplyRepositoryPolicy(kind) {
+		repoPolicy, repoPolicyFound, repoPolicyErr := loadRepositoryPolicyConfig(skillRoot)
+		if repoPolicyErr != nil {
+			item.Status = "ERROR"
+			item.ErrorCode = updateCodeEvaluationError
+			item.Message = repoPolicyErr.Error()
+			item.RuleID = inferRuleIDForJSONError(item.Message)
+			item.Risk = updateRisk{
+				Previous: lock.Findings,
+				Current:  lock.Findings,
+			}
+			return item, nil
+		}
+		if repoPolicyFound {
+			effectivePolicy = repoPolicy
+			effectivePolicyLoaded = true
+		}
+	}
+
+	rejectSet, err := effectiveRejectSeveritySetForProfile(policyProfile, effectivePolicyLoaded, effectivePolicy)
 	if err != nil {
 		item.Status = "ERROR"
 		item.ErrorCode = updateCodeEvaluationError
@@ -762,6 +1016,14 @@ func evaluateUpdateSkill(item updateSkillItem, lock installLock, policyLoaded bo
 	item.NewExecutableFiles = setDiff(currentExec, previousExec)
 
 	currentRisk := summarizeFindingSeverities(findings)
+	signals := updateRiskSignalInputs{
+		NewURLs:         len(item.NewURLs),
+		NewExecutables:  len(item.NewExecutableFiles),
+		FileDelta:       len(item.Diff.Added) + len(item.Diff.Removed) + len(item.Diff.Changed),
+		OverrideAdded:   len(item.SeverityOverrideDiff.Added),
+		OverrideRemoved: len(item.SeverityOverrideDiff.Removed),
+	}
+	item.RiskScore = computeUpdateRiskScore(lock.Findings, currentRisk, signals)
 	item.Risk = updateRisk{
 		Previous: lock.Findings,
 		Current:  currentRisk,
@@ -807,6 +1069,86 @@ func classifyUpdateSourcePrepareFailure(kind string, err error) (status string, 
 		return "REJECTED", updateCodeGitHubRefFloating
 	}
 	return status, code
+}
+
+func validateUpdateLockEnvelope(lock installLock, expectedSkillName string) error {
+	if lock.Schema != lockSchemaVersion {
+		return fmt.Errorf("unsupported lock schema: %s", lock.Schema)
+	}
+	trimmedName := strings.TrimSpace(lock.Name)
+	if trimmedName == "" {
+		return fmt.Errorf("lock name is empty")
+	}
+	if trimmedName != lock.Name {
+		return fmt.Errorf("lock name must not contain leading or trailing whitespace")
+	}
+	if expectedSkillName != "" && lock.Name != expectedSkillName {
+		return fmt.Errorf("lock name does not match installed skill directory: lock=%s dir=%s", lock.Name, expectedSkillName)
+	}
+
+	trimmedInstalledAt := strings.TrimSpace(lock.InstalledAt)
+	if trimmedInstalledAt == "" {
+		return fmt.Errorf("lock installed_at is empty")
+	}
+	if trimmedInstalledAt != lock.InstalledAt {
+		return fmt.Errorf("lock installed_at must not contain leading or trailing whitespace")
+	}
+	if _, err := time.Parse(time.RFC3339, lock.InstalledAt); err != nil {
+		return fmt.Errorf("lock installed_at must be RFC3339")
+	}
+	if err := validateLockFindingSummary(lock.Findings); err != nil {
+		return fmt.Errorf("lock findings summary is invalid: %v", err)
+	}
+	if err := validateSeverityOverrideAudit(lock.Policy.SeverityOverrides); err != nil {
+		return fmt.Errorf("lock policy severity_overrides is invalid: %v", err)
+	}
+	return nil
+}
+
+func validateUpdateLockAgainstInstallReport(skillPath string, lock installLock) error {
+	reportPath := filepath.Join(skillPath, installReportFile)
+	_, statErr := os.Lstat(reportPath)
+	if statErr != nil {
+		if os.IsNotExist(statErr) {
+			return nil
+		}
+		return fmt.Errorf("failed to evaluate install report for update baseline: %w", statErr)
+	}
+	ok, detail := verifyInstallReport(skillPath, lock)
+	if !ok {
+		return fmt.Errorf("install report does not match lock baseline: %s", detail)
+	}
+	return nil
+}
+
+func validateUpdateLockSkillSnapshot(lock installLock) error {
+	if !isCanonicalSHA256Hex(lock.Skill.RootSHA256) {
+		return fmt.Errorf("lock skill root_sha256 must be a canonical lowercase 64-char hex digest")
+	}
+	if len(lock.Skill.Files) == 0 {
+		return fmt.Errorf("lock skill files is empty")
+	}
+
+	seen := make(map[string]struct{}, len(lock.Skill.Files))
+	for _, file := range lock.Skill.Files {
+		if strings.TrimSpace(file.Path) == "" {
+			return fmt.Errorf("lock file path is empty")
+		}
+		if !isValidLockRelativePath(file.Path) {
+			return fmt.Errorf("lock file path is invalid: %s", file.Path)
+		}
+		if _, exists := seen[file.Path]; exists {
+			return fmt.Errorf("duplicate lock file path: %s", file.Path)
+		}
+		seen[file.Path] = struct{}{}
+		if !isCanonicalSHA256Hex(file.SHA256) {
+			return fmt.Errorf("lock file sha256 is invalid: %s", file.Path)
+		}
+		if file.Bytes < 0 {
+			return fmt.Errorf("lock file bytes is negative: %s", file.Path)
+		}
+	}
+	return nil
 }
 
 func filterLockFiles(files []lockFileHash, exclude map[string]struct{}) []lockFileHash {
@@ -857,6 +1199,58 @@ func summarizeUpdateSkills(skills []updateSkillItem) updateSummary {
 		}
 	}
 	return out
+}
+
+func zeroUpdateRiskScore() updateRiskScore {
+	return updateRiskScore{Model: updateRiskScoreModel}
+}
+
+func computeUpdateRiskScore(previous lockFindingSummary, current lockFindingSummary, signals updateRiskSignalInputs) updateRiskScore {
+	previousSeverityScore := severityWeightedScore(previous)
+	currentSeverityScore := severityWeightedScore(current)
+	signalScore := updateSignalScore(signals)
+	currentScore := currentSeverityScore + signalScore
+	return updateRiskScore{
+		Model:    updateRiskScoreModel,
+		Previous: previousSeverityScore,
+		Current:  currentScore,
+		Delta:    currentScore - previousSeverityScore,
+		Signals:  signalScore,
+	}
+}
+
+func severityWeightedScore(summary lockFindingSummary) int {
+	return (summary.Critical * updateRiskWeightCritical) +
+		(summary.High * updateRiskWeightHigh) +
+		(summary.Medium * updateRiskWeightMedium) +
+		(summary.Low * updateRiskWeightLow)
+}
+
+func updateSignalScore(in updateRiskSignalInputs) int {
+	score := 0
+	score += cappedWeightedContribution(in.NewURLs, updateRiskWeightNewURL, updateRiskCapNewURL)
+	score += cappedWeightedContribution(in.NewExecutables, updateRiskWeightNewExecutable, updateRiskCapNewExecutable)
+	score += cappedWeightedContribution(in.FileDelta, updateRiskWeightFileDelta, updateRiskCapFileDelta)
+	score += cappedWeightedContribution(in.OverrideAdded, updateRiskWeightOverrideAdd, updateRiskCapOverrideAdd)
+	score += cappedWeightedContribution(in.OverrideRemoved, updateRiskWeightOverrideDrop, updateRiskCapOverrideDrop)
+	return score
+}
+
+func cappedWeightedContribution(count int, weight int, absCap int) int {
+	if count <= 0 || weight == 0 {
+		return 0
+	}
+	score := count * weight
+	if absCap <= 0 {
+		return score
+	}
+	if score > absCap {
+		return absCap
+	}
+	if score < -absCap {
+		return -absCap
+	}
+	return score
 }
 
 func collectURLs(root string) ([]string, error) {
