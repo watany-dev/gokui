@@ -99,7 +99,8 @@ tests/CI:
 - high-severity detection of broad Bash wildcard tool permissions
 - medium-severity detection of unknown/unclassified file types
 - high-severity detection of remote script import patterns under unpinned runtime tooling
-- unpinned-runtime pin checks that resolve npm/npx package-flag forms
+- unpinned-runtime pin checks that resolve npm/npx package-flag forms and
+  ignore call-flag command values as package refs
 - dependency manifest scanning coverage for `package.json`, `pyproject.toml`,
   `requirements.txt`, `uv.lock`, `go.mod`, `Gemfile`, and `deno.json` as
   first-class scan inputs
