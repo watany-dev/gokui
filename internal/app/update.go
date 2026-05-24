@@ -190,6 +190,8 @@ func runUpdate(args []string, stdout io.Writer, stderr io.Writer) int {
 	} else if parsed.Format == "sarif" {
 		out, _ := json.MarshalIndent(buildUpdateSARIFReport(report), "", "  ")
 		_, _ = fmt.Fprintf(stdout, "%s\n", out)
+	} else if parsed.Format == "compact" {
+		_, _ = fmt.Fprintf(stdout, "%s\n", buildUpdateCompactSummary(report))
 	} else {
 		_, _ = fmt.Fprintln(stdout, "gokui update report (pre-release)")
 		_, _ = fmt.Fprintf(stdout, "target: %s\n", report.Target)
@@ -299,46 +301,44 @@ func parseUpdateArgs(args []string) (updateArgs, error) {
 	if !out.DryRun {
 		return updateArgs{}, fmt.Errorf("update currently requires --dry-run")
 	}
-	if out.Format != "human" && out.Format != "json" && out.Format != "sarif" {
+	if out.Format != "human" && out.Format != "json" && out.Format != "sarif" && out.Format != "compact" {
 		return updateArgs{}, fmt.Errorf("unsupported update format: %s", out.Format)
 	}
 	return out, nil
 }
 
 func buildUpdateSARIFReport(report updateReport) inspectSARIFReport {
-	results := make([]inspectSARIFResult, 0, 32)
-	ruleSummary := make(map[string]string, 32)
+	decision := "PASS"
+	if report.Summary.Errors > 0 {
+		decision = "ERROR"
+	} else if report.Summary.Rejected > 0 {
+		decision = "REJECTED"
+	} else if report.Summary.Changed > 0 {
+		decision = "CHANGED"
+	}
 
+	findings := make([]inspectFinding, 0, 64)
 	for _, skill := range report.Skills {
 		if len(skill.Findings) > 0 {
 			for _, finding := range skill.Findings {
-				message := finding.Summary
-				if message == "" {
-					message = fmt.Sprintf("%s finding in %s", finding.ID, skill.Name)
+				filePath := finding.File
+				if filePath != "" {
+					filePath = filepath.ToSlash(filepath.Join(skill.Name, filePath))
 				}
-				ruleSummary[finding.ID] = message
-
-				location := inspectSARIFLocation{
-					PhysicalLocation: inspectSARIFPhysicalLocation{
-						ArtifactLocation: inspectSARIFArtifactLocation{
-							URI: filepath.ToSlash(filepath.Join(skill.Name, finding.File)),
-						},
-					},
+				summary := finding.Summary
+				if strings.TrimSpace(summary) == "" {
+					summary = fmt.Sprintf("%s finding in %s", finding.ID, skill.Name)
 				}
-				if finding.Line > 0 {
-					location.PhysicalLocation.Region = &inspectSARIFRegion{StartLine: finding.Line}
-				}
-
-				results = append(results, inspectSARIFResult{
-					RuleID:    finding.ID,
-					Level:     inspectSeverityToSARIFLevel(finding.Severity),
-					Message:   inspectSARIFMessageContainer{Text: fmt.Sprintf("[%s] %s", skill.Name, message)},
-					Locations: []inspectSARIFLocation{location},
+				findings = append(findings, inspectFinding{
+					ID:       finding.ID,
+					Severity: finding.Severity,
+					File:     filePath,
+					Line:     finding.Line,
+					Summary:  summary,
 				})
 			}
 			continue
 		}
-
 		if skill.Status != "ERROR" && skill.Status != "REJECTED" {
 			continue
 		}
@@ -349,102 +349,50 @@ func buildUpdateSARIFReport(report updateReport) inspectSARIFReport {
 		if ruleID == "" {
 			ruleID = "UPDATE_SKILL_STATUS"
 		}
-		message := skill.Message
-		if strings.TrimSpace(message) == "" {
-			message = fmt.Sprintf("%s: %s", skill.Status, skill.Name)
+		summary := skill.Message
+		if strings.TrimSpace(summary) == "" {
+			summary = fmt.Sprintf("%s: %s", skill.Status, skill.Name)
 		}
-		ruleSummary[ruleID] = message
-		results = append(results, inspectSARIFResult{
-			RuleID:  ruleID,
-			Level:   "error",
-			Message: inspectSARIFMessageContainer{Text: fmt.Sprintf("[%s] %s", skill.Name, message)},
-			Locations: []inspectSARIFLocation{
-				{
-					PhysicalLocation: inspectSARIFPhysicalLocation{
-						ArtifactLocation: inspectSARIFArtifactLocation{
-							URI: filepath.ToSlash(skill.Name),
-						},
-					},
-				},
-			},
+		findings = append(findings, inspectFinding{
+			ID:       ruleID,
+			Severity: "high",
+			File:     filepath.ToSlash(skill.Name),
+			Line:     1,
+			Summary:  summary,
 		})
 	}
 
-	sort.Slice(results, func(i, j int) bool {
-		if results[i].RuleID != results[j].RuleID {
-			return results[i].RuleID < results[j].RuleID
-		}
-		uriI := ""
-		if len(results[i].Locations) > 0 {
-			uriI = results[i].Locations[0].PhysicalLocation.ArtifactLocation.URI
-		}
-		uriJ := ""
-		if len(results[j].Locations) > 0 {
-			uriJ = results[j].Locations[0].PhysicalLocation.ArtifactLocation.URI
-		}
-		if uriI != uriJ {
-			return uriI < uriJ
-		}
-		lineI := 0
-		if len(results[i].Locations) > 0 && results[i].Locations[0].PhysicalLocation.Region != nil {
-			lineI = results[i].Locations[0].PhysicalLocation.Region.StartLine
-		}
-		lineJ := 0
-		if len(results[j].Locations) > 0 && results[j].Locations[0].PhysicalLocation.Region != nil {
-			lineJ = results[j].Locations[0].PhysicalLocation.Region.StartLine
-		}
-		return lineI < lineJ
-	})
-
-	rules := make([]inspectSARIFRule, 0, len(ruleSummary))
-	for id, summary := range ruleSummary {
-		rules = append(rules, inspectSARIFRule{
-			ID: id,
-			ShortDescription: inspectSARIFMessageContainer{
-				Text: summary,
-			},
-		})
-	}
-	sort.Slice(rules, func(i, j int) bool {
-		return rules[i].ID < rules[j].ID
-	})
-
-	decision := "PASS"
-	if report.Summary.Errors > 0 {
-		decision = "ERROR"
-	} else if report.Summary.Rejected > 0 {
-		decision = "REJECTED"
-	} else if report.Summary.Changed > 0 {
-		decision = "CHANGED"
-	}
-
-	return inspectSARIFReport{
-		Version: "2.1.0",
-		Schema:  "https://json.schemastore.org/sarif-2.1.0.json",
-		Runs: []inspectSARIFRun{
-			{
-				Tool: inspectSARIFTool{
-					Driver: inspectSARIFDriver{
-						Name:    "gokui",
-						Version: "pre-release",
-						Rules:   rules,
-					},
-				},
-				Results: results,
-				Invocations: []inspectSARIFInvocation{
-					{ExecutionSuccessful: report.Summary.Errors == 0 && report.Summary.Rejected == 0},
-				},
-				Properties: inspectSARIFProperties{
-					SchemaVersion: report.SchemaVersion,
-					PreRelease:    true,
-					SourceInput:   report.Target,
-					SourceKind:    "update-target",
-					Decision:      decision,
-					Note:          report.Note,
-				},
-			},
+	inspectEquivalent := inspectReport{
+		SchemaVersion: report.SchemaVersion,
+		PreRelease:    true,
+		Source: source{
+			Input: report.Target,
+			Kind:  "update-target",
 		},
+		Decision: decision,
+		Findings: findings,
+		Note:     report.Note,
 	}
+	sarif := buildInspectSARIFReport(inspectEquivalent)
+	if len(sarif.Runs) > 0 {
+		sarif.Runs[0].Invocations = []inspectSARIFInvocation{
+			{ExecutionSuccessful: report.Summary.Errors == 0 && report.Summary.Rejected == 0},
+		}
+	}
+	return sarif
+}
+
+func buildUpdateCompactSummary(report updateReport) string {
+	return fmt.Sprintf(
+		"update total=%d up_to_date=%d changed=%d rejected=%d skipped=%d errors=%d target=%q",
+		report.Summary.Total,
+		report.Summary.UpToDate,
+		report.Summary.Changed,
+		report.Summary.Rejected,
+		report.Summary.Skipped,
+		report.Summary.Errors,
+		report.Target,
+	)
 }
 
 func buildUpdateReport(targetRoot string) (updateReport, error) {
