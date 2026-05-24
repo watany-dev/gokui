@@ -52,7 +52,8 @@ risk deltas, and new URL/executable signals. For GitHub sources, commit-pinned
 refs are evaluated and floating refs are rejected. JSON output now emits stable
 skill-item keys for automation-friendly parsing, including `error_code` for
 status-aware automation. Update target entries and URL/executable scan inputs
-must not contain symlink path entries.
+must not contain symlink path entries, and URL/executable scan roots must be
+non-symlink directories.
 URL risk classification now flags shortener hosts and raw-IP URLs during scan.
 It also flags paste-site URLs, GitHub release asset URLs, and remote image
 URLs in markdown content for review.

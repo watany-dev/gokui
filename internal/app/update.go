@@ -582,6 +582,9 @@ func summarizeUpdateSkills(skills []updateSkillItem) updateSummary {
 }
 
 func collectURLs(root string) ([]string, error) {
+	if err := ensureUpdateScanRoot(root, "URL scan", ruleUpdateURLScanSymlink, ruleUpdateURLScanSpecialFile); err != nil {
+		return nil, err
+	}
 	set := make(map[string]struct{}, 32)
 	scannedFiles := 0
 	err := filepath.WalkDir(root, func(path string, d os.DirEntry, walkErr error) error {
@@ -667,6 +670,9 @@ func ensureURLScanStableFile(previous os.FileInfo, current os.FileInfo, path str
 }
 
 func collectExecutableFiles(root string) ([]string, error) {
+	if err := ensureUpdateScanRoot(root, "executable scan", ruleUpdateExecutableScanSymlink, ruleUpdateExecutableScanSpecialFile); err != nil {
+		return nil, err
+	}
 	set := make(map[string]struct{}, 16)
 	scannedFiles := 0
 	err := filepath.WalkDir(root, func(path string, d os.DirEntry, walkErr error) error {
@@ -727,6 +733,20 @@ func readURLScanContent(r io.Reader, path string, root string) (string, error) {
 		return "", fmt.Errorf("failed to read file for URL scan: %w", err)
 	}
 	return content.String(), nil
+}
+
+func ensureUpdateScanRoot(root string, label string, symlinkRuleID string, specialRuleID string) error {
+	rootInfo, err := os.Lstat(root)
+	if err != nil {
+		return fmt.Errorf("failed to stat %s root: %w", label, err)
+	}
+	if rootInfo.Mode()&os.ModeSymlink != 0 {
+		return fmt.Errorf("%s: %s root must not be a symlink: %s", symlinkRuleID, label, root)
+	}
+	if !rootInfo.IsDir() {
+		return fmt.Errorf("%s: %s root must be a directory: %s", specialRuleID, label, root)
+	}
+	return nil
 }
 
 func mapKeysSorted(set map[string]struct{}) []string {

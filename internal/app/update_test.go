@@ -1155,6 +1155,39 @@ func TestUpdateHelpers(t *testing.T) {
 		}
 	})
 
+	t.Run("collectURLs rejects symlink root", func(t *testing.T) {
+		if runtime.GOOS == "windows" {
+			t.Skip("symlink permissions differ on windows")
+		}
+
+		parent := t.TempDir()
+		realRoot := filepath.Join(parent, "real-root")
+		if err := os.Mkdir(realRoot, 0o755); err != nil {
+			t.Fatalf("mkdir real root: %v", err)
+		}
+		linkRoot := filepath.Join(parent, "root-link")
+		if err := os.Symlink("real-root", linkRoot); err != nil {
+			t.Fatalf("create root symlink: %v", err)
+		}
+
+		_, err := collectURLs(linkRoot)
+		if err == nil || !strings.Contains(err.Error(), ruleUpdateURLScanSymlink) {
+			t.Fatalf("expected URL-scan root symlink rejection, got %v", err)
+		}
+	})
+
+	t.Run("collectURLs rejects non-directory root", func(t *testing.T) {
+		rootFile := filepath.Join(t.TempDir(), "not-a-dir.md")
+		if err := os.WriteFile(rootFile, []byte("https://example.com"), 0o644); err != nil {
+			t.Fatalf("write root file: %v", err)
+		}
+
+		_, err := collectURLs(rootFile)
+		if err == nil || !strings.Contains(err.Error(), ruleUpdateURLScanSpecialFile) {
+			t.Fatalf("expected URL-scan non-directory rejection, got %v", err)
+		}
+	})
+
 	t.Run("collectURLs rejects symlink markdown inputs", func(t *testing.T) {
 		if runtime.GOOS == "windows" {
 			t.Skip("symlink permissions differ on windows")
@@ -1235,6 +1268,39 @@ func TestUpdateHelpers(t *testing.T) {
 		_, err := collectExecutableFiles(root)
 		if err == nil || !strings.Contains(err.Error(), ruleUpdateExecutableScanSymlink) {
 			t.Fatalf("expected executable-scan symlink rejection, got %v", err)
+		}
+	})
+
+	t.Run("collectExecutableFiles rejects symlink root", func(t *testing.T) {
+		if runtime.GOOS == "windows" {
+			t.Skip("symlink permissions differ on windows")
+		}
+
+		parent := t.TempDir()
+		realRoot := filepath.Join(parent, "real-root")
+		if err := os.Mkdir(realRoot, 0o755); err != nil {
+			t.Fatalf("mkdir real root: %v", err)
+		}
+		linkRoot := filepath.Join(parent, "root-link")
+		if err := os.Symlink("real-root", linkRoot); err != nil {
+			t.Fatalf("create root symlink: %v", err)
+		}
+
+		_, err := collectExecutableFiles(linkRoot)
+		if err == nil || !strings.Contains(err.Error(), ruleUpdateExecutableScanSymlink) {
+			t.Fatalf("expected executable-scan root symlink rejection, got %v", err)
+		}
+	})
+
+	t.Run("collectExecutableFiles rejects non-directory root", func(t *testing.T) {
+		rootFile := filepath.Join(t.TempDir(), "not-a-dir.sh")
+		if err := os.WriteFile(rootFile, []byte("#!/bin/sh\n"), 0o644); err != nil {
+			t.Fatalf("write root file: %v", err)
+		}
+
+		_, err := collectExecutableFiles(rootFile)
+		if err == nil || !strings.Contains(err.Error(), ruleUpdateExecutableScanSpecialFile) {
+			t.Fatalf("expected executable-scan non-directory rejection, got %v", err)
 		}
 	})
 

@@ -18,7 +18,7 @@ tests/CI:
 - Install atomic finalize hardening for symlinked target entries
 - Install source-copy hardening with strict byte-limit writes and overflow cleanup
 - Fetch atomic finalize hardening for symlinked output entries
-- Update dry-run hardening for symlinked target entries and symlinked URL/executable scan inputs
+- Update dry-run hardening for symlinked target entries, symlinked URL/executable scan inputs, and non-directory/symlink scan roots
 - Scan/update walker hardening for symlink/non-directory root rejection and
   non-regular file rejection before reads
 - Commit-pinned GitHub source fetch and install/update/verify provenance checks
