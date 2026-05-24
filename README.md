@@ -122,6 +122,8 @@ PowerShell `-EncodedCommand` / `-enc` execution flags are now flagged as
 critical findings.
 PowerShell `FromBase64String(...)` decode routed to `IEX`/`Invoke-Expression`
 is now flagged as critical.
+PowerShell `FromHexString(...)` decode routed to `IEX`/`Invoke-Expression` is
+now flagged as critical.
 `chmod +x` followed by execution of the same local artifact is now flagged as
 critical.
 Writes to shell rc, SSH config, cron, or launch-agent configuration paths are

@@ -62,6 +62,7 @@ var (
 	powerShellFromBase64ExecPattern = regexp.MustCompile(`(?i)(?:\b(?:iex|invoke-expression)\b[^\n]{0,320}\bfrombase64string\s*\(|\bfrombase64string\s*\([^\n]{0,320}\b(?:iex|invoke-expression)\b)`)
 	hexPipeExec                     = regexp.MustCompile(`(?i)\b(?:xxd\s+-r(?:\s+-p)?|unhexlify|fromhex|hexdecode)\b[^\n|]{0,300}\|\s*(?:sh|bash|zsh|pwsh|powershell|python|node)\b`)
 	hexSubshellExec                 = regexp.MustCompile(`(?i)\b(?:sh|bash|zsh|pwsh|powershell|eval|python3?|node|ruby|perl)\b[^\n]{0,220}\$\([^)\n]{0,260}\b(?:xxd\s+-r(?:\s+-p)?|unhexlify|fromhex|hexdecode)\b[^)\n]{0,200}\)`)
+	powerShellFromHexExecPattern    = regexp.MustCompile(`(?i)(?:\b(?:iex|invoke-expression)\b[^\n]{0,320}\bfromhexstring\s*\(|\bfromhexstring\s*\([^\n]{0,320}\b(?:iex|invoke-expression)\b)`)
 	encodedCmdExec                  = regexp.MustCompile(`(?i)\b(?:powershell|pwsh)(?:\.exe)?\b[^\n]{0,240}\s-(?:encodedcommand|enc)\s+[a-z0-9+/=]{12,}\b`)
 
 	promptOverridePattern = regexp.MustCompile(`(?i)\b(?:ignore|override|bypass)\b.{0,80}\b(?:previous|prior|system|higher|earlier)\b.{0,40}\b(?:instruction|instructions|prompt|prompts)\b`)
@@ -532,7 +533,7 @@ func scanVariantThreatFindings(variant string, target scanTarget, lineNum int) [
 			Summary:  "decoded payload reaches interpreter execution",
 		})
 	}
-	if hexPipeExec.MatchString(variant) || hexSubshellExec.MatchString(variant) {
+	if hexPipeExec.MatchString(variant) || hexSubshellExec.MatchString(variant) || powerShellFromHexExecPattern.MatchString(variant) {
 		findings = append(findings, Finding{
 			ID:       "HEX_PIPE_EXEC",
 			Severity: "critical",
