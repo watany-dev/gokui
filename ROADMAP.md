@@ -81,6 +81,7 @@ tests/CI:
 - decoded-payload rescanning coverage for Unicode threat and NFKC-drift signals
 - base64url payload decoding support in bounded decoded-text rescanning
 - critical detection of PowerShell encoded-command execution flags
+- critical detection of PowerShell FromBase64String decode-to-IEX execution
 - critical detection of chmod-then-execute local artifact chains
 - critical detection of secret-path reads combined with network exfiltration
 - medium-severity detection of NFKC normalization text drift with normalized rescanning
