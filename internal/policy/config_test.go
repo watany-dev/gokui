@@ -26,7 +26,7 @@ func TestLoadUserPolicy(t *testing.T) {
 
 	t.Run("loads default profile and normalizes casing", func(t *testing.T) {
 		p := filepath.Join(t.TempDir(), "policy.toml")
-		if err := os.WriteFile(p, []byte("default_profile = \" Research \"\n[overrides]\nallowed_rule_ids = [\" prompt_override_language \", \"UNPINNED_RUNTIME_TOOL\", \"PROMPT_OVERRIDE_LANGUAGE\"]\n"), 0o644); err != nil {
+		if err := os.WriteFile(p, []byte("default_profile = \" Research \"\n[overrides]\nallowed_rule_ids = [\" prompt_override_language \", \"UNPINNED_RUNTIME_TOOL\", \"PROMPT_OVERRIDE_LANGUAGE\"]\n[profiles.team]\nreject_severities = [\" critical \", \"MEDIUM\", \"critical\"]\n"), 0o644); err != nil {
 			t.Fatalf("write policy file: %v", err)
 		}
 		t.Setenv(envPolicyPath, p)
@@ -48,6 +48,13 @@ func TestLoadUserPolicy(t *testing.T) {
 		}
 		if cfg.Overrides.AllowedRuleIDs[0] != "PROMPT_OVERRIDE_LANGUAGE" || cfg.Overrides.AllowedRuleIDs[1] != "UNPINNED_RUNTIME_TOOL" {
 			t.Fatalf("allowed_rule_ids normalization mismatch: %+v", cfg.Overrides.AllowedRuleIDs)
+		}
+		teamCfg, ok := cfg.Profiles["team"]
+		if !ok {
+			t.Fatal("expected team profile config")
+		}
+		if len(teamCfg.RejectSeverities) != 2 || teamCfg.RejectSeverities[0] != "critical" || teamCfg.RejectSeverities[1] != "medium" {
+			t.Fatalf("team reject severities normalization mismatch: %+v", teamCfg.RejectSeverities)
 		}
 	})
 
@@ -189,4 +196,46 @@ func TestRejectSymlinkPath(t *testing.T) {
 			t.Fatalf("expected path validation error, got %v", err)
 		}
 	})
+}
+
+func TestNormalizeProfileConfigs(t *testing.T) {
+	got := normalizeProfileConfigs(nil)
+	if got != nil {
+		t.Fatalf("normalizeProfileConfigs(nil) = %+v, want nil", got)
+	}
+
+	got = normalizeProfileConfigs(map[string]ProfileConfig{
+		" Team ": {RejectSeverities: []string{"critical", "MEDIUM", "critical"}},
+		"   ":    {RejectSeverities: []string{"high"}},
+	})
+	if len(got) != 1 {
+		t.Fatalf("normalized profile map length = %d, want 1", len(got))
+	}
+	teamCfg, ok := got["team"]
+	if !ok {
+		t.Fatalf("expected normalized team key, got %+v", got)
+	}
+	if len(teamCfg.RejectSeverities) != 2 || teamCfg.RejectSeverities[0] != "critical" || teamCfg.RejectSeverities[1] != "medium" {
+		t.Fatalf("normalized reject severities mismatch: %+v", teamCfg.RejectSeverities)
+	}
+
+	got = normalizeProfileConfigs(map[string]ProfileConfig{
+		"   ": {RejectSeverities: []string{"high"}},
+	})
+	if got != nil {
+		t.Fatalf("normalizeProfileConfigs(all blank keys) = %+v, want nil", got)
+	}
+}
+
+func TestNormalizeSeverities(t *testing.T) {
+	if got := normalizeSeverities(nil); got != nil {
+		t.Fatalf("normalizeSeverities(nil) = %+v, want nil", got)
+	}
+	got := normalizeSeverities([]string{"", "  ", "HIGH", "critical", "high"})
+	if len(got) != 2 {
+		t.Fatalf("normalized severity length = %d, want 2", len(got))
+	}
+	if got[0] != "critical" || got[1] != "high" {
+		t.Fatalf("normalized severities = %+v, want [critical high]", got)
+	}
 }

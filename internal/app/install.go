@@ -190,34 +190,30 @@ func runInstall(args []string, stdout io.Writer, stderr io.Writer) int {
 		_, _ = fmt.Fprintf(stderr, "%s\n\n%s\n", err.Error(), usage())
 		return 1
 	}
-	var userPolicy policypkg.Config
-	policyLoaded := false
-	if !parsed.ProfileSet || len(parsed.Overrides) > 0 {
-		loadedPolicy, foundPolicy, policyErr := loadUserPolicyConfig()
-		if policyErr != nil {
-			if emitInstallStructuredError(parsed.Format, stdout, stderr, installErrorReport{
-				SchemaVersion: reportSchemaVersion,
-				Status:        "ERROR",
-				ErrorCode:     installErrorCodePolicyLoadFailed,
-				Message:       policyErr.Error(),
-				Source: source{
-					Input: parsed.Source,
-					Kind:  detectSourceKind(parsed.Source),
-				},
-				Target:        parsed.Target,
-				PolicyProfile: parsed.Profile,
-				Note:          "failed to load user policy profile",
-			}) {
-				return 1
-			}
-			_, _ = fmt.Fprintln(stderr, policyErr.Error())
+	loadedPolicy, foundPolicy, policyErr := loadUserPolicyConfig()
+	if policyErr != nil {
+		if emitInstallStructuredError(parsed.Format, stdout, stderr, installErrorReport{
+			SchemaVersion: reportSchemaVersion,
+			Status:        "ERROR",
+			ErrorCode:     installErrorCodePolicyLoadFailed,
+			Message:       policyErr.Error(),
+			Source: source{
+				Input: parsed.Source,
+				Kind:  detectSourceKind(parsed.Source),
+			},
+			Target:        parsed.Target,
+			PolicyProfile: parsed.Profile,
+			Note:          "failed to load user policy profile",
+		}) {
 			return 1
 		}
-		userPolicy = loadedPolicy
-		policyLoaded = foundPolicy
-		if !parsed.ProfileSet && foundPolicy && strings.TrimSpace(userPolicy.DefaultProfile) != "" {
-			parsed.Profile = userPolicy.DefaultProfile
-		}
+		_, _ = fmt.Fprintln(stderr, policyErr.Error())
+		return 1
+	}
+	userPolicy := loadedPolicy
+	policyLoaded := foundPolicy
+	if !parsed.ProfileSet && foundPolicy && strings.TrimSpace(userPolicy.DefaultProfile) != "" {
+		parsed.Profile = userPolicy.DefaultProfile
 	}
 
 	sourceKind := detectSourceKind(parsed.Source)
@@ -328,7 +324,28 @@ func runInstall(args []string, stdout io.Writer, stderr io.Writer) int {
 		return 1
 	}
 
-	findings, decision, overrides, err := evaluateSkillWithOverrides(skillRoot, parsed.Profile, parsed.Overrides)
+	rejectSet, err := effectiveRejectSeveritySetForProfile(parsed.Profile, policyLoaded, userPolicy)
+	if err != nil {
+		if emitInstallStructuredError(parsed.Format, stdout, stderr, installErrorReport{
+			SchemaVersion: reportSchemaVersion,
+			Status:        "ERROR",
+			ErrorCode:     installErrorCodePolicyLoadFailed,
+			Message:       err.Error(),
+			Source: source{
+				Input: parsed.Source,
+				Kind:  sourceKind,
+			},
+			Target:        parsed.Target,
+			PolicyProfile: parsed.Profile,
+			Note:          "policy reject_severities configuration is invalid",
+		}) {
+			return 1
+		}
+		_, _ = fmt.Fprintln(stderr, err.Error())
+		return 1
+	}
+
+	findings, decision, overrides, err := evaluateSkillWithOverrides(skillRoot, parsed.Profile, parsed.Overrides, rejectSet)
 	if err != nil {
 		if emitInstallStructuredError(parsed.Format, stdout, stderr, installErrorReport{
 			SchemaVersion: reportSchemaVersion,
@@ -814,11 +831,6 @@ func emitInstallStructuredError(format string, stdout io.Writer, stderr io.Write
 	}
 }
 
-func evaluateSkillForProfile(skillRoot string, profile string) ([]inspectFinding, string, error) {
-	findings, decision, _, err := evaluateSkillWithOverrides(skillRoot, profile, nil)
-	return findings, decision, err
-}
-
 func validateInstallOverridesPolicy(profile string, overrides []string, policyLoaded bool, cfg policypkg.Config) error {
 	if len(overrides) == 0 {
 		return nil
@@ -844,7 +856,7 @@ func validateInstallOverridesPolicy(profile string, overrides []string, policyLo
 	return nil
 }
 
-func evaluateSkillWithOverrides(skillRoot string, profile string, overrideRuleIDs []string) ([]inspectFinding, string, []severityOverrideAudit, error) {
+func evaluateSkillWithOverrides(skillRoot string, profile string, overrideRuleIDs []string, rejectSeveritySet map[string]struct{}) ([]inspectFinding, string, []severityOverrideAudit, error) {
 	normalizedProfile := normalizePolicyProfile(profile)
 	if !isSupportedPolicyProfile(normalizedProfile) {
 		return nil, "", nil, fmt.Errorf("unsupported profile: %s (supported: %s)", normalizedProfile, supportedPolicyProfilesCSV())
@@ -889,7 +901,7 @@ func evaluateSkillWithOverrides(skillRoot string, profile string, overrideRuleID
 				AppliedAt:         appliedAt,
 			})
 		}
-		if shouldRejectSeverityForProfile(normalizedProfile, effectiveSeverity) {
+		if _, shouldReject := rejectSeveritySet[strings.ToLower(strings.TrimSpace(effectiveSeverity))]; shouldReject {
 			decision = "REJECTED"
 		}
 	}

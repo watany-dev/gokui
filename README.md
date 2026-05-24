@@ -44,6 +44,8 @@ When `--profile` is omitted, install can load `default_profile` from
 `policy.toml` can also control override behavior via `[overrides]`:
 `enabled = false` disables all CLI overrides, and `allowed_rule_ids = [...]`
 restricts overrides to an explicit allowlist.
+Profile-specific reject thresholds can be set via
+`[profiles.<name>].reject_severities = ["critical", ...]`.
 `install --override RULE_ID` can explicitly downgrade matching high-severity
 findings for decision calculation, and records `severity_overrides` audit
 entries in install report/lock metadata.
@@ -72,6 +74,8 @@ skill-item keys for automation-friendly parsing, including `error_code` for
 status-aware automation. Update target entries and URL/executable scan inputs
 must not contain symlink path entries, and URL/executable scan roots must be
 non-symlink directories.
+Update policy decisions also honor `policy.toml` profile-specific
+`reject_severities` when configured.
 It also supports `--format sarif` for CI/code-scanning ingestion.
 In SARIF mode, fatal update failures emit a single structured error result.
 URL risk classification now flags shortener hosts and raw-IP URLs during scan.
@@ -354,6 +358,7 @@ Fatal command-level errors (`status=ERROR`) use:
 | `UPDATE_ARGS_INVALID` | CLI argument parse/validation failed |
 | `UPDATE_TARGET_INVALID` | update target spec is invalid |
 | `UPDATE_TARGET_READ_FAILED` | resolved target path cannot be read |
+| `UPDATE_POLICY_LOAD_FAILED` | policy file load/parse/validation failed |
 | `UPDATE_REPORT_BUILD_FAILED` | update report build failed for other reasons |
 | `UPDATE_FAILED` | fallback when update fatal error classification is unavailable |
 

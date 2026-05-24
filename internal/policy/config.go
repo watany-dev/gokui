@@ -18,13 +18,18 @@ const (
 
 // Config is the user policy contract loaded from policy.toml.
 type Config struct {
-	DefaultProfile string          `toml:"default_profile"`
-	Overrides      OverridesConfig `toml:"overrides"`
+	DefaultProfile string                   `toml:"default_profile"`
+	Overrides      OverridesConfig          `toml:"overrides"`
+	Profiles       map[string]ProfileConfig `toml:"profiles"`
 }
 
 type OverridesConfig struct {
 	Enabled        bool     `toml:"enabled"`
 	AllowedRuleIDs []string `toml:"allowed_rule_ids"`
+}
+
+type ProfileConfig struct {
+	RejectSeverities []string `toml:"reject_severities"`
 }
 
 // LoadUserPolicy loads a user policy from GOKUI_POLICY_PATH or
@@ -68,6 +73,7 @@ func LoadUserPolicy() (cfg Config, found bool, err error) {
 	}
 	cfg.DefaultProfile = strings.TrimSpace(strings.ToLower(cfg.DefaultProfile))
 	cfg.Overrides.AllowedRuleIDs = normalizeOverrideRuleIDs(cfg.Overrides.AllowedRuleIDs)
+	cfg.Profiles = normalizeProfileConfigs(cfg.Profiles)
 	return cfg, true, nil
 }
 
@@ -79,6 +85,46 @@ func normalizeOverrideRuleIDs(in []string) []string {
 	out := make([]string, 0, len(in))
 	for _, id := range in {
 		clean := strings.ToUpper(strings.TrimSpace(id))
+		if clean == "" {
+			continue
+		}
+		if _, ok := seen[clean]; ok {
+			continue
+		}
+		seen[clean] = struct{}{}
+		out = append(out, clean)
+	}
+	sort.Strings(out)
+	return out
+}
+
+func normalizeProfileConfigs(in map[string]ProfileConfig) map[string]ProfileConfig {
+	if len(in) == 0 {
+		return nil
+	}
+	out := make(map[string]ProfileConfig, len(in))
+	for profile, cfg := range in {
+		key := strings.ToLower(strings.TrimSpace(profile))
+		if key == "" {
+			continue
+		}
+		cfg.RejectSeverities = normalizeSeverities(cfg.RejectSeverities)
+		out[key] = cfg
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return out
+}
+
+func normalizeSeverities(in []string) []string {
+	if len(in) == 0 {
+		return nil
+	}
+	seen := make(map[string]struct{}, len(in))
+	out := make([]string, 0, len(in))
+	for _, sev := range in {
+		clean := strings.ToLower(strings.TrimSpace(sev))
 		if clean == "" {
 			continue
 		}

@@ -30,6 +30,7 @@ tests/CI:
 - Built-in install policy profiles: `strict`, `team`, `research`
 - User policy loading from `~/.config/gokui/policy.toml` (`default_profile`)
 - Policy-driven CLI override controls via `policy.toml` (`overrides.enabled`, `overrides.allowed_rule_ids`)
+- Profile-specific reject severity controls via `policy.toml` (`profiles.<name>.reject_severities`)
 - Lock drift verification with per-check machine-readable codes
 - Stable JSON output contracts for all MVP commands
 - Machine-readable `error_code` support across command failure paths

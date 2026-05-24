@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/watany-dev/gokui/internal/limitio"
+	policypkg "github.com/watany-dev/gokui/internal/policy"
 	srcpkg "github.com/watany-dev/gokui/internal/source"
 )
 
@@ -89,6 +90,7 @@ const (
 	updateFatalCodeTargetInvalid  = "UPDATE_TARGET_INVALID"
 	updateFatalCodeTargetReadFail = "UPDATE_TARGET_READ_FAILED"
 	updateFatalCodeReportBuild    = "UPDATE_REPORT_BUILD_FAILED"
+	updateFatalCodePolicyLoadFail = "UPDATE_POLICY_LOAD_FAILED"
 	updateFatalCodeUnknown        = "UPDATE_FAILED"
 )
 
@@ -181,7 +183,23 @@ func runUpdate(args []string, stdout io.Writer, stderr io.Writer) int {
 		return 1
 	}
 
-	report, err := buildUpdateReport(targetRoot)
+	userPolicy, policyLoaded, policyErr := loadUserPolicyConfig()
+	if policyErr != nil {
+		if emitUpdateStructuredError(parsed.Format, stdout, stderr, updateErrorReport{
+			SchemaVersion: reportSchemaVersion,
+			Status:        "ERROR",
+			ErrorCode:     updateFatalCodePolicyLoadFail,
+			Message:       policyErr.Error(),
+			Target:        targetRoot,
+			Note:          "update failed while loading policy configuration",
+		}) {
+			return 1
+		}
+		_, _ = fmt.Fprintln(stderr, policyErr.Error())
+		return 1
+	}
+
+	report, err := buildUpdateReport(targetRoot, policyLoaded, userPolicy)
 	if err != nil {
 		errorCode := updateFatalCodeReportBuild
 		if isUpdateTargetReadError(err) {
@@ -500,7 +518,7 @@ func buildUpdateCompactSummary(report updateReport) string {
 	)
 }
 
-func buildUpdateReport(targetRoot string) (updateReport, error) {
+func buildUpdateReport(targetRoot string, policyLoaded bool, cfg policypkg.Config) (updateReport, error) {
 	cleanTarget := filepath.Clean(targetRoot)
 	entries, err := os.ReadDir(cleanTarget)
 	if err != nil {
@@ -550,7 +568,7 @@ func buildUpdateReport(targetRoot string) (updateReport, error) {
 		}
 		item.SeverityOverrides = cloneSeverityOverrides(lock.Policy.SeverityOverrides)
 
-		enriched, err := evaluateUpdateSkill(item, lock)
+		enriched, err := evaluateUpdateSkill(item, lock, policyLoaded, cfg)
 		if err != nil {
 			item.Status = "ERROR"
 			item.ErrorCode = updateCodeEvaluationError
@@ -581,7 +599,7 @@ func isUpdateTargetReadError(err error) bool {
 	return errors.Is(err, errUpdateTargetRead)
 }
 
-func evaluateUpdateSkill(item updateSkillItem, lock installLock) (updateSkillItem, error) {
+func evaluateUpdateSkill(item updateSkillItem, lock installLock, policyLoaded bool, cfg policypkg.Config) (updateSkillItem, error) {
 	policyProfile := normalizePolicyProfile(lock.Policy.Profile)
 	if !isSupportedPolicyProfile(policyProfile) {
 		item.Status = "ERROR"
@@ -658,7 +676,20 @@ func evaluateUpdateSkill(item updateSkillItem, lock installLock) (updateSkillIte
 		return item, nil
 	}
 
-	findings, _, err := evaluateSkillForProfile(skillRoot, policyProfile)
+	rejectSet, err := effectiveRejectSeveritySetForProfile(policyProfile, policyLoaded, cfg)
+	if err != nil {
+		item.Status = "ERROR"
+		item.ErrorCode = updateCodeEvaluationError
+		item.Message = err.Error()
+		item.RuleID = inferRuleIDForJSONError(item.Message)
+		item.Risk = updateRisk{
+			Previous: lock.Findings,
+			Current:  lock.Findings,
+		}
+		return item, nil
+	}
+
+	findings, _, _, err := evaluateSkillWithOverrides(skillRoot, policyProfile, nil, rejectSet)
 	if err != nil {
 		return updateSkillItem{}, err
 	}
@@ -681,7 +712,7 @@ func evaluateUpdateSkill(item updateSkillItem, lock installLock) (updateSkillIte
 			}
 			activeByRule[finding.ID] = override
 		}
-		if effectiveSeverity == "high" || effectiveSeverity == "critical" {
+		if _, shouldReject := rejectSet[strings.ToLower(strings.TrimSpace(effectiveSeverity))]; shouldReject {
 			decision = "REJECTED"
 		}
 	}
