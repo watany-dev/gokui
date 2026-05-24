@@ -26,7 +26,7 @@ func TestLoadUserPolicy(t *testing.T) {
 
 	t.Run("loads default profile and normalizes casing", func(t *testing.T) {
 		p := filepath.Join(t.TempDir(), "policy.toml")
-		if err := os.WriteFile(p, []byte(`default_profile = " Research "`), 0o644); err != nil {
+		if err := os.WriteFile(p, []byte("default_profile = \" Research \"\n[overrides]\nallowed_rule_ids = [\" prompt_override_language \", \"UNPINNED_RUNTIME_TOOL\", \"PROMPT_OVERRIDE_LANGUAGE\"]\n"), 0o644); err != nil {
 			t.Fatalf("write policy file: %v", err)
 		}
 		t.Setenv(envPolicyPath, p)
@@ -39,6 +39,15 @@ func TestLoadUserPolicy(t *testing.T) {
 		}
 		if cfg.DefaultProfile != "research" {
 			t.Fatalf("default profile = %q, want research", cfg.DefaultProfile)
+		}
+		if !cfg.Overrides.Enabled {
+			t.Fatal("overrides.enabled default should be true")
+		}
+		if len(cfg.Overrides.AllowedRuleIDs) != 2 {
+			t.Fatalf("allowed_rule_ids length = %d, want 2", len(cfg.Overrides.AllowedRuleIDs))
+		}
+		if cfg.Overrides.AllowedRuleIDs[0] != "PROMPT_OVERRIDE_LANGUAGE" || cfg.Overrides.AllowedRuleIDs[1] != "UNPINNED_RUNTIME_TOOL" {
+			t.Fatalf("allowed_rule_ids normalization mismatch: %+v", cfg.Overrides.AllowedRuleIDs)
 		}
 	})
 

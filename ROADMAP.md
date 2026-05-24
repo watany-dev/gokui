@@ -29,6 +29,7 @@ tests/CI:
 - Atomic install with `.gokui-report.json` and `gokui.lock`
 - Built-in install policy profiles: `strict`, `team`, `research`
 - User policy loading from `~/.config/gokui/policy.toml` (`default_profile`)
+- Policy-driven CLI override controls via `policy.toml` (`overrides.enabled`, `overrides.allowed_rule_ids`)
 - Lock drift verification with per-check machine-readable codes
 - Stable JSON output contracts for all MVP commands
 - Machine-readable `error_code` support across command failure paths

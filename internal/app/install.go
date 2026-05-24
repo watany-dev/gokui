@@ -143,6 +143,7 @@ const (
 	installErrorCodeWriteFailed          = "INSTALL_WRITE_FAILED"
 	installErrorCodePolicyRejected       = "INSTALL_POLICY_REJECTED"
 	installErrorCodePolicyLoadFailed     = "INSTALL_POLICY_LOAD_FAILED"
+	installErrorCodeOverrideNotAllowed   = "INSTALL_OVERRIDE_NOT_ALLOWED"
 	installErrorCodeUnknown              = "INSTALL_FAILED"
 )
 
@@ -189,8 +190,10 @@ func runInstall(args []string, stdout io.Writer, stderr io.Writer) int {
 		_, _ = fmt.Fprintf(stderr, "%s\n\n%s\n", err.Error(), usage())
 		return 1
 	}
-	if !parsed.ProfileSet {
-		userPolicy, foundPolicy, policyErr := loadUserPolicyConfig()
+	var userPolicy policypkg.Config
+	policyLoaded := false
+	if !parsed.ProfileSet || len(parsed.Overrides) > 0 {
+		loadedPolicy, foundPolicy, policyErr := loadUserPolicyConfig()
 		if policyErr != nil {
 			if emitInstallStructuredError(parsed.Format, stdout, stderr, installErrorReport{
 				SchemaVersion: reportSchemaVersion,
@@ -210,7 +213,9 @@ func runInstall(args []string, stdout io.Writer, stderr io.Writer) int {
 			_, _ = fmt.Fprintln(stderr, policyErr.Error())
 			return 1
 		}
-		if foundPolicy && strings.TrimSpace(userPolicy.DefaultProfile) != "" {
+		userPolicy = loadedPolicy
+		policyLoaded = foundPolicy
+		if !parsed.ProfileSet && foundPolicy && strings.TrimSpace(userPolicy.DefaultProfile) != "" {
 			parsed.Profile = userPolicy.DefaultProfile
 		}
 	}
@@ -235,6 +240,25 @@ func runInstall(args []string, stdout io.Writer, stderr io.Writer) int {
 			return 1
 		}
 		_, _ = fmt.Fprintf(stderr, "unsupported profile: %s (supported: %s)\n", parsed.Profile, supportedPolicyProfilesCSV())
+		return 1
+	}
+	if err := validateInstallOverridesPolicy(parsed.Profile, parsed.Overrides, policyLoaded, userPolicy); err != nil {
+		if emitInstallStructuredError(parsed.Format, stdout, stderr, installErrorReport{
+			SchemaVersion: reportSchemaVersion,
+			Status:        "ERROR",
+			ErrorCode:     installErrorCodeOverrideNotAllowed,
+			Message:       err.Error(),
+			Source: source{
+				Input: parsed.Source,
+				Kind:  sourceKind,
+			},
+			Target:        parsed.Target,
+			PolicyProfile: parsed.Profile,
+			Note:          "install override policy validation failed",
+		}) {
+			return 1
+		}
+		_, _ = fmt.Fprintln(stderr, err.Error())
 		return 1
 	}
 
@@ -793,6 +817,31 @@ func emitInstallStructuredError(format string, stdout io.Writer, stderr io.Write
 func evaluateSkillForProfile(skillRoot string, profile string) ([]inspectFinding, string, error) {
 	findings, decision, _, err := evaluateSkillWithOverrides(skillRoot, profile, nil)
 	return findings, decision, err
+}
+
+func validateInstallOverridesPolicy(profile string, overrides []string, policyLoaded bool, cfg policypkg.Config) error {
+	if len(overrides) == 0 {
+		return nil
+	}
+	normalizedProfile := normalizePolicyProfile(profile)
+	if normalizedProfile == policyProfileResearch {
+		return fmt.Errorf("overrides are not allowed for profile: %s", normalizedProfile)
+	}
+	if policyLoaded && !cfg.Overrides.Enabled {
+		return fmt.Errorf("overrides are disabled by policy configuration")
+	}
+	if policyLoaded && len(cfg.Overrides.AllowedRuleIDs) > 0 {
+		allowed := make(map[string]struct{}, len(cfg.Overrides.AllowedRuleIDs))
+		for _, id := range cfg.Overrides.AllowedRuleIDs {
+			allowed[id] = struct{}{}
+		}
+		for _, id := range overrides {
+			if _, ok := allowed[id]; !ok {
+				return fmt.Errorf("override rule is not allowed by policy: %s", id)
+			}
+		}
+	}
+	return nil
 }
 
 func evaluateSkillWithOverrides(skillRoot string, profile string, overrideRuleIDs []string) ([]inspectFinding, string, []severityOverrideAudit, error) {

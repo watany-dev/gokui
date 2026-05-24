@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/BurntSushi/toml"
@@ -17,12 +18,20 @@ const (
 
 // Config is the user policy contract loaded from policy.toml.
 type Config struct {
-	DefaultProfile string `toml:"default_profile"`
+	DefaultProfile string          `toml:"default_profile"`
+	Overrides      OverridesConfig `toml:"overrides"`
+}
+
+type OverridesConfig struct {
+	Enabled        bool     `toml:"enabled"`
+	AllowedRuleIDs []string `toml:"allowed_rule_ids"`
 }
 
 // LoadUserPolicy loads a user policy from GOKUI_POLICY_PATH or
 // ~/.config/gokui/policy.toml. If no file exists, found=false and err=nil.
 func LoadUserPolicy() (cfg Config, found bool, err error) {
+	cfg.Overrides.Enabled = true
+
 	path, err := resolvePolicyPath()
 	if err != nil {
 		return Config{}, false, err
@@ -58,7 +67,29 @@ func LoadUserPolicy() (cfg Config, found bool, err error) {
 		return Config{}, false, fmt.Errorf("unknown policy keys: %v", undecoded)
 	}
 	cfg.DefaultProfile = strings.TrimSpace(strings.ToLower(cfg.DefaultProfile))
+	cfg.Overrides.AllowedRuleIDs = normalizeOverrideRuleIDs(cfg.Overrides.AllowedRuleIDs)
 	return cfg, true, nil
+}
+
+func normalizeOverrideRuleIDs(in []string) []string {
+	if len(in) == 0 {
+		return nil
+	}
+	seen := make(map[string]struct{}, len(in))
+	out := make([]string, 0, len(in))
+	for _, id := range in {
+		clean := strings.ToUpper(strings.TrimSpace(id))
+		if clean == "" {
+			continue
+		}
+		if _, ok := seen[clean]; ok {
+			continue
+		}
+		seen[clean] = struct{}{}
+		out = append(out, clean)
+	}
+	sort.Strings(out)
+	return out
 }
 
 func resolvePolicyPath() (string, error) {

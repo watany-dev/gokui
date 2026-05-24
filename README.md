@@ -41,6 +41,9 @@ mode, rejected installs set report `error_code=INSTALL_POLICY_REJECTED`, and
 fatal errors emit a machine-readable error envelope with top-level `error_code`.
 When `--profile` is omitted, install can load `default_profile` from
 `~/.config/gokui/policy.toml` (or `GOKUI_POLICY_PATH`).
+`policy.toml` can also control override behavior via `[overrides]`:
+`enabled = false` disables all CLI overrides, and `allowed_rule_ids = [...]`
+restricts overrides to an explicit allowlist.
 `install --override RULE_ID` can explicitly downgrade matching high-severity
 findings for decision calculation, and records `severity_overrides` audit
 entries in install report/lock metadata.
@@ -294,6 +297,7 @@ Fatal errors:
 | `INSTALL_ARGS_INVALID` | CLI argument parse/validation failed |
 | `INSTALL_PROFILE_UNSUPPORTED` | unsupported profile selected |
 | `INSTALL_POLICY_LOAD_FAILED` | user policy file load/parse/validation failed |
+| `INSTALL_OVERRIDE_NOT_ALLOWED` | requested override is disallowed by profile/policy |
 | `INSTALL_SOURCE_NOT_FOUND` | non-GitHub source path not found |
 | `INSTALL_SOURCE_PREPARE_FAILED` | source preparation/materialization failed |
 | `INSTALL_EVALUATION_FAILED` | scan/evaluation phase failed |
