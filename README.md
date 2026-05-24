@@ -344,6 +344,9 @@ When available, update JSON fatal errors also include optional `rule_id`
 derived from rule-prefixed target/report validation messages.
 Update skill items also include `severity_overrides`, inherited from installed
 lock policy metadata for audit visibility.
+Update skill items also include `severity_override_diff` (`added`/`removed`)
+to show override applicability drift between installed snapshot and current
+source evaluation.
 
 ## Exit Code Contract
 

@@ -168,6 +168,7 @@ func TestUpdateStatusErrorCodeMatrixDocumentationSync(t *testing.T) {
 		"Install JSON reports and generated lockfiles also include",
 		"`severity_overrides` as an audit trail field",
 		"Update skill items also include `severity_overrides`",
+		"Update skill items also include `severity_override_diff`",
 	}
 	for _, line := range requiredAuditLines {
 		if !strings.Contains(readme, line) {

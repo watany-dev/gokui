@@ -50,20 +50,26 @@ type updateErrorReport struct {
 }
 
 type updateSkillItem struct {
-	Name               string                  `json:"name"`
-	Path               string                  `json:"path"`
-	Source             source                  `json:"source"`
-	Status             string                  `json:"status"`
-	ErrorCode          string                  `json:"error_code"`
-	RuleID             string                  `json:"rule_id,omitempty"`
-	Decision           string                  `json:"decision"`
-	Diff               updateDiff              `json:"diff"`
-	Risk               updateRisk              `json:"risk"`
-	NewURLs            []string                `json:"new_urls"`
-	NewExecutableFiles []string                `json:"new_executable_files"`
-	Findings           []inspectFinding        `json:"findings"`
-	SeverityOverrides  []severityOverrideAudit `json:"severity_overrides"`
-	Message            string                  `json:"message"`
+	Name                 string                     `json:"name"`
+	Path                 string                     `json:"path"`
+	Source               source                     `json:"source"`
+	Status               string                     `json:"status"`
+	ErrorCode            string                     `json:"error_code"`
+	RuleID               string                     `json:"rule_id,omitempty"`
+	Decision             string                     `json:"decision"`
+	Diff                 updateDiff                 `json:"diff"`
+	Risk                 updateRisk                 `json:"risk"`
+	NewURLs              []string                   `json:"new_urls"`
+	NewExecutableFiles   []string                   `json:"new_executable_files"`
+	Findings             []inspectFinding           `json:"findings"`
+	SeverityOverrides    []severityOverrideAudit    `json:"severity_overrides"`
+	SeverityOverrideDiff updateSeverityOverrideDiff `json:"severity_override_diff"`
+	Message              string                     `json:"message"`
+}
+
+type updateSeverityOverrideDiff struct {
+	Added   []string `json:"added"`
+	Removed []string `json:"removed"`
 }
 
 const (
@@ -206,6 +212,7 @@ func runUpdate(args []string, stdout io.Writer, stderr io.Writer) int {
 			_, _ = fmt.Fprintf(stdout, "  code: %s\n", skill.ErrorCode)
 			_, _ = fmt.Fprintf(stdout, "  diff added=%d removed=%d changed=%d\n", len(skill.Diff.Added), len(skill.Diff.Removed), len(skill.Diff.Changed))
 			_, _ = fmt.Fprintf(stdout, "  new urls=%d new executables=%d\n", len(skill.NewURLs), len(skill.NewExecutableFiles))
+			_, _ = fmt.Fprintf(stdout, "  severity overrides active=%d added=%d removed=%d\n", len(skill.SeverityOverrides), len(skill.SeverityOverrideDiff.Added), len(skill.SeverityOverrideDiff.Removed))
 			_, _ = fmt.Fprintf(stdout, "  note: %s\n", skill.Message)
 		}
 		_, _ = fmt.Fprintf(stdout, "summary: up_to_date=%d changed=%d rejected=%d skipped=%d errors=%d\n",
@@ -425,6 +432,10 @@ func buildUpdateReport(targetRoot string) (updateReport, error) {
 			NewExecutableFiles: []string{},
 			Findings:           []inspectFinding{},
 			SeverityOverrides:  []severityOverrideAudit{},
+			SeverityOverrideDiff: updateSeverityOverrideDiff{
+				Added:   []string{},
+				Removed: []string{},
+			},
 		}
 		lockPath := filepath.Join(skillPath, installLockFile)
 		lock, err := readInstallLock(lockPath)
@@ -537,12 +548,41 @@ func evaluateUpdateSkill(item updateSkillItem, lock installLock) (updateSkillIte
 		return item, nil
 	}
 
-	findings, decision, err := evaluateSkill(skillRoot)
+	findings, _, err := evaluateSkill(skillRoot)
 	if err != nil {
 		return updateSkillItem{}, err
 	}
 	item.Findings = findings
+
+	configuredByRule := make(map[string]severityOverrideAudit, len(lock.Policy.SeverityOverrides))
+	for _, override := range lock.Policy.SeverityOverrides {
+		if _, exists := configuredByRule[override.RuleID]; exists {
+			continue
+		}
+		configuredByRule[override.RuleID] = override
+	}
+	activeByRule := make(map[string]severityOverrideAudit, len(configuredByRule))
+	decision := "PASS"
+	for _, finding := range findings {
+		effectiveSeverity := finding.Severity
+		if override, ok := configuredByRule[finding.ID]; ok {
+			if finding.Severity == "high" {
+				effectiveSeverity = "medium"
+			}
+			activeByRule[finding.ID] = override
+		}
+		if effectiveSeverity == "high" || effectiveSeverity == "critical" {
+			decision = "REJECTED"
+		}
+	}
 	item.Decision = decision
+	item.SeverityOverrides = sortSeverityOverrides(mapValuesSeverityOverrides(activeByRule))
+	previousOverrideIDs := mapKeysSortedSeverityOverrideAudit(configuredByRule)
+	currentOverrideIDs := mapKeysSortedSeverityOverrideAudit(activeByRule)
+	item.SeverityOverrideDiff = updateSeverityOverrideDiff{
+		Added:   setDiff(currentOverrideIDs, previousOverrideIDs),
+		Removed: setDiff(previousOverrideIDs, currentOverrideIDs),
+	}
 
 	excludeMeta := map[string]struct{}{
 		installReportFile: {},
@@ -603,7 +643,8 @@ func evaluateUpdateSkill(item updateSkillItem, lock installLock) (updateSkillIte
 	changedContent := len(item.Diff.Added) > 0 || len(item.Diff.Removed) > 0 || len(item.Diff.Changed) > 0
 	changedRisk := item.Risk.Delta.Critical != 0 || item.Risk.Delta.High != 0 || item.Risk.Delta.Medium != 0 || item.Risk.Delta.Low != 0
 	changedSignals := len(item.NewURLs) > 0 || len(item.NewExecutableFiles) > 0
-	if changedContent || changedRisk || changedSignals {
+	changedOverrides := len(item.SeverityOverrideDiff.Added) > 0 || len(item.SeverityOverrideDiff.Removed) > 0
+	if changedContent || changedRisk || changedSignals || changedOverrides {
 		item.Status = "CHANGED"
 		item.ErrorCode = updateCodeChanged
 		item.Message = "update source differs from installed lock snapshot"
@@ -852,6 +893,37 @@ func mapKeysSorted(set map[string]struct{}) []string {
 	}
 	sort.Strings(out)
 	return out
+}
+
+func mapValuesSeverityOverrides(in map[string]severityOverrideAudit) []severityOverrideAudit {
+	out := make([]severityOverrideAudit, 0, len(in))
+	for _, override := range in {
+		out = append(out, override)
+	}
+	return out
+}
+
+func sortSeverityOverrides(in []severityOverrideAudit) []severityOverrideAudit {
+	out := cloneSeverityOverrides(in)
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].RuleID != out[j].RuleID {
+			return out[i].RuleID < out[j].RuleID
+		}
+		if out[i].AppliedAt != out[j].AppliedAt {
+			return out[i].AppliedAt < out[j].AppliedAt
+		}
+		return out[i].Source < out[j].Source
+	})
+	return out
+}
+
+func mapKeysSortedSeverityOverrideAudit(in map[string]severityOverrideAudit) []string {
+	keys := make([]string, 0, len(in))
+	for ruleID := range in {
+		keys = append(keys, ruleID)
+	}
+	sort.Strings(keys)
+	return keys
 }
 
 func setDiff(current []string, previous []string) []string {
