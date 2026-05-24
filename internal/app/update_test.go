@@ -1424,6 +1424,58 @@ func TestRunUpdateJSONFatalErrors(t *testing.T) {
 	})
 }
 
+func TestRunUpdateSARIFFatalErrors(t *testing.T) {
+	t.Run("parse errors emit machine-readable SARIF", func(t *testing.T) {
+		var stdout strings.Builder
+		var stderr strings.Builder
+		code := runUpdate([]string{"--format", "sarif"}, &stdout, &stderr)
+		if code != 1 {
+			t.Fatalf("runUpdate(sarif parse error) code = %d, want 1\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
+		}
+		if stderr.Len() != 0 {
+			t.Fatalf("stderr should be empty for sarif parse errors, got %q", stderr.String())
+		}
+		var sarif inspectSARIFReport
+		if err := json.Unmarshal([]byte(stdout.String()), &sarif); err != nil {
+			t.Fatalf("sarif parse failed: %v", err)
+		}
+		if len(sarif.Runs) != 1 || len(sarif.Runs[0].Results) != 1 {
+			t.Fatalf("unexpected sarif structure: %+v", sarif)
+		}
+		if sarif.Runs[0].Results[0].RuleID != updateFatalCodeArgsInvalid {
+			t.Fatalf("rule id = %q, want %q", sarif.Runs[0].Results[0].RuleID, updateFatalCodeArgsInvalid)
+		}
+		if sarif.Runs[0].Invocations[0].ExecutionSuccessful {
+			t.Fatal("sarif parse-error invocation should be unsuccessful")
+		}
+	})
+
+	t.Run("target read failures emit machine-readable SARIF", func(t *testing.T) {
+		var stdout strings.Builder
+		var stderr strings.Builder
+		code := runUpdate([]string{"--dry-run", "--target", "custom:" + filepath.Join(t.TempDir(), "missing"), "--format", "sarif"}, &stdout, &stderr)
+		if code != 1 {
+			t.Fatalf("runUpdate(sarif target read fail) code = %d, want 1\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
+		}
+		if stderr.Len() != 0 {
+			t.Fatalf("stderr should be empty for sarif build errors, got %q", stderr.String())
+		}
+		var sarif inspectSARIFReport
+		if err := json.Unmarshal([]byte(stdout.String()), &sarif); err != nil {
+			t.Fatalf("sarif parse failed: %v", err)
+		}
+		if len(sarif.Runs) != 1 || len(sarif.Runs[0].Results) != 1 {
+			t.Fatalf("unexpected sarif structure: %+v", sarif)
+		}
+		if sarif.Runs[0].Results[0].RuleID != updateFatalCodeTargetReadFail {
+			t.Fatalf("rule id = %q, want %q", sarif.Runs[0].Results[0].RuleID, updateFatalCodeTargetReadFail)
+		}
+		if sarif.Runs[0].Properties.Decision != "ERROR" {
+			t.Fatalf("decision = %q, want ERROR", sarif.Runs[0].Properties.Decision)
+		}
+	})
+}
+
 func TestWriteUpdateJSONErrorRuleID(t *testing.T) {
 	t.Run("infers rule_id from rule-prefixed message", func(t *testing.T) {
 		var stdout strings.Builder
@@ -1472,6 +1524,69 @@ func TestWriteUpdateJSONErrorRuleID(t *testing.T) {
 	})
 }
 
+func TestWriteUpdateSARIFErrorRuleID(t *testing.T) {
+	t.Run("infers rule_id from rule-prefixed message", func(t *testing.T) {
+		var stdout strings.Builder
+		var stderr strings.Builder
+
+		code := writeUpdateSARIFError(&stdout, &stderr, updateErrorReport{
+			SchemaVersion: reportSchemaVersion,
+			Status:        "ERROR",
+			ErrorCode:     updateFatalCodeReportBuild,
+			Message:       "ARCHIVE_PATH_ESCAPE: archive entry escaped source root",
+			Target:        "codex",
+			Note:          "test",
+		})
+		if code != 1 {
+			t.Fatalf("writeUpdateSARIFError() code = %d, want 1", code)
+		}
+		if stderr.Len() != 0 {
+			t.Fatalf("stderr should be empty, got %q", stderr.String())
+		}
+		var sarif inspectSARIFReport
+		if err := json.Unmarshal([]byte(stdout.String()), &sarif); err != nil {
+			t.Fatalf("sarif parse failed: %v", err)
+		}
+		if len(sarif.Runs) != 1 || len(sarif.Runs[0].Results) != 1 {
+			t.Fatalf("unexpected sarif structure: %+v", sarif)
+		}
+		if sarif.Runs[0].Results[0].RuleID != "ARCHIVE_PATH_ESCAPE" {
+			t.Fatalf("rule id = %q, want ARCHIVE_PATH_ESCAPE", sarif.Runs[0].Results[0].RuleID)
+		}
+	})
+
+	t.Run("preserves explicit rule_id", func(t *testing.T) {
+		var stdout strings.Builder
+		var stderr strings.Builder
+
+		code := writeUpdateSARIFError(&stdout, &stderr, updateErrorReport{
+			SchemaVersion: reportSchemaVersion,
+			Status:        "ERROR",
+			ErrorCode:     updateFatalCodeReportBuild,
+			RuleID:        "EXPLICIT_RULE",
+			Message:       "synthetic update error",
+			Target:        "codex",
+			Note:          "test",
+		})
+		if code != 1 {
+			t.Fatalf("writeUpdateSARIFError() code = %d, want 1", code)
+		}
+		if stderr.Len() != 0 {
+			t.Fatalf("stderr should be empty, got %q", stderr.String())
+		}
+		var sarif inspectSARIFReport
+		if err := json.Unmarshal([]byte(stdout.String()), &sarif); err != nil {
+			t.Fatalf("sarif parse failed: %v", err)
+		}
+		if len(sarif.Runs) != 1 || len(sarif.Runs[0].Results) != 1 {
+			t.Fatalf("unexpected sarif structure: %+v", sarif)
+		}
+		if sarif.Runs[0].Results[0].RuleID != "EXPLICIT_RULE" {
+			t.Fatalf("rule id = %q, want EXPLICIT_RULE", sarif.Runs[0].Results[0].RuleID)
+		}
+	})
+}
+
 func TestUpdateArgJSONHelpers(t *testing.T) {
 	if !updateArgsRequestJSON([]string{"--dry-run", "--format", "json"}) {
 		t.Fatal("updateArgsRequestJSON() should detect --format json")
@@ -1482,6 +1597,15 @@ func TestUpdateArgJSONHelpers(t *testing.T) {
 	if updateArgsRequestJSON([]string{"--dry-run", "--format", "human"}) {
 		t.Fatal("updateArgsRequestJSON() should be false for non-json format")
 	}
+	if !updateArgsRequestSARIF([]string{"--dry-run", "--format", "sarif"}) {
+		t.Fatal("updateArgsRequestSARIF() should detect --format sarif")
+	}
+	if !updateArgsRequestSARIF([]string{"--dry-run", "--format=sarif"}) {
+		t.Fatal("updateArgsRequestSARIF() should detect --format=sarif")
+	}
+	if updateArgsRequestSARIF([]string{"--dry-run", "--format", "json"}) {
+		t.Fatal("updateArgsRequestSARIF() should be false for non-sarif format")
+	}
 	if got := extractUpdateTargetArg([]string{"--dry-run", "--target", "custom:/tmp/skills"}); got != "custom:/tmp/skills" {
 		t.Fatalf("extractUpdateTargetArg() = %q", got)
 	}
@@ -1490,6 +1614,40 @@ func TestUpdateArgJSONHelpers(t *testing.T) {
 	}
 	if got := extractUpdateTargetArg([]string{"--dry-run"}); got != "codex" {
 		t.Fatalf("extractUpdateTargetArg(default) = %q", got)
+	}
+}
+
+func TestBuildUpdateSARIFErrorReport(t *testing.T) {
+	report := updateErrorReport{
+		SchemaVersion: reportSchemaVersion,
+		Status:        "ERROR",
+		ErrorCode:     updateFatalCodeTargetReadFail,
+		Message:       "failed to read update target: /tmp/skills",
+		Target:        "/tmp/skills",
+		Note:          "update report generation failed",
+	}
+	sarif := buildUpdateSARIFErrorReport(report)
+	if sarif.Version != "2.1.0" {
+		t.Fatalf("version = %q, want 2.1.0", sarif.Version)
+	}
+	if len(sarif.Runs) != 1 {
+		t.Fatalf("runs = %d, want 1", len(sarif.Runs))
+	}
+	run := sarif.Runs[0]
+	if len(run.Results) != 1 {
+		t.Fatalf("results = %d, want 1", len(run.Results))
+	}
+	if run.Results[0].RuleID != updateFatalCodeTargetReadFail {
+		t.Fatalf("rule id = %q, want %q", run.Results[0].RuleID, updateFatalCodeTargetReadFail)
+	}
+	if run.Results[0].Level != "error" {
+		t.Fatalf("level = %q, want error", run.Results[0].Level)
+	}
+	if len(run.Invocations) != 1 || run.Invocations[0].ExecutionSuccessful {
+		t.Fatalf("invocation should be unsuccessful, got %+v", run.Invocations)
+	}
+	if run.Properties.SourceKind != "update-target" {
+		t.Fatalf("source kind = %q, want update-target", run.Properties.SourceKind)
 	}
 }
 

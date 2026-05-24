@@ -123,6 +123,7 @@ type updateSummary struct {
 
 func runUpdate(args []string, stdout io.Writer, stderr io.Writer) int {
 	requestedJSON := updateArgsRequestJSON(args)
+	requestedSARIF := updateArgsRequestSARIF(args)
 
 	parsed, err := parseUpdateArgs(args)
 	if err != nil {
@@ -136,36 +137,45 @@ func runUpdate(args []string, stdout io.Writer, stderr io.Writer) int {
 				Note:          "update failed before target resolution",
 			})
 		}
+		if requestedSARIF {
+			return writeUpdateSARIFError(stdout, stderr, updateErrorReport{
+				SchemaVersion: reportSchemaVersion,
+				Status:        "ERROR",
+				ErrorCode:     updateFatalCodeArgsInvalid,
+				Message:       err.Error(),
+				Target:        extractUpdateTargetArg(args),
+				Note:          "update failed before target resolution",
+			})
+		}
 		_, _ = fmt.Fprintf(stderr, "%s\n\n%s\n", err.Error(), usage())
 		return 1
 	}
-	jsonOutput := parsed.Format == "json"
 
 	targetRoot, err := resolveInstallTarget(parsed.Target)
 	if err != nil {
-		if jsonOutput {
-			return writeUpdateJSONError(stdout, stderr, updateErrorReport{
-				SchemaVersion: reportSchemaVersion,
-				Status:        "ERROR",
-				ErrorCode:     updateFatalCodeTargetInvalid,
-				Message:       err.Error(),
-				Target:        parsed.Target,
-				Note:          "update target validation failed",
-			})
+		if emitUpdateStructuredError(parsed.Format, stdout, stderr, updateErrorReport{
+			SchemaVersion: reportSchemaVersion,
+			Status:        "ERROR",
+			ErrorCode:     updateFatalCodeTargetInvalid,
+			Message:       err.Error(),
+			Target:        parsed.Target,
+			Note:          "update target validation failed",
+		}) {
+			return 1
 		}
 		_, _ = fmt.Fprintln(stderr, err.Error())
 		return 1
 	}
 	if err := rejectSymlinkPath(targetRoot, "update target root", ruleUpdateTargetSymlink); err != nil {
-		if jsonOutput {
-			return writeUpdateJSONError(stdout, stderr, updateErrorReport{
-				SchemaVersion: reportSchemaVersion,
-				Status:        "ERROR",
-				ErrorCode:     updateFatalCodeTargetInvalid,
-				Message:       err.Error(),
-				Target:        parsed.Target,
-				Note:          "update target validation failed",
-			})
+		if emitUpdateStructuredError(parsed.Format, stdout, stderr, updateErrorReport{
+			SchemaVersion: reportSchemaVersion,
+			Status:        "ERROR",
+			ErrorCode:     updateFatalCodeTargetInvalid,
+			Message:       err.Error(),
+			Target:        parsed.Target,
+			Note:          "update target validation failed",
+		}) {
+			return 1
 		}
 		_, _ = fmt.Fprintln(stderr, err.Error())
 		return 1
@@ -173,19 +183,19 @@ func runUpdate(args []string, stdout io.Writer, stderr io.Writer) int {
 
 	report, err := buildUpdateReport(targetRoot)
 	if err != nil {
-		if jsonOutput {
-			errorCode := updateFatalCodeReportBuild
-			if isUpdateTargetReadError(err) {
-				errorCode = updateFatalCodeTargetReadFail
-			}
-			return writeUpdateJSONError(stdout, stderr, updateErrorReport{
-				SchemaVersion: reportSchemaVersion,
-				Status:        "ERROR",
-				ErrorCode:     errorCode,
-				Message:       err.Error(),
-				Target:        targetRoot,
-				Note:          "update report generation failed",
-			})
+		errorCode := updateFatalCodeReportBuild
+		if isUpdateTargetReadError(err) {
+			errorCode = updateFatalCodeTargetReadFail
+		}
+		if emitUpdateStructuredError(parsed.Format, stdout, stderr, updateErrorReport{
+			SchemaVersion: reportSchemaVersion,
+			Status:        "ERROR",
+			ErrorCode:     errorCode,
+			Message:       err.Error(),
+			Target:        targetRoot,
+			Note:          "update report generation failed",
+		}) {
+			return 1
 		}
 		_, _ = fmt.Fprintln(stderr, err.Error())
 		return 1
@@ -245,6 +255,18 @@ func updateArgsRequestJSON(args []string) bool {
 	return false
 }
 
+func updateArgsRequestSARIF(args []string) bool {
+	for i := 0; i < len(args); i++ {
+		if args[i] == "--format" && i+1 < len(args) && args[i+1] == "sarif" {
+			return true
+		}
+		if strings.HasPrefix(args[i], "--format=") && strings.TrimPrefix(args[i], "--format=") == "sarif" {
+			return true
+		}
+	}
+	return false
+}
+
 func extractUpdateTargetArg(args []string) string {
 	for i := 0; i < len(args); i++ {
 		if args[i] == "--target" && i+1 < len(args) {
@@ -270,6 +292,81 @@ func writeUpdateJSONError(stdout io.Writer, stderr io.Writer, report updateError
 	}
 	_, _ = fmt.Fprintf(stdout, "%s\n", out)
 	return 1
+}
+
+func writeUpdateSARIFError(stdout io.Writer, stderr io.Writer, report updateErrorReport) int {
+	report.Status = "ERROR"
+	report.ErrorCode = normalizeJSONErrorCode(report.ErrorCode, updateFatalCodeUnknown)
+	if report.RuleID == "" {
+		report.RuleID = inferRuleIDForJSONError(report.Message)
+	}
+	out, err := json.MarshalIndent(buildUpdateSARIFErrorReport(report), "", "  ")
+	if err != nil {
+		_, _ = fmt.Fprintln(stderr, "failed to render update sarif error report")
+		return 1
+	}
+	_, _ = fmt.Fprintf(stdout, "%s\n", out)
+	return 1
+}
+
+func buildUpdateSARIFErrorReport(report updateErrorReport) inspectSARIFReport {
+	ruleID := report.ErrorCode
+	if report.RuleID != "" {
+		ruleID = report.RuleID
+	}
+	return inspectSARIFReport{
+		Version: "2.1.0",
+		Schema:  "https://json.schemastore.org/sarif-2.1.0.json",
+		Runs: []inspectSARIFRun{
+			{
+				Tool: inspectSARIFTool{
+					Driver: inspectSARIFDriver{
+						Name:    "gokui",
+						Version: "pre-release",
+						Rules: []inspectSARIFRule{
+							{
+								ID: ruleID,
+								ShortDescription: inspectSARIFMessageContainer{
+									Text: report.ErrorCode,
+								},
+							},
+						},
+					},
+				},
+				Results: []inspectSARIFResult{
+					{
+						RuleID:  ruleID,
+						Level:   "error",
+						Message: inspectSARIFMessageContainer{Text: report.Message},
+					},
+				},
+				Invocations: []inspectSARIFInvocation{
+					{ExecutionSuccessful: false},
+				},
+				Properties: inspectSARIFProperties{
+					SchemaVersion: report.SchemaVersion,
+					PreRelease:    true,
+					SourceInput:   report.Target,
+					SourceKind:    "update-target",
+					Decision:      report.Status,
+					Note:          fmt.Sprintf("%s; error_code=%s", report.Note, report.ErrorCode),
+				},
+			},
+		},
+	}
+}
+
+func emitUpdateStructuredError(format string, stdout io.Writer, stderr io.Writer, report updateErrorReport) bool {
+	switch format {
+	case "json":
+		_ = writeUpdateJSONError(stdout, stderr, report)
+		return true
+	case "sarif":
+		_ = writeUpdateSARIFError(stdout, stderr, report)
+		return true
+	default:
+		return false
+	}
 }
 
 func parseUpdateArgs(args []string) (updateArgs, error) {
