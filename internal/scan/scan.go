@@ -26,6 +26,7 @@ const maxShebangProbeBytes = 256
 const maxDecodedArtifactBytes = 1_000_000
 const maxDecodedRecursionDepth = 3
 const maxDecodedCandidatesPerLine = 16
+const maxJoinedContinuationLines = 4
 const minBase64CandidateLength = 40
 const minHexCandidateLength = 64
 
@@ -1176,17 +1177,42 @@ func lineVariants(raw string, normalized string, hasNormalized bool) []string {
 
 func scanLineVariants(lines []string, idx int, raw string, normalized string, hasNormalized bool) []string {
 	variants := lineVariants(raw, normalized, hasNormalized)
-	if !shouldJoinWithNextLine(raw) || idx+1 >= len(lines) {
+	joined, ok := buildContinuationVariant(lines, idx)
+	if !ok {
 		return variants
 	}
-
-	next := strings.TrimSpace(lines[idx+1])
-	if next == "" {
-		return variants
-	}
-	joined := strings.TrimSpace(raw) + " " + next
 	joinedNormalized, joinedChanged := normalizeLineNFKC(joined)
 	return append(variants, lineVariants(joined, joinedNormalized, joinedChanged)...)
+}
+
+func buildContinuationVariant(lines []string, idx int) (string, bool) {
+	if idx < 0 || idx >= len(lines) {
+		return "", false
+	}
+	start := strings.TrimSpace(lines[idx])
+	if !shouldJoinWithNextLine(start) {
+		return "", false
+	}
+
+	parts := []string{start}
+	joined := start
+	added := 0
+	for j := idx + 1; j < len(lines) && added < maxJoinedContinuationLines; j++ {
+		next := strings.TrimSpace(lines[j])
+		if next == "" {
+			break
+		}
+		parts = append(parts, next)
+		added++
+		joined = strings.Join(parts, " ")
+		if !shouldJoinWithNextLine(joined) {
+			return joined, true
+		}
+	}
+	if len(parts) > 1 {
+		return strings.Join(parts, " "), true
+	}
+	return "", false
 }
 
 func shouldJoinWithNextLine(line string) bool {
