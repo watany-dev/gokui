@@ -187,9 +187,9 @@ subsequent runtime specifier targets remain pin-checked.
 Split inspector-address forms (`--inspect`, `--inspect-brk`, `--inspect-wait`)
 and split `--ext` forms are also interpreted before runtime target resolution
 so later runtime specifier targets remain pin-checked.
-Split `--watch` forms and split `--env-file`/`--preload` forms are interpreted
-before runtime target resolution so later runtime specifier targets remain
-pin-checked.
+Split `--watch`/`--watch-exclude` forms and split `--env-file`/`--preload`
+forms are interpreted before runtime target resolution so later runtime
+specifier targets remain pin-checked.
 Split `--strace-ops`/`--strace-filter` forms are also interpreted before
 runtime target resolution so later runtime specifier targets remain pin-checked.
 Split `--coverage` forms and split `--v8-flags` forms are also interpreted

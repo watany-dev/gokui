@@ -2197,6 +2197,8 @@ func TestUnpinnedRuntimeToolDetection(t *testing.T) {
 		{line: "deno run --preload ./preload.ts npm:create-next-app@15.4.1", want: false},
 		{line: "deno run --watch src npm:create-next-app@latest", want: true},
 		{line: "deno run --watch src npm:create-next-app@15.4.1", want: false},
+		{line: "deno run --watch-exclude dist npm:create-next-app@latest", want: true},
+		{line: "deno run --watch-exclude dist npm:create-next-app@15.4.1", want: false},
 		{line: "deno run --coverage coverage npm:create-next-app@latest", want: true},
 		{line: "deno run --coverage coverage npm:create-next-app@15.4.1", want: false},
 		{line: "deno run --coverage npm:create-next-app@latest", want: true},
@@ -2847,6 +2849,8 @@ func TestIsUnpinnedDenoNpmRuntimeLine(t *testing.T) {
 		{line: "deno run --preload ./preload.ts npm:create-next-app@15.4.1", want: false},
 		{line: "deno run --watch src npm:create-next-app@latest", want: true},
 		{line: "deno run --watch src npm:create-next-app@15.4.1", want: false},
+		{line: "deno run --watch-exclude dist npm:create-next-app@latest", want: true},
+		{line: "deno run --watch-exclude dist npm:create-next-app@15.4.1", want: false},
 		{line: "deno run --coverage coverage npm:create-next-app@latest", want: true},
 		{line: "deno run --coverage coverage npm:create-next-app@15.4.1", want: false},
 		{line: "deno run --coverage npm:create-next-app@latest", want: true},
@@ -3242,6 +3246,14 @@ func TestNextDenoRuntimeTarget(t *testing.T) {
 			ok:     true,
 		},
 		{
+			name:   "consumes watch-exclude value and returns following target",
+			fields: []string{"deno", "run", "--watch-exclude", "dist", "npm:create-next-app@latest"},
+			start:  2,
+			end:    5,
+			want:   "npm:create-next-app@latest",
+			ok:     true,
+		},
+		{
 			name:   "consumes coverage split value and returns following target",
 			fields: []string{"deno", "run", "--coverage", "coverage", "npm:create-next-app@latest"},
 			start:  2,
@@ -3546,6 +3558,17 @@ func TestIsKnownDenoOptionalFlagValue(t *testing.T) {
 		fields = []string{"deno", "run", "--watch", "src"}
 		if got := isKnownDenoOptionalFlagValue("--watch", "src", fields, 4, len(fields)); got {
 			t.Fatalf("isKnownDenoOptionalFlagValue(--watch,src) = %v, want false", got)
+		}
+	})
+
+	t.Run("watch-exclude consumes value when candidate follows", func(t *testing.T) {
+		fields := []string{"deno", "run", "--watch-exclude", "dist", "main.ts"}
+		if got := isKnownDenoOptionalFlagValue("--watch-exclude", "dist", fields, 4, len(fields)); !got {
+			t.Fatalf("isKnownDenoOptionalFlagValue(--watch-exclude,dist) = %v, want true", got)
+		}
+		fields = []string{"deno", "run", "--watch-exclude", "dist"}
+		if got := isKnownDenoOptionalFlagValue("--watch-exclude", "dist", fields, 4, len(fields)); got {
+			t.Fatalf("isKnownDenoOptionalFlagValue(--watch-exclude,dist) = %v, want false", got)
 		}
 	})
 

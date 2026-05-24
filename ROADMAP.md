@@ -131,9 +131,9 @@ tests/CI:
 - deno split inspector-address forms (`--inspect`, `--inspect-brk`,
   `--inspect-wait`) and split `--ext` forms are interpreted before target
   extraction so later runtime specifier targets remain pin-checked
-- deno split `--watch` forms and split `--env-file`/`--preload` forms are
-  interpreted before target extraction so later runtime specifier targets
-  remain pin-checked
+- deno split `--watch`/`--watch-exclude` forms and split
+  `--env-file`/`--preload` forms are interpreted before target extraction so
+  later runtime specifier targets remain pin-checked
 - deno split `--strace-ops`/`--strace-filter` forms are interpreted before
   target extraction so later runtime specifier targets remain pin-checked
 - deno split `--coverage` forms and split `--v8-flags` forms are interpreted

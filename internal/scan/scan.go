@@ -1656,6 +1656,7 @@ func nextDenoRuntimeTarget(fields []string, start int, end int) (string, bool) {
 		"--inspect-brk":      {},
 		"--inspect-wait":     {},
 		"--watch":            {},
+		"--watch-exclude":    {},
 		"--vendor":           {},
 		"--node-modules-dir": {},
 		"--allow-scripts":    {},
@@ -1754,6 +1755,11 @@ func isKnownDenoOptionalFlagValue(
 		}
 		return isDenoInspectValue(value)
 	case "--watch":
+		if !hasDenoRuntimeCandidateAfter(fields, nextStart, end) {
+			return false
+		}
+		return isDenoWatchValue(value)
+	case "--watch-exclude":
 		if !hasDenoRuntimeCandidateAfter(fields, nextStart, end) {
 			return false
 		}
