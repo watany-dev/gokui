@@ -2074,6 +2074,10 @@ func TestUnpinnedRuntimeToolDetection(t *testing.T) {
 		{line: "npm exec --package @scope/tool@1.2.3 -- tool", want: false},
 		{line: "npm exec --package=@scope/tool@1.2.3 -- tool", want: false},
 		{line: "npm exec -p @scope/tool@1.2.3 -- tool", want: false},
+		{line: "npm exec --package @scope/tool@1.2.3 -- @scope/other", want: true},
+		{line: "npm exec --package @scope/tool@1.2.3 -- @scope/other@2.0.0", want: false},
+		{line: "npm exec --call \"echo hi\"", want: false},
+		{line: "npm exec -c \"echo hi\"", want: false},
 		{line: "npm --yes exec @scope/tool", want: true},
 		{line: "npm exec", want: false},
 		{line: "npm exec --", want: false},
@@ -2096,6 +2100,7 @@ func TestUnpinnedRuntimeToolDetection(t *testing.T) {
 		{line: "npx --package=@scope/tool -c tool", want: true},
 		{line: "npx -p @scope/tool@1.2.3 -c tool", want: false},
 		{line: "npx --package=@scope/tool@1.2.3 -c tool", want: false},
+		{line: "npx -c \"echo hi\"", want: false},
 		{line: "npx --yes", want: false},
 		{line: "go run github.com/acme/x@latest", want: true},
 		{line: "go run github.com/acme/x@main", want: true},
@@ -2206,6 +2211,21 @@ func TestIsUnpinnedLauncherCommand(t *testing.T) {
 			t.Fatalf("isUnpinnedLauncherCommand() = %v, want true", got)
 		}
 	})
+
+	t.Run("ignores npm call flag value as package ref", func(t *testing.T) {
+		if got := isUnpinnedLauncherCommand([]string{"npm", "exec", "--call", "echo hi"}, "npm", 0); got {
+			t.Fatalf("isUnpinnedLauncherCommand() = %v, want false", got)
+		}
+	})
+
+	t.Run("includes explicit package-like token after separator when package flags are present", func(t *testing.T) {
+		if got := isUnpinnedLauncherCommand([]string{"npm", "exec", "--package", "@scope/pkg@1.2.3", "--", "@scope/other"}, "npm", 0); !got {
+			t.Fatalf("isUnpinnedLauncherCommand() = %v, want true", got)
+		}
+		if got := isUnpinnedLauncherCommand([]string{"npm", "exec", "--package", "@scope/pkg@1.2.3", "--", "@scope/other@2.0.0"}, "npm", 0); got {
+			t.Fatalf("isUnpinnedLauncherCommand() = %v, want false", got)
+		}
+	})
 }
 
 func TestExtractPackageRefsFromFlags(t *testing.T) {
@@ -2243,6 +2263,168 @@ func TestExtractPackageRefsFromFlags(t *testing.T) {
 			t.Fatalf("extractPackageRefsFromFlags() = %v, want nil for start>=end", got)
 		}
 	})
+}
+
+func TestNextRuntimePackageCandidate(t *testing.T) {
+	cases := []struct {
+		name   string
+		fields []string
+		start  int
+		end    int
+		want   string
+		ok     bool
+	}{
+		{
+			name:   "skips call flag value",
+			fields: []string{"npx", "-c", "echo hi"},
+			start:  1,
+			end:    3,
+			want:   "",
+			ok:     false,
+		},
+		{
+			name:   "returns package token when present",
+			fields: []string{"npm", "exec", "@scope/pkg"},
+			start:  2,
+			end:    3,
+			want:   "@scope/pkg",
+			ok:     true,
+		},
+		{
+			name:   "returns first token after separator",
+			fields: []string{"npm", "exec", "--package", "@scope/pkg@1.2.3", "--", "@scope/other"},
+			start:  2,
+			end:    6,
+			want:   "@scope/other",
+			ok:     true,
+		},
+		{
+			name:   "returns false for call equals form",
+			fields: []string{"npm", "exec", "--call=echo hi"},
+			start:  2,
+			end:    3,
+			want:   "",
+			ok:     false,
+		},
+		{
+			name:   "skips package equals flag",
+			fields: []string{"npx", "--package=@scope/pkg@1.2.3", "tool"},
+			start:  1,
+			end:    3,
+			want:   "tool",
+			ok:     true,
+		},
+		{
+			name:   "returns false when separator has no following token",
+			fields: []string{"npm", "exec", "--"},
+			start:  2,
+			end:    3,
+			want:   "",
+			ok:     false,
+		},
+		{
+			name:   "clamps out-of-range bounds",
+			fields: []string{"npm", "exec", "@scope/pkg"},
+			start:  -5,
+			end:    99,
+			want:   "npm",
+			ok:     true,
+		},
+		{
+			name:   "returns false when start is after end",
+			fields: []string{"npm", "exec", "@scope/pkg"},
+			start:  4,
+			end:    2,
+			want:   "",
+			ok:     false,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got, ok := nextRuntimePackageCandidate(tc.fields, tc.start, tc.end)
+			if ok != tc.ok || got != tc.want {
+				t.Fatalf("nextRuntimePackageCandidate(%v) = (%q, %v), want (%q, %v)", tc.fields, got, ok, tc.want, tc.ok)
+			}
+		})
+	}
+}
+
+func TestNextExplicitPackageLikeTokenAfterSeparator(t *testing.T) {
+	cases := []struct {
+		name   string
+		fields []string
+		want   string
+		ok     bool
+	}{
+		{
+			name:   "extracts scoped package after separator",
+			fields: []string{"npm", "exec", "--package", "@scope/pkg@1.2.3", "--", "@scope/other"},
+			want:   "@scope/other",
+			ok:     true,
+		},
+		{
+			name:   "ignores plain command token after separator",
+			fields: []string{"npm", "exec", "--package", "@scope/pkg@1.2.3", "--", "tool"},
+			want:   "",
+			ok:     false,
+		},
+		{
+			name:   "returns false when no separator exists",
+			fields: []string{"npm", "exec", "--package", "@scope/pkg@1.2.3"},
+			want:   "",
+			ok:     false,
+		},
+		{
+			name:   "returns false when separator has no token",
+			fields: []string{"npm", "exec", "--package", "@scope/pkg@1.2.3", "--"},
+			want:   "",
+			ok:     false,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got, ok := nextExplicitPackageLikeTokenAfterSeparator(tc.fields, 0, len(tc.fields))
+			if ok != tc.ok || got != tc.want {
+				t.Fatalf("nextExplicitPackageLikeTokenAfterSeparator(%v) = (%q, %v), want (%q, %v)", tc.fields, got, ok, tc.want, tc.ok)
+			}
+		})
+	}
+
+	t.Run("honors start/end bounds", func(t *testing.T) {
+		fields := []string{"npm", "exec", "--package", "@scope/pkg@1.2.3", "--", "@scope/other"}
+		got, ok := nextExplicitPackageLikeTokenAfterSeparator(fields, -10, 99)
+		if !ok || got != "@scope/other" {
+			t.Fatalf("nextExplicitPackageLikeTokenAfterSeparator() = (%q, %v), want (@scope/other, true)", got, ok)
+		}
+
+		got, ok = nextExplicitPackageLikeTokenAfterSeparator(fields, 6, 3)
+		if ok || got != "" {
+			t.Fatalf("nextExplicitPackageLikeTokenAfterSeparator() = (%q, %v), want (\"\", false)", got, ok)
+		}
+	})
+}
+
+func TestIsExplicitPackageLikeRef(t *testing.T) {
+	cases := []struct {
+		ref  string
+		want bool
+	}{
+		{ref: "@scope/pkg", want: true},
+		{ref: "pkg@1.2.3", want: true},
+		{ref: "org/pkg", want: true},
+		{ref: "tool", want: false},
+		{ref: "./tool", want: false},
+		{ref: "../tool", want: false},
+		{ref: "/tmp/tool", want: false},
+		{ref: ".\\tool", want: false},
+		{ref: "..\\tool", want: false},
+		{ref: "\\tool", want: false},
+	}
+	for _, tc := range cases {
+		if got := isExplicitPackageLikeRef(tc.ref); got != tc.want {
+			t.Fatalf("isExplicitPackageLikeRef(%q) = %v, want %v", tc.ref, got, tc.want)
+		}
+	}
 }
 
 func TestNormalizeLauncherToken(t *testing.T) {

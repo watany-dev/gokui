@@ -1375,7 +1375,7 @@ func isUnpinnedLauncherCommand(fields []string, token string, tokenIndex int) bo
 			}
 			return false
 		}
-		packageRef, ok := nextNonFlagField(fields, tokenIndex+1)
+		packageRef, ok := nextRuntimePackageCandidate(fields, tokenIndex+1, len(fields))
 		if !ok {
 			return false
 		}
@@ -1400,6 +1400,9 @@ func isUnpinnedLauncherCommand(fields []string, token string, tokenIndex int) bo
 
 		packageRefs := extractPackageRefsFromFlags(fields, subcommandIndex+1, len(fields))
 		if len(packageRefs) > 0 {
+			if postSepRef, ok := nextExplicitPackageLikeTokenAfterSeparator(fields, subcommandIndex+1, len(fields)); ok {
+				packageRefs = append(packageRefs, postSepRef)
+			}
 			for _, packageRef := range packageRefs {
 				if isUnpinnedPackageRef(packageRef) {
 					return true
@@ -1408,15 +1411,9 @@ func isUnpinnedLauncherCommand(fields []string, token string, tokenIndex int) bo
 			return false
 		}
 
-		packageRef, ok := nextNonFlagField(fields, subcommandIndex+1)
+		packageRef, ok := nextRuntimePackageCandidate(fields, subcommandIndex+1, len(fields))
 		if !ok {
 			return false
-		}
-		if packageRef == "--" {
-			packageRef, ok = nextNonFlagField(fields, subcommandIndex+2)
-			if !ok {
-				return false
-			}
 		}
 		packageRef = sanitizeRuntimeToken(packageRef)
 		return isUnpinnedPackageRef(packageRef)
@@ -1586,6 +1583,100 @@ func extractPackageRefsFromFlags(fields []string, start int, end int) []string {
 		}
 	}
 	return out
+}
+
+func nextRuntimePackageCandidate(fields []string, start int, end int) (string, bool) {
+	if start < 0 {
+		start = 0
+	}
+	if end > len(fields) {
+		end = len(fields)
+	}
+	if start >= end {
+		return "", false
+	}
+
+	for i := start; i < end; i++ {
+		token := strings.ToLower(strings.TrimSpace(fields[i]))
+		if token == "" {
+			continue
+		}
+		if token == "--" {
+			for j := i + 1; j < end; j++ {
+				candidate := sanitizeRuntimeToken(fields[j])
+				if candidate == "" {
+					continue
+				}
+				return candidate, true
+			}
+			return "", false
+		}
+		if token == "-c" || token == "--call" {
+			return "", false
+		}
+		if token == "-p" || token == "--package" {
+			i++
+			continue
+		}
+		if strings.HasPrefix(token, "-c=") || strings.HasPrefix(token, "--call=") {
+			return "", false
+		}
+		if strings.HasPrefix(token, "-p=") || strings.HasPrefix(token, "--package=") {
+			continue
+		}
+		if strings.HasPrefix(token, "-") {
+			continue
+		}
+		return fields[i], true
+	}
+	return "", false
+}
+
+func nextExplicitPackageLikeTokenAfterSeparator(fields []string, start int, end int) (string, bool) {
+	if start < 0 {
+		start = 0
+	}
+	if end > len(fields) {
+		end = len(fields)
+	}
+	if start >= end {
+		return "", false
+	}
+
+	for i := start; i < end; i++ {
+		if strings.TrimSpace(fields[i]) != "--" {
+			continue
+		}
+		for j := i + 1; j < end; j++ {
+			candidate := sanitizeRuntimeToken(fields[j])
+			if candidate == "" {
+				continue
+			}
+			if isExplicitPackageLikeRef(candidate) {
+				return candidate, true
+			}
+			return "", false
+		}
+		return "", false
+	}
+	return "", false
+}
+
+func isExplicitPackageLikeRef(ref string) bool {
+	ref = strings.TrimSpace(ref)
+	if ref == "" {
+		return false
+	}
+	if strings.HasPrefix(ref, "@") {
+		return true
+	}
+	if strings.Contains(ref, "@") {
+		return true
+	}
+	if strings.HasPrefix(ref, "./") || strings.HasPrefix(ref, "../") || strings.HasPrefix(ref, "/") || strings.HasPrefix(ref, ".\\") || strings.HasPrefix(ref, "..\\") || strings.HasPrefix(ref, "\\") {
+		return false
+	}
+	return strings.Contains(ref, "/")
 }
 
 func classifyURLRisks(line string, relPath string, lineNum int, isMarkdown bool) []Finding {
