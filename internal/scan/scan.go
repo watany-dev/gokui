@@ -99,6 +99,16 @@ var scriptLikeExtensions = map[string]struct{}{
 	".go":   {},
 }
 
+var manifestLikeFiles = map[string]struct{}{
+	"package.json":     {},
+	"pyproject.toml":   {},
+	"requirements.txt": {},
+	"uv.lock":          {},
+	"go.mod":           {},
+	"gemfile":          {},
+	"deno.json":        {},
+}
+
 var urlShortenerHosts = map[string]struct{}{
 	"bit.ly":      {},
 	"tinyurl.com": {},
@@ -363,6 +373,15 @@ func scanTargets(skillRoot string) ([]scanTarget, error) {
 				Absolute: path,
 				Relative: rel,
 				Kind:     "script",
+				Info:     info,
+			})
+			return nil
+		}
+		if _, ok := manifestLikeFiles[lower]; ok {
+			entries = append(entries, scanTarget{
+				Absolute: path,
+				Relative: rel,
+				Kind:     "manifest",
 				Info:     info,
 			})
 			return nil
@@ -964,7 +983,7 @@ func isUnpinnedRuntimeToolLine(line string) bool {
 }
 
 func normalizeLauncherToken(token string) string {
-	token = strings.TrimSpace(strings.ToLower(token))
+	token = strings.TrimSpace(strings.ToLower(sanitizeRuntimeToken(token)))
 	if token == "" {
 		return token
 	}
@@ -977,6 +996,11 @@ func normalizeLauncherToken(token string) string {
 	return token
 }
 
+func sanitizeRuntimeToken(token string) string {
+	token = strings.TrimSpace(token)
+	return strings.Trim(token, "\"'`,;:()[]{}")
+}
+
 func isUnpinnedLauncherCommand(fields []string, token string, tokenIndex int) bool {
 	switch token {
 	case "npx", "uvx", "bunx":
@@ -984,6 +1008,7 @@ func isUnpinnedLauncherCommand(fields []string, token string, tokenIndex int) bo
 		if !ok {
 			return false
 		}
+		packageRef = sanitizeRuntimeToken(packageRef)
 		return isUnpinnedPackageRef(packageRef)
 	case "pnpm", "yarn":
 		subcommand, subcommandIndex, ok := nextNonFlagFieldWithIndex(fields, tokenIndex+1)
@@ -994,6 +1019,7 @@ func isUnpinnedLauncherCommand(fields []string, token string, tokenIndex int) bo
 		if !ok {
 			return false
 		}
+		packageRef = sanitizeRuntimeToken(packageRef)
 		return isUnpinnedPackageRef(packageRef)
 	case "npm":
 		subcommand, subcommandIndex, ok := nextNonFlagFieldWithIndex(fields, tokenIndex+1)
@@ -1010,6 +1036,7 @@ func isUnpinnedLauncherCommand(fields []string, token string, tokenIndex int) bo
 				return false
 			}
 		}
+		packageRef = sanitizeRuntimeToken(packageRef)
 		return isUnpinnedPackageRef(packageRef)
 	case "go":
 		if tokenIndex+2 >= len(fields) || fields[tokenIndex+1] != "run" {
@@ -1020,7 +1047,7 @@ func isUnpinnedLauncherCommand(fields []string, token string, tokenIndex int) bo
 			if strings.HasPrefix(part, "-") {
 				continue
 			}
-			return isUnpinnedGoRunTarget(part)
+			return isUnpinnedGoRunTarget(sanitizeRuntimeToken(part))
 		}
 		return false
 	default:

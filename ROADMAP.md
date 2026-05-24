@@ -86,6 +86,9 @@ tests/CI:
 - high-severity detection of broad Bash wildcard tool permissions
 - medium-severity detection of unknown/unclassified file types
 - high-severity detection of remote script import patterns under unpinned runtime tooling
+- dependency manifest scanning coverage for `package.json`, `pyproject.toml`,
+  `requirements.txt`, `uv.lock`, `go.mod`, `Gemfile`, and `deno.json` as
+  first-class scan inputs
 
 This roadmap section below remains forward-looking for gaps and future phases.
 
