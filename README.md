@@ -156,6 +156,8 @@ also resolved for pinning checks to reduce false positives on exact versions.
 while explicit package-like tokens after `--` remain checked.
 The same call-flag exclusion and separator handling are applied to `pnpm/yarn`
 `dlx` evaluation paths.
+`go run` pin checks also handle split-value flags (for example `-mod mod`,
+`-exec env`) and `--` separator forms when extracting module targets.
 Bounded base64/base64url/hex payload deobfuscation now rescans decoded text artifacts
 (depth-limited and size-limited, never executed) to catch hidden execution
 chains and decoded Unicode control/NFKC-drift signals.
