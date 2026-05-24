@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	neturl "net/url"
 	"os"
@@ -18,6 +19,7 @@ import (
 )
 
 const maxScanFileBytes = 500_000
+const maxShebangProbeBytes = 256
 
 var scanMaxFiles = 10_000
 
@@ -386,6 +388,19 @@ func scanTargets(skillRoot string) ([]scanTarget, error) {
 			})
 			return nil
 		}
+		isShebangScript, probeErr := hasScriptShebang(path)
+		if probeErr != nil {
+			return fmt.Errorf("failed to inspect scan source file type: %w", probeErr)
+		}
+		if info.Mode()&0o111 != 0 || isShebangScript {
+			entries = append(entries, scanTarget{
+				Absolute: path,
+				Relative: rel,
+				Kind:     "script",
+				Info:     info,
+			})
+			return nil
+		}
 		entries = append(entries, scanTarget{
 			Absolute: path,
 			Relative: rel,
@@ -398,6 +413,27 @@ func scanTargets(skillRoot string) ([]scanTarget, error) {
 		return nil, fmt.Errorf("failed walking skill files for scan: %w", err)
 	}
 	return entries, nil
+}
+
+func hasScriptShebang(path string) (bool, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return false, err
+	}
+	defer f.Close()
+
+	buf := make([]byte, maxShebangProbeBytes)
+	n, readErr := f.Read(buf)
+	if readErr != nil && !errors.Is(readErr, io.EOF) {
+		return false, readErr
+	}
+	if n == 0 {
+		return false, nil
+	}
+
+	content := string(buf[:n])
+	content = strings.TrimLeft(content, " \t")
+	return strings.HasPrefix(content, "#!"), nil
 }
 
 func scanTextFile(target scanTarget) ([]Finding, error) {

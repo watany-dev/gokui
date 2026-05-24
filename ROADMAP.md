@@ -25,6 +25,7 @@ tests/CI:
 - Update dry-run hardening for symlinked target entries, symlinked URL/executable scan inputs, and non-directory/symlink scan roots
 - Scan/update walker hardening for symlink/non-directory root rejection and
   non-regular file rejection before reads
+- extensionless script coverage for shebang files and executable-bit files in scan target classification
 - Commit-pinned GitHub source fetch and install/update/verify provenance checks
 - GitHub archive network hardening (strict redirect cap/constraints + response content-type/encoding validation)
 - GitHub archive strict stream-size enforcement with overflow-write prevention and cleanup
