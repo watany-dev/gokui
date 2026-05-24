@@ -1659,6 +1659,8 @@ func nextDenoRuntimeTarget(fields []string, start int, end int) (string, bool) {
 		"-E":                 {},
 		"--allow-run":        {},
 		"--allow-ffi":        {},
+		"--allow-sys":        {},
+		"-S":                 {},
 	}
 
 	for i := start; i < end; i++ {
@@ -1773,6 +1775,11 @@ func isKnownDenoOptionalFlagValue(
 			return false
 		}
 		return isDenoAllowFFIValue(value)
+	case "--allow-sys", "-S":
+		if !hasDenoRuntimeCandidateAfter(fields, nextStart, end) {
+			return false
+		}
+		return isDenoAllowSysValue(value)
 	}
 	return false
 }
@@ -1945,6 +1952,46 @@ func isDenoAllowFFIValue(value string) bool {
 		}
 		lower := strings.ToLower(token)
 		if strings.HasPrefix(lower, "npm:") || strings.HasPrefix(lower, "jsr:") {
+			return false
+		}
+	}
+	return true
+}
+
+func isDenoAllowSysValue(value string) bool {
+	if value == "" || strings.HasPrefix(value, "-") {
+		return false
+	}
+	for _, part := range strings.Split(value, ",") {
+		token := strings.TrimSpace(part)
+		if token == "" {
+			return false
+		}
+		if token == "*" {
+			continue
+		}
+		if !isSysApiToken(token) {
+			return false
+		}
+	}
+	return true
+}
+
+func isSysApiToken(token string) bool {
+	if token == "" {
+		return false
+	}
+	for i := 0; i < len(token); i++ {
+		ch := token[i]
+		switch {
+		case ch >= 'a' && ch <= 'z':
+		case ch >= 'A' && ch <= 'Z':
+		case ch >= '0' && ch <= '9':
+			if i == 0 {
+				return false
+			}
+		case ch == '_':
+		default:
 			return false
 		}
 	}

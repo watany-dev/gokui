@@ -178,6 +178,9 @@ resolution so later runtime specifier targets remain pin-checked.
 For split `--allow-write`, `--allow-run`, and `--allow-ffi` forms (including
 `-W` for write), permission value tokens are interpreted before runtime target
 resolution so later runtime specifier targets remain pin-checked.
+For split `--allow-sys` forms (including `-S`), system-API allowlist values are
+interpreted before runtime target resolution, and `--allow-hrtime` forms keep
+runtime target evaluation on subsequent specifier tokens.
 Bounded base64/base64url/hex payload deobfuscation now rescans decoded text artifacts
 (depth-limited and size-limited, never executed) to catch hidden execution
 chains and decoded Unicode control/NFKC-drift signals.
