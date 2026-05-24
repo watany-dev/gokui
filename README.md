@@ -154,6 +154,8 @@ Package-flag forms (for example `npm exec --package ...` and `npx -p ...`) are
 also resolved for pinning checks to reduce false positives on exact versions.
 `npm exec --call ...` / `npx -c ...` command forms are ignored as package refs,
 while explicit package-like tokens after `--` remain checked.
+The same call-flag exclusion and separator handling are applied to `pnpm/yarn`
+`dlx` evaluation paths.
 Bounded base64/base64url/hex payload deobfuscation now rescans decoded text artifacts
 (depth-limited and size-limited, never executed) to catch hidden execution
 chains and decoded Unicode control/NFKC-drift signals.

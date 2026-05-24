@@ -101,6 +101,7 @@ tests/CI:
 - high-severity detection of remote script import patterns under unpinned runtime tooling
 - unpinned-runtime pin checks that resolve npm/npx package-flag forms and
   ignore call-flag command values as package refs
+- aligned pnpm/yarn dlx checks with the same package-flag and call-flag handling model
 - dependency manifest scanning coverage for `package.json`, `pyproject.toml`,
   `requirements.txt`, `uv.lock`, `go.mod`, `Gemfile`, and `deno.json` as
   first-class scan inputs
