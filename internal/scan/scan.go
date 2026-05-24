@@ -1651,10 +1651,14 @@ func nextDenoRuntimeTarget(fields []string, start int, end int) (string, bool) {
 		"--allow-import":     {},
 		"--allow-read":       {},
 		"-R":                 {},
+		"--allow-write":      {},
+		"-W":                 {},
 		"--allow-net":        {},
 		"-N":                 {},
 		"--allow-env":        {},
 		"-E":                 {},
+		"--allow-run":        {},
+		"--allow-ffi":        {},
 	}
 
 	for i := start; i < end; i++ {
@@ -1749,11 +1753,26 @@ func isKnownDenoOptionalFlagValue(
 			return false
 		}
 		return isDenoAllowNetValue(value)
+	case "--allow-write", "-W":
+		if !hasDenoRuntimeCandidateAfter(fields, nextStart, end) {
+			return false
+		}
+		return isDenoAllowWriteValue(value)
 	case "--allow-env", "-E":
 		if !hasDenoRuntimeCandidateAfter(fields, nextStart, end) {
 			return false
 		}
 		return isDenoAllowEnvValue(value)
+	case "--allow-run":
+		if !hasDenoRuntimeCandidateAfter(fields, nextStart, end) {
+			return false
+		}
+		return isDenoAllowRunValue(value)
+	case "--allow-ffi":
+		if !hasDenoRuntimeCandidateAfter(fields, nextStart, end) {
+			return false
+		}
+		return isDenoAllowFFIValue(value)
 	}
 	return false
 }
@@ -1874,6 +1893,58 @@ func isDenoAllowEnvValue(value string) bool {
 			continue
 		}
 		if !isEnvVarToken(token) {
+			return false
+		}
+	}
+	return true
+}
+
+func isDenoAllowWriteValue(value string) bool {
+	if value == "" || strings.HasPrefix(value, "-") {
+		return false
+	}
+
+	for _, part := range strings.Split(value, ",") {
+		token := strings.TrimSpace(part)
+		if token == "" || strings.HasPrefix(token, "-") {
+			return false
+		}
+		lower := strings.ToLower(token)
+		if strings.HasPrefix(lower, "npm:") || strings.HasPrefix(lower, "jsr:") {
+			return false
+		}
+	}
+	return true
+}
+
+func isDenoAllowRunValue(value string) bool {
+	if value == "" || strings.HasPrefix(value, "-") {
+		return false
+	}
+	for _, part := range strings.Split(value, ",") {
+		token := strings.TrimSpace(part)
+		if token == "" || strings.HasPrefix(token, "-") {
+			return false
+		}
+		lower := strings.ToLower(token)
+		if strings.HasPrefix(lower, "npm:") || strings.HasPrefix(lower, "jsr:") {
+			return false
+		}
+	}
+	return true
+}
+
+func isDenoAllowFFIValue(value string) bool {
+	if value == "" || strings.HasPrefix(value, "-") {
+		return false
+	}
+	for _, part := range strings.Split(value, ",") {
+		token := strings.TrimSpace(part)
+		if token == "" || strings.HasPrefix(token, "-") {
+			return false
+		}
+		lower := strings.ToLower(token)
+		if strings.HasPrefix(lower, "npm:") || strings.HasPrefix(lower, "jsr:") {
 			return false
 		}
 	}

@@ -2153,6 +2153,14 @@ func TestUnpinnedRuntimeToolDetection(t *testing.T) {
 		{line: "deno run --allow-env PATH npm:create-next-app@15.4.1", want: false},
 		{line: "deno run -E PATH npm:create-next-app@latest", want: true},
 		{line: "deno run -E PATH npm:create-next-app@15.4.1", want: false},
+		{line: "deno run --allow-write=. npm:create-next-app@latest", want: true},
+		{line: "deno run --allow-write=. npm:create-next-app@15.4.1", want: false},
+		{line: "deno run -W . npm:create-next-app@latest", want: true},
+		{line: "deno run -W . npm:create-next-app@15.4.1", want: false},
+		{line: "deno run --allow-run=deno,npm npm:create-next-app@latest", want: true},
+		{line: "deno run --allow-run deno npm:create-next-app@15.4.1", want: false},
+		{line: "deno run --allow-ffi=./native.so npm:create-next-app@latest", want: true},
+		{line: "deno run --allow-ffi ./native.so npm:create-next-app@15.4.1", want: false},
 		{line: "DENO RUN -R . npm:create-next-app@latest", want: true},
 		{line: "Deno Run -E PATH npm:create-next-app@15.4.1", want: false},
 		{line: "deno x npm:create-vite", want: true},
@@ -2746,6 +2754,14 @@ func TestIsUnpinnedDenoNpmRuntimeLine(t *testing.T) {
 		{line: "deno run --allow-env PATH npm:create-next-app@15.4.1", want: false},
 		{line: "deno run -E PATH npm:create-next-app@latest", want: true},
 		{line: "deno run -E PATH npm:create-next-app@15.4.1", want: false},
+		{line: "deno run --allow-write=. npm:create-next-app@latest", want: true},
+		{line: "deno run --allow-write=. npm:create-next-app@15.4.1", want: false},
+		{line: "deno run -W . npm:create-next-app@latest", want: true},
+		{line: "deno run -W . npm:create-next-app@15.4.1", want: false},
+		{line: "deno run --allow-run=deno,npm npm:create-next-app@latest", want: true},
+		{line: "deno run --allow-run deno npm:create-next-app@15.4.1", want: false},
+		{line: "deno run --allow-ffi=./native.so npm:create-next-app@latest", want: true},
+		{line: "deno run --allow-ffi ./native.so npm:create-next-app@15.4.1", want: false},
 		{line: "deno npm:create-vite@latest", want: true},
 		{line: "deno npm:create-vite@5.2.0", want: false},
 		{line: "deno", want: false},
@@ -3032,6 +3048,30 @@ func TestNextDenoRuntimeTarget(t *testing.T) {
 			ok:     true,
 		},
 		{
+			name:   "consumes allow-write value and returns following target",
+			fields: []string{"deno", "run", "--allow-write", ".", "npm:create-next-app@latest"},
+			start:  2,
+			end:    5,
+			want:   "npm:create-next-app@latest",
+			ok:     true,
+		},
+		{
+			name:   "consumes allow-run value and returns following target",
+			fields: []string{"deno", "run", "--allow-run", "deno", "npm:create-next-app@latest"},
+			start:  2,
+			end:    5,
+			want:   "npm:create-next-app@latest",
+			ok:     true,
+		},
+		{
+			name:   "consumes allow-ffi value and returns following target",
+			fields: []string{"deno", "run", "--allow-ffi", "./native.so", "npm:create-next-app@latest"},
+			start:  2,
+			end:    5,
+			want:   "npm:create-next-app@latest",
+			ok:     true,
+		},
+		{
 			name:   "returns false when start exceeds end",
 			fields: []string{"deno", "run", "npm:cowsay"},
 			start:  5,
@@ -3236,6 +3276,36 @@ func TestIsKnownDenoOptionalFlagValue(t *testing.T) {
 		fields = []string{"deno", "run", "--allow-env", "PATH", "main.ts"}
 		if got := isKnownDenoOptionalFlagValue("--allow-env", "PATH", fields, 4, len(fields)); !got {
 			t.Fatalf("isKnownDenoOptionalFlagValue(--allow-env,PATH) = %v, want true", got)
+		}
+	})
+
+	t.Run("allow-write/run/ffi consume values when candidate follows", func(t *testing.T) {
+		fields := []string{"deno", "run", "--allow-write", ".", "main.ts"}
+		if got := isKnownDenoOptionalFlagValue("--allow-write", ".", fields, 4, len(fields)); !got {
+			t.Fatalf("isKnownDenoOptionalFlagValue(--allow-write,.) = %v, want true", got)
+		}
+		fields = []string{"deno", "run", "--allow-run", "deno", "main.ts"}
+		if got := isKnownDenoOptionalFlagValue("--allow-run", "deno", fields, 4, len(fields)); !got {
+			t.Fatalf("isKnownDenoOptionalFlagValue(--allow-run,deno) = %v, want true", got)
+		}
+		fields = []string{"deno", "run", "--allow-ffi", "./native.so", "main.ts"}
+		if got := isKnownDenoOptionalFlagValue("--allow-ffi", "./native.so", fields, 4, len(fields)); !got {
+			t.Fatalf("isKnownDenoOptionalFlagValue(--allow-ffi,./native.so) = %v, want true", got)
+		}
+	})
+
+	t.Run("allow-write/run/ffi return false without following target", func(t *testing.T) {
+		fields := []string{"deno", "run", "--allow-write", "."}
+		if got := isKnownDenoOptionalFlagValue("--allow-write", ".", fields, 4, len(fields)); got {
+			t.Fatalf("isKnownDenoOptionalFlagValue(--allow-write,.) = %v, want false", got)
+		}
+		fields = []string{"deno", "run", "--allow-run", "deno"}
+		if got := isKnownDenoOptionalFlagValue("--allow-run", "deno", fields, 4, len(fields)); got {
+			t.Fatalf("isKnownDenoOptionalFlagValue(--allow-run,deno) = %v, want false", got)
+		}
+		fields = []string{"deno", "run", "--allow-ffi", "./native.so"}
+		if got := isKnownDenoOptionalFlagValue("--allow-ffi", "./native.so", fields, 4, len(fields)); got {
+			t.Fatalf("isKnownDenoOptionalFlagValue(--allow-ffi,./native.so) = %v, want false", got)
 		}
 	})
 
@@ -3478,10 +3548,74 @@ func TestCanonicalDenoFlagToken(t *testing.T) {
 		{in: "--allow-net", want: "--allow-net"},
 		{in: "-R", want: "-R"},
 		{in: "-r", want: "-r"},
+		{in: "-W", want: "-W"},
+		{in: "--ALLOW-RUN", want: "--allow-run"},
 	}
 	for _, tc := range cases {
 		if got := canonicalDenoFlagToken(tc.in); got != tc.want {
 			t.Fatalf("canonicalDenoFlagToken(%q) = %q, want %q", tc.in, got, tc.want)
+		}
+	}
+}
+
+func TestIsDenoAllowWriteValue(t *testing.T) {
+	cases := []struct {
+		value string
+		want  bool
+	}{
+		{value: ".", want: true},
+		{value: "./out,./cache", want: true},
+		{value: "C:\\tmp", want: true},
+		{value: "npm:create-vite", want: false},
+		{value: "jsr:@std/http", want: false},
+		{value: "", want: false},
+		{value: "--bad", want: false},
+	}
+	for _, tc := range cases {
+		if got := isDenoAllowWriteValue(tc.value); got != tc.want {
+			t.Fatalf("isDenoAllowWriteValue(%q) = %v, want %v", tc.value, got, tc.want)
+		}
+	}
+}
+
+func TestIsDenoAllowRunValue(t *testing.T) {
+	cases := []struct {
+		value string
+		want  bool
+	}{
+		{value: "deno", want: true},
+		{value: "deno,npm", want: true},
+		{value: "./bin/tool", want: true},
+		{value: "npm:create-vite", want: false},
+		{value: "jsr:@std/http", want: false},
+		{value: "--bad", want: false},
+		{value: ",", want: false},
+		{value: "", want: false},
+	}
+	for _, tc := range cases {
+		if got := isDenoAllowRunValue(tc.value); got != tc.want {
+			t.Fatalf("isDenoAllowRunValue(%q) = %v, want %v", tc.value, got, tc.want)
+		}
+	}
+}
+
+func TestIsDenoAllowFFIValue(t *testing.T) {
+	cases := []struct {
+		value string
+		want  bool
+	}{
+		{value: "./native.so", want: true},
+		{value: "./a.so,./b.so", want: true},
+		{value: "C:\\native.dll", want: true},
+		{value: "npm:create-vite", want: false},
+		{value: "jsr:@std/http", want: false},
+		{value: "--bad", want: false},
+		{value: ",", want: false},
+		{value: "", want: false},
+	}
+	for _, tc := range cases {
+		if got := isDenoAllowFFIValue(tc.value); got != tc.want {
+			t.Fatalf("isDenoAllowFFIValue(%q) = %v, want %v", tc.value, got, tc.want)
 		}
 	}
 }

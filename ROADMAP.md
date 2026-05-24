@@ -119,6 +119,9 @@ tests/CI:
 - deno split permission forms for `--allow-read`/`--allow-net`/`--allow-env`
   (and `-R`/`-N`/`-E`) are interpreted before target extraction so later
   runtime specifier targets remain pin-checked
+- deno split permission forms for `--allow-write`/`--allow-run`/`--allow-ffi`
+  (and `-W` for write) are interpreted before target extraction so later
+  runtime specifier targets remain pin-checked
 - dependency manifest scanning coverage for `package.json`, `pyproject.toml`,
   `requirements.txt`, `uv.lock`, `go.mod`, `Gemfile`, and `deno.json` as
   first-class scan inputs
