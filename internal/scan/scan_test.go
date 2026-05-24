@@ -2059,11 +2059,19 @@ func TestUnpinnedRuntimeToolDetection(t *testing.T) {
 		{line: "pnpm dlx @scope/tool", want: true},
 		{line: "pnpm dlx @scope/tool@canary", want: true},
 		{line: "pnpm dlx @scope/tool@1.2.3", want: false},
+		{line: "pnpm dlx --package @scope/tool -- tool", want: true},
+		{line: "pnpm dlx --package @scope/tool@1.2.3 -- tool", want: false},
+		{line: "pnpm dlx --package @scope/tool@1.2.3 -- @scope/other", want: true},
+		{line: "pnpm dlx -c \"echo hi\"", want: false},
 		{line: "pnpm --color=always dlx @scope/tool", want: true},
 		{line: "pnpm --color=always dlx", want: false},
 		{line: "pnpm install @scope/tool", want: false},
 		{line: "yarn dlx @scope/tool", want: true},
 		{line: "yarn dlx @scope/tool@1.2.3", want: false},
+		{line: "yarn dlx --package @scope/tool -- tool", want: true},
+		{line: "yarn dlx --package @scope/tool@1.2.3 -- tool", want: false},
+		{line: "yarn dlx --package @scope/tool@1.2.3 -- @scope/other", want: true},
+		{line: "yarn dlx -c \"echo hi\"", want: false},
 		{line: "npm exec @scope/tool", want: true},
 		{line: "npm exec @scope/tool@1.2.3", want: false},
 		{line: "npm exec -- @scope/tool", want: true},
@@ -2090,6 +2098,7 @@ func TestUnpinnedRuntimeToolDetection(t *testing.T) {
 		{line: "corepack npm@10 exec @scope/tool", want: true},
 		{line: "corepack --install-directory ~/.local/bin pnpm dlx @scope/tool", want: true},
 		{line: "corepack pnpm dlx @scope/tool@1.2.3", want: false},
+		{line: "corepack pnpm dlx --package @scope/tool@1.2.3 -- @scope/other", want: true},
 		{line: "corepack pnpm@9.0.0 dlx @scope/tool@1.2.3", want: false},
 		{line: "corepack yarn dlx @scope/tool@1.2.3", want: false},
 		{line: "corepack npm exec @scope/tool@1.2.3", want: false},
@@ -2223,6 +2232,18 @@ func TestIsUnpinnedLauncherCommand(t *testing.T) {
 			t.Fatalf("isUnpinnedLauncherCommand() = %v, want true", got)
 		}
 		if got := isUnpinnedLauncherCommand([]string{"npm", "exec", "--package", "@scope/pkg@1.2.3", "--", "@scope/other@2.0.0"}, "npm", 0); got {
+			t.Fatalf("isUnpinnedLauncherCommand() = %v, want false", got)
+		}
+	})
+
+	t.Run("applies package-flag and call-flag handling to pnpm/yarn dlx", func(t *testing.T) {
+		if got := isUnpinnedLauncherCommand([]string{"pnpm", "dlx", "--package", "@scope/pkg@1.2.3", "--", "@scope/other"}, "pnpm", 0); !got {
+			t.Fatalf("isUnpinnedLauncherCommand() = %v, want true", got)
+		}
+		if got := isUnpinnedLauncherCommand([]string{"pnpm", "dlx", "--package", "@scope/pkg@1.2.3", "--", "@scope/other@2.0.0"}, "pnpm", 0); got {
+			t.Fatalf("isUnpinnedLauncherCommand() = %v, want false", got)
+		}
+		if got := isUnpinnedLauncherCommand([]string{"yarn", "dlx", "--call", "echo hi"}, "yarn", 0); got {
 			t.Fatalf("isUnpinnedLauncherCommand() = %v, want false", got)
 		}
 	})

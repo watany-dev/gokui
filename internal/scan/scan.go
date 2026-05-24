@@ -1386,7 +1386,21 @@ func isUnpinnedLauncherCommand(fields []string, token string, tokenIndex int) bo
 		if !ok || subcommand != "dlx" {
 			return false
 		}
-		packageRef, ok := nextNonFlagField(fields, subcommandIndex+1)
+
+		packageRefs := extractPackageRefsFromFlags(fields, subcommandIndex+1, len(fields))
+		if len(packageRefs) > 0 {
+			if postSepRef, ok := nextExplicitPackageLikeTokenAfterSeparator(fields, subcommandIndex+1, len(fields)); ok {
+				packageRefs = append(packageRefs, postSepRef)
+			}
+			for _, packageRef := range packageRefs {
+				if isUnpinnedPackageRef(packageRef) {
+					return true
+				}
+			}
+			return false
+		}
+
+		packageRef, ok := nextRuntimePackageCandidate(fields, subcommandIndex+1, len(fields))
 		if !ok {
 			return false
 		}
@@ -1526,11 +1540,6 @@ func isPinnedPackageVersion(version string) bool {
 	// Treat exact semver as pinned for package launchers. Dist-tags and ranges
 	// like "next", "^1.2.3", or "~1.2.3" remain floating.
 	return goSemverExactPattern.MatchString(lower)
-}
-
-func nextNonFlagField(fields []string, start int) (string, bool) {
-	value, _, ok := nextNonFlagFieldWithIndex(fields, start)
-	return value, ok
 }
 
 func nextNonFlagFieldWithIndex(fields []string, start int) (string, int, bool) {
