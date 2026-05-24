@@ -239,3 +239,110 @@ func TestNormalizeSeverities(t *testing.T) {
 		t.Fatalf("normalized severities = %+v, want [critical high]", got)
 	}
 }
+
+func TestLoadRepositoryPolicy(t *testing.T) {
+	t.Run("missing policy returns found false", func(t *testing.T) {
+		root := t.TempDir()
+		cfg, found, err := LoadRepositoryPolicy(root)
+		if err != nil {
+			t.Fatalf("LoadRepositoryPolicy() error = %v", err)
+		}
+		if found {
+			t.Fatal("expected found=false for missing repository policy")
+		}
+		if cfg.DefaultProfile != "" {
+			t.Fatalf("default profile = %q, want empty", cfg.DefaultProfile)
+		}
+	})
+
+	t.Run("loads nearest ancestor repository policy", func(t *testing.T) {
+		root := t.TempDir()
+		if err := os.WriteFile(filepath.Join(root, repoPolicyFile), []byte(`default_profile = "team"`), 0o644); err != nil {
+			t.Fatalf("write root repository policy: %v", err)
+		}
+		nested := filepath.Join(root, "skills", "alpha")
+		if err := os.MkdirAll(nested, 0o755); err != nil {
+			t.Fatalf("mkdir nested: %v", err)
+		}
+		if err := os.WriteFile(filepath.Join(root, "skills", repoPolicyFile), []byte(`default_profile = "research"`), 0o644); err != nil {
+			t.Fatalf("write nested repository policy: %v", err)
+		}
+
+		cfg, found, err := LoadRepositoryPolicy(nested)
+		if err != nil {
+			t.Fatalf("LoadRepositoryPolicy() error = %v", err)
+		}
+		if !found {
+			t.Fatal("expected found=true for nested repository policy")
+		}
+		if cfg.DefaultProfile != "research" {
+			t.Fatalf("default profile = %q, want research", cfg.DefaultProfile)
+		}
+	})
+
+	t.Run("accepts file start path and resolves parent directory", func(t *testing.T) {
+		root := t.TempDir()
+		if err := os.WriteFile(filepath.Join(root, repoPolicyFile), []byte(`default_profile = "strict"`), 0o644); err != nil {
+			t.Fatalf("write repository policy: %v", err)
+		}
+		skillFile := filepath.Join(root, "skills", "beta", "SKILL.md")
+		if err := os.MkdirAll(filepath.Dir(skillFile), 0o755); err != nil {
+			t.Fatalf("mkdir skill dir: %v", err)
+		}
+		if err := os.WriteFile(skillFile, []byte("content"), 0o644); err != nil {
+			t.Fatalf("write skill file: %v", err)
+		}
+
+		cfg, found, err := LoadRepositoryPolicy(skillFile)
+		if err != nil {
+			t.Fatalf("LoadRepositoryPolicy() error = %v", err)
+		}
+		if !found {
+			t.Fatal("expected found=true for file start path")
+		}
+		if cfg.DefaultProfile != "strict" {
+			t.Fatalf("default profile = %q, want strict", cfg.DefaultProfile)
+		}
+	})
+
+	t.Run("rejects invalid repository policy", func(t *testing.T) {
+		root := t.TempDir()
+		if err := os.WriteFile(filepath.Join(root, repoPolicyFile), []byte(`unknown_key = 1`), 0o644); err != nil {
+			t.Fatalf("write invalid repository policy: %v", err)
+		}
+		_, _, err := LoadRepositoryPolicy(root)
+		if err == nil || !strings.Contains(err.Error(), "unknown policy keys") {
+			t.Fatalf("expected unknown key error, got %v", err)
+		}
+	})
+}
+
+func TestResolveRepositoryPolicyStartDir(t *testing.T) {
+	t.Run("dot resolves to current working directory", func(t *testing.T) {
+		cwd, err := os.Getwd()
+		if err != nil {
+			t.Fatalf("os.Getwd() error = %v", err)
+		}
+		got, err := resolveRepositoryPolicyStartDir(".")
+		if err != nil {
+			t.Fatalf("resolveRepositoryPolicyStartDir(.) error = %v", err)
+		}
+		if got != cwd {
+			t.Fatalf("start dir = %q, want %q", got, cwd)
+		}
+	})
+
+	t.Run("whitespace-only path is rejected", func(t *testing.T) {
+		_, err := resolveRepositoryPolicyStartDir("   ")
+		if err == nil || !strings.Contains(err.Error(), "empty path") {
+			t.Fatalf("expected empty path error, got %v", err)
+		}
+	})
+
+	t.Run("non-not-exist stat errors are surfaced", func(t *testing.T) {
+		_, err := resolveRepositoryPolicyStartDir("bad\x00path")
+		if err == nil || !strings.Contains(err.Error(), "failed to resolve repository policy start path") {
+			t.Fatalf("expected wrapped stat error, got %v", err)
+		}
+	})
+}
