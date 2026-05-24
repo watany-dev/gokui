@@ -134,7 +134,7 @@ Remote script import patterns (for example `source <(curl ...)`, `. <(curl ...)`
 `pnpm dlx`, `yarn dlx`, and `npm exec`, including `corepack`-wrapped forms)
 are now flagged under
 `UNPINNED_RUNTIME_TOOL`.
-Bounded base64/hex payload deobfuscation now rescans decoded text artifacts
+Bounded base64/base64url/hex payload deobfuscation now rescans decoded text artifacts
 (depth-limited and size-limited, never executed) to catch hidden execution
 chains and decoded Unicode control/NFKC-drift signals.
 Unicode Tags, bidi controls, variation selectors, and ANSI/OSC escapes in

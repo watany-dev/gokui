@@ -79,6 +79,7 @@ tests/CI:
 - bounded base64/hex payload deobfuscation with recursive decoded-text rescanning
   (size/depth-limited; decoded artifacts are never executed)
 - decoded-payload rescanning coverage for Unicode threat and NFKC-drift signals
+- base64url payload decoding support in bounded decoded-text rescanning
 - critical detection of PowerShell encoded-command execution flags
 - critical detection of chmod-then-execute local artifact chains
 - critical detection of secret-path reads combined with network exfiltration

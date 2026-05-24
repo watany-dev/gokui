@@ -749,6 +749,14 @@ func decodeCandidatePayload(candidate encodedCandidate) ([]byte, bool) {
 		if err == nil {
 			return decoded, true
 		}
+		decoded, err = base64.URLEncoding.DecodeString(token)
+		if err == nil {
+			return decoded, true
+		}
+		decoded, err = base64.RawURLEncoding.DecodeString(strings.TrimRight(token, "="))
+		if err == nil {
+			return decoded, true
+		}
 		return nil, false
 	default:
 		return nil, false
@@ -798,7 +806,7 @@ func isBase64Token(token string) bool {
 		case c >= 'a' && c <= 'z':
 		case c >= 'A' && c <= 'Z':
 		case c >= '0' && c <= '9':
-		case c == '+' || c == '/':
+		case c == '+' || c == '/' || c == '-' || c == '_':
 		case c == '=':
 			if paddingStart < 0 {
 				paddingStart = i
