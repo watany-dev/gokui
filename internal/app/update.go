@@ -582,6 +582,19 @@ func isUpdateTargetReadError(err error) bool {
 }
 
 func evaluateUpdateSkill(item updateSkillItem, lock installLock) (updateSkillItem, error) {
+	policyProfile := normalizePolicyProfile(lock.Policy.Profile)
+	if !isSupportedPolicyProfile(policyProfile) {
+		item.Status = "ERROR"
+		item.ErrorCode = updateCodeLockfileInvalid
+		item.Message = fmt.Sprintf("unsupported policy profile in lockfile: %s", lock.Policy.Profile)
+		item.RuleID = inferRuleIDForJSONError(item.Message)
+		item.Risk = updateRisk{
+			Previous: lock.Findings,
+			Current:  lock.Findings,
+		}
+		return item, nil
+	}
+
 	kind := strings.TrimSpace(lock.Source.Kind)
 	if kind == "" {
 		kind = detectSourceKind(lock.Source.Input)
@@ -645,7 +658,7 @@ func evaluateUpdateSkill(item updateSkillItem, lock installLock) (updateSkillIte
 		return item, nil
 	}
 
-	findings, _, err := evaluateSkill(skillRoot)
+	findings, _, err := evaluateSkillForProfile(skillRoot, policyProfile)
 	if err != nil {
 		return updateSkillItem{}, err
 	}

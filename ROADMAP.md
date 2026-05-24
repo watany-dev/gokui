@@ -27,6 +27,7 @@ tests/CI:
 - GitHub archive strict stream-size enforcement with overflow-write prevention and cleanup
 - GitHub source parser length bounds (input and owner/repo/path/ref segments)
 - Atomic install with `.gokui-report.json` and `gokui.lock`
+- Built-in install policy profiles: `strict`, `team`, `research`
 - Lock drift verification with per-check machine-readable codes
 - Stable JSON output contracts for all MVP commands
 - Machine-readable `error_code` support across command failure paths

@@ -30,9 +30,10 @@ scanned.
 `fetch` also supports `--format sarif` for quarantine provenance export in CI.
 `install` also supports `--format sarif` for policy findings export in CI.
 In SARIF mode, fatal install failures emit a single structured error result.
-`install` now supports local-dir/zip/tar sources with `--profile strict`,
-rejects high/critical findings, installs atomically to `--target codex` or
-`--target custom:/path`, writes `.gokui-report.json` and `gokui.lock`, allows
+`install` now supports local-dir/zip/tar sources with built-in profiles
+`strict|team|research`. `strict` and `team` reject high/critical findings;
+`research` rejects critical findings. It installs atomically to `--target codex`
+or `--target custom:/path`, writes `.gokui-report.json` and `gokui.lock`, allows
 idempotent reinstall only when provenance matches, and rejects same-name
 different-provenance installs. It also supports commit-pinned GitHub sources
 (`github:owner/repo//path@<sha>`) via safe tarball materialization. In JSON
@@ -154,7 +155,7 @@ Current pre-release CLI syntax:
 gokui fetch github:owner/repo//path/to/skill@commit --out <quarantine-dir> [--format human|json|sarif|compact]
 gokui inspect <local-dir|zip|github-source> [--format human|json|sarif|compact]
 gokui vet <local-dir|zip|tar> [--format human|json|sarif|compact]
-gokui install <source> --target codex --profile strict [--format human|json|sarif|compact] [--override RULE_ID ...]
+gokui install <source> --target codex --profile strict|team|research [--format human|json|sarif|compact] [--override RULE_ID ...]
 gokui update --dry-run [--target codex|custom:/path] [--format human|json|sarif|compact]
 gokui lock verify [path] [--format human|json|sarif|compact]
 ```

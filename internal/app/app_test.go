@@ -950,11 +950,11 @@ func TestRun(t *testing.T) {
 		var stdout bytes.Buffer
 		var stderr bytes.Buffer
 
-		code := Run([]string{"install", "../../fixtures/clean-skill", "--target", "codex", "--profile", "team"}, &stdout, &stderr, cfg)
+		code := Run([]string{"install", "../../fixtures/clean-skill", "--target", "codex", "--profile", "enterprise"}, &stdout, &stderr, cfg)
 		if code != 1 {
 			t.Fatalf("Run() code = %d, want 1", code)
 		}
-		if !strings.Contains(stderr.String(), "unsupported profile: team") {
+		if !strings.Contains(stderr.String(), "unsupported profile: enterprise") {
 			t.Fatalf("stderr should include unsupported profile error, got %q", stderr.String())
 		}
 

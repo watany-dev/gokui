@@ -51,7 +51,7 @@ func TestCLIUsageSyntaxDocumentationSync(t *testing.T) {
 		"gokui fetch github:owner/repo//path/to/skill@commit --out <quarantine-dir> [--format human|json|sarif|compact]",
 		"gokui inspect <local-dir|zip|github-source> [--format human|json|sarif|compact]",
 		"gokui vet <local-dir|zip|tar> [--format human|json|sarif|compact]",
-		"gokui install <source> --target codex --profile strict [--format human|json|sarif|compact] [--override RULE_ID ...]",
+		"gokui install <source> --target codex --profile strict|team|research [--format human|json|sarif|compact] [--override RULE_ID ...]",
 		"gokui update --dry-run [--target codex|custom:/path] [--format human|json|sarif|compact]",
 		"gokui lock verify [path] [--format human|json|sarif|compact]",
 	}

@@ -186,24 +186,25 @@ func runInstall(args []string, stdout io.Writer, stderr io.Writer) int {
 		return 1
 	}
 	sourceKind := detectSourceKind(parsed.Source)
+	parsed.Profile = normalizePolicyProfile(parsed.Profile)
 
-	if parsed.Profile != "strict" {
+	if !isSupportedPolicyProfile(parsed.Profile) {
 		if emitInstallStructuredError(parsed.Format, stdout, stderr, installErrorReport{
 			SchemaVersion: reportSchemaVersion,
 			Status:        "ERROR",
 			ErrorCode:     installErrorCodeProfileUnsupported,
-			Message:       fmt.Sprintf("unsupported profile: %s (only strict is currently supported)", parsed.Profile),
+			Message:       fmt.Sprintf("unsupported profile: %s (supported: %s)", parsed.Profile, supportedPolicyProfilesCSV()),
 			Source: source{
 				Input: parsed.Source,
 				Kind:  sourceKind,
 			},
 			Target:        parsed.Target,
 			PolicyProfile: parsed.Profile,
-			Note:          "install currently supports strict profile only",
+			Note:          "install policy profile validation failed",
 		}) {
 			return 1
 		}
-		_, _ = fmt.Fprintf(stderr, "unsupported profile: %s (only strict is currently supported)\n", parsed.Profile)
+		_, _ = fmt.Fprintf(stderr, "unsupported profile: %s (supported: %s)\n", parsed.Profile, supportedPolicyProfilesCSV())
 		return 1
 	}
 
@@ -273,7 +274,7 @@ func runInstall(args []string, stdout io.Writer, stderr io.Writer) int {
 		return 1
 	}
 
-	findings, decision, overrides, err := evaluateSkillWithOverrides(skillRoot, parsed.Overrides)
+	findings, decision, overrides, err := evaluateSkillWithOverrides(skillRoot, parsed.Profile, parsed.Overrides)
 	if err != nil {
 		if emitInstallStructuredError(parsed.Format, stdout, stderr, installErrorReport{
 			SchemaVersion: reportSchemaVersion,
@@ -324,7 +325,7 @@ func runInstall(args []string, stdout io.Writer, stderr io.Writer) int {
 		SeverityOverrides: overrides,
 		Installed:         false,
 		ErrorCode:         "",
-		Note:              "pre-release install applies strict structural and markdown checks",
+		Note:              "pre-release install applies profile-based structural and markdown checks",
 	}
 
 	if decision == "REJECTED" {
@@ -757,12 +758,17 @@ func emitInstallStructuredError(format string, stdout io.Writer, stderr io.Write
 	}
 }
 
-func evaluateSkill(skillRoot string) ([]inspectFinding, string, error) {
-	findings, decision, _, err := evaluateSkillWithOverrides(skillRoot, nil)
+func evaluateSkillForProfile(skillRoot string, profile string) ([]inspectFinding, string, error) {
+	findings, decision, _, err := evaluateSkillWithOverrides(skillRoot, profile, nil)
 	return findings, decision, err
 }
 
-func evaluateSkillWithOverrides(skillRoot string, overrideRuleIDs []string) ([]inspectFinding, string, []severityOverrideAudit, error) {
+func evaluateSkillWithOverrides(skillRoot string, profile string, overrideRuleIDs []string) ([]inspectFinding, string, []severityOverrideAudit, error) {
+	normalizedProfile := normalizePolicyProfile(profile)
+	if !isSupportedPolicyProfile(normalizedProfile) {
+		return nil, "", nil, fmt.Errorf("unsupported profile: %s (supported: %s)", normalizedProfile, supportedPolicyProfilesCSV())
+	}
+
 	scanFindings, err := scan.ScanSkillRoot(skillRoot)
 	if err != nil {
 		return nil, "", nil, err
@@ -802,7 +808,7 @@ func evaluateSkillWithOverrides(skillRoot string, overrideRuleIDs []string) ([]i
 				AppliedAt:         appliedAt,
 			})
 		}
-		if effectiveSeverity == "high" || effectiveSeverity == "critical" {
+		if shouldRejectSeverityForProfile(normalizedProfile, effectiveSeverity) {
 			decision = "REJECTED"
 		}
 	}

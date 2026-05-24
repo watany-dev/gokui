@@ -691,6 +691,9 @@ func verifyLockStructure(lock installLock) (bool, string) {
 	if strings.TrimSpace(lock.Policy.Profile) == "" {
 		return false, "lock policy profile is empty"
 	}
+	if !isSupportedPolicyProfile(lock.Policy.Profile) {
+		return false, fmt.Sprintf("lock policy profile is unsupported: %s", lock.Policy.Profile)
+	}
 	if !strings.EqualFold(strings.TrimSpace(lock.Policy.Decision), "pass") {
 		return false, fmt.Sprintf("lock policy decision must be pass for installed skill, got %s", lock.Policy.Decision)
 	}

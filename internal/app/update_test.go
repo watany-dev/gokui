@@ -1161,6 +1161,46 @@ func TestRunUpdateDryRunRejectedAndError(t *testing.T) {
 		}
 	})
 
+	t.Run("unsupported lock policy profile is lockfile error", func(t *testing.T) {
+		targetRoot := filepath.Join(t.TempDir(), "skills")
+		if err := os.MkdirAll(filepath.Join(targetRoot, "unsupported-profile"), 0o755); err != nil {
+			t.Fatalf("mkdir unsupported-profile skill dir: %v", err)
+		}
+		lock := installLock{
+			Schema: "gokui.lock/v1",
+			Name:   "unsupported-profile",
+			Source: lockSource{
+				Type:  "local",
+				Input: filepath.Join(targetRoot, "unsupported-profile"),
+				Kind:  "local-dir",
+			},
+			Policy: lockPolicy{Profile: "enterprise", Decision: "pass"},
+		}
+		raw, err := json.MarshalIndent(lock, "", "  ")
+		if err != nil {
+			t.Fatalf("marshal lock: %v", err)
+		}
+		if err := os.WriteFile(filepath.Join(targetRoot, "unsupported-profile", installLockFile), raw, 0o644); err != nil {
+			t.Fatalf("write lock: %v", err)
+		}
+
+		var stdout strings.Builder
+		var stderr strings.Builder
+		code := runUpdate([]string{"--dry-run", "--target", "custom:" + targetRoot, "--format", "json"}, &stdout, &stderr)
+		if code != 1 {
+			t.Fatalf("runUpdate(unsupported profile) code = %d, want 1\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
+		}
+		if stderr.Len() != 0 {
+			t.Fatalf("stderr should be empty, got %q", stderr.String())
+		}
+		if !strings.Contains(stdout.String(), "\"status\": \"ERROR\"") {
+			t.Fatalf("stdout should include ERROR status, got %q", stdout.String())
+		}
+		if !strings.Contains(stdout.String(), "\"error_code\": \""+updateCodeLockfileInvalid+"\"") {
+			t.Fatalf("stdout should include lock-invalid error_code, got %q", stdout.String())
+		}
+	})
+
 	t.Run("invalid github source in lock is error", func(t *testing.T) {
 		targetRoot := filepath.Join(t.TempDir(), "skills")
 		if err := os.MkdirAll(filepath.Join(targetRoot, "github-invalid"), 0o755); err != nil {
@@ -2423,6 +2463,9 @@ func TestEvaluateUpdateSkillAdditionalBranches(t *testing.T) {
 			Skill: lockSkill{
 				Files: []lockFileHash{},
 			},
+			Policy: lockPolicy{
+				Profile: policyProfileStrict,
+			},
 		}
 		item := updateSkillItem{
 			Name: "url-error-skill",
@@ -2451,6 +2494,9 @@ func TestEvaluateUpdateSkillAdditionalBranches(t *testing.T) {
 				Type:  "local",
 				Input: filepath.Join(t.TempDir(), "missing-source"),
 				Kind:  "local-dir",
+			},
+			Policy: lockPolicy{
+				Profile: policyProfileStrict,
 			},
 		}
 		item := updateSkillItem{

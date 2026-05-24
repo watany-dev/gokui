@@ -1610,6 +1610,13 @@ func TestVerifyLockStructureValidationBranches(t *testing.T) {
 			detailIn: "policy profile is empty",
 		},
 		{
+			name: "unsupported profile",
+			mutate: func(l *installLock) {
+				l.Policy.Profile = "enterprise"
+			},
+			detailIn: "policy profile is unsupported",
+		},
+		{
 			name: "invalid decision",
 			mutate: func(l *installLock) {
 				l.Policy.Decision = "warn"
