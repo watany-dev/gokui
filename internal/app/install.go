@@ -144,6 +144,7 @@ const (
 
 func runInstall(args []string, stdout io.Writer, stderr io.Writer) int {
 	requestedJSON := installArgsRequestJSON(args)
+	requestedSARIF := installArgsRequestSARIF(args)
 
 	parsed, err := parseInstallArgs(args)
 	if err != nil {
@@ -164,27 +165,43 @@ func runInstall(args []string, stdout io.Writer, stderr io.Writer) int {
 				Note:          "install failed before source evaluation",
 			})
 		}
+		if requestedSARIF {
+			sourceArg := extractInstallSourceArg(args)
+			sourceKind := detectSourceKind(sourceArg)
+			return writeInstallSARIFError(stdout, stderr, installErrorReport{
+				SchemaVersion: reportSchemaVersion,
+				Status:        "ERROR",
+				ErrorCode:     installErrorCodeArgsInvalid,
+				Message:       err.Error(),
+				Source: source{
+					Input: sourceArg,
+					Kind:  sourceKind,
+				},
+				Target:        extractInstallTargetArg(args),
+				PolicyProfile: extractInstallProfileArg(args),
+				Note:          "install failed before source evaluation",
+			})
+		}
 		_, _ = fmt.Fprintf(stderr, "%s\n\n%s\n", err.Error(), usage())
 		return 1
 	}
-	jsonOutput := parsed.Format == "json"
 	sourceKind := detectSourceKind(parsed.Source)
 
 	if parsed.Profile != "strict" {
-		if jsonOutput {
-			return writeInstallJSONError(stdout, stderr, installErrorReport{
-				SchemaVersion: reportSchemaVersion,
-				Status:        "ERROR",
-				ErrorCode:     installErrorCodeProfileUnsupported,
-				Message:       fmt.Sprintf("unsupported profile: %s (only strict is currently supported)", parsed.Profile),
-				Source: source{
-					Input: parsed.Source,
-					Kind:  sourceKind,
-				},
-				Target:        parsed.Target,
-				PolicyProfile: parsed.Profile,
-				Note:          "install currently supports strict profile only",
-			})
+		if emitInstallStructuredError(parsed.Format, stdout, stderr, installErrorReport{
+			SchemaVersion: reportSchemaVersion,
+			Status:        "ERROR",
+			ErrorCode:     installErrorCodeProfileUnsupported,
+			Message:       fmt.Sprintf("unsupported profile: %s (only strict is currently supported)", parsed.Profile),
+			Source: source{
+				Input: parsed.Source,
+				Kind:  sourceKind,
+			},
+			Target:        parsed.Target,
+			PolicyProfile: parsed.Profile,
+			Note:          "install currently supports strict profile only",
+		}) {
+			return 1
 		}
 		_, _ = fmt.Fprintf(stderr, "unsupported profile: %s (only strict is currently supported)\n", parsed.Profile)
 		return 1
@@ -193,39 +210,39 @@ func runInstall(args []string, stdout io.Writer, stderr io.Writer) int {
 	if _, statErr := os.Stat(parsed.Source); statErr != nil {
 		if sourceKind != "github-source" {
 			if errors.Is(statErr, os.ErrNotExist) {
-				if jsonOutput {
-					return writeInstallJSONError(stdout, stderr, installErrorReport{
-						SchemaVersion: reportSchemaVersion,
-						Status:        "ERROR",
-						ErrorCode:     installErrorCodeSourceNotFound,
-						Message:       fmt.Sprintf("install source not found: %s", parsed.Source),
-						Source: source{
-							Input: parsed.Source,
-							Kind:  sourceKind,
-						},
-						Target:        parsed.Target,
-						PolicyProfile: parsed.Profile,
-						Note:          "install source must exist before policy evaluation",
-					})
-				}
-				_, _ = fmt.Fprintf(stderr, "install source not found: %s\n", parsed.Source)
-				return 1
-			}
-			accessErr := fmt.Sprintf("failed to access install source: %v", statErr)
-			if jsonOutput {
-				return writeInstallJSONError(stdout, stderr, installErrorReport{
+				if emitInstallStructuredError(parsed.Format, stdout, stderr, installErrorReport{
 					SchemaVersion: reportSchemaVersion,
 					Status:        "ERROR",
-					ErrorCode:     installErrorCodeSourcePrepareFailed,
-					Message:       accessErr,
+					ErrorCode:     installErrorCodeSourceNotFound,
+					Message:       fmt.Sprintf("install source not found: %s", parsed.Source),
 					Source: source{
 						Input: parsed.Source,
 						Kind:  sourceKind,
 					},
 					Target:        parsed.Target,
 					PolicyProfile: parsed.Profile,
-					Note:          "install source access check failed",
-				})
+					Note:          "install source must exist before policy evaluation",
+				}) {
+					return 1
+				}
+				_, _ = fmt.Fprintf(stderr, "install source not found: %s\n", parsed.Source)
+				return 1
+			}
+			accessErr := fmt.Sprintf("failed to access install source: %v", statErr)
+			if emitInstallStructuredError(parsed.Format, stdout, stderr, installErrorReport{
+				SchemaVersion: reportSchemaVersion,
+				Status:        "ERROR",
+				ErrorCode:     installErrorCodeSourcePrepareFailed,
+				Message:       accessErr,
+				Source: source{
+					Input: parsed.Source,
+					Kind:  sourceKind,
+				},
+				Target:        parsed.Target,
+				PolicyProfile: parsed.Profile,
+				Note:          "install source access check failed",
+			}) {
+				return 1
 			}
 			_, _ = fmt.Fprintln(stderr, accessErr)
 			return 1
@@ -237,20 +254,20 @@ func runInstall(args []string, stdout io.Writer, stderr io.Writer) int {
 		defer cleanup()
 	}
 	if err != nil {
-		if jsonOutput {
-			return writeInstallJSONError(stdout, stderr, installErrorReport{
-				SchemaVersion: reportSchemaVersion,
-				Status:        "ERROR",
-				ErrorCode:     installErrorCodeSourcePrepareFailed,
-				Message:       err.Error(),
-				Source: source{
-					Input: parsed.Source,
-					Kind:  sourceKind,
-				},
-				Target:        parsed.Target,
-				PolicyProfile: parsed.Profile,
-				Note:          "install source preparation failed",
-			})
+		if emitInstallStructuredError(parsed.Format, stdout, stderr, installErrorReport{
+			SchemaVersion: reportSchemaVersion,
+			Status:        "ERROR",
+			ErrorCode:     installErrorCodeSourcePrepareFailed,
+			Message:       err.Error(),
+			Source: source{
+				Input: parsed.Source,
+				Kind:  sourceKind,
+			},
+			Target:        parsed.Target,
+			PolicyProfile: parsed.Profile,
+			Note:          "install source preparation failed",
+		}) {
+			return 1
 		}
 		_, _ = fmt.Fprintln(stderr, err.Error())
 		return 1
@@ -258,20 +275,20 @@ func runInstall(args []string, stdout io.Writer, stderr io.Writer) int {
 
 	findings, decision, overrides, err := evaluateSkillWithOverrides(skillRoot, parsed.Overrides)
 	if err != nil {
-		if jsonOutput {
-			return writeInstallJSONError(stdout, stderr, installErrorReport{
-				SchemaVersion: reportSchemaVersion,
-				Status:        "ERROR",
-				ErrorCode:     installErrorCodeEvaluationFailed,
-				Message:       err.Error(),
-				Source: source{
-					Input: parsed.Source,
-					Kind:  sourceKind,
-				},
-				Target:        parsed.Target,
-				PolicyProfile: parsed.Profile,
-				Note:          "install policy evaluation failed",
-			})
+		if emitInstallStructuredError(parsed.Format, stdout, stderr, installErrorReport{
+			SchemaVersion: reportSchemaVersion,
+			Status:        "ERROR",
+			ErrorCode:     installErrorCodeEvaluationFailed,
+			Message:       err.Error(),
+			Source: source{
+				Input: parsed.Source,
+				Kind:  sourceKind,
+			},
+			Target:        parsed.Target,
+			PolicyProfile: parsed.Profile,
+			Note:          "install policy evaluation failed",
+		}) {
+			return 1
 		}
 		_, _ = fmt.Fprintln(stderr, err.Error())
 		return 1
@@ -279,20 +296,20 @@ func runInstall(args []string, stdout io.Writer, stderr io.Writer) int {
 
 	installSource, err := resolveSourceForInstall(skillRoot, parsed.Source, sourceKind)
 	if err != nil {
-		if jsonOutput {
-			return writeInstallJSONError(stdout, stderr, installErrorReport{
-				SchemaVersion: reportSchemaVersion,
-				Status:        "ERROR",
-				ErrorCode:     installErrorCodeSourceMetadataFailed,
-				Message:       err.Error(),
-				Source: source{
-					Input: parsed.Source,
-					Kind:  sourceKind,
-				},
-				Target:        parsed.Target,
-				PolicyProfile: parsed.Profile,
-				Note:          "install source metadata validation failed",
-			})
+		if emitInstallStructuredError(parsed.Format, stdout, stderr, installErrorReport{
+			SchemaVersion: reportSchemaVersion,
+			Status:        "ERROR",
+			ErrorCode:     installErrorCodeSourceMetadataFailed,
+			Message:       err.Error(),
+			Source: source{
+				Input: parsed.Source,
+				Kind:  sourceKind,
+			},
+			Target:        parsed.Target,
+			PolicyProfile: parsed.Profile,
+			Note:          "install source metadata validation failed",
+		}) {
+			return 1
 		}
 		_, _ = fmt.Fprintln(stderr, err.Error())
 		return 1
@@ -312,7 +329,7 @@ func runInstall(args []string, stdout io.Writer, stderr io.Writer) int {
 
 	if decision == "REJECTED" {
 		report.ErrorCode = installErrorCodePolicyRejected
-		if jsonOutput {
+		if parsed.Format == "json" {
 			out, err := json.MarshalIndent(report, "", "  ")
 			if err != nil {
 				_, _ = fmt.Fprintln(stderr, "failed to render install report")
@@ -343,50 +360,50 @@ func runInstall(args []string, stdout io.Writer, stderr io.Writer) int {
 
 	targetRoot, targetErr := resolveInstallTarget(parsed.Target)
 	if targetErr != nil {
-		if jsonOutput {
-			return writeInstallJSONError(stdout, stderr, installErrorReport{
-				SchemaVersion: reportSchemaVersion,
-				Status:        "ERROR",
-				ErrorCode:     installErrorCodeTargetInvalid,
-				Message:       targetErr.Error(),
-				Source:        installSource,
-				Target:        parsed.Target,
-				PolicyProfile: parsed.Profile,
-				Note:          "install target validation failed",
-			})
+		if emitInstallStructuredError(parsed.Format, stdout, stderr, installErrorReport{
+			SchemaVersion: reportSchemaVersion,
+			Status:        "ERROR",
+			ErrorCode:     installErrorCodeTargetInvalid,
+			Message:       targetErr.Error(),
+			Source:        installSource,
+			Target:        parsed.Target,
+			PolicyProfile: parsed.Profile,
+			Note:          "install target validation failed",
+		}) {
+			return 1
 		}
 		_, _ = fmt.Fprintln(stderr, targetErr.Error())
 		return 1
 	}
 	if err := rejectSymlinkPath(targetRoot, "install target root", ruleInstallTargetSymlink); err != nil {
-		if jsonOutput {
-			return writeInstallJSONError(stdout, stderr, installErrorReport{
-				SchemaVersion: reportSchemaVersion,
-				Status:        "ERROR",
-				ErrorCode:     installErrorCodeTargetInvalid,
-				Message:       err.Error(),
-				Source:        installSource,
-				Target:        parsed.Target,
-				PolicyProfile: parsed.Profile,
-				Note:          "install target validation failed",
-			})
+		if emitInstallStructuredError(parsed.Format, stdout, stderr, installErrorReport{
+			SchemaVersion: reportSchemaVersion,
+			Status:        "ERROR",
+			ErrorCode:     installErrorCodeTargetInvalid,
+			Message:       err.Error(),
+			Source:        installSource,
+			Target:        parsed.Target,
+			PolicyProfile: parsed.Profile,
+			Note:          "install target validation failed",
+		}) {
+			return 1
 		}
 		_, _ = fmt.Fprintln(stderr, err.Error())
 		return 1
 	}
 
 	if err := os.MkdirAll(targetRoot, 0o755); err != nil {
-		if jsonOutput {
-			return writeInstallJSONError(stdout, stderr, installErrorReport{
-				SchemaVersion: reportSchemaVersion,
-				Status:        "ERROR",
-				ErrorCode:     installErrorCodeTargetPrepareFailed,
-				Message:       fmt.Sprintf("failed to create install target root: %v", err),
-				Source:        installSource,
-				Target:        parsed.Target,
-				PolicyProfile: parsed.Profile,
-				Note:          "install target preparation failed",
-			})
+		if emitInstallStructuredError(parsed.Format, stdout, stderr, installErrorReport{
+			SchemaVersion: reportSchemaVersion,
+			Status:        "ERROR",
+			ErrorCode:     installErrorCodeTargetPrepareFailed,
+			Message:       fmt.Sprintf("failed to create install target root: %v", err),
+			Source:        installSource,
+			Target:        parsed.Target,
+			PolicyProfile: parsed.Profile,
+			Note:          "install target preparation failed",
+		}) {
+			return 1
 		}
 		_, _ = fmt.Fprintf(stderr, "failed to create install target root: %v\n", err)
 		return 1
@@ -395,24 +412,24 @@ func runInstall(args []string, stdout io.Writer, stderr io.Writer) int {
 	skillName := filepath.Base(filepath.Clean(skillRoot))
 	installedPath, installResult, err := installSkillAtomic(skillRoot, targetRoot, skillName, report)
 	if err != nil {
-		if jsonOutput {
-			return writeInstallJSONError(stdout, stderr, installErrorReport{
-				SchemaVersion: reportSchemaVersion,
-				Status:        "ERROR",
-				ErrorCode:     installErrorCodeWriteFailed,
-				Message:       err.Error(),
-				Source:        installSource,
-				Target:        parsed.Target,
-				PolicyProfile: parsed.Profile,
-				Note:          "install write step failed",
-			})
+		if emitInstallStructuredError(parsed.Format, stdout, stderr, installErrorReport{
+			SchemaVersion: reportSchemaVersion,
+			Status:        "ERROR",
+			ErrorCode:     installErrorCodeWriteFailed,
+			Message:       err.Error(),
+			Source:        installSource,
+			Target:        parsed.Target,
+			PolicyProfile: parsed.Profile,
+			Note:          "install write step failed",
+		}) {
+			return 1
 		}
 		_, _ = fmt.Fprintln(stderr, err.Error())
 		return 1
 	}
 	report.Installed = true
 	report.InstalledPath = installedPath
-	if jsonOutput {
+	if parsed.Format == "json" {
 		out, err := json.MarshalIndent(report, "", "  ")
 		if err != nil {
 			_, _ = fmt.Fprintln(stderr, "failed to render install report")
@@ -590,6 +607,18 @@ func installArgsRequestJSON(args []string) bool {
 	return false
 }
 
+func installArgsRequestSARIF(args []string) bool {
+	for i := 0; i < len(args); i++ {
+		if args[i] == "--format" && i+1 < len(args) && args[i+1] == "sarif" {
+			return true
+		}
+		if strings.HasPrefix(args[i], "--format=") && strings.TrimPrefix(args[i], "--format=") == "sarif" {
+			return true
+		}
+	}
+	return false
+}
+
 func extractInstallSourceArg(args []string) string {
 	for i := 0; i < len(args); i++ {
 		arg := args[i]
@@ -645,6 +674,87 @@ func writeInstallJSONError(stdout io.Writer, stderr io.Writer, report installErr
 	}
 	_, _ = fmt.Fprintf(stdout, "%s\n", out)
 	return 1
+}
+
+func writeInstallSARIFError(stdout io.Writer, stderr io.Writer, report installErrorReport) int {
+	report.Status = "ERROR"
+	report.ErrorCode = normalizeJSONErrorCode(report.ErrorCode, installErrorCodeUnknown)
+	if report.RuleID == "" {
+		report.RuleID = inferRuleIDForJSONError(report.Message)
+	}
+	out, err := json.MarshalIndent(buildInstallSARIFErrorReport(report), "", "  ")
+	if err != nil {
+		_, _ = fmt.Fprintln(stderr, "failed to render install sarif error report")
+		return 1
+	}
+	_, _ = fmt.Fprintf(stdout, "%s\n", out)
+	return 1
+}
+
+func buildInstallSARIFErrorReport(report installErrorReport) inspectSARIFReport {
+	ruleID := report.ErrorCode
+	if report.RuleID != "" {
+		ruleID = report.RuleID
+	}
+	return inspectSARIFReport{
+		Version: "2.1.0",
+		Schema:  "https://json.schemastore.org/sarif-2.1.0.json",
+		Runs: []inspectSARIFRun{
+			{
+				Tool: inspectSARIFTool{
+					Driver: inspectSARIFDriver{
+						Name:    "gokui",
+						Version: "pre-release",
+						Rules: []inspectSARIFRule{
+							{
+								ID: ruleID,
+								ShortDescription: inspectSARIFMessageContainer{
+									Text: report.ErrorCode,
+								},
+							},
+						},
+					},
+				},
+				Results: []inspectSARIFResult{
+					{
+						RuleID:  ruleID,
+						Level:   "error",
+						Message: inspectSARIFMessageContainer{Text: report.Message},
+					},
+				},
+				Invocations: []inspectSARIFInvocation{
+					{ExecutionSuccessful: false},
+				},
+				Properties: inspectSARIFProperties{
+					SchemaVersion: report.SchemaVersion,
+					PreRelease:    true,
+					SourceInput:   report.Source.Input,
+					SourceKind:    report.Source.Kind,
+					Decision:      report.Status,
+					Note: fmt.Sprintf(
+						"target=%s profile=%s; %s; error_code=%s",
+						report.Target,
+						report.PolicyProfile,
+						report.Note,
+						report.ErrorCode,
+					),
+				},
+			},
+		},
+	}
+}
+
+func emitInstallStructuredError(format string, stdout io.Writer, stderr io.Writer, report installErrorReport) bool {
+	switch format {
+	case "json":
+		_ = writeInstallJSONError(stdout, stderr, report)
+		return true
+	case "sarif":
+		_ = writeInstallSARIFError(stdout, stderr, report)
+		return true
+	default:
+		return false
+	}
 }
 
 func evaluateSkill(skillRoot string) ([]inspectFinding, string, error) {

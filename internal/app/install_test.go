@@ -922,6 +922,61 @@ func TestRunInstallOverrides(t *testing.T) {
 }
 
 func TestRunInstallSARIFOutput(t *testing.T) {
+	t.Run("sarif parse error uses machine-readable envelope", func(t *testing.T) {
+		var stdout strings.Builder
+		var stderr strings.Builder
+		code := runInstall([]string{"--format", "sarif"}, &stdout, &stderr)
+		if code != 1 {
+			t.Fatalf("runInstall(sarif parse error) code = %d, want 1", code)
+		}
+		if stderr.Len() != 0 {
+			t.Fatalf("stderr should be empty for sarif parse errors, got %q", stderr.String())
+		}
+		var sarif inspectSARIFReport
+		if err := json.Unmarshal([]byte(stdout.String()), &sarif); err != nil {
+			t.Fatalf("sarif parse failed: %v", err)
+		}
+		if len(sarif.Runs) != 1 || len(sarif.Runs[0].Results) != 1 {
+			t.Fatalf("unexpected sarif structure: %+v", sarif)
+		}
+		if sarif.Runs[0].Results[0].RuleID != installErrorCodeArgsInvalid {
+			t.Fatalf("rule id = %q, want %q", sarif.Runs[0].Results[0].RuleID, installErrorCodeArgsInvalid)
+		}
+		if sarif.Runs[0].Invocations[0].ExecutionSuccessful {
+			t.Fatal("sarif parse-error invocation should be unsuccessful")
+		}
+	})
+
+	t.Run("sarif fatal source-missing error includes error code rule", func(t *testing.T) {
+		var stdout strings.Builder
+		var stderr strings.Builder
+		code := runInstall([]string{
+			"./missing-source",
+			"--target", "codex",
+			"--profile", "strict",
+			"--format", "sarif",
+		}, &stdout, &stderr)
+		if code != 1 {
+			t.Fatalf("runInstall(sarif source missing) code = %d, want 1", code)
+		}
+		if stderr.Len() != 0 {
+			t.Fatalf("stderr should be empty for sarif fatal errors, got %q", stderr.String())
+		}
+		var sarif inspectSARIFReport
+		if err := json.Unmarshal([]byte(stdout.String()), &sarif); err != nil {
+			t.Fatalf("sarif parse failed: %v", err)
+		}
+		if len(sarif.Runs) != 1 || len(sarif.Runs[0].Results) != 1 {
+			t.Fatalf("unexpected sarif structure: %+v", sarif)
+		}
+		if sarif.Runs[0].Results[0].RuleID != installErrorCodeSourceNotFound {
+			t.Fatalf("rule id = %q, want %q", sarif.Runs[0].Results[0].RuleID, installErrorCodeSourceNotFound)
+		}
+		if sarif.Runs[0].Properties.Decision != "ERROR" {
+			t.Fatalf("decision = %q, want ERROR", sarif.Runs[0].Properties.Decision)
+		}
+	})
+
 	t.Run("sarif rejection returns code 2 and rejected decision", func(t *testing.T) {
 		source := createSkillSourceForInstallTest(t, "sarif-install-rejected")
 		skillFile := filepath.Join(source, "SKILL.md")
@@ -1163,6 +1218,15 @@ func TestInstallArgExtractionHelpers(t *testing.T) {
 	if installArgsRequestJSON([]string{"./skill", "--target", "codex", "--format", "sarif"}) {
 		t.Fatal("installArgsRequestJSON() should be false for non-json format")
 	}
+	if !installArgsRequestSARIF([]string{"./skill", "--target", "codex", "--format", "sarif"}) {
+		t.Fatal("installArgsRequestSARIF() should detect sarif format")
+	}
+	if !installArgsRequestSARIF([]string{"--target=custom:/tmp/skills", "--profile=strict", "--format=sarif", "./skill"}) {
+		t.Fatal("installArgsRequestSARIF() should detect --format=sarif")
+	}
+	if installArgsRequestSARIF([]string{"./skill", "--target", "codex", "--format", "json"}) {
+		t.Fatal("installArgsRequestSARIF() should be false for non-sarif format")
+	}
 }
 
 func TestWriteInstallJSONErrorPreservesExplicitRuleID(t *testing.T) {
@@ -1187,6 +1251,77 @@ func TestWriteInstallJSONErrorPreservesExplicitRuleID(t *testing.T) {
 	}
 	if !strings.Contains(stdout.String(), "\"rule_id\": \"EXPLICIT_RULE\"") {
 		t.Fatalf("stdout should preserve explicit rule_id, got %q", stdout.String())
+	}
+}
+
+func TestWriteInstallSARIFErrorPreservesExplicitRuleID(t *testing.T) {
+	var stdout strings.Builder
+	var stderr strings.Builder
+	code := writeInstallSARIFError(&stdout, &stderr, installErrorReport{
+		SchemaVersion: reportSchemaVersion,
+		Status:        "ERROR",
+		ErrorCode:     installErrorCodeWriteFailed,
+		RuleID:        "EXPLICIT_RULE",
+		Message:       "EXPLICIT_RULE: synthetic install error",
+		Source: source{
+			Input: "/tmp/skill",
+			Kind:  "local-dir",
+		},
+		Target:        "custom:/tmp/skills",
+		PolicyProfile: "strict",
+		Note:          "test",
+	})
+	if code != 1 {
+		t.Fatalf("writeInstallSARIFError() code = %d, want 1", code)
+	}
+	var sarif inspectSARIFReport
+	if err := json.Unmarshal([]byte(stdout.String()), &sarif); err != nil {
+		t.Fatalf("sarif parse failed: %v", err)
+	}
+	if len(sarif.Runs) != 1 || len(sarif.Runs[0].Results) != 1 {
+		t.Fatalf("unexpected sarif structure: %+v", sarif)
+	}
+	if sarif.Runs[0].Results[0].RuleID != "EXPLICIT_RULE" {
+		t.Fatalf("rule id = %q, want EXPLICIT_RULE", sarif.Runs[0].Results[0].RuleID)
+	}
+}
+
+func TestBuildInstallSARIFErrorReport(t *testing.T) {
+	report := installErrorReport{
+		SchemaVersion: reportSchemaVersion,
+		Status:        "ERROR",
+		ErrorCode:     installErrorCodeSourceNotFound,
+		Message:       "install source not found: /tmp/missing-skill",
+		Source: source{
+			Input: "/tmp/missing-skill",
+			Kind:  "local-dir",
+		},
+		Target:        "custom:/tmp/skills",
+		PolicyProfile: "strict",
+		Note:          "install source must exist before policy evaluation",
+	}
+	sarif := buildInstallSARIFErrorReport(report)
+	if sarif.Version != "2.1.0" {
+		t.Fatalf("version = %q, want 2.1.0", sarif.Version)
+	}
+	if len(sarif.Runs) != 1 {
+		t.Fatalf("runs = %d, want 1", len(sarif.Runs))
+	}
+	run := sarif.Runs[0]
+	if len(run.Results) != 1 {
+		t.Fatalf("results = %d, want 1", len(run.Results))
+	}
+	if run.Results[0].RuleID != installErrorCodeSourceNotFound {
+		t.Fatalf("rule id = %q, want %q", run.Results[0].RuleID, installErrorCodeSourceNotFound)
+	}
+	if run.Results[0].Level != "error" {
+		t.Fatalf("level = %q, want error", run.Results[0].Level)
+	}
+	if len(run.Invocations) != 1 || run.Invocations[0].ExecutionSuccessful {
+		t.Fatalf("invocation should be unsuccessful, got %+v", run.Invocations)
+	}
+	if run.Properties.SourceKind != "local-dir" {
+		t.Fatalf("source kind = %q, want local-dir", run.Properties.SourceKind)
 	}
 }
 
