@@ -25,7 +25,7 @@ basic markdown threat scanning, emits draft human/JSON reports, and supports
 machine-readable top-level `error_code` for automation. For GitHub sources, floating refs remain
 inspect-only pre-release stubs, while commit-pinned refs are fetched and
 scanned.
-`inspect` and `vet` also support `--format compact` for single-line CI summaries.
+`inspect`, `vet`, `install`, and `update` also support `--format compact` for single-line CI summaries.
 `install` also supports `--format sarif` for policy findings export in CI.
 `install` now supports local-dir/zip/tar sources with `--profile strict`,
 rejects high/critical findings, installs atomically to `--target codex` or
@@ -141,8 +141,8 @@ Current pre-release CLI syntax:
 gokui fetch github:owner/repo//path/to/skill@commit --out <quarantine-dir> [--format human|json]
 gokui inspect <local-dir|zip|github-source> [--format human|json|sarif|compact]
 gokui vet <local-dir|zip|tar> [--format human|json|sarif|compact]
-gokui install <source> --target codex --profile strict [--format human|json|sarif]
-gokui update --dry-run [--target codex|custom:/path] [--format human|json|sarif]
+gokui install <source> --target codex --profile strict [--format human|json|sarif|compact]
+gokui update --dry-run [--target codex|custom:/path] [--format human|json|sarif|compact]
 gokui lock verify [path] [--format human|json]
 ```
 

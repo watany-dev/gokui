@@ -322,6 +322,10 @@ func runInstall(args []string, stdout io.Writer, stderr io.Writer) int {
 			_, _ = fmt.Fprintf(stdout, "%s\n", out)
 			return 2
 		}
+		if parsed.Format == "compact" {
+			_, _ = fmt.Fprintf(stdout, "%s\n", buildInstallCompactSummary(report, parsed.Target))
+			return 2
+		}
 		_, _ = fmt.Fprintln(stdout, "gokui install report (pre-release)")
 		_, _ = fmt.Fprintf(stdout, "source: %s (%s)\n", report.Source.Input, report.Source.Kind)
 		_, _ = fmt.Fprintf(stdout, "decision: %s\n", report.Decision)
@@ -418,6 +422,10 @@ func runInstall(args []string, stdout io.Writer, stderr io.Writer) int {
 		_, _ = fmt.Fprintf(stdout, "%s\n", out)
 		return 0
 	}
+	if parsed.Format == "compact" {
+		_, _ = fmt.Fprintf(stdout, "%s\n", buildInstallCompactSummary(report, parsed.Target))
+		return 0
+	}
 
 	_, _ = fmt.Fprintln(stdout, "gokui install report (pre-release)")
 	_, _ = fmt.Fprintf(stdout, "source: %s (%s)\n", report.Source.Input, report.Source.Kind)
@@ -479,7 +487,7 @@ func parseInstallArgs(args []string) (installArgs, error) {
 	if out.Target == "" {
 		return installArgs{}, fmt.Errorf("install target is required")
 	}
-	if out.Format != "human" && out.Format != "json" && out.Format != "sarif" {
+	if out.Format != "human" && out.Format != "json" && out.Format != "sarif" && out.Format != "compact" {
 		return installArgs{}, fmt.Errorf("unsupported install format: %s", out.Format)
 	}
 	return out, nil
@@ -503,6 +511,40 @@ func buildInstallSARIFReport(report installReport, target string) inspectSARIFRe
 		),
 	}
 	return buildInspectSARIFReport(inspectEquivalent)
+}
+
+func buildInstallCompactSummary(report installReport, target string) string {
+	critical := 0
+	high := 0
+	medium := 0
+	low := 0
+	for _, finding := range report.Findings {
+		switch finding.Severity {
+		case "critical":
+			critical++
+		case "high":
+			high++
+		case "medium":
+			medium++
+		case "low":
+			low++
+		}
+	}
+	return fmt.Sprintf(
+		"install decision=%s findings=%d critical=%d high=%d medium=%d low=%d installed=%t profile=%s target=%q source_kind=%s source=%q error_code=%s",
+		report.Decision,
+		len(report.Findings),
+		critical,
+		high,
+		medium,
+		low,
+		report.Installed,
+		report.PolicyProfile,
+		target,
+		report.Source.Kind,
+		report.Source.Input,
+		report.ErrorCode,
+	)
 }
 
 func installArgsRequestJSON(args []string) bool {
