@@ -1651,6 +1651,43 @@ func TestBuildUpdateSARIFErrorReport(t *testing.T) {
 	}
 }
 
+func TestSortSeverityOverrides(t *testing.T) {
+	t.Run("sorts by rule id, then applied_at, then source", func(t *testing.T) {
+		in := []severityOverrideAudit{
+			{RuleID: "RULE_B", AppliedAt: "2026-01-01T00:00:00Z", Source: "zeta"},
+			{RuleID: "RULE_A", AppliedAt: "2026-02-01T00:00:00Z", Source: "zeta"},
+			{RuleID: "RULE_A", AppliedAt: "2026-01-01T00:00:00Z", Source: "zeta"},
+			{RuleID: "RULE_A", AppliedAt: "2026-01-01T00:00:00Z", Source: "alpha"},
+		}
+		got := sortSeverityOverrides(in)
+
+		if got[0].RuleID != "RULE_A" || got[0].AppliedAt != "2026-01-01T00:00:00Z" || got[0].Source != "alpha" {
+			t.Fatalf("got[0]=%+v, want RULE_A/2026-01-01/alpha", got[0])
+		}
+		if got[1].RuleID != "RULE_A" || got[1].AppliedAt != "2026-01-01T00:00:00Z" || got[1].Source != "zeta" {
+			t.Fatalf("got[1]=%+v, want RULE_A/2026-01-01/zeta", got[1])
+		}
+		if got[2].RuleID != "RULE_A" || got[2].AppliedAt != "2026-02-01T00:00:00Z" || got[2].Source != "zeta" {
+			t.Fatalf("got[2]=%+v, want RULE_A/2026-02-01/zeta", got[2])
+		}
+		if got[3].RuleID != "RULE_B" || got[3].AppliedAt != "2026-01-01T00:00:00Z" || got[3].Source != "zeta" {
+			t.Fatalf("got[3]=%+v, want RULE_B/2026-01-01/zeta", got[3])
+		}
+
+		// Ensure sorting works on a clone and does not mutate input ordering.
+		if in[0].RuleID != "RULE_B" || in[1].RuleID != "RULE_A" || in[2].AppliedAt != "2026-01-01T00:00:00Z" || in[3].Source != "alpha" {
+			t.Fatalf("input slice mutated: %+v", in)
+		}
+	})
+
+	t.Run("empty input returns empty slice", func(t *testing.T) {
+		got := sortSeverityOverrides(nil)
+		if len(got) != 0 {
+			t.Fatalf("len(sortSeverityOverrides(nil)) = %d, want 0", len(got))
+		}
+	})
+}
+
 func assertJSONHasKeys(t *testing.T, obj map[string]json.RawMessage, keys []string) {
 	t.Helper()
 	for _, key := range keys {
