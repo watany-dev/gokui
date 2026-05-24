@@ -1661,6 +1661,14 @@ func nextDenoRuntimeTarget(fields []string, start int, end int) (string, bool) {
 		"--allow-ffi":        {},
 		"--allow-sys":        {},
 		"-S":                 {},
+		"--deny-read":        {},
+		"--deny-write":       {},
+		"--deny-net":         {},
+		"--deny-env":         {},
+		"--deny-run":         {},
+		"--deny-ffi":         {},
+		"--deny-import":      {},
+		"--deny-sys":         {},
 	}
 
 	for i := start; i < end; i++ {
@@ -1776,6 +1784,46 @@ func isKnownDenoOptionalFlagValue(
 		}
 		return isDenoAllowFFIValue(value)
 	case "--allow-sys", "-S":
+		if !hasDenoRuntimeCandidateAfter(fields, nextStart, end) {
+			return false
+		}
+		return isDenoAllowSysValue(value)
+	case "--deny-read":
+		if !hasDenoRuntimeCandidateAfter(fields, nextStart, end) {
+			return false
+		}
+		return isDenoAllowReadValue(value)
+	case "--deny-write":
+		if !hasDenoRuntimeCandidateAfter(fields, nextStart, end) {
+			return false
+		}
+		return isDenoAllowWriteValue(value)
+	case "--deny-net":
+		if !hasDenoRuntimeCandidateAfter(fields, nextStart, end) {
+			return false
+		}
+		return isDenoAllowNetValue(value)
+	case "--deny-env":
+		if !hasDenoRuntimeCandidateAfter(fields, nextStart, end) {
+			return false
+		}
+		return isDenoAllowEnvValue(value)
+	case "--deny-run":
+		if !hasDenoRuntimeCandidateAfter(fields, nextStart, end) {
+			return false
+		}
+		return isDenoAllowRunValue(value)
+	case "--deny-ffi":
+		if !hasDenoRuntimeCandidateAfter(fields, nextStart, end) {
+			return false
+		}
+		return isDenoAllowFFIValue(value)
+	case "--deny-import":
+		if !hasDenoRuntimeCandidateAfter(fields, nextStart, end) {
+			return false
+		}
+		return isDenoAllowImportValue(value)
+	case "--deny-sys":
 		if !hasDenoRuntimeCandidateAfter(fields, nextStart, end) {
 			return false
 		}

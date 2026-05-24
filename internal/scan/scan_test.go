@@ -2169,6 +2169,22 @@ func TestUnpinnedRuntimeToolDetection(t *testing.T) {
 		{line: "deno run -S hostname npm:create-next-app@15.4.1", want: false},
 		{line: "deno run --allow-hrtime npm:create-next-app@latest", want: true},
 		{line: "deno run --allow-hrtime npm:create-next-app@15.4.1", want: false},
+		{line: "deno run --deny-read . npm:create-next-app@latest", want: true},
+		{line: "deno run --deny-read . npm:create-next-app@15.4.1", want: false},
+		{line: "deno run --deny-write . npm:create-next-app@latest", want: true},
+		{line: "deno run --deny-write . npm:create-next-app@15.4.1", want: false},
+		{line: "deno run --deny-net deno.land npm:create-next-app@latest", want: true},
+		{line: "deno run --deny-net deno.land npm:create-next-app@15.4.1", want: false},
+		{line: "deno run --deny-env PATH npm:create-next-app@latest", want: true},
+		{line: "deno run --deny-env PATH npm:create-next-app@15.4.1", want: false},
+		{line: "deno run --deny-sys hostname npm:create-next-app@latest", want: true},
+		{line: "deno run --deny-sys hostname npm:create-next-app@15.4.1", want: false},
+		{line: "deno run --deny-run deno npm:create-next-app@latest", want: true},
+		{line: "deno run --deny-run deno npm:create-next-app@15.4.1", want: false},
+		{line: "deno run --deny-ffi ./native.so npm:create-next-app@latest", want: true},
+		{line: "deno run --deny-ffi ./native.so npm:create-next-app@15.4.1", want: false},
+		{line: "deno run --deny-import deno.land npm:create-next-app@latest", want: true},
+		{line: "deno run --deny-import deno.land npm:create-next-app@15.4.1", want: false},
 		{line: "DENO RUN -R . npm:create-next-app@latest", want: true},
 		{line: "Deno Run -E PATH npm:create-next-app@15.4.1", want: false},
 		{line: "deno x npm:create-vite", want: true},
@@ -2778,6 +2794,22 @@ func TestIsUnpinnedDenoNpmRuntimeLine(t *testing.T) {
 		{line: "deno run -S hostname npm:create-next-app@15.4.1", want: false},
 		{line: "deno run --allow-hrtime npm:create-next-app@latest", want: true},
 		{line: "deno run --allow-hrtime npm:create-next-app@15.4.1", want: false},
+		{line: "deno run --deny-read . npm:create-next-app@latest", want: true},
+		{line: "deno run --deny-read . npm:create-next-app@15.4.1", want: false},
+		{line: "deno run --deny-write . npm:create-next-app@latest", want: true},
+		{line: "deno run --deny-write . npm:create-next-app@15.4.1", want: false},
+		{line: "deno run --deny-net deno.land npm:create-next-app@latest", want: true},
+		{line: "deno run --deny-net deno.land npm:create-next-app@15.4.1", want: false},
+		{line: "deno run --deny-env PATH npm:create-next-app@latest", want: true},
+		{line: "deno run --deny-env PATH npm:create-next-app@15.4.1", want: false},
+		{line: "deno run --deny-sys hostname npm:create-next-app@latest", want: true},
+		{line: "deno run --deny-sys hostname npm:create-next-app@15.4.1", want: false},
+		{line: "deno run --deny-run deno npm:create-next-app@latest", want: true},
+		{line: "deno run --deny-run deno npm:create-next-app@15.4.1", want: false},
+		{line: "deno run --deny-ffi ./native.so npm:create-next-app@latest", want: true},
+		{line: "deno run --deny-ffi ./native.so npm:create-next-app@15.4.1", want: false},
+		{line: "deno run --deny-import deno.land npm:create-next-app@latest", want: true},
+		{line: "deno run --deny-import deno.land npm:create-next-app@15.4.1", want: false},
 		{line: "deno npm:create-vite@latest", want: true},
 		{line: "deno npm:create-vite@5.2.0", want: false},
 		{line: "deno", want: false},
@@ -3096,6 +3128,30 @@ func TestNextDenoRuntimeTarget(t *testing.T) {
 			ok:     true,
 		},
 		{
+			name:   "consumes deny-read value and returns following target",
+			fields: []string{"deno", "run", "--deny-read", ".", "npm:create-next-app@latest"},
+			start:  2,
+			end:    5,
+			want:   "npm:create-next-app@latest",
+			ok:     true,
+		},
+		{
+			name:   "consumes deny-net value and returns following target",
+			fields: []string{"deno", "run", "--deny-net", "deno.land", "npm:create-next-app@latest"},
+			start:  2,
+			end:    5,
+			want:   "npm:create-next-app@latest",
+			ok:     true,
+		},
+		{
+			name:   "consumes deny-env value and returns following target",
+			fields: []string{"deno", "run", "--deny-env", "PATH", "npm:create-next-app@latest"},
+			start:  2,
+			end:    5,
+			want:   "npm:create-next-app@latest",
+			ok:     true,
+		},
+		{
 			name:   "returns false when start exceeds end",
 			fields: []string{"deno", "run", "npm:cowsay"},
 			start:  5,
@@ -3333,6 +3389,98 @@ func TestIsKnownDenoOptionalFlagValue(t *testing.T) {
 		fields := []string{"deno", "run", "--allow-sys", "hostname"}
 		if got := isKnownDenoOptionalFlagValue("--allow-sys", "hostname", fields, 4, len(fields)); got {
 			t.Fatalf("isKnownDenoOptionalFlagValue(--allow-sys,hostname) = %v, want false", got)
+		}
+	})
+
+	t.Run("deny permission variants consume values when candidate follows", func(t *testing.T) {
+		fields := []string{"deno", "run", "--deny-read", ".", "main.ts"}
+		if got := isKnownDenoOptionalFlagValue("--deny-read", ".", fields, 4, len(fields)); !got {
+			t.Fatalf("isKnownDenoOptionalFlagValue(--deny-read,.) = %v, want true", got)
+		}
+		fields = []string{"deno", "run", "--deny-write", ".", "main.ts"}
+		if got := isKnownDenoOptionalFlagValue("--deny-write", ".", fields, 4, len(fields)); !got {
+			t.Fatalf("isKnownDenoOptionalFlagValue(--deny-write,.) = %v, want true", got)
+		}
+		fields = []string{"deno", "run", "--deny-net", "deno.land", "main.ts"}
+		if got := isKnownDenoOptionalFlagValue("--deny-net", "deno.land", fields, 4, len(fields)); !got {
+			t.Fatalf("isKnownDenoOptionalFlagValue(--deny-net,deno.land) = %v, want true", got)
+		}
+		fields = []string{"deno", "run", "--deny-env", "PATH", "main.ts"}
+		if got := isKnownDenoOptionalFlagValue("--deny-env", "PATH", fields, 4, len(fields)); !got {
+			t.Fatalf("isKnownDenoOptionalFlagValue(--deny-env,PATH) = %v, want true", got)
+		}
+		fields = []string{"deno", "run", "--deny-run", "deno", "main.ts"}
+		if got := isKnownDenoOptionalFlagValue("--deny-run", "deno", fields, 4, len(fields)); !got {
+			t.Fatalf("isKnownDenoOptionalFlagValue(--deny-run,deno) = %v, want true", got)
+		}
+		fields = []string{"deno", "run", "--deny-ffi", "./native.so", "main.ts"}
+		if got := isKnownDenoOptionalFlagValue("--deny-ffi", "./native.so", fields, 4, len(fields)); !got {
+			t.Fatalf("isKnownDenoOptionalFlagValue(--deny-ffi,./native.so) = %v, want true", got)
+		}
+		fields = []string{"deno", "run", "--deny-import", "deno.land", "main.ts"}
+		if got := isKnownDenoOptionalFlagValue("--deny-import", "deno.land", fields, 4, len(fields)); !got {
+			t.Fatalf("isKnownDenoOptionalFlagValue(--deny-import,deno.land) = %v, want true", got)
+		}
+		fields = []string{"deno", "run", "--deny-sys", "hostname", "main.ts"}
+		if got := isKnownDenoOptionalFlagValue("--deny-sys", "hostname", fields, 4, len(fields)); !got {
+			t.Fatalf("isKnownDenoOptionalFlagValue(--deny-sys,hostname) = %v, want true", got)
+		}
+	})
+
+	t.Run("deny permission variants return false for invalid values", func(t *testing.T) {
+		fields := []string{"deno", "run", "--deny-read", ".", "main.ts"}
+		if got := isKnownDenoOptionalFlagValue("--deny-read", "npm:create-vite", fields, 4, len(fields)); got {
+			t.Fatalf("isKnownDenoOptionalFlagValue(--deny-read,npm:create-vite) = %v, want false", got)
+		}
+		fields = []string{"deno", "run", "--deny-write", ".", "main.ts"}
+		if got := isKnownDenoOptionalFlagValue("--deny-write", "npm:create-vite", fields, 4, len(fields)); got {
+			t.Fatalf("isKnownDenoOptionalFlagValue(--deny-write,npm:create-vite) = %v, want false", got)
+		}
+		fields = []string{"deno", "run", "--deny-net", "deno.land", "main.ts"}
+		if got := isKnownDenoOptionalFlagValue("--deny-net", "local-path", fields, 4, len(fields)); got {
+			t.Fatalf("isKnownDenoOptionalFlagValue(--deny-net,local-path) = %v, want false", got)
+		}
+		fields = []string{"deno", "run", "--deny-env", "PATH", "main.ts"}
+		if got := isKnownDenoOptionalFlagValue("--deny-env", "1BAD", fields, 4, len(fields)); got {
+			t.Fatalf("isKnownDenoOptionalFlagValue(--deny-env,1BAD) = %v, want false", got)
+		}
+		fields = []string{"deno", "run", "--deny-run", "deno", "main.ts"}
+		if got := isKnownDenoOptionalFlagValue("--deny-run", "npm:create-vite", fields, 4, len(fields)); got {
+			t.Fatalf("isKnownDenoOptionalFlagValue(--deny-run,npm:create-vite) = %v, want false", got)
+		}
+		fields = []string{"deno", "run", "--deny-ffi", "./native.so", "main.ts"}
+		if got := isKnownDenoOptionalFlagValue("--deny-ffi", "npm:create-vite", fields, 4, len(fields)); got {
+			t.Fatalf("isKnownDenoOptionalFlagValue(--deny-ffi,npm:create-vite) = %v, want false", got)
+		}
+		fields = []string{"deno", "run", "--deny-import", "deno.land", "main.ts"}
+		if got := isKnownDenoOptionalFlagValue("--deny-import", "npm:create-vite", fields, 4, len(fields)); got {
+			t.Fatalf("isKnownDenoOptionalFlagValue(--deny-import,npm:create-vite) = %v, want false", got)
+		}
+		fields = []string{"deno", "run", "--deny-sys", "hostname", "main.ts"}
+		if got := isKnownDenoOptionalFlagValue("--deny-sys", "1bad", fields, 4, len(fields)); got {
+			t.Fatalf("isKnownDenoOptionalFlagValue(--deny-sys,1bad) = %v, want false", got)
+		}
+	})
+
+	t.Run("deny permission variants return false without following target", func(t *testing.T) {
+		cases := []struct {
+			flag  string
+			value string
+		}{
+			{flag: "--deny-read", value: "."},
+			{flag: "--deny-write", value: "."},
+			{flag: "--deny-net", value: "deno.land"},
+			{flag: "--deny-env", value: "PATH"},
+			{flag: "--deny-run", value: "deno"},
+			{flag: "--deny-ffi", value: "./native.so"},
+			{flag: "--deny-import", value: "deno.land"},
+			{flag: "--deny-sys", value: "hostname"},
+		}
+		for _, tc := range cases {
+			fields := []string{"deno", "run", tc.flag, tc.value}
+			if got := isKnownDenoOptionalFlagValue(tc.flag, tc.value, fields, 4, len(fields)); got {
+				t.Fatalf("isKnownDenoOptionalFlagValue(%s,%s) = %v, want false", tc.flag, tc.value, got)
+			}
 		}
 	})
 
@@ -3612,6 +3760,7 @@ func TestIsDenoAllowSysValue(t *testing.T) {
 		{value: "*", want: true},
 		{value: "1invalid", want: false},
 		{value: "npm:create-vite", want: false},
+		{value: ",", want: false},
 		{value: "--bad", want: false},
 		{value: "", want: false},
 	}
