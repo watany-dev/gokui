@@ -2132,6 +2132,9 @@ func TestUnpinnedRuntimeToolDetection(t *testing.T) {
 		{line: "go run -- github.com/acme/x@latest", want: true},
 		{line: "go run -- github.com/acme/x@v1.2.3", want: false},
 		{line: "go run -- github.com/acme/x", want: true},
+		{line: "go -C /tmp run github.com/acme/x@latest", want: true},
+		{line: "go -C /tmp run github.com/acme/x@v1.2.3", want: false},
+		{line: "go -C=/tmp run github.com/acme/x@latest", want: true},
 		{line: "go run ./cmd/tool", want: false},
 		{line: "go run ../cmd/tool", want: false},
 		{line: "go run main.go", want: false},
@@ -2539,6 +2542,82 @@ func TestNextGoRunTarget(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestFindGoRunArgsStart(t *testing.T) {
+	cases := []struct {
+		name   string
+		fields []string
+		want   int
+		ok     bool
+	}{
+		{
+			name:   "direct go run",
+			fields: []string{"go", "run", "github.com/acme/x@latest"},
+			want:   2,
+			ok:     true,
+		},
+		{
+			name:   "go C-flag before run",
+			fields: []string{"go", "-C", "/tmp", "run", "github.com/acme/x@latest"},
+			want:   4,
+			ok:     true,
+		},
+		{
+			name:   "go C-equals before run",
+			fields: []string{"go", "-C=/tmp", "run", "github.com/acme/x@latest"},
+			want:   3,
+			ok:     true,
+		},
+		{
+			name:   "other subcommand does not match",
+			fields: []string{"go", "test", "./..."},
+			want:   -1,
+			ok:     false,
+		},
+		{
+			name:   "unknown pre-subcommand flag does not match",
+			fields: []string{"go", "-unknown", "run", "github.com/acme/x@latest"},
+			want:   -1,
+			ok:     false,
+		},
+		{
+			name:   "run without target does not match",
+			fields: []string{"go", "run"},
+			want:   -1,
+			ok:     false,
+		},
+		{
+			name:   "C-flag without value does not match",
+			fields: []string{"go", "-C"},
+			want:   -1,
+			ok:     false,
+		},
+		{
+			name:   "skips empty tokens",
+			fields: []string{"go", "", "run", "github.com/acme/x@latest"},
+			want:   3,
+			ok:     true,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got, ok := findGoRunArgsStart(tc.fields, 0)
+			if ok != tc.ok || got != tc.want {
+				t.Fatalf("findGoRunArgsStart(%v) = (%d, %v), want (%d, %v)", tc.fields, got, ok, tc.want, tc.ok)
+			}
+		})
+	}
+
+	t.Run("returns false for invalid go token index", func(t *testing.T) {
+		fields := []string{"go", "run", "github.com/acme/x@latest"}
+		if got, ok := findGoRunArgsStart(fields, -1); ok || got != -1 {
+			t.Fatalf("findGoRunArgsStart(%v, -1) = (%d, %v), want (-1, false)", fields, got, ok)
+		}
+		if got, ok := findGoRunArgsStart(fields, len(fields)); ok || got != -1 {
+			t.Fatalf("findGoRunArgsStart(%v, len) = (%d, %v), want (-1, false)", fields, got, ok)
+		}
+	})
 }
 
 func TestNormalizeLauncherToken(t *testing.T) {

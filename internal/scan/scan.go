@@ -1432,10 +1432,11 @@ func isUnpinnedLauncherCommand(fields []string, token string, tokenIndex int) bo
 		packageRef = sanitizeRuntimeToken(packageRef)
 		return isUnpinnedPackageRef(packageRef)
 	case "go":
-		if tokenIndex+2 >= len(fields) || fields[tokenIndex+1] != "run" {
+		runArgsStart, ok := findGoRunArgsStart(fields, tokenIndex)
+		if !ok {
 			return false
 		}
-		target, ok := nextGoRunTarget(fields, tokenIndex+2, len(fields))
+		target, ok := nextGoRunTarget(fields, runArgsStart, len(fields))
 		if !ok {
 			return false
 		}
@@ -1683,6 +1684,39 @@ func isExplicitPackageLikeRef(ref string) bool {
 		return false
 	}
 	return strings.Contains(ref, "/")
+}
+
+func findGoRunArgsStart(fields []string, tokenIndex int) (int, bool) {
+	if tokenIndex < 0 || tokenIndex >= len(fields) {
+		return -1, false
+	}
+	for i := tokenIndex + 1; i < len(fields); i++ {
+		token := strings.TrimSpace(fields[i])
+		if token == "" {
+			continue
+		}
+		if token == "run" {
+			if i+1 >= len(fields) {
+				return -1, false
+			}
+			return i + 1, true
+		}
+		// `go -C <dir> run ...` is a common pre-subcommand form.
+		if token == "-c" || token == "-C" {
+			i++
+			continue
+		}
+		if strings.HasPrefix(token, "-c=") || strings.HasPrefix(token, "-C=") {
+			continue
+		}
+		if strings.HasPrefix(token, "-") {
+			// Unknown pre-subcommand flags are treated as non-match.
+			return -1, false
+		}
+		// Another subcommand (`go test`, `go build`, etc.)
+		return -1, false
+	}
+	return -1, false
 }
 
 func nextGoRunTarget(fields []string, start int, end int) (string, bool) {
