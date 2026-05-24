@@ -73,6 +73,7 @@ var (
 	hexSubshellExec                 = regexp.MustCompile(`(?i)\b(?:sh|bash|zsh|pwsh|powershell|eval|python3?|node|ruby|perl)\b[^\n]{0,220}\$\([^)\n]{0,260}\b(?:xxd\s+-r(?:\s+-p)?|unhexlify|fromhex|hexdecode)\b[^)\n]{0,200}\)`)
 	powerShellFromHexExecPattern    = regexp.MustCompile(`(?i)(?:\b(?:iex|invoke-expression)\b[^\n]{0,320}\bfromhexstring\s*\(|\bfromhexstring\s*\([^\n]{0,320}\b(?:iex|invoke-expression)\b)`)
 	encodedCmdExec                  = regexp.MustCompile(`(?i)\b(?:powershell|pwsh)(?:\.exe)?\b[^\n]{0,240}\s-(?:encodedcommand|enc)\s+[a-z0-9+/=]{12,}\b`)
+	encodedCmdExecVariableArg       = regexp.MustCompile(`(?i)\b(?:powershell|pwsh)(?:\.exe)?\b[^\n]{0,240}\s-(?:encodedcommand|enc)\s+(?:\$[a-z0-9_:{\}\.\(\)\-]+|%[a-z0-9_]+%)`)
 
 	promptOverridePattern = regexp.MustCompile(`(?i)\b(?:ignore|override|bypass)\b.{0,80}\b(?:previous|prior|system|higher|earlier)\b.{0,40}\b(?:instruction|instructions|prompt|prompts)\b`)
 
@@ -120,9 +121,13 @@ var scriptLikeExtensions = map[string]struct{}{
 	".cmd":  {},
 	".py":   {},
 	".js":   {},
+	".jsx":  {},
 	".ts":   {},
+	".tsx":  {},
 	".mjs":  {},
 	".cjs":  {},
+	".psm1": {},
+	".psd1": {},
 	".rb":   {},
 	".pl":   {},
 	".pm":   {},
@@ -553,7 +558,7 @@ func scanVariantThreatFindings(variant string, target scanTarget, lineNum int) [
 			Summary:  "hex-decoded payload reaches interpreter execution",
 		})
 	}
-	if encodedCmdExec.MatchString(variant) {
+	if encodedCmdExec.MatchString(variant) || encodedCmdExecVariableArg.MatchString(variant) {
 		findings = append(findings, Finding{
 			ID:       "ENCODED_COMMAND_EXEC",
 			Severity: "critical",
