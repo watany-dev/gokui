@@ -2135,6 +2135,26 @@ func TestUnpinnedRuntimeToolDetection(t *testing.T) {
 		{line: "deno run --allow-import deno.land npm:create-next-app@15.4.1", want: false},
 		{line: "deno run --allow-import=deno.land npm:create-next-app@latest", want: true},
 		{line: "deno run --allow-import=deno.land npm:create-next-app@15.4.1", want: false},
+		{line: "deno run --allow-read=. npm:create-next-app@latest", want: true},
+		{line: "deno run --allow-read=. npm:create-next-app@15.4.1", want: false},
+		{line: "deno run --allow-read . npm:create-next-app@latest", want: true},
+		{line: "deno run --allow-read . npm:create-next-app@15.4.1", want: false},
+		{line: "deno run -R . npm:create-next-app@latest", want: true},
+		{line: "deno run -R . npm:create-next-app@15.4.1", want: false},
+		{line: "deno run --allow-net=deno.land npm:create-next-app@latest", want: true},
+		{line: "deno run --allow-net=deno.land npm:create-next-app@15.4.1", want: false},
+		{line: "deno run --allow-net deno.land npm:create-next-app@latest", want: true},
+		{line: "deno run --allow-net deno.land npm:create-next-app@15.4.1", want: false},
+		{line: "deno run -N deno.land npm:create-next-app@latest", want: true},
+		{line: "deno run -N deno.land npm:create-next-app@15.4.1", want: false},
+		{line: "deno run --allow-env=PATH npm:create-next-app@latest", want: true},
+		{line: "deno run --allow-env=PATH npm:create-next-app@15.4.1", want: false},
+		{line: "deno run --allow-env PATH npm:create-next-app@latest", want: true},
+		{line: "deno run --allow-env PATH npm:create-next-app@15.4.1", want: false},
+		{line: "deno run -E PATH npm:create-next-app@latest", want: true},
+		{line: "deno run -E PATH npm:create-next-app@15.4.1", want: false},
+		{line: "DENO RUN -R . npm:create-next-app@latest", want: true},
+		{line: "Deno Run -E PATH npm:create-next-app@15.4.1", want: false},
 		{line: "deno x npm:create-vite", want: true},
 		{line: "deno x npm:create-vite@5.2.0", want: false},
 		{line: "deno x -p npm:create-vite@5.2.0 create-vite", want: false},
@@ -2708,6 +2728,24 @@ func TestIsUnpinnedDenoNpmRuntimeLine(t *testing.T) {
 		{line: "deno run --allow-import deno.land npm:create-next-app@15.4.1", want: false},
 		{line: "deno run --allow-import=deno.land npm:create-next-app@latest", want: true},
 		{line: "deno run --allow-import=deno.land npm:create-next-app@15.4.1", want: false},
+		{line: "deno run --allow-read=. npm:create-next-app@latest", want: true},
+		{line: "deno run --allow-read=. npm:create-next-app@15.4.1", want: false},
+		{line: "deno run --allow-read . npm:create-next-app@latest", want: true},
+		{line: "deno run --allow-read . npm:create-next-app@15.4.1", want: false},
+		{line: "deno run -R . npm:create-next-app@latest", want: true},
+		{line: "deno run -R . npm:create-next-app@15.4.1", want: false},
+		{line: "deno run --allow-net=deno.land npm:create-next-app@latest", want: true},
+		{line: "deno run --allow-net=deno.land npm:create-next-app@15.4.1", want: false},
+		{line: "deno run --allow-net deno.land npm:create-next-app@latest", want: true},
+		{line: "deno run --allow-net deno.land npm:create-next-app@15.4.1", want: false},
+		{line: "deno run -N deno.land npm:create-next-app@latest", want: true},
+		{line: "deno run -N deno.land npm:create-next-app@15.4.1", want: false},
+		{line: "deno run --allow-env=PATH npm:create-next-app@latest", want: true},
+		{line: "deno run --allow-env=PATH npm:create-next-app@15.4.1", want: false},
+		{line: "deno run --allow-env PATH npm:create-next-app@latest", want: true},
+		{line: "deno run --allow-env PATH npm:create-next-app@15.4.1", want: false},
+		{line: "deno run -E PATH npm:create-next-app@latest", want: true},
+		{line: "deno run -E PATH npm:create-next-app@15.4.1", want: false},
 		{line: "deno npm:create-vite@latest", want: true},
 		{line: "deno npm:create-vite@5.2.0", want: false},
 		{line: "deno", want: false},
@@ -2970,6 +3008,30 @@ func TestNextDenoRuntimeTarget(t *testing.T) {
 			ok:     true,
 		},
 		{
+			name:   "consumes allow-read value and returns following target",
+			fields: []string{"deno", "run", "--allow-read", ".", "npm:create-next-app@latest"},
+			start:  2,
+			end:    5,
+			want:   "npm:create-next-app@latest",
+			ok:     true,
+		},
+		{
+			name:   "consumes allow-net value and returns following target",
+			fields: []string{"deno", "run", "--allow-net", "deno.land", "npm:create-next-app@latest"},
+			start:  2,
+			end:    5,
+			want:   "npm:create-next-app@latest",
+			ok:     true,
+		},
+		{
+			name:   "consumes allow-env value and returns following target",
+			fields: []string{"deno", "run", "--allow-env", "PATH", "npm:create-next-app@latest"},
+			start:  2,
+			end:    5,
+			want:   "npm:create-next-app@latest",
+			ok:     true,
+		},
+		{
 			name:   "returns false when start exceeds end",
 			fields: []string{"deno", "run", "npm:cowsay"},
 			start:  5,
@@ -3162,6 +3224,55 @@ func TestIsKnownDenoOptionalFlagValue(t *testing.T) {
 		}
 	})
 
+	t.Run("allow-read/net/env consume values when candidate follows", func(t *testing.T) {
+		fields := []string{"deno", "run", "--allow-read", ".", "main.ts"}
+		if got := isKnownDenoOptionalFlagValue("--allow-read", ".", fields, 4, len(fields)); !got {
+			t.Fatalf("isKnownDenoOptionalFlagValue(--allow-read,.) = %v, want true", got)
+		}
+		fields = []string{"deno", "run", "--allow-net", "deno.land", "main.ts"}
+		if got := isKnownDenoOptionalFlagValue("--allow-net", "deno.land", fields, 4, len(fields)); !got {
+			t.Fatalf("isKnownDenoOptionalFlagValue(--allow-net,deno.land) = %v, want true", got)
+		}
+		fields = []string{"deno", "run", "--allow-env", "PATH", "main.ts"}
+		if got := isKnownDenoOptionalFlagValue("--allow-env", "PATH", fields, 4, len(fields)); !got {
+			t.Fatalf("isKnownDenoOptionalFlagValue(--allow-env,PATH) = %v, want true", got)
+		}
+	})
+
+	t.Run("allow-read/net/env return false without following target", func(t *testing.T) {
+		fields := []string{"deno", "run", "--allow-read", "."}
+		if got := isKnownDenoOptionalFlagValue("--allow-read", ".", fields, 4, len(fields)); got {
+			t.Fatalf("isKnownDenoOptionalFlagValue(--allow-read,.) = %v, want false", got)
+		}
+		fields = []string{"deno", "run", "--allow-net", "deno.land"}
+		if got := isKnownDenoOptionalFlagValue("--allow-net", "deno.land", fields, 4, len(fields)); got {
+			t.Fatalf("isKnownDenoOptionalFlagValue(--allow-net,deno.land) = %v, want false", got)
+		}
+		fields = []string{"deno", "run", "--allow-env", "PATH"}
+		if got := isKnownDenoOptionalFlagValue("--allow-env", "PATH", fields, 4, len(fields)); got {
+			t.Fatalf("isKnownDenoOptionalFlagValue(--allow-env,PATH) = %v, want false", got)
+		}
+	})
+
+	t.Run("short permission flags are recognized distinctly from reload", func(t *testing.T) {
+		fields := []string{"deno", "run", "-R", ".", "main.ts"}
+		if got := isKnownDenoOptionalFlagValue("-R", ".", fields, 4, len(fields)); !got {
+			t.Fatalf("isKnownDenoOptionalFlagValue(-R,.) = %v, want true", got)
+		}
+		fields = []string{"deno", "run", "-N", "deno.land", "main.ts"}
+		if got := isKnownDenoOptionalFlagValue("-N", "deno.land", fields, 4, len(fields)); !got {
+			t.Fatalf("isKnownDenoOptionalFlagValue(-N,deno.land) = %v, want true", got)
+		}
+		fields = []string{"deno", "run", "-E", "PATH", "main.ts"}
+		if got := isKnownDenoOptionalFlagValue("-E", "PATH", fields, 4, len(fields)); !got {
+			t.Fatalf("isKnownDenoOptionalFlagValue(-E,PATH) = %v, want true", got)
+		}
+		fields = []string{"deno", "run", "-r", "npm:chalk@5", "main.ts"}
+		if got := isKnownDenoOptionalFlagValue("-r", "npm:chalk@5", fields, 4, len(fields)); !got {
+			t.Fatalf("isKnownDenoOptionalFlagValue(-r,npm:chalk@5) = %v, want true", got)
+		}
+	})
+
 	t.Run("rejects empty and flag-like values", func(t *testing.T) {
 		fields := []string{"deno", "run", "main.ts"}
 		if got := isKnownDenoOptionalFlagValue("--vendor", "", fields, 0, len(fields)); got {
@@ -3293,6 +3404,84 @@ func TestIsHostLikeToken(t *testing.T) {
 	for _, tc := range cases {
 		if got := isHostLikeToken(tc.token); got != tc.want {
 			t.Fatalf("isHostLikeToken(%q) = %v, want %v", tc.token, got, tc.want)
+		}
+	}
+}
+
+func TestIsDenoAllowReadValue(t *testing.T) {
+	cases := []struct {
+		value string
+		want  bool
+	}{
+		{value: ".", want: true},
+		{value: "./dir,../other", want: true},
+		{value: "C:\\tmp", want: true},
+		{value: "npm:create-vite", want: false},
+		{value: "jsr:@std/http", want: false},
+		{value: "", want: false},
+		{value: "--bad", want: false},
+		{value: ",", want: false},
+	}
+	for _, tc := range cases {
+		if got := isDenoAllowReadValue(tc.value); got != tc.want {
+			t.Fatalf("isDenoAllowReadValue(%q) = %v, want %v", tc.value, got, tc.want)
+		}
+	}
+}
+
+func TestIsDenoAllowNetValue(t *testing.T) {
+	cases := []struct {
+		value string
+		want  bool
+	}{
+		{value: "deno.land", want: true},
+		{value: "1.1.1.1:443", want: true},
+		{value: "*.example.com", want: true},
+		{value: "npm:create-vite", want: false},
+		{value: "local-path", want: false},
+		{value: "", want: false},
+		{value: "--bad", want: false},
+	}
+	for _, tc := range cases {
+		if got := isDenoAllowNetValue(tc.value); got != tc.want {
+			t.Fatalf("isDenoAllowNetValue(%q) = %v, want %v", tc.value, got, tc.want)
+		}
+	}
+}
+
+func TestIsDenoAllowEnvValue(t *testing.T) {
+	cases := []struct {
+		value string
+		want  bool
+	}{
+		{value: "PATH", want: true},
+		{value: "HOME,PATH", want: true},
+		{value: "*", want: true},
+		{value: "1INVALID", want: false},
+		{value: "BAD-NAME", want: false},
+		{value: "--bad", want: false},
+		{value: "", want: false},
+	}
+	for _, tc := range cases {
+		if got := isDenoAllowEnvValue(tc.value); got != tc.want {
+			t.Fatalf("isDenoAllowEnvValue(%q) = %v, want %v", tc.value, got, tc.want)
+		}
+	}
+}
+
+func TestCanonicalDenoFlagToken(t *testing.T) {
+	cases := []struct {
+		in   string
+		want string
+	}{
+		{in: "--ALLOW-READ", want: "--allow-read"},
+		{in: "--allow-net", want: "--allow-net"},
+		{in: "-R", want: "-R"},
+		{in: "-r", want: "-r"},
+	}
+	for _, tc := range cases {
+		if got := canonicalDenoFlagToken(tc.in); got != tc.want {
+			t.Fatalf("canonicalDenoFlagToken(%q) = %q, want %q", tc.in, got, tc.want)
 		}
 	}
 }
