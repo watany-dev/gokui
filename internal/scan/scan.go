@@ -1316,6 +1316,9 @@ func isUnpinnedRuntimeToolLine(line string) bool {
 	if isRemoteScriptImportLine(lowerLine) {
 		return true
 	}
+	if isUnpinnedDenoNpmRuntimeLine(lowerLine) {
+		return true
+	}
 
 	fields := strings.Fields(lowerLine)
 	if len(fields) == 0 {
@@ -1538,6 +1541,175 @@ func isPinnedPackageVersion(version string) bool {
 	// Treat exact semver as pinned for package launchers. Dist-tags and ranges
 	// like "next", "^1.2.3", or "~1.2.3" remain floating.
 	return goSemverExactPattern.MatchString(lower)
+}
+
+func isUnpinnedDenoNpmRuntimeLine(lowerLine string) bool {
+	fields := strings.Fields(lowerLine)
+	if len(fields) < 2 || fields[0] != "deno" {
+		return false
+	}
+
+	start := 1
+	switch fields[1] {
+	case "run", "x":
+		start = 2
+	}
+
+	packageRefs := extractDenoNpmPackageRefs(fields, start, len(fields))
+	if len(packageRefs) > 0 {
+		for _, packageRef := range packageRefs {
+			if isUnpinnedDenoNpmSpecifier(packageRef) {
+				return true
+			}
+		}
+		return false
+	}
+
+	target, ok := nextDenoRuntimeTarget(fields, start, len(fields))
+	if !ok {
+		return false
+	}
+	return isUnpinnedDenoNpmSpecifier(target)
+}
+
+func extractDenoNpmPackageRefs(fields []string, start int, end int) []string {
+	if start < 0 {
+		start = 0
+	}
+	if end > len(fields) {
+		end = len(fields)
+	}
+	if start >= end {
+		return nil
+	}
+
+	out := make([]string, 0, 2)
+	for i := start; i < end; i++ {
+		token := strings.ToLower(strings.TrimSpace(fields[i]))
+		switch {
+		case token == "--package" || token == "-p":
+			if i+1 >= end {
+				continue
+			}
+			next := sanitizeRuntimeToken(fields[i+1])
+			if next == "" || strings.HasPrefix(next, "-") {
+				continue
+			}
+			out = append(out, next)
+			i++
+		case strings.HasPrefix(token, "--package="):
+			ref := sanitizeRuntimeToken(strings.TrimPrefix(fields[i], "--package="))
+			if ref == "" {
+				continue
+			}
+			out = append(out, ref)
+		case strings.HasPrefix(token, "-p="):
+			ref := sanitizeRuntimeToken(strings.TrimPrefix(fields[i], "-p="))
+			if ref == "" {
+				continue
+			}
+			out = append(out, ref)
+		}
+	}
+	return out
+}
+
+func nextDenoRuntimeTarget(fields []string, start int, end int) (string, bool) {
+	if start < 0 {
+		start = 0
+	}
+	if end > len(fields) {
+		end = len(fields)
+	}
+	if start >= end {
+		return "", false
+	}
+
+	flagNeedsValue := map[string]struct{}{
+		"-c":                 {},
+		"--config":           {},
+		"--import-map":       {},
+		"--location":         {},
+		"--cert":             {},
+		"--lock":             {},
+		"--node-modules-dir": {},
+		"--seed":             {},
+		"--vendor":           {},
+		"-r":                 {},
+		"--reload":           {},
+		"--package":          {},
+		"-p":                 {},
+	}
+
+	for i := start; i < end; i++ {
+		token := strings.TrimSpace(fields[i])
+		if token == "" {
+			continue
+		}
+		if token == "--" {
+			for j := i + 1; j < end; j++ {
+				candidate := sanitizeRuntimeToken(fields[j])
+				if candidate == "" {
+					continue
+				}
+				return candidate, true
+			}
+			return "", false
+		}
+		if strings.HasPrefix(token, "-") {
+			if strings.Contains(token, "=") {
+				continue
+			}
+			if _, needsValue := flagNeedsValue[strings.ToLower(token)]; needsValue {
+				i++
+			}
+			continue
+		}
+		return sanitizeRuntimeToken(token), true
+	}
+	return "", false
+}
+
+func isUnpinnedDenoNpmSpecifier(ref string) bool {
+	ref = strings.TrimSpace(sanitizeRuntimeToken(ref))
+	if !strings.HasPrefix(ref, "npm:") {
+		return false
+	}
+	spec := strings.TrimPrefix(ref, "npm:")
+	if spec == "" {
+		return false
+	}
+	if strings.HasPrefix(spec, "@") {
+		scopeSlash := strings.Index(spec, "/")
+		if scopeSlash < 0 {
+			return true
+		}
+		lastAt := strings.LastIndex(spec, "@")
+		if lastAt <= scopeSlash || lastAt == len(spec)-1 {
+			return true
+		}
+		version := spec[lastAt+1:]
+		if slash := strings.Index(version, "/"); slash >= 0 {
+			version = version[:slash]
+		}
+		if version == "" {
+			return true
+		}
+		return !isPinnedPackageVersion(version)
+	}
+
+	at := strings.Index(spec, "@")
+	if at < 0 {
+		return true
+	}
+	version := spec[at+1:]
+	if slash := strings.Index(version, "/"); slash >= 0 {
+		version = version[:slash]
+	}
+	if version == "" {
+		return true
+	}
+	return !isPinnedPackageVersion(version)
 }
 
 func nextNonFlagFieldWithIndex(fields []string, start int) (string, int, bool) {

@@ -2111,6 +2111,17 @@ func TestUnpinnedRuntimeToolDetection(t *testing.T) {
 		{line: "npx --package=@scope/tool@1.2.3 -c tool", want: false},
 		{line: "npx -c \"echo hi\"", want: false},
 		{line: "npx --yes", want: false},
+		{line: "deno run -A npm:create-next-app@latest", want: true},
+		{line: "deno run -A npm:create-next-app@15.4.1", want: false},
+		{line: "deno run --allow-read npm:cowsay@1.5.0", want: false},
+		{line: "deno run --allow-read npm:cowsay", want: true},
+		{line: "deno run --allow-read -- npm:create-next-app@latest", want: true},
+		{line: "deno x npm:create-vite", want: true},
+		{line: "deno x npm:create-vite@5.2.0", want: false},
+		{line: "deno x -p npm:create-vite@5.2.0 create-vite", want: false},
+		{line: "deno x -p npm:create-vite create-vite", want: true},
+		{line: "deno x --package npm:create-vite@5.2.0 create-vite", want: false},
+		{line: "deno x --package npm:create-vite create-vite", want: true},
 		{line: "go run github.com/acme/x@latest", want: true},
 		{line: "go run github.com/acme/x@main", want: true},
 		{line: "go run github.com/acme/x@master", want: true},
@@ -2618,6 +2629,199 @@ func TestFindGoRunArgsStart(t *testing.T) {
 			t.Fatalf("findGoRunArgsStart(%v, len) = (%d, %v), want (-1, false)", fields, got, ok)
 		}
 	})
+}
+
+func TestIsUnpinnedDenoNpmRuntimeLine(t *testing.T) {
+	cases := []struct {
+		line string
+		want bool
+	}{
+		{line: "deno run -A npm:create-next-app@latest", want: true},
+		{line: "deno run -A npm:create-next-app@15.4.1", want: false},
+		{line: "deno x npm:create-vite", want: true},
+		{line: "deno x npm:create-vite@5.2.0", want: false},
+		{line: "deno x -p npm:create-vite@5.2.0 create-vite", want: false},
+		{line: "deno x -p npm:create-vite create-vite", want: true},
+		{line: "deno npm:create-vite@latest", want: true},
+		{line: "deno npm:create-vite@5.2.0", want: false},
+		{line: "deno task start", want: false},
+		{line: "echo deno run npm:create-vite", want: false},
+		{line: "deno run --allow-read", want: false},
+	}
+	for _, tc := range cases {
+		if got := isUnpinnedDenoNpmRuntimeLine(tc.line); got != tc.want {
+			t.Fatalf("isUnpinnedDenoNpmRuntimeLine(%q) = %v, want %v", tc.line, got, tc.want)
+		}
+	}
+}
+
+func TestExtractDenoNpmPackageRefs(t *testing.T) {
+	fields := []string{"deno", "x", "-p", "npm:create-vite@5.2.0", "--package=npm:cowsay", "--package", "npm:prettier@3.3.2"}
+	got := extractDenoNpmPackageRefs(fields, 2, len(fields))
+	want := []string{"npm:create-vite@5.2.0", "npm:cowsay", "npm:prettier@3.3.2"}
+	if len(got) != len(want) {
+		t.Fatalf("extractDenoNpmPackageRefs() len = %d, want %d (%v)", len(got), len(want), got)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("extractDenoNpmPackageRefs()[%d] = %q, want %q", i, got[i], want[i])
+		}
+	}
+
+	t.Run("ignores invalid refs and handles bounds", func(t *testing.T) {
+		fields := []string{"deno", "x", "--package", "--", "-p=", "--package="}
+		got := extractDenoNpmPackageRefs(fields, -10, 99)
+		if len(got) != 0 {
+			t.Fatalf("extractDenoNpmPackageRefs() = %v, want empty", got)
+		}
+
+		got = extractDenoNpmPackageRefs(fields, 6, 3)
+		if got != nil {
+			t.Fatalf("extractDenoNpmPackageRefs() = %v, want nil for start>=end", got)
+		}
+	})
+
+	t.Run("extracts p-equals package ref", func(t *testing.T) {
+		fields := []string{"deno", "x", "-p=npm:create-vite@5.2.0"}
+		got := extractDenoNpmPackageRefs(fields, 2, len(fields))
+		if len(got) != 1 || got[0] != "npm:create-vite@5.2.0" {
+			t.Fatalf("extractDenoNpmPackageRefs() = %v, want [npm:create-vite@5.2.0]", got)
+		}
+	})
+}
+
+func TestNextDenoRuntimeTarget(t *testing.T) {
+	cases := []struct {
+		name   string
+		fields []string
+		start  int
+		end    int
+		want   string
+		ok     bool
+	}{
+		{
+			name:   "reads npm specifier target",
+			fields: []string{"deno", "run", "-A", "npm:create-next-app@latest"},
+			start:  2,
+			end:    4,
+			want:   "npm:create-next-app@latest",
+			ok:     true,
+		},
+		{
+			name:   "skips split-value flags",
+			fields: []string{"deno", "run", "--config", "deno.json", "--allow-read", "npm:cowsay"},
+			start:  2,
+			end:    6,
+			want:   "npm:cowsay",
+			ok:     true,
+		},
+		{
+			name:   "reads token after separator",
+			fields: []string{"deno", "run", "--allow-read", "--", "npm:cowsay"},
+			start:  2,
+			end:    5,
+			want:   "npm:cowsay",
+			ok:     true,
+		},
+		{
+			name:   "returns false when no target",
+			fields: []string{"deno", "run", "--allow-read"},
+			start:  2,
+			end:    3,
+			want:   "",
+			ok:     false,
+		},
+		{
+			name:   "skips equals-form flags",
+			fields: []string{"deno", "run", "--config=deno.json", "npm:cowsay"},
+			start:  2,
+			end:    4,
+			want:   "npm:cowsay",
+			ok:     true,
+		},
+		{
+			name:   "returns false when separator has no token",
+			fields: []string{"deno", "run", "--allow-read", "--"},
+			start:  2,
+			end:    4,
+			want:   "",
+			ok:     false,
+		},
+		{
+			name:   "clamps bounds and returns first token",
+			fields: []string{"deno", "run", "npm:cowsay"},
+			start:  -5,
+			end:    99,
+			want:   "deno",
+			ok:     true,
+		},
+		{
+			name:   "skips package flag and returns following target",
+			fields: []string{"deno", "x", "--package", "npm:create-vite@5.2.0", "create-vite"},
+			start:  2,
+			end:    5,
+			want:   "create-vite",
+			ok:     true,
+		},
+		{
+			name:   "skips package equals flag and returns following target",
+			fields: []string{"deno", "x", "--package=npm:create-vite@5.2.0", "create-vite"},
+			start:  2,
+			end:    4,
+			want:   "create-vite",
+			ok:     true,
+		},
+		{
+			name:   "skips generic split-value flag and returns target",
+			fields: []string{"deno", "run", "--seed", "42", "npm:create-next-app@latest"},
+			start:  2,
+			end:    5,
+			want:   "npm:create-next-app@latest",
+			ok:     true,
+		},
+		{
+			name:   "returns false when start exceeds end",
+			fields: []string{"deno", "run", "npm:cowsay"},
+			start:  5,
+			end:    3,
+			want:   "",
+			ok:     false,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got, ok := nextDenoRuntimeTarget(tc.fields, tc.start, tc.end)
+			if ok != tc.ok || got != tc.want {
+				t.Fatalf("nextDenoRuntimeTarget(%v) = (%q, %v), want (%q, %v)", tc.fields, got, ok, tc.want, tc.ok)
+			}
+		})
+	}
+}
+
+func TestIsUnpinnedDenoNpmSpecifier(t *testing.T) {
+	cases := []struct {
+		ref  string
+		want bool
+	}{
+		{ref: "npm:create-vite", want: true},
+		{ref: "npm:create-vite@", want: true},
+		{ref: "npm:create-vite@latest", want: true},
+		{ref: "npm:create-vite@5.2.0", want: false},
+		{ref: "npm:@scope/tool", want: true},
+		{ref: "npm:@scope/tool@next", want: true},
+		{ref: "npm:@scope/tool@1.2.3", want: false},
+		{ref: "npm:@scope", want: true},
+		{ref: "npm:@scope/tool@", want: true},
+		{ref: "npm:cowsay@1.5.0/cowthink", want: false},
+		{ref: "npm:cowsay/cowthink", want: true},
+		{ref: "npm:", want: false},
+		{ref: "jsr:@std/http/file-server", want: false},
+	}
+	for _, tc := range cases {
+		if got := isUnpinnedDenoNpmSpecifier(tc.ref); got != tc.want {
+			t.Fatalf("isUnpinnedDenoNpmSpecifier(%q) = %v, want %v", tc.ref, got, tc.want)
+		}
+	}
 }
 
 func TestNormalizeLauncherToken(t *testing.T) {
