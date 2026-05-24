@@ -1645,12 +1645,14 @@ func nextDenoRuntimeTarget(fields []string, start int, end int) (string, bool) {
 		"--strace-ops":    {},
 		"--strace-filter": {},
 		"--ext":           {},
+		"--log-level":     {},
 		"--v8-flags":      {},
 		"-p":              {},
 	}
 	flagOptionalKnownValue := map[string]struct{}{
 		"--reload":           {},
 		"-r":                 {},
+		"--no-check":         {},
 		"--coverage":         {},
 		"--inspect":          {},
 		"--inspect-brk":      {},
@@ -1749,6 +1751,11 @@ func isKnownDenoOptionalFlagValue(
 			return false
 		}
 		return isDenoCoverageValue(value)
+	case "--no-check":
+		if !hasDenoRuntimeCandidateAfter(fields, nextStart, end) {
+			return false
+		}
+		return isDenoNoCheckValue(value)
 	case "--inspect", "--inspect-brk", "--inspect-wait":
 		if !hasDenoRuntimeCandidateAfter(fields, nextStart, end) {
 			return false
@@ -1906,6 +1913,24 @@ func isDenoInspectValue(value string) bool {
 }
 
 func isDenoCoverageValue(value string) bool {
+	if value == "" || strings.HasPrefix(value, "-") {
+		return false
+	}
+	lower := strings.ToLower(value)
+	if strings.HasPrefix(lower, "npm:") || strings.HasPrefix(lower, "jsr:") ||
+		strings.HasPrefix(lower, "http://") || strings.HasPrefix(lower, "https://") {
+		return false
+	}
+	for _, part := range strings.Split(value, ",") {
+		token := strings.TrimSpace(part)
+		if token == "" || strings.HasPrefix(token, "-") {
+			return false
+		}
+	}
+	return true
+}
+
+func isDenoNoCheckValue(value string) bool {
 	if value == "" || strings.HasPrefix(value, "-") {
 		return false
 	}
@@ -2258,6 +2283,7 @@ func hasDenoRuntimeCandidateAfter(fields []string, start int, end int) bool {
 		"--strace-ops":    {},
 		"--strace-filter": {},
 		"--ext":           {},
+		"--log-level":     {},
 		"--v8-flags":      {},
 		"-p":              {},
 	}

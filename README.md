@@ -195,6 +195,9 @@ runtime target resolution so later runtime specifier targets remain pin-checked.
 Split `--coverage` forms and split `--v8-flags` forms are also interpreted
 before runtime target resolution so later runtime specifier targets remain
 pin-checked.
+Split `--no-check` forms and split `--log-level` forms are also interpreted
+before runtime target resolution so later runtime specifier targets remain
+pin-checked.
 Bounded base64/base64url/hex payload deobfuscation now rescans decoded text artifacts
 (depth-limited and size-limited, never executed) to catch hidden execution
 chains and decoded Unicode control/NFKC-drift signals.
