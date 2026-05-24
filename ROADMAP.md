@@ -105,6 +105,7 @@ tests/CI:
 - hardened go-run target extraction for split-value flags and separator forms
 - hardened go-run detection for pre-subcommand `go -C <dir> run ...` form
 - unpinned-runtime detection for `deno run/x` npm specifier execution paths
+- unpinned-runtime detection for `deno run/x` jsr specifier execution paths
 - dependency manifest scanning coverage for `package.json`, `pyproject.toml`,
   `requirements.txt`, `uv.lock`, `go.mod`, `Gemfile`, and `deno.json` as
   first-class scan inputs

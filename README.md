@@ -161,6 +161,7 @@ The same call-flag exclusion and separator handling are applied to `pnpm/yarn`
 Pre-subcommand forms such as `go -C <dir> run ...` are also parsed for pin checks.
 `deno run`/`deno x` npm-specifier execution (including `--package` forms) is
 also checked for unpinned package/version refs.
+`deno run`/`deno x` jsr-specifier execution is also checked for unpinned refs.
 Bounded base64/base64url/hex payload deobfuscation now rescans decoded text artifacts
 (depth-limited and size-limited, never executed) to catch hidden execution
 chains and decoded Unicode control/NFKC-drift signals.
