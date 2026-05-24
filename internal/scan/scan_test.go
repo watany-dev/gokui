@@ -2197,6 +2197,11 @@ func TestUnpinnedRuntimeToolDetection(t *testing.T) {
 		{line: "deno run --preload ./preload.ts npm:create-next-app@15.4.1", want: false},
 		{line: "deno run --watch src npm:create-next-app@latest", want: true},
 		{line: "deno run --watch src npm:create-next-app@15.4.1", want: false},
+		{line: "deno run --coverage coverage npm:create-next-app@latest", want: true},
+		{line: "deno run --coverage coverage npm:create-next-app@15.4.1", want: false},
+		{line: "deno run --coverage npm:create-next-app@latest", want: true},
+		{line: "deno run --v8-flags --harmony npm:create-next-app@latest", want: true},
+		{line: "deno run --v8-flags --harmony npm:create-next-app@15.4.1", want: false},
 		{line: "deno run --unstable-kv npm:create-next-app@latest", want: true},
 		{line: "deno run --unstable-kv npm:create-next-app@15.4.1", want: false},
 		{line: "deno run --unstable-broadcast-channel npm:create-next-app@latest", want: true},
@@ -2842,6 +2847,11 @@ func TestIsUnpinnedDenoNpmRuntimeLine(t *testing.T) {
 		{line: "deno run --preload ./preload.ts npm:create-next-app@15.4.1", want: false},
 		{line: "deno run --watch src npm:create-next-app@latest", want: true},
 		{line: "deno run --watch src npm:create-next-app@15.4.1", want: false},
+		{line: "deno run --coverage coverage npm:create-next-app@latest", want: true},
+		{line: "deno run --coverage coverage npm:create-next-app@15.4.1", want: false},
+		{line: "deno run --coverage npm:create-next-app@latest", want: true},
+		{line: "deno run --v8-flags --harmony npm:create-next-app@latest", want: true},
+		{line: "deno run --v8-flags --harmony npm:create-next-app@15.4.1", want: false},
 		{line: "deno run --unstable-kv npm:create-next-app@latest", want: true},
 		{line: "deno run --unstable-kv npm:create-next-app@15.4.1", want: false},
 		{line: "deno run --unstable-broadcast-channel npm:create-next-app@latest", want: true},
@@ -3232,6 +3242,30 @@ func TestNextDenoRuntimeTarget(t *testing.T) {
 			ok:     true,
 		},
 		{
+			name:   "consumes coverage split value and returns following target",
+			fields: []string{"deno", "run", "--coverage", "coverage", "npm:create-next-app@latest"},
+			start:  2,
+			end:    5,
+			want:   "npm:create-next-app@latest",
+			ok:     true,
+		},
+		{
+			name:   "does not consume coverage when next token is runtime target",
+			fields: []string{"deno", "run", "--coverage", "npm:create-next-app@latest"},
+			start:  2,
+			end:    4,
+			want:   "npm:create-next-app@latest",
+			ok:     true,
+		},
+		{
+			name:   "consumes v8-flags split value and returns following target",
+			fields: []string{"deno", "run", "--v8-flags", "--harmony", "npm:create-next-app@latest"},
+			start:  2,
+			end:    5,
+			want:   "npm:create-next-app@latest",
+			ok:     true,
+		},
+		{
 			name:   "treats unstable no-value flag as flag and returns following target",
 			fields: []string{"deno", "run", "--unstable-kv", "npm:create-next-app@latest"},
 			start:  2,
@@ -3512,6 +3546,17 @@ func TestIsKnownDenoOptionalFlagValue(t *testing.T) {
 		fields = []string{"deno", "run", "--watch", "src"}
 		if got := isKnownDenoOptionalFlagValue("--watch", "src", fields, 4, len(fields)); got {
 			t.Fatalf("isKnownDenoOptionalFlagValue(--watch,src) = %v, want false", got)
+		}
+	})
+
+	t.Run("coverage consumes value when candidate follows", func(t *testing.T) {
+		fields := []string{"deno", "run", "--coverage", "coverage", "main.ts"}
+		if got := isKnownDenoOptionalFlagValue("--coverage", "coverage", fields, 4, len(fields)); !got {
+			t.Fatalf("isKnownDenoOptionalFlagValue(--coverage,coverage) = %v, want true", got)
+		}
+		fields = []string{"deno", "run", "--coverage", "coverage"}
+		if got := isKnownDenoOptionalFlagValue("--coverage", "coverage", fields, 4, len(fields)); got {
+			t.Fatalf("isKnownDenoOptionalFlagValue(--coverage,coverage) = %v, want false", got)
 		}
 	})
 
@@ -3884,10 +3929,31 @@ func TestCanonicalDenoFlagToken(t *testing.T) {
 		{in: "-S", want: "-S"},
 		{in: "--ALLOW-SYS", want: "--allow-sys"},
 		{in: "--INSPECT-BRK", want: "--inspect-brk"},
+		{in: "--V8-FLAGS", want: "--v8-flags"},
 	}
 	for _, tc := range cases {
 		if got := canonicalDenoFlagToken(tc.in); got != tc.want {
 			t.Fatalf("canonicalDenoFlagToken(%q) = %q, want %q", tc.in, got, tc.want)
+		}
+	}
+}
+
+func TestIsDenoCoverageValue(t *testing.T) {
+	cases := []struct {
+		value string
+		want  bool
+	}{
+		{value: "coverage", want: true},
+		{value: "./cov,./cov2", want: true},
+		{value: "npm:create-vite", want: false},
+		{value: "jsr:@std/http", want: false},
+		{value: "https://example.com", want: false},
+		{value: "", want: false},
+		{value: "--bad", want: false},
+	}
+	for _, tc := range cases {
+		if got := isDenoCoverageValue(tc.value); got != tc.want {
+			t.Fatalf("isDenoCoverageValue(%q) = %v, want %v", tc.value, got, tc.want)
 		}
 	}
 }

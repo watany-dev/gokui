@@ -1645,11 +1645,13 @@ func nextDenoRuntimeTarget(fields []string, start int, end int) (string, bool) {
 		"--strace-ops":    {},
 		"--strace-filter": {},
 		"--ext":           {},
+		"--v8-flags":      {},
 		"-p":              {},
 	}
 	flagOptionalKnownValue := map[string]struct{}{
 		"--reload":           {},
 		"-r":                 {},
+		"--coverage":         {},
 		"--inspect":          {},
 		"--inspect-brk":      {},
 		"--inspect-wait":     {},
@@ -1741,6 +1743,11 @@ func isKnownDenoOptionalFlagValue(
 			}
 		}
 		return true
+	case "--coverage":
+		if !hasDenoRuntimeCandidateAfter(fields, nextStart, end) {
+			return false
+		}
+		return isDenoCoverageValue(value)
 	case "--inspect", "--inspect-brk", "--inspect-wait":
 		if !hasDenoRuntimeCandidateAfter(fields, nextStart, end) {
 			return false
@@ -1890,6 +1897,24 @@ func isDenoInspectValue(value string) bool {
 		return isNumericToken(strings.TrimPrefix(lower, "localhost:"))
 	}
 	return false
+}
+
+func isDenoCoverageValue(value string) bool {
+	if value == "" || strings.HasPrefix(value, "-") {
+		return false
+	}
+	lower := strings.ToLower(value)
+	if strings.HasPrefix(lower, "npm:") || strings.HasPrefix(lower, "jsr:") ||
+		strings.HasPrefix(lower, "http://") || strings.HasPrefix(lower, "https://") {
+		return false
+	}
+	for _, part := range strings.Split(value, ",") {
+		token := strings.TrimSpace(part)
+		if token == "" || strings.HasPrefix(token, "-") {
+			return false
+		}
+	}
+	return true
 }
 
 func isDenoWatchValue(value string) bool {
@@ -2214,15 +2239,21 @@ func hasDenoRuntimeCandidateAfter(fields []string, start int, end int) bool {
 	}
 
 	flagNeedsValue := map[string]struct{}{
-		"-c":           {},
-		"--config":     {},
-		"--import-map": {},
-		"--location":   {},
-		"--cert":       {},
-		"--lock":       {},
-		"--seed":       {},
-		"--package":    {},
-		"-p":           {},
+		"-c":              {},
+		"--config":        {},
+		"--import-map":    {},
+		"--location":      {},
+		"--cert":          {},
+		"--lock":          {},
+		"--env-file":      {},
+		"--preload":       {},
+		"--seed":          {},
+		"--package":       {},
+		"--strace-ops":    {},
+		"--strace-filter": {},
+		"--ext":           {},
+		"--v8-flags":      {},
+		"-p":              {},
 	}
 
 	for i := start; i < end; i++ {
