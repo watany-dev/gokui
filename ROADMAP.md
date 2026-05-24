@@ -83,6 +83,7 @@ tests/CI:
 - critical detection of PowerShell encoded-command execution flags
 - critical detection of PowerShell FromBase64String decode-to-IEX execution
 - critical detection of PowerShell FromHexString decode-to-IEX execution
+- critical detection of local base64 decode-to-exec/eval chains (Python/Node)
 - critical detection of chmod-then-execute local artifact chains
 - critical detection of secret-path reads combined with network exfiltration
 - medium-severity detection of NFKC normalization text drift with normalized rescanning

