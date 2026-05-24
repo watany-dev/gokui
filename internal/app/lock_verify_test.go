@@ -51,6 +51,16 @@ func TestParseLockVerifyArgs(t *testing.T) {
 		}
 	})
 
+	t.Run("path and sarif format", func(t *testing.T) {
+		got, err := parseLockVerifyArgs([]string{"./skill", "--format", "sarif"})
+		if err != nil {
+			t.Fatalf("parseLockVerifyArgs() error = %v", err)
+		}
+		if got.Path != "./skill" || got.Format != "sarif" {
+			t.Fatalf("unexpected parse result for sarif: %+v", got)
+		}
+	})
+
 	t.Run("errors", func(t *testing.T) {
 		_, err := parseLockVerifyArgs([]string{"--format"})
 		if err == nil || !strings.Contains(err.Error(), "missing value for --format") {
@@ -137,6 +147,32 @@ func TestVerifyLockAndRunLockVerify(t *testing.T) {
 		t.Fatalf("stderr should be empty, got %q", stderr.String())
 	}
 
+	stdout.Reset()
+	stderr.Reset()
+	code = runLockVerify([]string{installedPath, "--format", "sarif"}, &stdout, &stderr)
+	if code != 0 {
+		t.Fatalf("runLockVerify(sarif verified) code = %d, want 0\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("stderr should be empty for sarif verified output, got %q", stderr.String())
+	}
+	var verifiedSARIF inspectSARIFReport
+	if err := json.Unmarshal([]byte(stdout.String()), &verifiedSARIF); err != nil {
+		t.Fatalf("sarif unmarshal (verified): %v", err)
+	}
+	if len(verifiedSARIF.Runs) != 1 {
+		t.Fatalf("verified sarif runs = %d, want 1", len(verifiedSARIF.Runs))
+	}
+	if verifiedSARIF.Runs[0].Properties.Decision != "PASS" {
+		t.Fatalf("verified sarif decision = %q, want PASS", verifiedSARIF.Runs[0].Properties.Decision)
+	}
+	if len(verifiedSARIF.Runs[0].Results) != 0 {
+		t.Fatalf("verified sarif should have no results, got %d", len(verifiedSARIF.Runs[0].Results))
+	}
+	if !verifiedSARIF.Runs[0].Invocations[0].ExecutionSuccessful {
+		t.Fatal("verified sarif invocation should be executionSuccessful=true")
+	}
+
 	if err := os.WriteFile(filepath.Join(installedPath, "README.md"), []byte("changed"), 0o644); err != nil {
 		t.Fatalf("mutate installed file: %v", err)
 	}
@@ -169,6 +205,94 @@ func TestVerifyLockAndRunLockVerify(t *testing.T) {
 	}
 	if !strings.Contains(stdout.String(), "\"status\": \"DRIFTED\"") {
 		t.Fatalf("json output should include drift status, got %q", stdout.String())
+	}
+
+	stdout.Reset()
+	stderr.Reset()
+	code = runLockVerify([]string{installedPath, "--format", "sarif"}, &stdout, &stderr)
+	if code != 2 {
+		t.Fatalf("runLockVerify(sarif drifted) code = %d, want 2\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("stderr should be empty for sarif drifted output, got %q", stderr.String())
+	}
+	var driftSARIF inspectSARIFReport
+	if err := json.Unmarshal([]byte(stdout.String()), &driftSARIF); err != nil {
+		t.Fatalf("sarif unmarshal (drifted): %v", err)
+	}
+	if len(driftSARIF.Runs) != 1 {
+		t.Fatalf("drift sarif runs = %d, want 1", len(driftSARIF.Runs))
+	}
+	if driftSARIF.Runs[0].Properties.Decision != "DRIFTED" {
+		t.Fatalf("drift sarif decision = %q, want DRIFTED", driftSARIF.Runs[0].Properties.Decision)
+	}
+	if len(driftSARIF.Runs[0].Results) == 0 {
+		t.Fatal("drift sarif should include failed-check results")
+	}
+	if driftSARIF.Runs[0].Invocations[0].ExecutionSuccessful {
+		t.Fatal("drift sarif invocation should be executionSuccessful=false")
+	}
+}
+
+func TestBuildLockVerifySARIFReport(t *testing.T) {
+	report := lockVerifyReport{
+		SchemaVersion: reportSchemaVersion,
+		SkillPath:     "/tmp/skills/demo",
+		Status:        "DRIFTED",
+		Checks: []lockVerifyCheck{
+			{Code: lockVerifyCodeSchema, Name: "schema", OK: true, Detail: "ok"},
+			{Code: lockVerifyCodeFileDigests, Name: "file_digests", OK: false, Detail: "missing=1 changed=1 unexpected=1"},
+		},
+		Drift: lockVerifyDriftInfo{
+			MissingFiles:    []string{"missing.md"},
+			ChangedFiles:    []string{"changed.md"},
+			UnexpectedFiles: []string{"extra.md"},
+		},
+		Note: "test",
+	}
+
+	sarif := buildLockVerifySARIFReport(report)
+	if sarif.Version != "2.1.0" {
+		t.Fatalf("version = %q, want 2.1.0", sarif.Version)
+	}
+	if len(sarif.Runs) != 1 {
+		t.Fatalf("runs = %d, want 1", len(sarif.Runs))
+	}
+	run := sarif.Runs[0]
+	if run.Properties.Decision != "DRIFTED" {
+		t.Fatalf("decision = %q, want DRIFTED", run.Properties.Decision)
+	}
+	if run.Properties.SourceKind != "installed-skill" {
+		t.Fatalf("source_kind = %q, want installed-skill", run.Properties.SourceKind)
+	}
+	if run.Invocations[0].ExecutionSuccessful {
+		t.Fatal("executionSuccessful should be false for drifted report")
+	}
+	if len(run.Tool.Driver.Rules) == 0 {
+		t.Fatal("expected rules in sarif driver")
+	}
+
+	foundSummary := false
+	foundMissing := false
+	foundChanged := false
+	foundUnexpected := false
+	for _, result := range run.Results {
+		if result.RuleID != lockVerifyCodeFileDigests {
+			continue
+		}
+		switch {
+		case strings.Contains(result.Message.Text, "missing=1 changed=1 unexpected=1"):
+			foundSummary = true
+		case strings.Contains(result.Message.Text, "missing file listed in lock") && strings.Contains(result.Message.Text, "missing.md"):
+			foundMissing = true
+		case strings.Contains(result.Message.Text, "changed file hash or size") && strings.Contains(result.Message.Text, "changed.md"):
+			foundChanged = true
+		case strings.Contains(result.Message.Text, "unexpected file not listed in lock") && strings.Contains(result.Message.Text, "extra.md"):
+			foundUnexpected = true
+		}
+	}
+	if !foundSummary || !foundMissing || !foundChanged || !foundUnexpected {
+		t.Fatalf("missing expected digest drift results: %+v", run.Results)
 	}
 }
 

@@ -33,6 +33,7 @@ tests/CI:
 - SARIF output for `inspect` (`--format sarif`) for CI/code scanning integration
 - SARIF output for `install` (`--format sarif`) for policy findings export
 - SARIF output for `update --dry-run` (`--format sarif`) for dry-run finding export
+- SARIF output for `lock verify` (`--format sarif`) for drift/check export
 - `vet` command for skill-author local-source validation (`local-dir|zip|tar`)
 - compact summary output for `inspect`/`vet`/`install`/`update` (`--format compact`) for CI logs
 - CI SARIF smoke job for inspect output generation and artifact capture

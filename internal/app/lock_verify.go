@@ -132,6 +132,13 @@ func runLockVerify(args []string, stdout io.Writer, stderr io.Writer) int {
 			return 1
 		}
 		_, _ = fmt.Fprintf(stdout, "%s\n", out)
+	} else if parsed.Format == "sarif" {
+		out, err := json.MarshalIndent(buildLockVerifySARIFReport(report), "", "  ")
+		if err != nil {
+			_, _ = fmt.Fprintln(stderr, "failed to render lock verify sarif report")
+			return 1
+		}
+		_, _ = fmt.Fprintf(stdout, "%s\n", out)
 	} else {
 		_, _ = fmt.Fprintln(stdout, "gokui lock verify report (pre-release)")
 		_, _ = fmt.Fprintf(stdout, "path: %s\n", report.SkillPath)
@@ -215,10 +222,120 @@ func parseLockVerifyArgs(args []string) (lockVerifyArgs, error) {
 			out.Path = arg
 		}
 	}
-	if out.Format != "human" && out.Format != "json" {
+	if out.Format != "human" && out.Format != "json" && out.Format != "sarif" {
 		return lockVerifyArgs{}, fmt.Errorf("unsupported lock verify format: %s", out.Format)
 	}
 	return out, nil
+}
+
+func buildLockVerifySARIFReport(report lockVerifyReport) inspectSARIFReport {
+	decision := "PASS"
+	if report.Status != "VERIFIED" {
+		decision = "DRIFTED"
+	}
+
+	rules := make([]inspectSARIFRule, 0, len(report.Checks))
+	for _, check := range report.Checks {
+		rules = append(rules, inspectSARIFRule{
+			ID: check.Code,
+			ShortDescription: inspectSARIFMessageContainer{
+				Text: fmt.Sprintf("lock verify check: %s", check.Name),
+			},
+		})
+	}
+	sort.Slice(rules, func(i, j int) bool {
+		return rules[i].ID < rules[j].ID
+	})
+
+	results := make([]inspectSARIFResult, 0, 32)
+	for _, check := range report.Checks {
+		if check.OK {
+			continue
+		}
+		results = append(results, inspectSARIFResult{
+			RuleID:  check.Code,
+			Level:   "error",
+			Message: inspectSARIFMessageContainer{Text: check.Detail},
+		})
+		if check.Code != lockVerifyCodeFileDigests {
+			continue
+		}
+		for _, path := range report.Drift.MissingFiles {
+			results = append(results, lockVerifyDriftSARIFResult(check.Code, path, "missing file listed in lock"))
+		}
+		for _, path := range report.Drift.ChangedFiles {
+			results = append(results, lockVerifyDriftSARIFResult(check.Code, path, "changed file hash or size"))
+		}
+		for _, path := range report.Drift.UnexpectedFiles {
+			results = append(results, lockVerifyDriftSARIFResult(check.Code, path, "unexpected file not listed in lock"))
+		}
+	}
+	sort.Slice(results, func(i, j int) bool {
+		if results[i].RuleID != results[j].RuleID {
+			return results[i].RuleID < results[j].RuleID
+		}
+		uriI := ""
+		if len(results[i].Locations) > 0 {
+			uriI = results[i].Locations[0].PhysicalLocation.ArtifactLocation.URI
+		}
+		uriJ := ""
+		if len(results[j].Locations) > 0 {
+			uriJ = results[j].Locations[0].PhysicalLocation.ArtifactLocation.URI
+		}
+		if uriI != uriJ {
+			return uriI < uriJ
+		}
+		return results[i].Message.Text < results[j].Message.Text
+	})
+
+	return inspectSARIFReport{
+		Version: "2.1.0",
+		Schema:  "https://json.schemastore.org/sarif-2.1.0.json",
+		Runs: []inspectSARIFRun{
+			{
+				Tool: inspectSARIFTool{
+					Driver: inspectSARIFDriver{
+						Name:    "gokui",
+						Version: "pre-release",
+						Rules:   rules,
+					},
+				},
+				Results: results,
+				Invocations: []inspectSARIFInvocation{
+					{ExecutionSuccessful: report.Status == "VERIFIED"},
+				},
+				Properties: inspectSARIFProperties{
+					SchemaVersion: report.SchemaVersion,
+					PreRelease:    true,
+					SourceInput:   report.SkillPath,
+					SourceKind:    "installed-skill",
+					Decision:      decision,
+					Note:          report.Note,
+				},
+			},
+		},
+	}
+}
+
+func lockVerifyDriftSARIFResult(ruleID string, path string, reason string) inspectSARIFResult {
+	result := inspectSARIFResult{
+		RuleID:  ruleID,
+		Level:   "error",
+		Message: inspectSARIFMessageContainer{Text: fmt.Sprintf("%s: %s", reason, path)},
+	}
+	if strings.TrimSpace(path) == "" {
+		return result
+	}
+	result.Locations = []inspectSARIFLocation{
+		{
+			PhysicalLocation: inspectSARIFPhysicalLocation{
+				ArtifactLocation: inspectSARIFArtifactLocation{
+					URI: path,
+				},
+			},
+		},
+	}
+	return result
 }
 
 func writeLockVerifyJSONError(stdout io.Writer, stderr io.Writer, report lockVerifyErrorReport) int {

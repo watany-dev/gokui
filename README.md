@@ -48,8 +48,9 @@ Install target entries also reject symlink path components.
 field consistency (including strict GitHub source syntax and commit pinning),
 validates lock/report structural integrity, validates GitHub source metadata
 integrity, reports drift, and emits per-check `code` fields in JSON output for
-automation. On fatal verify errors, JSON output includes top-level `error_code`.
-(missing/changed/unexpected files).
+automation (including missing/changed/unexpected file drift details). On fatal
+verify errors, JSON output includes top-level `error_code`. It also supports
+`--format sarif` for drift/check export in CI pipelines.
 `update --dry-run` now re-evaluates installed skills from lockfile source
 provenance for local-dir/zip/tar sources, reports added/removed/changed files,
 risk deltas, and new URL/executable signals. For GitHub sources, commit-pinned
@@ -143,7 +144,7 @@ gokui inspect <local-dir|zip|github-source> [--format human|json|sarif|compact]
 gokui vet <local-dir|zip|tar> [--format human|json|sarif|compact]
 gokui install <source> --target codex --profile strict [--format human|json|sarif|compact]
 gokui update --dry-run [--target codex|custom:/path] [--format human|json|sarif|compact]
-gokui lock verify [path] [--format human|json]
+gokui lock verify [path] [--format human|json|sarif]
 ```
 
 Release readiness gate:

@@ -53,7 +53,7 @@ func TestCLIUsageSyntaxDocumentationSync(t *testing.T) {
 		"gokui vet <local-dir|zip|tar> [--format human|json|sarif|compact]",
 		"gokui install <source> --target codex --profile strict [--format human|json|sarif|compact]",
 		"gokui update --dry-run [--target codex|custom:/path] [--format human|json|sarif|compact]",
-		"gokui lock verify [path] [--format human|json]",
+		"gokui lock verify [path] [--format human|json|sarif]",
 	}
 
 	for _, line := range required {
