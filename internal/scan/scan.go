@@ -503,7 +503,7 @@ func scanTextFile(target scanTarget) ([]Finding, error) {
 				Summary:  "Unicode compatibility normalization changes text",
 			})
 		}
-		for _, variant := range lineVariants(line, normalized, changed) {
+		for _, variant := range scanLineVariants(lines, i, line, normalized, changed) {
 			findings = append(findings, scanVariantThreatFindings(variant, target, lineNum)...)
 			findings = append(findings, scanDecodedVariantThreatFindings(variant, target, lineNum, 0)...)
 		}
@@ -1168,6 +1168,35 @@ func lineVariants(raw string, normalized string, hasNormalized bool) []string {
 		return []string{raw}
 	}
 	return []string{raw, normalized}
+}
+
+func scanLineVariants(lines []string, idx int, raw string, normalized string, hasNormalized bool) []string {
+	variants := lineVariants(raw, normalized, hasNormalized)
+	if !shouldJoinWithNextLine(raw) || idx+1 >= len(lines) {
+		return variants
+	}
+
+	next := strings.TrimSpace(lines[idx+1])
+	if next == "" {
+		return variants
+	}
+	joined := strings.TrimSpace(raw) + " " + next
+	joinedNormalized, joinedChanged := normalizeLineNFKC(joined)
+	return append(variants, lineVariants(joined, joinedNormalized, joinedChanged)...)
+}
+
+func shouldJoinWithNextLine(line string) bool {
+	trimmed := strings.TrimSpace(line)
+	if trimmed == "" {
+		return false
+	}
+	if strings.HasSuffix(trimmed, "\\") || strings.HasSuffix(trimmed, "|") || strings.HasSuffix(trimmed, "||") || strings.HasSuffix(trimmed, "&&") {
+		return true
+	}
+	if strings.Contains(trimmed, "$(") && !strings.Contains(trimmed, ")") {
+		return true
+	}
+	return false
 }
 
 func isASCII(s string) bool {
