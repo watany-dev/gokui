@@ -2118,6 +2118,10 @@ func TestUnpinnedRuntimeToolDetection(t *testing.T) {
 		{line: "deno run --allow-read -- npm:create-next-app@latest", want: true},
 		{line: "deno run --reload npm:create-next-app@latest", want: true},
 		{line: "deno run -r npm:create-next-app@latest", want: true},
+		{line: "deno run --reload npm:chalk@5 npm:create-next-app@latest", want: true},
+		{line: "deno run -r npm:chalk@5 npm:create-next-app@latest", want: true},
+		{line: "deno run --reload jsr:@std/http@1.0.0 npm:create-next-app@latest", want: true},
+		{line: "deno run --reload npm:chalk@5 main.ts", want: false},
 		{line: "deno run --vendor npm:create-next-app@latest", want: true},
 		{line: "deno run --vendor true npm:create-next-app@latest", want: true},
 		{line: "deno run --node-modules-dir npm:create-next-app@latest", want: true},
@@ -2678,6 +2682,10 @@ func TestIsUnpinnedDenoNpmRuntimeLine(t *testing.T) {
 		{line: "deno x --package jsr:@std/http@1.0.0 jsr:@std/fs@1.0.0", want: false},
 		{line: "deno run --reload npm:create-next-app@latest", want: true},
 		{line: "deno run -r npm:create-next-app@latest", want: true},
+		{line: "deno run --reload npm:chalk@5 npm:create-next-app@latest", want: true},
+		{line: "deno run -r npm:chalk@5 npm:create-next-app@latest", want: true},
+		{line: "deno run --reload jsr:@std/http@1.0.0 npm:create-next-app@latest", want: true},
+		{line: "deno run --reload npm:chalk@5 main.ts", want: false},
 		{line: "deno run --vendor npm:create-next-app@latest", want: true},
 		{line: "deno run --vendor true npm:create-next-app@latest", want: true},
 		{line: "deno run --node-modules-dir npm:create-next-app@latest", want: true},
@@ -2864,6 +2872,22 @@ func TestNextDenoRuntimeTarget(t *testing.T) {
 			ok:     true,
 		},
 		{
+			name:   "consumes reload blocklist value and returns following target",
+			fields: []string{"deno", "run", "--reload", "npm:chalk@5", "npm:create-next-app@latest"},
+			start:  2,
+			end:    5,
+			want:   "npm:create-next-app@latest",
+			ok:     true,
+		},
+		{
+			name:   "consumes short reload blocklist value and returns following target",
+			fields: []string{"deno", "run", "-r", "jsr:@std/http@1.0.0", "npm:create-next-app@latest"},
+			start:  2,
+			end:    5,
+			want:   "npm:create-next-app@latest",
+			ok:     true,
+		},
+		{
 			name:   "does not treat vendor as required-value flag",
 			fields: []string{"deno", "run", "--vendor", "npm:create-next-app@latest"},
 			start:  2,
@@ -2919,6 +2943,183 @@ func TestNextDenoRuntimeTarget(t *testing.T) {
 			t.Fatalf("nextDenoRuntimeTarget(%v, -1, 0) = (%q, %v), want (\"\", false)", fields, got, ok)
 		}
 	})
+}
+
+func TestHasDenoRuntimeCandidateAfter(t *testing.T) {
+	cases := []struct {
+		name   string
+		fields []string
+		start  int
+		end    int
+		want   bool
+	}{
+		{
+			name:   "true when target exists after split value",
+			fields: []string{"deno", "run", "--reload", "npm:chalk@5", "npm:create-next-app@latest"},
+			start:  4,
+			end:    5,
+			want:   true,
+		},
+		{
+			name:   "false when no following token",
+			fields: []string{"deno", "run", "--reload", "npm:chalk@5"},
+			start:  4,
+			end:    4,
+			want:   false,
+		},
+		{
+			name:   "true when separator has explicit target",
+			fields: []string{"deno", "run", "--allow-read", "--", "npm:cowsay"},
+			start:  2,
+			end:    5,
+			want:   true,
+		},
+		{
+			name:   "false when separator has no following target",
+			fields: []string{"deno", "run", "--allow-read", "--"},
+			start:  2,
+			end:    4,
+			want:   false,
+		},
+		{
+			name:   "skips required-value flags and finds target",
+			fields: []string{"deno", "run", "--config", "deno.json", "main.ts"},
+			start:  2,
+			end:    5,
+			want:   true,
+		},
+		{
+			name:   "returns false on invalid bounds",
+			fields: []string{"deno", "run", "main.ts"},
+			start:  5,
+			end:    2,
+			want:   false,
+		},
+		{
+			name:   "clamps bounds and finds target",
+			fields: []string{"deno", "run", "main.ts"},
+			start:  -10,
+			end:    99,
+			want:   true,
+		},
+		{
+			name:   "skips equals-form flags and finds target",
+			fields: []string{"deno", "run", "--config=deno.json", "main.ts"},
+			start:  2,
+			end:    4,
+			want:   true,
+		},
+		{
+			name:   "skips empty tokens and finds target",
+			fields: []string{"deno", "run", "", "main.ts"},
+			start:  2,
+			end:    4,
+			want:   true,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := hasDenoRuntimeCandidateAfter(tc.fields, tc.start, tc.end); got != tc.want {
+				t.Fatalf("hasDenoRuntimeCandidateAfter(%v, %d, %d) = %v, want %v", tc.fields, tc.start, tc.end, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestIsKnownDenoOptionalFlagValue(t *testing.T) {
+	t.Run("reload value requires following candidate", func(t *testing.T) {
+		fields := []string{"deno", "run", "--reload", "npm:chalk@5"}
+		if got := isKnownDenoOptionalFlagValue("--reload", "npm:chalk@5", fields, 4, len(fields)); got {
+			t.Fatalf("isKnownDenoOptionalFlagValue(--reload) = %v, want false", got)
+		}
+	})
+
+	t.Run("reload accepts blocklist value when following target exists", func(t *testing.T) {
+		fields := []string{"deno", "run", "--reload", "npm:chalk@5", "main.ts"}
+		if got := isKnownDenoOptionalFlagValue("--reload", "npm:chalk@5", fields, 4, len(fields)); !got {
+			t.Fatalf("isKnownDenoOptionalFlagValue(--reload) = %v, want true", got)
+		}
+	})
+
+	t.Run("reload rejects invalid blocklist value", func(t *testing.T) {
+		fields := []string{"deno", "run", "--reload", "not-a-spec", "main.ts"}
+		if got := isKnownDenoOptionalFlagValue("--reload", "not-a-spec", fields, 4, len(fields)); got {
+			t.Fatalf("isKnownDenoOptionalFlagValue(--reload) = %v, want false", got)
+		}
+	})
+
+	t.Run("reload accepts comma-separated blocklist values", func(t *testing.T) {
+		fields := []string{"deno", "run", "--reload", "npm:chalk,jsr:@std/http@1.0.0", "main.ts"}
+		if got := isKnownDenoOptionalFlagValue("--reload", "npm:chalk,jsr:@std/http@1.0.0", fields, 4, len(fields)); !got {
+			t.Fatalf("isKnownDenoOptionalFlagValue(--reload) = %v, want true", got)
+		}
+	})
+
+	t.Run("vendor accepts boolean strings only", func(t *testing.T) {
+		fields := []string{"deno", "run"}
+		if got := isKnownDenoOptionalFlagValue("--vendor", "true", fields, 0, len(fields)); !got {
+			t.Fatalf("isKnownDenoOptionalFlagValue(--vendor,true) = %v, want true", got)
+		}
+		if got := isKnownDenoOptionalFlagValue("--vendor", "false", fields, 0, len(fields)); !got {
+			t.Fatalf("isKnownDenoOptionalFlagValue(--vendor,false) = %v, want true", got)
+		}
+		if got := isKnownDenoOptionalFlagValue("--vendor", "auto", fields, 0, len(fields)); got {
+			t.Fatalf("isKnownDenoOptionalFlagValue(--vendor,auto) = %v, want false", got)
+		}
+	})
+
+	t.Run("node-modules-dir validates mode", func(t *testing.T) {
+		fields := []string{"deno", "run"}
+		if got := isKnownDenoOptionalFlagValue("--node-modules-dir", "auto", fields, 0, len(fields)); !got {
+			t.Fatalf("isKnownDenoOptionalFlagValue(--node-modules-dir,auto) = %v, want true", got)
+		}
+		if got := isKnownDenoOptionalFlagValue("--node-modules-dir", "manual", fields, 0, len(fields)); !got {
+			t.Fatalf("isKnownDenoOptionalFlagValue(--node-modules-dir,manual) = %v, want true", got)
+		}
+		if got := isKnownDenoOptionalFlagValue("--node-modules-dir", "garbage", fields, 0, len(fields)); got {
+			t.Fatalf("isKnownDenoOptionalFlagValue(--node-modules-dir,garbage) = %v, want false", got)
+		}
+	})
+
+	t.Run("rejects empty and flag-like values", func(t *testing.T) {
+		fields := []string{"deno", "run", "main.ts"}
+		if got := isKnownDenoOptionalFlagValue("--vendor", "", fields, 0, len(fields)); got {
+			t.Fatalf("isKnownDenoOptionalFlagValue(--vendor,\"\") = %v, want false", got)
+		}
+		if got := isKnownDenoOptionalFlagValue("--vendor", "--something", fields, 0, len(fields)); got {
+			t.Fatalf("isKnownDenoOptionalFlagValue(--vendor,--something) = %v, want false", got)
+		}
+	})
+
+	t.Run("returns false for unknown optional flag key", func(t *testing.T) {
+		fields := []string{"deno", "run", "main.ts"}
+		if got := isKnownDenoOptionalFlagValue("--unknown-flag", "value", fields, 0, len(fields)); got {
+			t.Fatalf("isKnownDenoOptionalFlagValue(--unknown-flag,value) = %v, want false", got)
+		}
+	})
+}
+
+func TestIsDenoReloadBlocklistValue(t *testing.T) {
+	cases := []struct {
+		value string
+		want  bool
+	}{
+		{value: "npm:chalk", want: true},
+		{value: "jsr:@std/http@1.0.0", want: true},
+		{value: "https://deno.land/std@0.224.0/fs/copy.ts", want: true},
+		{value: "file:./mod.ts", want: true},
+		{value: "./mod.ts", want: true},
+		{value: "../mod.ts", want: true},
+		{value: "/tmp/mod.ts", want: true},
+		{value: "main.ts", want: false},
+		{value: "true", want: false},
+		{value: "", want: false},
+	}
+	for _, tc := range cases {
+		if got := isDenoReloadBlocklistValue(tc.value); got != tc.want {
+			t.Fatalf("isDenoReloadBlocklistValue(%q) = %v, want %v", tc.value, got, tc.want)
+		}
+	}
 }
 
 func TestIsUnpinnedDenoNpmSpecifier(t *testing.T) {

@@ -1642,6 +1642,8 @@ func nextDenoRuntimeTarget(fields []string, start int, end int) (string, bool) {
 		"-p":           {},
 	}
 	flagOptionalKnownValue := map[string]struct{}{
+		"--reload":           {},
+		"-r":                 {},
 		"--vendor":           {},
 		"--node-modules-dir": {},
 	}
@@ -1672,7 +1674,7 @@ func nextDenoRuntimeTarget(fields []string, start int, end int) (string, bool) {
 			}
 			if _, hasOptionalValue := flagOptionalKnownValue[lowerToken]; hasOptionalValue && i+1 < end {
 				next := strings.ToLower(sanitizeRuntimeToken(fields[i+1]))
-				if isKnownDenoOptionalFlagValue(lowerToken, next) {
+				if isKnownDenoOptionalFlagValue(lowerToken, next, fields, i+2, end) {
 					i++
 				}
 			}
@@ -1683,12 +1685,30 @@ func nextDenoRuntimeTarget(fields []string, start int, end int) (string, bool) {
 	return "", false
 }
 
-func isKnownDenoOptionalFlagValue(flag string, value string) bool {
+func isKnownDenoOptionalFlagValue(
+	flag string,
+	value string,
+	fields []string,
+	nextStart int,
+	end int,
+) bool {
 	if value == "" || strings.HasPrefix(value, "-") {
 		return false
 	}
 
 	switch flag {
+	case "--reload", "-r":
+		// Avoid mistaking reload blocklist values for the runtime target only when
+		// another candidate target exists later in the command.
+		if !hasDenoRuntimeCandidateAfter(fields, nextStart, end) {
+			return false
+		}
+		for _, part := range strings.Split(value, ",") {
+			if !isDenoReloadBlocklistValue(strings.TrimSpace(part)) {
+				return false
+			}
+		}
+		return true
 	case "--vendor":
 		return value == "true" || value == "false"
 	case "--node-modules-dir":
@@ -1696,6 +1716,79 @@ func isKnownDenoOptionalFlagValue(flag string, value string) bool {
 		case "auto", "manual", "none", "true", "false":
 			return true
 		}
+	}
+	return false
+}
+
+func isDenoReloadBlocklistValue(value string) bool {
+	if value == "" {
+		return false
+	}
+	switch {
+	case strings.HasPrefix(value, "npm:"):
+		return true
+	case strings.HasPrefix(value, "jsr:"):
+		return true
+	case strings.HasPrefix(value, "http://"), strings.HasPrefix(value, "https://"):
+		return true
+	case strings.HasPrefix(value, "file:"):
+		return true
+	case strings.HasPrefix(value, "./"), strings.HasPrefix(value, "../"), strings.HasPrefix(value, "/"):
+		return true
+	default:
+		return false
+	}
+}
+
+func hasDenoRuntimeCandidateAfter(fields []string, start int, end int) bool {
+	if start < 0 {
+		start = 0
+	}
+	if end > len(fields) {
+		end = len(fields)
+	}
+	if start >= end {
+		return false
+	}
+
+	flagNeedsValue := map[string]struct{}{
+		"-c":           {},
+		"--config":     {},
+		"--import-map": {},
+		"--location":   {},
+		"--cert":       {},
+		"--lock":       {},
+		"--seed":       {},
+		"--package":    {},
+		"-p":           {},
+	}
+
+	for i := start; i < end; i++ {
+		token := strings.TrimSpace(fields[i])
+		if token == "" {
+			continue
+		}
+		if token == "--" {
+			for j := i + 1; j < end; j++ {
+				candidate := sanitizeRuntimeToken(fields[j])
+				if candidate == "" {
+					continue
+				}
+				return true
+			}
+			return false
+		}
+		if strings.HasPrefix(token, "-") {
+			if strings.Contains(token, "=") {
+				continue
+			}
+			lowerToken := strings.ToLower(token)
+			if _, needsValue := flagNeedsValue[lowerToken]; needsValue {
+				i++
+			}
+			continue
+		}
+		return true
 	}
 	return false
 }

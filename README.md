@@ -166,6 +166,8 @@ When `--package` is present for `deno x`, target specifiers are also evaluated.
 `deno run` target extraction also handles optional-value flag forms such as
 `--reload`/`-r`, `--vendor`, and `--node-modules-dir` without skipping unpinned
 runtime specifier targets.
+For `--reload`/`-r`, split cache-blocklist values are interpreted before target
+resolution so a pinned blocklist value cannot mask a later unpinned runtime target.
 Bounded base64/base64url/hex payload deobfuscation now rescans decoded text artifacts
 (depth-limited and size-limited, never executed) to catch hidden execution
 chains and decoded Unicode control/NFKC-drift signals.

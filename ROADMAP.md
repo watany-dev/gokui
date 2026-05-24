@@ -109,6 +109,8 @@ tests/CI:
 - deno `--package` runtime checks also evaluate target specifiers for unpinned refs
 - deno runtime target extraction handles optional-value flags (`--reload`/`-r`,
   `--vendor`, and `--node-modules-dir`) without skipping unpinned specifier targets
+- deno `--reload`/`-r` split blocklist values are interpreted before target
+  extraction so later unpinned runtime targets are still detected
 - dependency manifest scanning coverage for `package.json`, `pyproject.toml`,
   `requirements.txt`, `uv.lock`, `go.mod`, `Gemfile`, and `deno.json` as
   first-class scan inputs
