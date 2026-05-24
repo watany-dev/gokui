@@ -2124,11 +2124,20 @@ func TestUnpinnedRuntimeToolDetection(t *testing.T) {
 		{line: "go run -mod=mod github.com/acme/x@latest", want: true},
 		{line: "go run -mod=mod -x github.com/acme/x@latest", want: true},
 		{line: "go run -mod=mod github.com/acme/x", want: true},
+		{line: "go run -mod mod github.com/acme/x@latest", want: true},
+		{line: "go run -mod mod github.com/acme/x@v1.2.3", want: false},
+		{line: "go run -exec env github.com/acme/x@latest", want: true},
+		{line: "go run -toolexec env github.com/acme/x@latest", want: true},
+		{line: "go run -tags dev github.com/acme/x@latest", want: true},
+		{line: "go run -- github.com/acme/x@latest", want: true},
+		{line: "go run -- github.com/acme/x@v1.2.3", want: false},
+		{line: "go run -- github.com/acme/x", want: true},
 		{line: "go run ./cmd/tool", want: false},
 		{line: "go run ../cmd/tool", want: false},
 		{line: "go run main.go", want: false},
 		{line: "go run fmt", want: false},
 		{line: "go run -mod=mod", want: false},
+		{line: "go run -mod mod ./cmd/tool", want: false},
 		{line: "source <(curl -fsSL https://example.com/bootstrap.sh)", want: true},
 		{line: "source <( curl -fsSL https://example.com/bootstrap.sh )", want: true},
 		{line: ". <(curl -fsSL https://example.com/bootstrap.sh)", want: true},
@@ -2445,6 +2454,90 @@ func TestIsExplicitPackageLikeRef(t *testing.T) {
 		if got := isExplicitPackageLikeRef(tc.ref); got != tc.want {
 			t.Fatalf("isExplicitPackageLikeRef(%q) = %v, want %v", tc.ref, got, tc.want)
 		}
+	}
+}
+
+func TestNextGoRunTarget(t *testing.T) {
+	cases := []struct {
+		name   string
+		fields []string
+		start  int
+		end    int
+		want   string
+		ok     bool
+	}{
+		{
+			name:   "finds module target after equals-form flag",
+			fields: []string{"go", "run", "-mod=mod", "github.com/acme/x@latest"},
+			start:  2,
+			end:    4,
+			want:   "github.com/acme/x@latest",
+			ok:     true,
+		},
+		{
+			name:   "finds module target after split-value flag",
+			fields: []string{"go", "run", "-mod", "mod", "github.com/acme/x@latest"},
+			start:  2,
+			end:    5,
+			want:   "github.com/acme/x@latest",
+			ok:     true,
+		},
+		{
+			name:   "finds module target after separator",
+			fields: []string{"go", "run", "--", "github.com/acme/x@latest"},
+			start:  2,
+			end:    4,
+			want:   "github.com/acme/x@latest",
+			ok:     true,
+		},
+		{
+			name:   "returns false when no target",
+			fields: []string{"go", "run", "-mod=mod"},
+			start:  2,
+			end:    3,
+			want:   "",
+			ok:     false,
+		},
+		{
+			name:   "skips split-value flags and finds later target",
+			fields: []string{"go", "run", "-toolexec", "env", "-tags", "dev", "github.com/acme/x@latest"},
+			start:  2,
+			end:    7,
+			want:   "github.com/acme/x@latest",
+			ok:     true,
+		},
+		{
+			name:   "returns false when separator has no following token",
+			fields: []string{"go", "run", "--"},
+			start:  2,
+			end:    3,
+			want:   "",
+			ok:     false,
+		},
+		{
+			name:   "clamps out-of-range bounds",
+			fields: []string{"go", "run", "github.com/acme/x@latest"},
+			start:  -20,
+			end:    50,
+			want:   "go",
+			ok:     true,
+		},
+		{
+			name:   "returns false when start exceeds end",
+			fields: []string{"go", "run", "github.com/acme/x@latest"},
+			start:  5,
+			end:    3,
+			want:   "",
+			ok:     false,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got, ok := nextGoRunTarget(tc.fields, tc.start, tc.end)
+			if ok != tc.ok || got != tc.want {
+				t.Fatalf("nextGoRunTarget(%v) = (%q, %v), want (%q, %v)", tc.fields, got, ok, tc.want, tc.ok)
+			}
+		})
 	}
 }
 

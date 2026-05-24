@@ -1435,14 +1435,11 @@ func isUnpinnedLauncherCommand(fields []string, token string, tokenIndex int) bo
 		if tokenIndex+2 >= len(fields) || fields[tokenIndex+1] != "run" {
 			return false
 		}
-		for j := tokenIndex + 2; j < len(fields); j++ {
-			part := fields[j]
-			if strings.HasPrefix(part, "-") {
-				continue
-			}
-			return isUnpinnedGoRunTarget(sanitizeRuntimeToken(part))
+		target, ok := nextGoRunTarget(fields, tokenIndex+2, len(fields))
+		if !ok {
+			return false
 		}
-		return false
+		return isUnpinnedGoRunTarget(target)
 	default:
 		return false
 	}
@@ -1686,6 +1683,56 @@ func isExplicitPackageLikeRef(ref string) bool {
 		return false
 	}
 	return strings.Contains(ref, "/")
+}
+
+func nextGoRunTarget(fields []string, start int, end int) (string, bool) {
+	if start < 0 {
+		start = 0
+	}
+	if end > len(fields) {
+		end = len(fields)
+	}
+	if start >= end {
+		return "", false
+	}
+
+	flagNeedsValue := map[string]struct{}{
+		"-mod":      {},
+		"-modfile":  {},
+		"-exec":     {},
+		"-overlay":  {},
+		"-p":        {},
+		"-tags":     {},
+		"-toolexec": {},
+	}
+
+	for i := start; i < end; i++ {
+		token := strings.TrimSpace(fields[i])
+		if token == "" {
+			continue
+		}
+		if token == "--" {
+			for j := i + 1; j < end; j++ {
+				candidate := sanitizeRuntimeToken(fields[j])
+				if candidate == "" {
+					continue
+				}
+				return candidate, true
+			}
+			return "", false
+		}
+		if strings.HasPrefix(token, "-") {
+			if strings.Contains(token, "=") {
+				continue
+			}
+			if _, needsValue := flagNeedsValue[token]; needsValue {
+				i++
+			}
+			continue
+		}
+		return sanitizeRuntimeToken(token), true
+	}
+	return "", false
 }
 
 func classifyURLRisks(line string, relPath string, lineNum int, isMarkdown bool) []Finding {
