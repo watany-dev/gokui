@@ -197,6 +197,8 @@ func Run(args []string, stdout io.Writer, stderr io.Writer, cfg Config) int {
 		return runFetch(args[1:], stdout, stderr)
 	case "inspect":
 		return runInspect(args[1:], stdout, stderr)
+	case "vet":
+		return runVet(args[1:], stdout, stderr)
 	case "install":
 		return runInstall(args[1:], stdout, stderr)
 	case "update":
@@ -221,9 +223,66 @@ usage:
   gokui version
   gokui fetch github:owner/repo//path/to/skill@commit --out <quarantine-dir> [--format human|json]
   gokui inspect <local-dir|zip|github-source> [--format human|json|sarif]
+  gokui vet <local-dir|zip|tar> [--format human|json|sarif]
   gokui install <source> --target codex --profile strict [--format human|json]
   gokui update --dry-run [--target codex|custom:/path] [--format human|json]
   gokui lock verify [path] [--format human|json]`)
+}
+
+func runVet(args []string, stdout io.Writer, stderr io.Writer) int {
+	requestedJSON := inspectArgsRequestJSON(args)
+	input, format, err := parseVetArgs(args)
+	if err != nil {
+		if requestedJSON {
+			sourceArg := extractInspectSourceArg(args)
+			return writeInspectJSONError(stdout, stderr, inspectErrorReport{
+				SchemaVersion: reportSchemaVersion,
+				Status:        "ERROR",
+				ErrorCode:     inspectErrorCodeArgsInvalid,
+				Message:       err.Error(),
+				Source: source{
+					Input: sourceArg,
+					Kind:  detectSourceKind(sourceArg),
+				},
+				Note: "vet failed before source evaluation",
+			})
+		}
+		_, _ = fmt.Fprintf(stderr, "%s\n\n%s\n", err.Error(), usage())
+		return 1
+	}
+
+	sourceKind := detectSourceKind(input)
+	if sourceKind == "github-source" {
+		msg := "vet does not accept github sources; use local-dir, zip, or tar input"
+		if format == "json" {
+			return writeInspectJSONError(stdout, stderr, inspectErrorReport{
+				SchemaVersion: reportSchemaVersion,
+				Status:        "ERROR",
+				ErrorCode:     inspectErrorCodeSourceInvalid,
+				Message:       msg,
+				Source: source{
+					Input: input,
+					Kind:  sourceKind,
+				},
+				Note: "vet supports only local sources",
+			})
+		}
+		_, _ = fmt.Fprintf(stderr, "%s\n\n%s\n", msg, usage())
+		return 1
+	}
+
+	inspectArgs := []string{input}
+	if format != "human" {
+		inspectArgs = append(inspectArgs, "--format", format)
+		return runInspect(inspectArgs, stdout, stderr)
+	}
+
+	var inspectOut bytes.Buffer
+	code := runInspect(inspectArgs, &inspectOut, stderr)
+	inspectText := inspectOut.String()
+	inspectText = strings.Replace(inspectText, "gokui inspect report (pre-release)\n", "gokui vet report (pre-release)\n", 1)
+	_, _ = io.WriteString(stdout, inspectText)
+	return code
 }
 
 func runInspect(args []string, stdout io.Writer, stderr io.Writer) int {
@@ -555,6 +614,40 @@ func parseInspectArgs(args []string) (input string, format string, err error) {
 	}
 	if format != "human" && format != "json" && format != "sarif" {
 		return "", "", fmt.Errorf("unsupported inspect format: %s", format)
+	}
+	return input, format, nil
+}
+
+func parseVetArgs(args []string) (input string, format string, err error) {
+	format = "human"
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
+		if arg == "--format" {
+			if i+1 >= len(args) {
+				return "", "", fmt.Errorf("missing value for --format")
+			}
+			format = args[i+1]
+			i++
+			continue
+		}
+		if strings.HasPrefix(arg, "--format=") {
+			format = strings.TrimPrefix(arg, "--format=")
+			continue
+		}
+		if strings.HasPrefix(arg, "-") {
+			return "", "", fmt.Errorf("unknown vet option: %s", arg)
+		}
+		if input != "" {
+			return "", "", fmt.Errorf("vet accepts exactly one source")
+		}
+		input = arg
+	}
+
+	if input == "" {
+		return "", "", fmt.Errorf("vet source is required")
+	}
+	if format != "human" && format != "json" && format != "sarif" {
+		return "", "", fmt.Errorf("unsupported vet format: %s", format)
 	}
 	return input, format, nil
 }

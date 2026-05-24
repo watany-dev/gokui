@@ -124,6 +124,7 @@ installation:
 ```sh
 gokui fetch github:owner/repo//path/to/skill@commit --out <quarantine-dir>
 gokui inspect <local-dir|zip|github-source>
+gokui vet <local-dir|zip|tar>
 gokui install <source> --target codex --profile strict
 gokui update --dry-run
 gokui lock verify
@@ -134,6 +135,7 @@ Current pre-release CLI syntax:
 ```sh
 gokui fetch github:owner/repo//path/to/skill@commit --out <quarantine-dir> [--format human|json]
 gokui inspect <local-dir|zip|github-source> [--format human|json|sarif]
+gokui vet <local-dir|zip|tar> [--format human|json|sarif]
 gokui install <source> --target codex --profile strict [--format human|json]
 gokui update --dry-run [--target codex|custom:/path] [--format human|json]
 gokui lock verify [path] [--format human|json]

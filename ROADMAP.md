@@ -8,7 +8,7 @@ Skill bundles, not a convenience-first package manager.
 The following items are implemented in the current codebase and validated by
 tests/CI:
 
-- CLI commands: `fetch`, `inspect`, `install`, `update --dry-run`, `lock verify`
+- CLI commands: `fetch`, `inspect`, `vet`, `install`, `update --dry-run`, `lock verify`
 - Quarantine-safe archive materialization for inspect/install flows
 - Strict skill frontmatter validation and markdown/script scanning
 - Local-dir inspect source hardening (reject symlinked source paths/components and symlinked `SKILL.md`; require regular-file `SKILL.md`)
@@ -30,6 +30,7 @@ tests/CI:
 - Stable JSON output contracts for all MVP commands
 - Machine-readable `error_code` support across command failure paths
 - SARIF output for `inspect` (`--format sarif`) for CI/code scanning integration
+- `vet` command for skill-author local-source validation (`local-dir|zip|tar`)
 - CI SARIF smoke job for inspect output generation and artifact capture
 - CI setup-go hardening to resolve the latest available Go patch release
 - `make vuln` hardened with patched Go toolchain baseline (`go1.26.3+auto`)
@@ -298,7 +299,7 @@ Goal: make gokui useful in CI and team review.
 
 - Expand SARIF output coverage beyond `inspect`.
 - Add compact summary output for CI logs.
-- Add `gokui vet` for skill authors.
+- Expand `gokui vet` ergonomics for skill-author CI workflows.
 - Add baseline support for repositories with many skills.
 - Add rule documentation with examples and remediation notes.
 - Add machine-readable stable finding IDs.

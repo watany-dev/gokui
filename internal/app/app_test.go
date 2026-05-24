@@ -217,6 +217,120 @@ func TestRun(t *testing.T) {
 		}
 	})
 
+	t.Run("vet json emits stable pre-release report for local source", func(t *testing.T) {
+		var stdout bytes.Buffer
+		var stderr bytes.Buffer
+
+		fixturePath := filepath.FromSlash("../../fixtures/clean-skill")
+		code := Run([]string{"vet", fixturePath, "--format", "json"}, &stdout, &stderr, cfg)
+		if code != 0 {
+			t.Fatalf("Run() code = %d, want 0\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
+		}
+		if stderr.Len() != 0 {
+			t.Fatalf("stderr should be empty, got %q", stderr.String())
+		}
+
+		var got inspectReport
+		if err := json.Unmarshal(stdout.Bytes(), &got); err != nil {
+			t.Fatalf("vet json should be valid: %v\nstdout=%q", err, stdout.String())
+		}
+		if got.Source.Kind != "local-dir" {
+			t.Fatalf("source.kind = %q, want %q", got.Source.Kind, "local-dir")
+		}
+		if got.Decision != "PASS" {
+			t.Fatalf("decision = %q, want %q", got.Decision, "PASS")
+		}
+	})
+
+	t.Run("vet human output uses vet header", func(t *testing.T) {
+		var stdout bytes.Buffer
+		var stderr bytes.Buffer
+
+		fixturePath := filepath.FromSlash("../../fixtures/clean-skill")
+		code := Run([]string{"vet", fixturePath}, &stdout, &stderr, cfg)
+		if code != 0 {
+			t.Fatalf("Run() code = %d, want 0\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
+		}
+		if stderr.Len() != 0 {
+			t.Fatalf("stderr should be empty, got %q", stderr.String())
+		}
+		if !strings.Contains(stdout.String(), "gokui vet report (pre-release)") {
+			t.Fatalf("stdout should include vet report header, got %q", stdout.String())
+		}
+	})
+
+	t.Run("vet rejects github source", func(t *testing.T) {
+		var stdout bytes.Buffer
+		var stderr bytes.Buffer
+
+		source := "github:org/repo//skills/skill-a@8f3c2d1a4b5c6d7e8f901234567890abcdef1234"
+		code := Run([]string{"vet", source, "--format", "json"}, &stdout, &stderr, cfg)
+		if code != 1 {
+			t.Fatalf("Run() code = %d, want 1\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
+		}
+		if stderr.Len() != 0 {
+			t.Fatalf("stderr should be empty, got %q", stderr.String())
+		}
+		if !strings.Contains(stdout.String(), "\"error_code\": \""+inspectErrorCodeSourceInvalid+"\"") {
+			t.Fatalf("stdout should include source-invalid error code, got %q", stdout.String())
+		}
+		if !strings.Contains(stdout.String(), "vet does not accept github sources") {
+			t.Fatalf("stdout should include vet github rejection message, got %q", stdout.String())
+		}
+	})
+
+	t.Run("vet rejects github source in human format", func(t *testing.T) {
+		var stdout bytes.Buffer
+		var stderr bytes.Buffer
+
+		source := "github:org/repo//skills/skill-a@8f3c2d1a4b5c6d7e8f901234567890abcdef1234"
+		code := Run([]string{"vet", source}, &stdout, &stderr, cfg)
+		if code != 1 {
+			t.Fatalf("Run() code = %d, want 1\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
+		}
+		if stdout.Len() != 0 {
+			t.Fatalf("stdout should be empty, got %q", stdout.String())
+		}
+		if !strings.Contains(stderr.String(), "vet does not accept github sources") {
+			t.Fatalf("stderr should include vet github rejection message, got %q", stderr.String())
+		}
+	})
+
+	t.Run("vet requires source", func(t *testing.T) {
+		var stdout bytes.Buffer
+		var stderr bytes.Buffer
+
+		code := Run([]string{"vet"}, &stdout, &stderr, cfg)
+		if code != 1 {
+			t.Fatalf("Run() code = %d, want 1", code)
+		}
+		if stdout.Len() != 0 {
+			t.Fatalf("stdout should be empty, got %q", stdout.String())
+		}
+		if !strings.Contains(stderr.String(), "vet source is required") {
+			t.Fatalf("stderr should include source-required error, got %q", stderr.String())
+		}
+	})
+
+	t.Run("vet requires source with json error envelope", func(t *testing.T) {
+		var stdout bytes.Buffer
+		var stderr bytes.Buffer
+
+		code := Run([]string{"vet", "--format", "json"}, &stdout, &stderr, cfg)
+		if code != 1 {
+			t.Fatalf("Run() code = %d, want 1\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
+		}
+		if stderr.Len() != 0 {
+			t.Fatalf("stderr should be empty, got %q", stderr.String())
+		}
+		if !strings.Contains(stdout.String(), "\"error_code\": \""+inspectErrorCodeArgsInvalid+"\"") {
+			t.Fatalf("stdout should include args-invalid error code, got %q", stdout.String())
+		}
+		if !strings.Contains(stdout.String(), "vet failed before source evaluation") {
+			t.Fatalf("stdout should include vet context note, got %q", stdout.String())
+		}
+	})
+
 	t.Run("inspect requires source", func(t *testing.T) {
 		var stdout bytes.Buffer
 		var stderr bytes.Buffer
@@ -930,6 +1044,76 @@ func TestParseInspectArgs(t *testing.T) {
 		_, _, err := parseInspectArgs([]string{"./a", "./b"})
 		if err == nil || !strings.Contains(err.Error(), "inspect accepts exactly one source") {
 			t.Fatalf("expected single source error, got %v", err)
+		}
+	})
+}
+
+func TestParseVetArgs(t *testing.T) {
+	t.Run("parses source and default format", func(t *testing.T) {
+		input, format, err := parseVetArgs([]string{"./skill"})
+		if err != nil {
+			t.Fatalf("parseVetArgs() error = %v", err)
+		}
+		if input != "./skill" {
+			t.Fatalf("input = %q, want %q", input, "./skill")
+		}
+		if format != "human" {
+			t.Fatalf("format = %q, want %q", format, "human")
+		}
+	})
+
+	t.Run("parses equals format", func(t *testing.T) {
+		input, format, err := parseVetArgs([]string{"./skill", "--format=json"})
+		if err != nil {
+			t.Fatalf("parseVetArgs() error = %v", err)
+		}
+		if input != "./skill" || format != "json" {
+			t.Fatalf("got (%q, %q), want (%q, %q)", input, format, "./skill", "json")
+		}
+	})
+
+	t.Run("parses sarif format", func(t *testing.T) {
+		input, format, err := parseVetArgs([]string{"./skill", "--format", "sarif"})
+		if err != nil {
+			t.Fatalf("parseVetArgs() error = %v", err)
+		}
+		if input != "./skill" || format != "sarif" {
+			t.Fatalf("got (%q, %q), want (%q, %q)", input, format, "./skill", "sarif")
+		}
+	})
+
+	t.Run("errors when source is missing", func(t *testing.T) {
+		_, _, err := parseVetArgs([]string{"--format", "json"})
+		if err == nil || !strings.Contains(err.Error(), "vet source is required") {
+			t.Fatalf("expected source required error, got %v", err)
+		}
+	})
+
+	t.Run("errors when format value is missing", func(t *testing.T) {
+		_, _, err := parseVetArgs([]string{"./skill", "--format"})
+		if err == nil || !strings.Contains(err.Error(), "missing value for --format") {
+			t.Fatalf("expected missing format error, got %v", err)
+		}
+	})
+
+	t.Run("errors on unknown option", func(t *testing.T) {
+		_, _, err := parseVetArgs([]string{"./skill", "--badopt"})
+		if err == nil || !strings.Contains(err.Error(), "unknown vet option") {
+			t.Fatalf("expected unknown option error, got %v", err)
+		}
+	})
+
+	t.Run("errors on multiple sources", func(t *testing.T) {
+		_, _, err := parseVetArgs([]string{"./a", "./b"})
+		if err == nil || !strings.Contains(err.Error(), "vet accepts exactly one source") {
+			t.Fatalf("expected single source error, got %v", err)
+		}
+	})
+
+	t.Run("errors on unsupported format", func(t *testing.T) {
+		_, _, err := parseVetArgs([]string{"./skill", "--format", "xml"})
+		if err == nil || !strings.Contains(err.Error(), "unsupported vet format") {
+			t.Fatalf("expected unsupported format error, got %v", err)
 		}
 	})
 }
