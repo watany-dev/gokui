@@ -136,7 +136,7 @@ are now flagged under
 `UNPINNED_RUNTIME_TOOL`.
 Bounded base64/hex payload deobfuscation now rescans decoded text artifacts
 (depth-limited and size-limited, never executed) to catch hidden execution
-chains.
+chains and decoded Unicode control/NFKC-drift signals.
 Unicode Tags, bidi controls, variation selectors, and ANSI/OSC escapes in
 scanned text are now flagged as critical. Zero-width and disallowed C0/C1
 control characters are also flagged as critical findings.

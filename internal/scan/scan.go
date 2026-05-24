@@ -15,6 +15,7 @@ import (
 	"sort"
 	"strings"
 	"unicode"
+	"unicode/utf8"
 
 	"github.com/watany-dev/gokui/internal/limitio"
 	"golang.org/x/text/unicode/norm"
@@ -672,6 +673,16 @@ func scanDecodedVariantThreatFindings(line string, target scanTarget, lineNum in
 				continue
 			}
 			normalized, changed := normalizeLineNFKC(decodedLine)
+			if changed {
+				findings = append(findings, Finding{
+					ID:       "NFKC_CHANGES_TEXT",
+					Severity: "medium",
+					File:     target.Relative,
+					Line:     lineNum,
+					Summary:  "Unicode compatibility normalization changes text",
+				})
+			}
+			findings = append(findings, classifyUnicodeThreats(decodedLine, target.Relative, lineNum)...)
 			for _, variant := range lineVariants(decodedLine, normalized, changed) {
 				findings = append(findings, scanVariantThreatFindings(variant, target, lineNum)...)
 				findings = append(findings, scanDecodedVariantThreatFindings(variant, target, lineNum, depth+1)...)
@@ -748,13 +759,21 @@ func isLikelyTextPayload(decoded []byte) bool {
 	if len(decoded) == 0 {
 		return false
 	}
+	if !utf8.Valid(decoded) {
+		return false
+	}
 	printable := 0
-	for _, b := range decoded {
-		if b == '\n' || b == '\r' || b == '\t' || (b >= 0x20 && b <= 0x7E) {
+	total := 0
+	for _, r := range string(decoded) {
+		total++
+		if r == '\n' || r == '\r' || r == '\t' || (r >= 0x20 && !unicode.IsControl(r)) {
 			printable++
 		}
 	}
-	return printable*100/len(decoded) >= 80
+	if total == 0 {
+		return false
+	}
+	return printable*100/total >= 80
 }
 
 func isHexToken(token string) bool {

