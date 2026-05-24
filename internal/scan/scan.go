@@ -50,8 +50,10 @@ type Finding struct {
 
 var (
 	curlPipePattern                 = regexp.MustCompile(`(?i)\b(?:curl|wget)\b[^\n|]{0,300}\|\s*(?:sh|bash|zsh|pwsh|powershell|python3?|node|ruby|perl)\b`)
-	curlSubshellExecPattern         = regexp.MustCompile(`(?i)\b(?:sh|bash|zsh|pwsh|powershell|eval|python3?|node|ruby|perl)\b[^\n]{0,200}\$\(\s*(?:curl|wget)\b`)
-	curlBacktickExecPattern         = regexp.MustCompile("(?i)\\b(?:sh|bash|zsh|pwsh|powershell|eval|python3?|node|ruby|perl)\\b[^\\n]{0,200}`\\s*(?:curl|wget)\\b")
+	curlSubshellExecPattern         = regexp.MustCompile(`(?i)\b(?:sh|bash|zsh|source|pwsh|powershell|eval|python3?|node|ruby|perl)\b[^\n]{0,200}\$\(\s*(?:curl|wget)\b`)
+	curlBacktickExecPattern         = regexp.MustCompile("(?i)\\b(?:sh|bash|zsh|source|pwsh|powershell|eval|python3?|node|ruby|perl)\\b[^\\n]{0,200}`\\s*(?:curl|wget)\\b")
+	curlDotSubshellExecPattern      = regexp.MustCompile(`(?i)(?:^|[;&|]\s*)\.\s+\$\(\s*(?:curl|wget)\b`)
+	curlDotBacktickExecPattern      = regexp.MustCompile("(?i)(?:^|[;&|]\\s*)\\.\\s+`\\s*(?:curl|wget)\\b")
 	powerShellRemoteEvalPattern     = regexp.MustCompile(`(?i)\b(?:iex|invoke-expression)\b[^\n]{0,260}(?:\b(?:iwr|irm|invoke-webrequest|invoke-restmethod|curl(?:\.exe)?|wget(?:\.exe)?)\b[^\n]{0,220}https?://|\bdownload(?:string|data)\b\s*\(\s*['"]?https?://)`)
 	powerShellFetchEvalPattern      = regexp.MustCompile(`(?i)(?:\b(?:iwr|irm|invoke-webrequest|invoke-restmethod|curl(?:\.exe)?|wget(?:\.exe)?)\b[^\n]{0,260}https?://[^\n]{0,260}\b(?:iex|invoke-expression)\b|\bdownload(?:string|data)\b\s*\(\s*['"]?https?://[^\n]{0,260}\b(?:iex|invoke-expression)\b)`)
 	pythonRemoteExecPattern         = regexp.MustCompile(`(?i)\b(?:exec|eval)\s*\(\s*(?:requests\.get\s*\(\s*['"]https?://[^'"]+['"]\s*\)\.text|urllib\.request\.urlopen\s*\(\s*['"]https?://[^'"]+['"]\s*\)\.read\s*\(\s*\))`)
@@ -315,11 +317,24 @@ func hasASCIIConfusableFilename(name string) bool {
 			hasASCIIAlnum = true
 			continue
 		}
-		if _, ok := confusableFilenameRunes[r]; ok {
+		if _, ok := confusableFilenameRunes[r]; ok || isFullwidthASCIIConfusable(r) {
 			hasNonASCIIConfusable = true
 		}
 	}
 	return hasASCIIAlnum && hasNonASCIIConfusable
+}
+
+func isFullwidthASCIIConfusable(r rune) bool {
+	switch {
+	case r >= '０' && r <= '９':
+		return true
+	case r >= 'Ａ' && r <= 'Ｚ':
+		return true
+	case r >= 'ａ' && r <= 'ｚ':
+		return true
+	default:
+		return false
+	}
 }
 
 func runeScriptGroup(r rune) (string, bool) {
@@ -531,7 +546,7 @@ func scanTextFile(target scanTarget) ([]Finding, error) {
 
 func scanVariantThreatFindings(variant string, target scanTarget, lineNum int) []Finding {
 	findings := make([]Finding, 0, 8)
-	if curlPipePattern.MatchString(variant) || curlSubshellExecPattern.MatchString(variant) || curlBacktickExecPattern.MatchString(variant) || powerShellRemoteEvalPattern.MatchString(variant) || powerShellFetchEvalPattern.MatchString(variant) || pythonRemoteExecPattern.MatchString(variant) || nodeRemoteEvalPattern.MatchString(variant) || nodeRemoteFunctionExecPattern.MatchString(variant) || rubyRemoteEvalPattern.MatchString(variant) {
+	if curlPipePattern.MatchString(variant) || curlSubshellExecPattern.MatchString(variant) || curlBacktickExecPattern.MatchString(variant) || curlDotSubshellExecPattern.MatchString(variant) || curlDotBacktickExecPattern.MatchString(variant) || powerShellRemoteEvalPattern.MatchString(variant) || powerShellFetchEvalPattern.MatchString(variant) || pythonRemoteExecPattern.MatchString(variant) || nodeRemoteEvalPattern.MatchString(variant) || nodeRemoteFunctionExecPattern.MatchString(variant) || rubyRemoteEvalPattern.MatchString(variant) {
 		findings = append(findings, Finding{
 			ID:       "CURL_PIPE_SHELL",
 			Severity: "critical",
@@ -558,7 +573,7 @@ func scanVariantThreatFindings(variant string, target scanTarget, lineNum int) [
 			Summary:  "hex-decoded payload reaches interpreter execution",
 		})
 	}
-	if encodedCmdExec.MatchString(variant) || encodedCmdExecVariableArg.MatchString(variant) {
+	if encodedCmdExec.MatchString(variant) || encodedCmdExecVariableArg.MatchString(variant) || hasEncodedCommandExecLine(variant) {
 		findings = append(findings, Finding{
 			ID:       "ENCODED_COMMAND_EXEC",
 			Severity: "critical",
@@ -1137,6 +1152,51 @@ func hasBashWildcardPermission(line string) bool {
 		}
 	}
 	return false
+}
+
+func hasEncodedCommandExecLine(line string) bool {
+	lower := strings.ToLower(strings.TrimSpace(line))
+	if lower == "" {
+		return false
+	}
+	fields := strings.Fields(lower)
+	if len(fields) == 0 {
+		return false
+	}
+
+	sawPowerShell := false
+	for _, field := range fields {
+		token := sanitizeRuntimeToken(field)
+		switch token {
+		case "powershell", "pwsh", "powershell.exe", "pwsh.exe":
+			sawPowerShell = true
+			continue
+		}
+		if !sawPowerShell {
+			continue
+		}
+		if isEncodedCommandFlagToken(token) {
+			return true
+		}
+	}
+	return false
+}
+
+func isEncodedCommandFlagToken(token string) bool {
+	if token == "" {
+		return false
+	}
+	trimmed := strings.TrimLeft(token, "-/")
+	switch {
+	case trimmed == "encodedcommand", trimmed == "enc":
+		return true
+	case strings.HasPrefix(trimmed, "encodedcommand:"), strings.HasPrefix(trimmed, "encodedcommand="):
+		return true
+	case strings.HasPrefix(trimmed, "enc:"), strings.HasPrefix(trimmed, "enc="):
+		return true
+	default:
+		return false
+	}
 }
 
 func tokenizeWords(line string) []string {
