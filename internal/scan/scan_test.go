@@ -2185,6 +2185,12 @@ func TestUnpinnedRuntimeToolDetection(t *testing.T) {
 		{line: "deno run --deny-ffi ./native.so npm:create-next-app@15.4.1", want: false},
 		{line: "deno run --deny-import deno.land npm:create-next-app@latest", want: true},
 		{line: "deno run --deny-import deno.land npm:create-next-app@15.4.1", want: false},
+		{line: "deno run --inspect 127.0.0.1:9229 npm:create-next-app@latest", want: true},
+		{line: "deno run --inspect 127.0.0.1:9229 npm:create-next-app@15.4.1", want: false},
+		{line: "deno run --inspect-brk 127.0.0.1:9229 npm:create-next-app@latest", want: true},
+		{line: "deno run --inspect-wait 127.0.0.1:9229 npm:create-next-app@15.4.1", want: false},
+		{line: "deno run --ext ts npm:create-next-app@latest", want: true},
+		{line: "deno run --ext ts npm:create-next-app@15.4.1", want: false},
 		{line: "DENO RUN -R . npm:create-next-app@latest", want: true},
 		{line: "Deno Run -E PATH npm:create-next-app@15.4.1", want: false},
 		{line: "deno x npm:create-vite", want: true},
@@ -2810,6 +2816,12 @@ func TestIsUnpinnedDenoNpmRuntimeLine(t *testing.T) {
 		{line: "deno run --deny-ffi ./native.so npm:create-next-app@15.4.1", want: false},
 		{line: "deno run --deny-import deno.land npm:create-next-app@latest", want: true},
 		{line: "deno run --deny-import deno.land npm:create-next-app@15.4.1", want: false},
+		{line: "deno run --inspect 127.0.0.1:9229 npm:create-next-app@latest", want: true},
+		{line: "deno run --inspect 127.0.0.1:9229 npm:create-next-app@15.4.1", want: false},
+		{line: "deno run --inspect-brk 127.0.0.1:9229 npm:create-next-app@latest", want: true},
+		{line: "deno run --inspect-wait 127.0.0.1:9229 npm:create-next-app@15.4.1", want: false},
+		{line: "deno run --ext ts npm:create-next-app@latest", want: true},
+		{line: "deno run --ext ts npm:create-next-app@15.4.1", want: false},
 		{line: "deno npm:create-vite@latest", want: true},
 		{line: "deno npm:create-vite@5.2.0", want: false},
 		{line: "deno", want: false},
@@ -3152,6 +3164,22 @@ func TestNextDenoRuntimeTarget(t *testing.T) {
 			ok:     true,
 		},
 		{
+			name:   "consumes inspect value and returns following target",
+			fields: []string{"deno", "run", "--inspect", "127.0.0.1:9229", "npm:create-next-app@latest"},
+			start:  2,
+			end:    5,
+			want:   "npm:create-next-app@latest",
+			ok:     true,
+		},
+		{
+			name:   "consumes ext value and returns following target",
+			fields: []string{"deno", "run", "--ext", "ts", "npm:create-next-app@latest"},
+			start:  2,
+			end:    5,
+			want:   "npm:create-next-app@latest",
+			ok:     true,
+		},
+		{
 			name:   "returns false when start exceeds end",
 			fields: []string{"deno", "run", "npm:cowsay"},
 			start:  5,
@@ -3382,6 +3410,32 @@ func TestIsKnownDenoOptionalFlagValue(t *testing.T) {
 		fields = []string{"deno", "run", "-S", "hostname", "main.ts"}
 		if got := isKnownDenoOptionalFlagValue("-S", "hostname", fields, 4, len(fields)); !got {
 			t.Fatalf("isKnownDenoOptionalFlagValue(-S,hostname) = %v, want true", got)
+		}
+	})
+
+	t.Run("inspect flags consume value when candidate follows", func(t *testing.T) {
+		fields := []string{"deno", "run", "--inspect", "127.0.0.1:9229", "main.ts"}
+		if got := isKnownDenoOptionalFlagValue("--inspect", "127.0.0.1:9229", fields, 4, len(fields)); !got {
+			t.Fatalf("isKnownDenoOptionalFlagValue(--inspect,127.0.0.1:9229) = %v, want true", got)
+		}
+		fields = []string{"deno", "run", "--inspect-brk", "9229", "main.ts"}
+		if got := isKnownDenoOptionalFlagValue("--inspect-brk", "9229", fields, 4, len(fields)); !got {
+			t.Fatalf("isKnownDenoOptionalFlagValue(--inspect-brk,9229) = %v, want true", got)
+		}
+		fields = []string{"deno", "run", "--inspect-wait", "localhost:9229", "main.ts"}
+		if got := isKnownDenoOptionalFlagValue("--inspect-wait", "localhost:9229", fields, 4, len(fields)); !got {
+			t.Fatalf("isKnownDenoOptionalFlagValue(--inspect-wait,localhost:9229) = %v, want true", got)
+		}
+	})
+
+	t.Run("inspect flags reject invalid values", func(t *testing.T) {
+		fields := []string{"deno", "run", "--inspect", "127.0.0.1:9229", "main.ts"}
+		if got := isKnownDenoOptionalFlagValue("--inspect", "npm:create-vite", fields, 4, len(fields)); got {
+			t.Fatalf("isKnownDenoOptionalFlagValue(--inspect,npm:create-vite) = %v, want false", got)
+		}
+		fields = []string{"deno", "run", "--inspect", "127.0.0.1:9229"}
+		if got := isKnownDenoOptionalFlagValue("--inspect", "127.0.0.1:9229", fields, 4, len(fields)); got {
+			t.Fatalf("isKnownDenoOptionalFlagValue(--inspect,127.0.0.1:9229) = %v, want false", got)
 		}
 	})
 
@@ -3742,10 +3796,50 @@ func TestCanonicalDenoFlagToken(t *testing.T) {
 		{in: "--ALLOW-RUN", want: "--allow-run"},
 		{in: "-S", want: "-S"},
 		{in: "--ALLOW-SYS", want: "--allow-sys"},
+		{in: "--INSPECT-BRK", want: "--inspect-brk"},
 	}
 	for _, tc := range cases {
 		if got := canonicalDenoFlagToken(tc.in); got != tc.want {
 			t.Fatalf("canonicalDenoFlagToken(%q) = %q, want %q", tc.in, got, tc.want)
+		}
+	}
+}
+
+func TestIsDenoInspectValue(t *testing.T) {
+	cases := []struct {
+		value string
+		want  bool
+	}{
+		{value: "9229", want: true},
+		{value: "127.0.0.1:9229", want: true},
+		{value: "localhost:9229", want: true},
+		{value: "[::1]:9229", want: true},
+		{value: "npm:create-vite", want: false},
+		{value: "jsr:@std/http", want: false},
+		{value: "https://example.com", want: false},
+		{value: "", want: false},
+		{value: "--bad", want: false},
+	}
+	for _, tc := range cases {
+		if got := isDenoInspectValue(tc.value); got != tc.want {
+			t.Fatalf("isDenoInspectValue(%q) = %v, want %v", tc.value, got, tc.want)
+		}
+	}
+}
+
+func TestIsNumericToken(t *testing.T) {
+	cases := []struct {
+		token string
+		want  bool
+	}{
+		{token: "9229", want: true},
+		{token: "0", want: true},
+		{token: "92a9", want: false},
+		{token: "", want: false},
+	}
+	for _, tc := range cases {
+		if got := isNumericToken(tc.token); got != tc.want {
+			t.Fatalf("isNumericToken(%q) = %v, want %v", tc.token, got, tc.want)
 		}
 	}
 }

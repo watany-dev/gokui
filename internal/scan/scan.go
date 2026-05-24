@@ -1640,11 +1640,15 @@ func nextDenoRuntimeTarget(fields []string, start int, end int) (string, bool) {
 		"--lock":       {},
 		"--seed":       {},
 		"--package":    {},
+		"--ext":        {},
 		"-p":           {},
 	}
 	flagOptionalKnownValue := map[string]struct{}{
 		"--reload":           {},
 		"-r":                 {},
+		"--inspect":          {},
+		"--inspect-brk":      {},
+		"--inspect-wait":     {},
 		"--vendor":           {},
 		"--node-modules-dir": {},
 		"--allow-scripts":    {},
@@ -1732,6 +1736,11 @@ func isKnownDenoOptionalFlagValue(
 			}
 		}
 		return true
+	case "--inspect", "--inspect-brk", "--inspect-wait":
+		if !hasDenoRuntimeCandidateAfter(fields, nextStart, end) {
+			return false
+		}
+		return isDenoInspectValue(value)
 	case "--vendor":
 		return value == "true" || value == "false"
 	case "--node-modules-dir":
@@ -1850,6 +1859,39 @@ func isDenoReloadBlocklistValue(value string) bool {
 	default:
 		return false
 	}
+}
+
+func isDenoInspectValue(value string) bool {
+	if value == "" || strings.HasPrefix(value, "-") {
+		return false
+	}
+	lower := strings.ToLower(value)
+	if strings.HasPrefix(lower, "npm:") || strings.HasPrefix(lower, "jsr:") ||
+		strings.HasPrefix(lower, "http://") || strings.HasPrefix(lower, "https://") {
+		return false
+	}
+	if isNumericToken(value) {
+		return true
+	}
+	if isHostLikeToken(value) {
+		return true
+	}
+	if strings.HasPrefix(lower, "localhost:") {
+		return isNumericToken(strings.TrimPrefix(lower, "localhost:"))
+	}
+	return false
+}
+
+func isNumericToken(token string) bool {
+	if token == "" {
+		return false
+	}
+	for i := 0; i < len(token); i++ {
+		if token[i] < '0' || token[i] > '9' {
+			return false
+		}
+	}
+	return true
 }
 
 func isDenoAllowScriptsValue(value string) bool {
