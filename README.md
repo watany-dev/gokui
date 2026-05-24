@@ -129,7 +129,7 @@ as critical.
 Broad Bash wildcard tool permissions are now flagged as high severity.
 Unknown/unclassified file types are now flagged as medium severity for manual
 review.
-Remote script import patterns (for example `source <(curl ...)` and
+Remote script import patterns (for example `source <(curl ...)`, `. <(curl ...)`, and
 `deno run https://...`) plus floating runtime launchers (for example `bunx`,
 `pnpm dlx`, `yarn dlx`, and `npm exec`, including `corepack`-wrapped forms)
 are now flagged under
@@ -437,7 +437,7 @@ guidance is stable.
 | --- | --- | --- | --- |
 | `DESCRIPTION_TOOL_INJECTION` | high | `description` contains execution/setup language (for example "run this script first") | Keep `description` as pure applicability text; move operational steps out of frontmatter. |
 | `PROMPT_OVERRIDE_LANGUAGE` | high | instruction text asks to ignore/override prior prompts or system policy | Remove override language; require user-visible approval flow instead of hidden prompt control. |
-| `UNPINNED_RUNTIME_TOOL` | high | `npx foo`, `uvx foo`, `go run ...@latest`, remote script import | Pin immutable versions/commits and require integrity/provenance review before install. |
+| `UNPINNED_RUNTIME_TOOL` | high | `npx foo`, `uvx foo`, `go run ...@latest`, `source/. <(curl ...)` | Pin immutable versions/commits and require integrity/provenance review before install. |
 | `LINK_SPOOFING_URL_MISMATCH` | high | markdown link display host differs from actual link target host | Make visible link text match destination host exactly; remove deceptive redirect chains. |
 | `RAW_HTML_MARKUP` | medium | raw HTML blocks/inline tags embedded in markdown instructions | Replace with plain markdown text unless HTML is strictly required and manually reviewed. |
 | `CONFUSABLE_FILENAME` | high | filename mixes ASCII with Cyrillic/Greek homoglyph characters (for example `payрal.md`) | Rename files to plain ASCII (or a single clear script) and avoid lookalike characters. |
@@ -543,7 +543,8 @@ Critical patterns include:
   `pnpm dlx foo`, `yarn dlx foo`, `npm exec foo`, `go run github.com/org/tool`
   (with no version) or `go run ...@latest` / `go run ...@main`, plus floating
   dist-tags/ranges like `npx foo@next` or `npx foo@^1.2.3`, or
-  remote script imports (including `corepack pnpm/yarn/npm ...` wrappers)
+  remote script imports (including `source <(curl ...)`, `. <(curl ...)`, and
+  `corepack pnpm/yarn/npm ...` wrappers)
 
 ### Archives
 

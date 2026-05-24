@@ -62,6 +62,7 @@ var (
 	goPseudoVersionPattern    = regexp.MustCompile(`^v\d+\.\d+\.\d+-\d{14}-[0-9a-f]{12}$`)
 	hexCommitRefPattern       = regexp.MustCompile(`^[0-9a-f]{12,40}$`)
 	remoteScriptImportPattern = regexp.MustCompile(`(?i)\b(?:source|bash|sh|zsh)\b\s*<\(\s*(?:curl|wget)\b`)
+	remoteScriptDotImport     = regexp.MustCompile(`(?i)(?:^|[;&|]\s*)\.\s*<\(\s*(?:curl|wget)\b`)
 	remoteDenoRunPattern      = regexp.MustCompile(`(?i)\bdeno\b\s+run\b[^\n]{0,300}\bhttps?://`)
 
 	fakePrereqPattern = regexp.MustCompile(`(?i)\b(?:required|required prerequisite|you must|before use)\b.{0,120}\b(?:download|install)\b.{0,200}\b(?:run|execute|bash|sh|powershell|chmod \+x)\b`)
@@ -1080,6 +1081,9 @@ func isPinnedGoModuleVersion(version string) bool {
 
 func isRemoteScriptImportLine(lowerLine string) bool {
 	if remoteScriptImportPattern.MatchString(lowerLine) {
+		return true
+	}
+	if remoteScriptDotImport.MatchString(lowerLine) {
 		return true
 	}
 	return remoteDenoRunPattern.MatchString(lowerLine)
