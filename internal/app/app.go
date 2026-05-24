@@ -242,7 +242,7 @@ gokui is pre-release software.
 
 usage:
   gokui version
-  gokui fetch github:owner/repo//path/to/skill@commit --out <quarantine-dir> [--format human|json|compact]
+  gokui fetch github:owner/repo//path/to/skill@commit --out <quarantine-dir> [--format human|json|sarif|compact]
   gokui inspect <local-dir|zip|github-source> [--format human|json|sarif|compact]
   gokui vet <local-dir|zip|tar> [--format human|json|sarif|compact]
   gokui install <source> --target codex --profile strict [--format human|json|sarif|compact] [--override RULE_ID ...]
@@ -252,21 +252,26 @@ usage:
 
 func runVet(args []string, stdout io.Writer, stderr io.Writer) int {
 	requestedJSON := inspectArgsRequestJSON(args)
+	requestedSARIF := inspectArgsRequestSARIF(args)
 	input, format, err := parseVetArgs(args)
 	if err != nil {
+		sourceArg := extractInspectSourceArg(args)
+		report := inspectErrorReport{
+			SchemaVersion: reportSchemaVersion,
+			Status:        "ERROR",
+			ErrorCode:     inspectErrorCodeArgsInvalid,
+			Message:       err.Error(),
+			Source: source{
+				Input: sourceArg,
+				Kind:  detectSourceKind(sourceArg),
+			},
+			Note: "vet failed before source evaluation",
+		}
 		if requestedJSON {
-			sourceArg := extractInspectSourceArg(args)
-			return writeInspectJSONError(stdout, stderr, inspectErrorReport{
-				SchemaVersion: reportSchemaVersion,
-				Status:        "ERROR",
-				ErrorCode:     inspectErrorCodeArgsInvalid,
-				Message:       err.Error(),
-				Source: source{
-					Input: sourceArg,
-					Kind:  detectSourceKind(sourceArg),
-				},
-				Note: "vet failed before source evaluation",
-			})
+			return writeInspectJSONError(stdout, stderr, report)
+		}
+		if requestedSARIF {
+			return writeInspectSARIFError(stdout, stderr, report)
 		}
 		_, _ = fmt.Fprintf(stderr, "%s\n\n%s\n", err.Error(), usage())
 		return 1
@@ -275,18 +280,18 @@ func runVet(args []string, stdout io.Writer, stderr io.Writer) int {
 	sourceKind := detectSourceKind(input)
 	if sourceKind == "github-source" {
 		msg := "vet does not accept github sources; use local-dir, zip, or tar input"
-		if format == "json" {
-			return writeInspectJSONError(stdout, stderr, inspectErrorReport{
-				SchemaVersion: reportSchemaVersion,
-				Status:        "ERROR",
-				ErrorCode:     inspectErrorCodeSourceInvalid,
-				Message:       msg,
-				Source: source{
-					Input: input,
-					Kind:  sourceKind,
-				},
-				Note: "vet supports only local sources",
-			})
+		if emitInspectStructuredError(format, stdout, stderr, inspectErrorReport{
+			SchemaVersion: reportSchemaVersion,
+			Status:        "ERROR",
+			ErrorCode:     inspectErrorCodeSourceInvalid,
+			Message:       msg,
+			Source: source{
+				Input: input,
+				Kind:  sourceKind,
+			},
+			Note: "vet supports only local sources",
+		}) {
+			return 1
 		}
 		_, _ = fmt.Fprintf(stderr, "%s\n\n%s\n", msg, usage())
 		return 1
@@ -314,34 +319,39 @@ func runVet(args []string, stdout io.Writer, stderr io.Writer) int {
 
 func runInspect(args []string, stdout io.Writer, stderr io.Writer) int {
 	requestedJSON := inspectArgsRequestJSON(args)
+	requestedSARIF := inspectArgsRequestSARIF(args)
 	input, format, err := parseInspectArgs(args)
 	if err != nil {
+		sourceArg := extractInspectSourceArg(args)
+		report := inspectErrorReport{
+			SchemaVersion: reportSchemaVersion,
+			Status:        "ERROR",
+			ErrorCode:     inspectErrorCodeArgsInvalid,
+			Message:       err.Error(),
+			Source: source{
+				Input: sourceArg,
+				Kind:  detectSourceKind(sourceArg),
+			},
+			Note: "inspect failed before source evaluation",
+		}
 		if requestedJSON {
-			sourceArg := extractInspectSourceArg(args)
-			return writeInspectJSONError(stdout, stderr, inspectErrorReport{
-				SchemaVersion: reportSchemaVersion,
-				Status:        "ERROR",
-				ErrorCode:     inspectErrorCodeArgsInvalid,
-				Message:       err.Error(),
-				Source: source{
-					Input: sourceArg,
-					Kind:  detectSourceKind(sourceArg),
-				},
-				Note: "inspect failed before source evaluation",
-			})
+			return writeInspectJSONError(stdout, stderr, report)
+		}
+		if requestedSARIF {
+			return writeInspectSARIFError(stdout, stderr, report)
 		}
 		_, _ = fmt.Fprintf(stderr, "%s\n\n%s\n", err.Error(), usage())
 		return 1
 	}
-	jsonOutput := format == "json"
+	structuredOutput := format == "json" || format == "sarif"
 
 	sourceKind := detectSourceKind(input)
 
 	if sourceKind != "github-source" {
 		if _, statErr := os.Stat(input); statErr != nil {
 			if errors.Is(statErr, os.ErrNotExist) {
-				if jsonOutput {
-					return writeInspectJSONError(stdout, stderr, inspectErrorReport{
+				if structuredOutput {
+					return emitInspectStructuredErrorCode(format, stdout, stderr, inspectErrorReport{
 						SchemaVersion: reportSchemaVersion,
 						Status:        "ERROR",
 						ErrorCode:     inspectErrorCodeSourceNotFound,
@@ -357,8 +367,8 @@ func runInspect(args []string, stdout io.Writer, stderr io.Writer) int {
 				return 1
 			}
 			accessErr := fmt.Sprintf("failed to access inspect source: %v", statErr)
-			if jsonOutput {
-				return writeInspectJSONError(stdout, stderr, inspectErrorReport{
+			if structuredOutput {
+				return emitInspectStructuredErrorCode(format, stdout, stderr, inspectErrorReport{
 					SchemaVersion: reportSchemaVersion,
 					Status:        "ERROR",
 					ErrorCode:     inspectErrorCodeSourcePrepareFailed,
@@ -381,8 +391,8 @@ func runInspect(args []string, stdout io.Writer, stderr io.Writer) int {
 	if sourceKind == "github-source" {
 		spec, parseErr := srcpkg.ParseGitHubSource(input)
 		if parseErr != nil {
-			if jsonOutput {
-				return writeInspectJSONError(stdout, stderr, inspectErrorReport{
+			if structuredOutput {
+				return emitInspectStructuredErrorCode(format, stdout, stderr, inspectErrorReport{
 					SchemaVersion: reportSchemaVersion,
 					Status:        "ERROR",
 					ErrorCode:     inspectErrorCodeSourceInvalid,
@@ -406,8 +416,8 @@ func runInspect(args []string, stdout io.Writer, stderr io.Writer) int {
 				defer cleanup()
 			}
 			if prepErr != nil {
-				if jsonOutput {
-					return writeInspectJSONError(stdout, stderr, inspectErrorReport{
+				if structuredOutput {
+					return emitInspectStructuredErrorCode(format, stdout, stderr, inspectErrorReport{
 						SchemaVersion: reportSchemaVersion,
 						Status:        "ERROR",
 						ErrorCode:     inspectErrorCodeSourcePrepareFailed,
@@ -424,8 +434,8 @@ func runInspect(args []string, stdout io.Writer, stderr io.Writer) int {
 			}
 			scanFindings, scanErr := scan.ScanSkillRoot(skillRoot)
 			if scanErr != nil {
-				if jsonOutput {
-					return writeInspectJSONError(stdout, stderr, inspectErrorReport{
+				if structuredOutput {
+					return emitInspectStructuredErrorCode(format, stdout, stderr, inspectErrorReport{
 						SchemaVersion: reportSchemaVersion,
 						Status:        "ERROR",
 						ErrorCode:     inspectErrorCodeScanFailed,
@@ -449,12 +459,12 @@ func runInspect(args []string, stdout io.Writer, stderr io.Writer) int {
 			defer cleanup()
 		}
 		if validateErr != nil {
-			if jsonOutput {
+			if structuredOutput {
 				errorCode := inspectErrorCodeSourcePrepareFailed
 				if isInspectSourceNotFoundError(validateErr) {
 					errorCode = inspectErrorCodeSourceNotFound
 				}
-				return writeInspectJSONError(stdout, stderr, inspectErrorReport{
+				return emitInspectStructuredErrorCode(format, stdout, stderr, inspectErrorReport{
 					SchemaVersion: reportSchemaVersion,
 					Status:        "ERROR",
 					ErrorCode:     errorCode,
@@ -471,8 +481,8 @@ func runInspect(args []string, stdout io.Writer, stderr io.Writer) int {
 		}
 		scanFindings, scanErr := scan.ScanSkillRoot(skillRoot)
 		if scanErr != nil {
-			if jsonOutput {
-				return writeInspectJSONError(stdout, stderr, inspectErrorReport{
+			if structuredOutput {
+				return emitInspectStructuredErrorCode(format, stdout, stderr, inspectErrorReport{
 					SchemaVersion: reportSchemaVersion,
 					Status:        "ERROR",
 					ErrorCode:     inspectErrorCodeScanFailed,
@@ -812,6 +822,18 @@ func inspectArgsRequestJSON(args []string) bool {
 	return false
 }
 
+func inspectArgsRequestSARIF(args []string) bool {
+	for i := 0; i < len(args); i++ {
+		if args[i] == "--format" && i+1 < len(args) && args[i+1] == "sarif" {
+			return true
+		}
+		if strings.HasPrefix(args[i], "--format=") && strings.TrimPrefix(args[i], "--format=") == "sarif" {
+			return true
+		}
+	}
+	return false
+}
+
 func extractInspectSourceArg(args []string) string {
 	for i := 0; i < len(args); i++ {
 		arg := args[i]
@@ -842,6 +864,86 @@ func writeInspectJSONError(stdout io.Writer, stderr io.Writer, report inspectErr
 		return 1
 	}
 	_, _ = fmt.Fprintf(stdout, "%s\n", out)
+	return 1
+}
+
+func writeInspectSARIFError(stdout io.Writer, stderr io.Writer, report inspectErrorReport) int {
+	report.Status = "ERROR"
+	report.ErrorCode = normalizeJSONErrorCode(report.ErrorCode, inspectErrorCodeUnknown)
+	if report.RuleID == "" {
+		report.RuleID = inferRuleIDForJSONError(report.Message)
+	}
+	out, err := json.MarshalIndent(buildInspectSARIFErrorReport(report), "", "  ")
+	if err != nil {
+		_, _ = fmt.Fprintln(stderr, "failed to render inspect SARIF error report")
+		return 1
+	}
+	_, _ = fmt.Fprintf(stdout, "%s\n", out)
+	return 1
+}
+
+func buildInspectSARIFErrorReport(report inspectErrorReport) inspectSARIFReport {
+	ruleID := report.ErrorCode
+	if report.RuleID != "" {
+		ruleID = report.RuleID
+	}
+	return inspectSARIFReport{
+		Version: "2.1.0",
+		Schema:  "https://json.schemastore.org/sarif-2.1.0.json",
+		Runs: []inspectSARIFRun{
+			{
+				Tool: inspectSARIFTool{
+					Driver: inspectSARIFDriver{
+						Name:    "gokui",
+						Version: "pre-release",
+						Rules: []inspectSARIFRule{
+							{
+								ID: ruleID,
+								ShortDescription: inspectSARIFMessageContainer{
+									Text: report.ErrorCode,
+								},
+							},
+						},
+					},
+				},
+				Results: []inspectSARIFResult{
+					{
+						RuleID:  ruleID,
+						Level:   "error",
+						Message: inspectSARIFMessageContainer{Text: report.Message},
+					},
+				},
+				Invocations: []inspectSARIFInvocation{
+					{ExecutionSuccessful: false},
+				},
+				Properties: inspectSARIFProperties{
+					SchemaVersion: report.SchemaVersion,
+					PreRelease:    true,
+					SourceInput:   report.Source.Input,
+					SourceKind:    report.Source.Kind,
+					Decision:      report.Status,
+					Note:          fmt.Sprintf("%s; error_code=%s", report.Note, report.ErrorCode),
+				},
+			},
+		},
+	}
+}
+
+func emitInspectStructuredError(format string, stdout io.Writer, stderr io.Writer, report inspectErrorReport) bool {
+	switch format {
+	case "json":
+		_ = writeInspectJSONError(stdout, stderr, report)
+		return true
+	case "sarif":
+		_ = writeInspectSARIFError(stdout, stderr, report)
+		return true
+	default:
+		return false
+	}
+}
+
+func emitInspectStructuredErrorCode(format string, stdout io.Writer, stderr io.Writer, report inspectErrorReport) int {
+	_ = emitInspectStructuredError(format, stdout, stderr, report)
 	return 1
 }
 

@@ -321,6 +321,30 @@ func TestRun(t *testing.T) {
 		}
 	})
 
+	t.Run("vet rejects github source in sarif format", func(t *testing.T) {
+		var stdout bytes.Buffer
+		var stderr bytes.Buffer
+
+		source := "github:org/repo//skills/skill-a@8f3c2d1a4b5c6d7e8f901234567890abcdef1234"
+		code := Run([]string{"vet", source, "--format", "sarif"}, &stdout, &stderr, cfg)
+		if code != 1 {
+			t.Fatalf("Run() code = %d, want 1\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
+		}
+		if stderr.Len() != 0 {
+			t.Fatalf("stderr should be empty, got %q", stderr.String())
+		}
+		var sarif inspectSARIFReport
+		if err := json.Unmarshal(stdout.Bytes(), &sarif); err != nil {
+			t.Fatalf("sarif parse failed: %v", err)
+		}
+		if len(sarif.Runs) != 1 || len(sarif.Runs[0].Results) != 1 {
+			t.Fatalf("unexpected sarif structure: %+v", sarif)
+		}
+		if sarif.Runs[0].Results[0].RuleID != inspectErrorCodeSourceInvalid {
+			t.Fatalf("rule id = %q, want %q", sarif.Runs[0].Results[0].RuleID, inspectErrorCodeSourceInvalid)
+		}
+	})
+
 	t.Run("vet rejects github source in human format", func(t *testing.T) {
 		var stdout bytes.Buffer
 		var stderr bytes.Buffer
@@ -373,6 +397,29 @@ func TestRun(t *testing.T) {
 		}
 	})
 
+	t.Run("vet requires source with sarif error envelope", func(t *testing.T) {
+		var stdout bytes.Buffer
+		var stderr bytes.Buffer
+
+		code := Run([]string{"vet", "--format", "sarif"}, &stdout, &stderr, cfg)
+		if code != 1 {
+			t.Fatalf("Run() code = %d, want 1\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
+		}
+		if stderr.Len() != 0 {
+			t.Fatalf("stderr should be empty, got %q", stderr.String())
+		}
+		var sarif inspectSARIFReport
+		if err := json.Unmarshal(stdout.Bytes(), &sarif); err != nil {
+			t.Fatalf("sarif parse failed: %v", err)
+		}
+		if len(sarif.Runs) != 1 || len(sarif.Runs[0].Results) != 1 {
+			t.Fatalf("unexpected sarif structure: %+v", sarif)
+		}
+		if sarif.Runs[0].Results[0].RuleID != inspectErrorCodeArgsInvalid {
+			t.Fatalf("rule id = %q, want %q", sarif.Runs[0].Results[0].RuleID, inspectErrorCodeArgsInvalid)
+		}
+	})
+
 	t.Run("inspect requires source", func(t *testing.T) {
 		var stdout bytes.Buffer
 		var stderr bytes.Buffer
@@ -386,6 +433,29 @@ func TestRun(t *testing.T) {
 		}
 		if !strings.Contains(stdout.String(), "\"error_code\": \""+inspectErrorCodeArgsInvalid+"\"") {
 			t.Fatalf("stdout should include args-invalid error code, got %q", stdout.String())
+		}
+	})
+
+	t.Run("inspect requires source with sarif error envelope", func(t *testing.T) {
+		var stdout bytes.Buffer
+		var stderr bytes.Buffer
+
+		code := Run([]string{"inspect", "--format", "sarif"}, &stdout, &stderr, cfg)
+		if code != 1 {
+			t.Fatalf("Run() code = %d, want 1\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
+		}
+		if stderr.Len() != 0 {
+			t.Fatalf("stderr should be empty, got %q", stderr.String())
+		}
+		var sarif inspectSARIFReport
+		if err := json.Unmarshal(stdout.Bytes(), &sarif); err != nil {
+			t.Fatalf("sarif parse failed: %v", err)
+		}
+		if len(sarif.Runs) != 1 || len(sarif.Runs[0].Results) != 1 {
+			t.Fatalf("unexpected sarif structure: %+v", sarif)
+		}
+		if sarif.Runs[0].Results[0].RuleID != inspectErrorCodeArgsInvalid {
+			t.Fatalf("rule id = %q, want %q", sarif.Runs[0].Results[0].RuleID, inspectErrorCodeArgsInvalid)
 		}
 	})
 
@@ -1226,6 +1296,15 @@ func TestInspectArgJSONHelpers(t *testing.T) {
 	if inspectArgsRequestJSON([]string{"./skill", "--format", "human"}) {
 		t.Fatal("inspectArgsRequestJSON() should be false for non-json format")
 	}
+	if !inspectArgsRequestSARIF([]string{"./skill", "--format", "sarif"}) {
+		t.Fatal("inspectArgsRequestSARIF() should detect --format sarif")
+	}
+	if !inspectArgsRequestSARIF([]string{"./skill", "--format=sarif"}) {
+		t.Fatal("inspectArgsRequestSARIF() should detect --format=sarif")
+	}
+	if inspectArgsRequestSARIF([]string{"./skill", "--format", "human"}) {
+		t.Fatal("inspectArgsRequestSARIF() should be false for non-sarif format")
+	}
 
 	if got := extractInspectSourceArg([]string{"./skill", "--format", "json"}); got != "./skill" {
 		t.Fatalf("extractInspectSourceArg() = %q, want %q", got, "./skill")
@@ -1332,6 +1411,73 @@ func TestBuildInspectSARIFReport(t *testing.T) {
 	}
 	if len(run.Results[2].Locations) != 0 {
 		t.Fatalf("result without file should not include locations, got %+v", run.Results[2].Locations)
+	}
+}
+
+func TestBuildInspectSARIFErrorReport(t *testing.T) {
+	report := inspectErrorReport{
+		SchemaVersion: reportSchemaVersion,
+		Status:        "ERROR",
+		ErrorCode:     inspectErrorCodeSourceNotFound,
+		Message:       "inspect source not found: /tmp/missing",
+		Source: source{
+			Input: "/tmp/missing",
+			Kind:  "local-dir",
+		},
+		Note: "inspect source must exist before validation",
+	}
+	sarif := buildInspectSARIFErrorReport(report)
+	if sarif.Version != "2.1.0" {
+		t.Fatalf("version = %q, want 2.1.0", sarif.Version)
+	}
+	if len(sarif.Runs) != 1 {
+		t.Fatalf("runs length = %d, want 1", len(sarif.Runs))
+	}
+	run := sarif.Runs[0]
+	if len(run.Results) != 1 {
+		t.Fatalf("results length = %d, want 1", len(run.Results))
+	}
+	if run.Results[0].RuleID != inspectErrorCodeSourceNotFound {
+		t.Fatalf("rule id = %q, want %q", run.Results[0].RuleID, inspectErrorCodeSourceNotFound)
+	}
+	if run.Results[0].Level != "error" {
+		t.Fatalf("level = %q, want error", run.Results[0].Level)
+	}
+	if len(run.Invocations) != 1 || run.Invocations[0].ExecutionSuccessful {
+		t.Fatalf("invocation should be unsuccessful, got %+v", run.Invocations)
+	}
+}
+
+func TestWriteInspectSARIFErrorPreservesExplicitRuleID(t *testing.T) {
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	code := writeInspectSARIFError(&stdout, &stderr, inspectErrorReport{
+		SchemaVersion: reportSchemaVersion,
+		Status:        "ERROR",
+		ErrorCode:     inspectErrorCodeScanFailed,
+		RuleID:        "EXPLICIT_RULE",
+		Message:       "EXPLICIT_RULE: synthetic inspect error",
+		Source: source{
+			Input: "./skill",
+			Kind:  "local-dir",
+		},
+		Note: "test",
+	})
+	if code != 1 {
+		t.Fatalf("writeInspectSARIFError() code = %d, want 1", code)
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("stderr should be empty, got %q", stderr.String())
+	}
+	var sarif inspectSARIFReport
+	if err := json.Unmarshal(stdout.Bytes(), &sarif); err != nil {
+		t.Fatalf("sarif parse failed: %v", err)
+	}
+	if len(sarif.Runs) != 1 || len(sarif.Runs[0].Results) != 1 {
+		t.Fatalf("unexpected sarif structure: %+v", sarif)
+	}
+	if sarif.Runs[0].Results[0].RuleID != "EXPLICIT_RULE" {
+		t.Fatalf("rule id = %q, want EXPLICIT_RULE", sarif.Runs[0].Results[0].RuleID)
 	}
 }
 
