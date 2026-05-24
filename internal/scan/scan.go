@@ -1632,18 +1632,20 @@ func nextDenoRuntimeTarget(fields []string, start int, end int) (string, bool) {
 	}
 
 	flagNeedsValue := map[string]struct{}{
-		"-c":           {},
-		"--config":     {},
-		"--import-map": {},
-		"--location":   {},
-		"--cert":       {},
-		"--lock":       {},
-		"--env-file":   {},
-		"--preload":    {},
-		"--seed":       {},
-		"--package":    {},
-		"--ext":        {},
-		"-p":           {},
+		"-c":              {},
+		"--config":        {},
+		"--import-map":    {},
+		"--location":      {},
+		"--cert":          {},
+		"--lock":          {},
+		"--env-file":      {},
+		"--preload":       {},
+		"--seed":          {},
+		"--package":       {},
+		"--strace-ops":    {},
+		"--strace-filter": {},
+		"--ext":           {},
+		"-p":              {},
 	}
 	flagOptionalKnownValue := map[string]struct{}{
 		"--reload":           {},

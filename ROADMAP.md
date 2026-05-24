@@ -134,6 +134,8 @@ tests/CI:
 - deno split `--watch` forms and split `--env-file`/`--preload` forms are
   interpreted before target extraction so later runtime specifier targets
   remain pin-checked
+- deno split `--strace-ops`/`--strace-filter` forms are interpreted before
+  target extraction so later runtime specifier targets remain pin-checked
 - dependency manifest scanning coverage for `package.json`, `pyproject.toml`,
   `requirements.txt`, `uv.lock`, `go.mod`, `Gemfile`, and `deno.json` as
   first-class scan inputs
