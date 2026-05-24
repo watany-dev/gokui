@@ -2125,6 +2125,10 @@ func TestUnpinnedRuntimeToolDetection(t *testing.T) {
 		{line: "deno x --package npm:create-vite@5.2.0 npm:other@latest", want: true},
 		{line: "deno x --package npm:create-vite@5.2.0 npm:other@1.2.3", want: false},
 		{line: "deno x --package npm:create-vite@5.2.0", want: false},
+		{line: "deno x --package npm:create-vite@5.2.0 --package npm:other@latest create-vite", want: true},
+		{line: "deno x --package npm:create-vite@5.2.0 --package npm:other@1.2.3 create-vite", want: false},
+		{line: "deno x --package npm:create-vite@5.2.0 --package jsr:@std/http@1.0.0 create-vite", want: false},
+		{line: "deno x --package npm:create-vite@5.2.0 --package jsr:@std/http create-vite", want: true},
 		{line: "deno x jsr:@std/http/file-server", want: true},
 		{line: "deno x jsr:@std/http@1.0.0/file-server", want: false},
 		{line: "deno x -p jsr:@std/http@1.0.0 file-server", want: false},
@@ -2654,6 +2658,10 @@ func TestIsUnpinnedDenoNpmRuntimeLine(t *testing.T) {
 		{line: "deno x --package npm:create-vite@5.2.0 npm:other@latest", want: true},
 		{line: "deno x --package npm:create-vite@5.2.0 npm:other@1.2.3", want: false},
 		{line: "deno x --package npm:create-vite@5.2.0", want: false},
+		{line: "deno x --package npm:create-vite@5.2.0 --package npm:other@latest create-vite", want: true},
+		{line: "deno x --package npm:create-vite@5.2.0 --package npm:other@1.2.3 create-vite", want: false},
+		{line: "deno x --package npm:create-vite@5.2.0 --package jsr:@std/http@1.0.0 create-vite", want: false},
+		{line: "deno x --package npm:create-vite@5.2.0 --package jsr:@std/http create-vite", want: true},
 		{line: "deno x jsr:@std/http/file-server", want: true},
 		{line: "deno x jsr:@std/http@1.0.0/file-server", want: false},
 		{line: "deno x -p jsr:@std/http@1.0.0 file-server", want: false},
@@ -2707,6 +2715,25 @@ func TestExtractDenoNpmPackageRefs(t *testing.T) {
 		got := extractDenoNpmPackageRefs(fields, 2, len(fields))
 		if len(got) != 1 || got[0] != "npm:create-vite@5.2.0" {
 			t.Fatalf("extractDenoNpmPackageRefs() = %v, want [npm:create-vite@5.2.0]", got)
+		}
+	})
+
+	t.Run("extracts multiple mixed package refs", func(t *testing.T) {
+		fields := []string{
+			"deno", "x",
+			"--package", "npm:create-vite@5.2.0",
+			"--package", "jsr:@std/http",
+			"-p=jsr:@std/fs@1.0.0",
+		}
+		got := extractDenoNpmPackageRefs(fields, 2, len(fields))
+		want := []string{"npm:create-vite@5.2.0", "jsr:@std/http", "jsr:@std/fs@1.0.0"}
+		if len(got) != len(want) {
+			t.Fatalf("extractDenoNpmPackageRefs() len = %d, want %d (%v)", len(got), len(want), got)
+		}
+		for i := range want {
+			if got[i] != want[i] {
+				t.Fatalf("extractDenoNpmPackageRefs()[%d] = %q, want %q", i, got[i], want[i])
+			}
 		}
 	})
 }
