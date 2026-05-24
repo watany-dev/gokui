@@ -2,6 +2,8 @@ package scan
 
 import (
 	"bytes"
+	"encoding/base64"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
@@ -20,6 +22,11 @@ import (
 
 const maxScanFileBytes = 500_000
 const maxShebangProbeBytes = 256
+const maxDecodedArtifactBytes = 1_000_000
+const maxDecodedRecursionDepth = 3
+const maxDecodedCandidatesPerLine = 16
+const minBase64CandidateLength = 40
+const minHexCandidateLength = 64
 
 var scanMaxFiles = 10_000
 
@@ -85,6 +92,11 @@ type scanTarget struct {
 	Relative string
 	Kind     string
 	Info     os.FileInfo
+}
+
+type encodedCandidate struct {
+	kind  string
+	value string
 }
 
 var scriptLikeExtensions = map[string]struct{}{
@@ -489,146 +501,297 @@ func scanTextFile(target scanTarget) ([]Finding, error) {
 			})
 		}
 		for _, variant := range lineVariants(line, normalized, changed) {
-			if curlPipePattern.MatchString(variant) || curlSubshellExecPattern.MatchString(variant) || curlBacktickExecPattern.MatchString(variant) || powerShellRemoteEvalPattern.MatchString(variant) || powerShellFetchEvalPattern.MatchString(variant) || pythonRemoteExecPattern.MatchString(variant) || nodeRemoteEvalPattern.MatchString(variant) || nodeRemoteFunctionExecPattern.MatchString(variant) || rubyRemoteEvalPattern.MatchString(variant) {
-				findings = append(findings, Finding{
-					ID:       "CURL_PIPE_SHELL",
-					Severity: "critical",
-					File:     target.Relative,
-					Line:     lineNum,
-					Summary:  "network output reaches shell/interpreter execution",
-				})
-			}
-			if base64PipeExec.MatchString(variant) || base64SubshellExec.MatchString(variant) {
-				findings = append(findings, Finding{
-					ID:       "BASE64_PIPE_EXEC",
-					Severity: "critical",
-					File:     target.Relative,
-					Line:     lineNum,
-					Summary:  "decoded payload reaches interpreter execution",
-				})
-			}
-			if hexPipeExec.MatchString(variant) || hexSubshellExec.MatchString(variant) {
-				findings = append(findings, Finding{
-					ID:       "HEX_PIPE_EXEC",
-					Severity: "critical",
-					File:     target.Relative,
-					Line:     lineNum,
-					Summary:  "hex-decoded payload reaches interpreter execution",
-				})
-			}
-			if encodedCmdExec.MatchString(variant) {
-				findings = append(findings, Finding{
-					ID:       "ENCODED_COMMAND_EXEC",
-					Severity: "critical",
-					File:     target.Relative,
-					Line:     lineNum,
-					Summary:  "encoded command execution flag detected",
-				})
-			}
-			if hasChmodExecChain(variant) {
-				findings = append(findings, Finding{
-					ID:       "CHMOD_EXEC_CHAIN",
-					Severity: "critical",
-					File:     target.Relative,
-					Line:     lineNum,
-					Summary:  "chmod +x followed by execution of the same local artifact",
-				})
-			}
-			if hasHomeConfigWrite(variant) {
-				findings = append(findings, Finding{
-					ID:       "WRITES_HOME_CONFIG",
-					Severity: "high",
-					File:     target.Relative,
-					Line:     lineNum,
-					Summary:  "writes to shell/ssh/cron/launch-agent configuration path",
-				})
-			}
-			if hasSecretExfilLine(variant) {
-				findings = append(findings, Finding{
-					ID:       "SECRET_EXFIL",
-					Severity: "critical",
-					File:     target.Relative,
-					Line:     lineNum,
-					Summary:  "secret path access combined with network exfiltration command",
-				})
-			}
-			if hasBashWildcardPermission(variant) {
-				findings = append(findings, Finding{
-					ID:       "ALLOWED_TOOLS_BASH_WILDCARD",
-					Severity: "high",
-					File:     target.Relative,
-					Line:     lineNum,
-					Summary:  "broad Bash wildcard permission detected",
-				})
-			}
-			if isUnpinnedRuntimeToolLine(variant) {
-				findings = append(findings, Finding{
-					ID:       "UNPINNED_RUNTIME_TOOL",
-					Severity: "high",
-					File:     target.Relative,
-					Line:     lineNum,
-					Summary:  "unpinned runtime tool execution detected",
-				})
-			}
-			findings = append(findings, classifyURLRisks(variant, target.Relative, lineNum, target.Kind == "markdown")...)
+			findings = append(findings, scanVariantThreatFindings(variant, target, lineNum)...)
+			findings = append(findings, scanDecodedVariantThreatFindings(variant, target, lineNum, 0)...)
 		}
 		findings = append(findings, classifyUnicodeThreats(line, target.Relative, lineNum)...)
-
-		if target.Kind != "markdown" {
-			continue
-		}
-
-		for _, variant := range lineVariants(line, normalized, changed) {
-			if fakePrereqPattern.MatchString(variant) {
-				findings = append(findings, Finding{
-					ID:       "FAKE_PREREQ_EXECUTION",
-					Severity: "critical",
-					File:     target.Relative,
-					Line:     lineNum,
-					Summary:  "prerequisite text asks to download and run code",
-				})
-			}
-			if externalBinaryPattern.MatchString(variant) {
-				findings = append(findings, Finding{
-					ID:       "EXTERNAL_BINARY_DOWNLOAD",
-					Severity: "high",
-					File:     target.Relative,
-					Line:     lineNum,
-					Summary:  "external binary archive download instruction detected",
-				})
-			}
-			if promptOverridePattern.MatchString(variant) || hasPromptOverrideApproximatePhrase(variant) {
-				findings = append(findings, Finding{
-					ID:       "PROMPT_OVERRIDE_LANGUAGE",
-					Severity: "high",
-					File:     target.Relative,
-					Line:     lineNum,
-					Summary:  "prompt override language detected",
-				})
-			}
-			if passwordArchivePattern.MatchString(variant) {
-				findings = append(findings, Finding{
-					ID:       "PASSWORD_PROTECTED_ARCHIVE",
-					Severity: "high",
-					File:     target.Relative,
-					Line:     lineNum,
-					Summary:  "password-protected archive instruction detected",
-				})
-			}
-			if rawHTMLPattern.MatchString(variant) {
-				findings = append(findings, Finding{
-					ID:       "RAW_HTML_MARKUP",
-					Severity: "medium",
-					File:     target.Relative,
-					Line:     lineNum,
-					Summary:  "raw HTML markup detected in markdown content",
-				})
-			}
-			findings = append(findings, classifyMarkdownLinkSpoofing(variant, target.Relative, lineNum)...)
-		}
 	}
 
 	return deduplicateFindings(findings), nil
+}
+
+func scanVariantThreatFindings(variant string, target scanTarget, lineNum int) []Finding {
+	findings := make([]Finding, 0, 8)
+	if curlPipePattern.MatchString(variant) || curlSubshellExecPattern.MatchString(variant) || curlBacktickExecPattern.MatchString(variant) || powerShellRemoteEvalPattern.MatchString(variant) || powerShellFetchEvalPattern.MatchString(variant) || pythonRemoteExecPattern.MatchString(variant) || nodeRemoteEvalPattern.MatchString(variant) || nodeRemoteFunctionExecPattern.MatchString(variant) || rubyRemoteEvalPattern.MatchString(variant) {
+		findings = append(findings, Finding{
+			ID:       "CURL_PIPE_SHELL",
+			Severity: "critical",
+			File:     target.Relative,
+			Line:     lineNum,
+			Summary:  "network output reaches shell/interpreter execution",
+		})
+	}
+	if base64PipeExec.MatchString(variant) || base64SubshellExec.MatchString(variant) {
+		findings = append(findings, Finding{
+			ID:       "BASE64_PIPE_EXEC",
+			Severity: "critical",
+			File:     target.Relative,
+			Line:     lineNum,
+			Summary:  "decoded payload reaches interpreter execution",
+		})
+	}
+	if hexPipeExec.MatchString(variant) || hexSubshellExec.MatchString(variant) {
+		findings = append(findings, Finding{
+			ID:       "HEX_PIPE_EXEC",
+			Severity: "critical",
+			File:     target.Relative,
+			Line:     lineNum,
+			Summary:  "hex-decoded payload reaches interpreter execution",
+		})
+	}
+	if encodedCmdExec.MatchString(variant) {
+		findings = append(findings, Finding{
+			ID:       "ENCODED_COMMAND_EXEC",
+			Severity: "critical",
+			File:     target.Relative,
+			Line:     lineNum,
+			Summary:  "encoded command execution flag detected",
+		})
+	}
+	if hasChmodExecChain(variant) {
+		findings = append(findings, Finding{
+			ID:       "CHMOD_EXEC_CHAIN",
+			Severity: "critical",
+			File:     target.Relative,
+			Line:     lineNum,
+			Summary:  "chmod +x followed by execution of the same local artifact",
+		})
+	}
+	if hasHomeConfigWrite(variant) {
+		findings = append(findings, Finding{
+			ID:       "WRITES_HOME_CONFIG",
+			Severity: "high",
+			File:     target.Relative,
+			Line:     lineNum,
+			Summary:  "writes to shell/ssh/cron/launch-agent configuration path",
+		})
+	}
+	if hasSecretExfilLine(variant) {
+		findings = append(findings, Finding{
+			ID:       "SECRET_EXFIL",
+			Severity: "critical",
+			File:     target.Relative,
+			Line:     lineNum,
+			Summary:  "secret path access combined with network exfiltration command",
+		})
+	}
+	if hasBashWildcardPermission(variant) {
+		findings = append(findings, Finding{
+			ID:       "ALLOWED_TOOLS_BASH_WILDCARD",
+			Severity: "high",
+			File:     target.Relative,
+			Line:     lineNum,
+			Summary:  "broad Bash wildcard permission detected",
+		})
+	}
+	if isUnpinnedRuntimeToolLine(variant) {
+		findings = append(findings, Finding{
+			ID:       "UNPINNED_RUNTIME_TOOL",
+			Severity: "high",
+			File:     target.Relative,
+			Line:     lineNum,
+			Summary:  "unpinned runtime tool execution detected",
+		})
+	}
+	findings = append(findings, classifyURLRisks(variant, target.Relative, lineNum, target.Kind == "markdown")...)
+
+	if target.Kind != "markdown" {
+		return findings
+	}
+	if fakePrereqPattern.MatchString(variant) {
+		findings = append(findings, Finding{
+			ID:       "FAKE_PREREQ_EXECUTION",
+			Severity: "critical",
+			File:     target.Relative,
+			Line:     lineNum,
+			Summary:  "prerequisite text asks to download and run code",
+		})
+	}
+	if externalBinaryPattern.MatchString(variant) {
+		findings = append(findings, Finding{
+			ID:       "EXTERNAL_BINARY_DOWNLOAD",
+			Severity: "high",
+			File:     target.Relative,
+			Line:     lineNum,
+			Summary:  "external binary archive download instruction detected",
+		})
+	}
+	if promptOverridePattern.MatchString(variant) || hasPromptOverrideApproximatePhrase(variant) {
+		findings = append(findings, Finding{
+			ID:       "PROMPT_OVERRIDE_LANGUAGE",
+			Severity: "high",
+			File:     target.Relative,
+			Line:     lineNum,
+			Summary:  "prompt override language detected",
+		})
+	}
+	if passwordArchivePattern.MatchString(variant) {
+		findings = append(findings, Finding{
+			ID:       "PASSWORD_PROTECTED_ARCHIVE",
+			Severity: "high",
+			File:     target.Relative,
+			Line:     lineNum,
+			Summary:  "password-protected archive instruction detected",
+		})
+	}
+	if rawHTMLPattern.MatchString(variant) {
+		findings = append(findings, Finding{
+			ID:       "RAW_HTML_MARKUP",
+			Severity: "medium",
+			File:     target.Relative,
+			Line:     lineNum,
+			Summary:  "raw HTML markup detected in markdown content",
+		})
+	}
+	findings = append(findings, classifyMarkdownLinkSpoofing(variant, target.Relative, lineNum)...)
+	return findings
+}
+
+func scanDecodedVariantThreatFindings(line string, target scanTarget, lineNum int, depth int) []Finding {
+	if depth >= maxDecodedRecursionDepth {
+		return nil
+	}
+	candidates := extractEncodedCandidates(line)
+	if len(candidates) == 0 {
+		return nil
+	}
+
+	findings := make([]Finding, 0, 4)
+	for _, candidate := range candidates {
+		decoded, ok := decodeCandidatePayload(candidate)
+		if !ok || len(decoded) == 0 || len(decoded) > maxDecodedArtifactBytes {
+			continue
+		}
+		if !isLikelyTextPayload(decoded) {
+			continue
+		}
+
+		decodedText := strings.ReplaceAll(string(decoded), "\r\n", "\n")
+		for _, decodedLine := range strings.Split(decodedText, "\n") {
+			if strings.TrimSpace(decodedLine) == "" {
+				continue
+			}
+			normalized, changed := normalizeLineNFKC(decodedLine)
+			for _, variant := range lineVariants(decodedLine, normalized, changed) {
+				findings = append(findings, scanVariantThreatFindings(variant, target, lineNum)...)
+				findings = append(findings, scanDecodedVariantThreatFindings(variant, target, lineNum, depth+1)...)
+			}
+		}
+	}
+	return findings
+}
+
+func extractEncodedCandidates(line string) []encodedCandidate {
+	fields := strings.FieldsFunc(line, func(r rune) bool {
+		switch r {
+		case ' ', '\t', '\n', '\r', '"', '\'', '`', ',', ';', ':', '(', ')', '[', ']', '{', '}', '<', '>', '|':
+			return true
+		default:
+			return false
+		}
+	})
+	if len(fields) == 0 {
+		return nil
+	}
+
+	candidates := make([]encodedCandidate, 0, minInt(len(fields), maxDecodedCandidatesPerLine))
+	for _, raw := range fields {
+		token := sanitizeRuntimeToken(raw)
+		if token == "" {
+			continue
+		}
+		token = strings.TrimPrefix(strings.ToLower(token), "0x")
+		if len(token) >= minHexCandidateLength && len(token)%2 == 0 && isHexToken(token) {
+			candidates = append(candidates, encodedCandidate{kind: "hex", value: token})
+			if len(candidates) >= maxDecodedCandidatesPerLine {
+				break
+			}
+			continue
+		}
+
+		token = sanitizeRuntimeToken(raw)
+		if len(token) >= minBase64CandidateLength && isBase64Token(token) {
+			candidates = append(candidates, encodedCandidate{kind: "base64", value: token})
+			if len(candidates) >= maxDecodedCandidatesPerLine {
+				break
+			}
+		}
+	}
+	return candidates
+}
+
+func decodeCandidatePayload(candidate encodedCandidate) ([]byte, bool) {
+	switch candidate.kind {
+	case "hex":
+		decoded, err := hex.DecodeString(candidate.value)
+		if err != nil {
+			return nil, false
+		}
+		return decoded, true
+	case "base64":
+		token := strings.TrimSpace(candidate.value)
+		decoded, err := base64.StdEncoding.DecodeString(token)
+		if err == nil {
+			return decoded, true
+		}
+		decoded, err = base64.RawStdEncoding.DecodeString(strings.TrimRight(token, "="))
+		if err == nil {
+			return decoded, true
+		}
+		return nil, false
+	default:
+		return nil, false
+	}
+}
+
+func isLikelyTextPayload(decoded []byte) bool {
+	if len(decoded) == 0 {
+		return false
+	}
+	printable := 0
+	for _, b := range decoded {
+		if b == '\n' || b == '\r' || b == '\t' || (b >= 0x20 && b <= 0x7E) {
+			printable++
+		}
+	}
+	return printable*100/len(decoded) >= 80
+}
+
+func isHexToken(token string) bool {
+	for i := 0; i < len(token); i++ {
+		c := token[i]
+		if (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F') {
+			continue
+		}
+		return false
+	}
+	return true
+}
+
+func isBase64Token(token string) bool {
+	if token == "" {
+		return false
+	}
+	paddingStart := -1
+	for i := 0; i < len(token); i++ {
+		c := token[i]
+		switch {
+		case c >= 'a' && c <= 'z':
+		case c >= 'A' && c <= 'Z':
+		case c >= '0' && c <= '9':
+		case c == '+' || c == '/':
+		case c == '=':
+			if paddingStart < 0 {
+				paddingStart = i
+			}
+		default:
+			return false
+		}
+		if paddingStart >= 0 && c != '=' {
+			return false
+		}
+	}
+	return true
 }
 
 func hasPromptOverrideApproximatePhrase(line string) bool {
