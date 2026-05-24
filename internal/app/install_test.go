@@ -1921,6 +1921,39 @@ func TestWriteInstallMetadataAndBuildDigestsErrors(t *testing.T) {
 		}
 	})
 
+	t.Run("buildFileDigests rejects symlink root", func(t *testing.T) {
+		if runtime.GOOS == "windows" {
+			t.Skip("symlink permissions differ on windows")
+		}
+		parent := t.TempDir()
+		realRoot := filepath.Join(parent, "real-root")
+		if err := os.Mkdir(realRoot, 0o755); err != nil {
+			t.Fatalf("mkdir real root: %v", err)
+		}
+		if err := os.WriteFile(filepath.Join(realRoot, "a.txt"), []byte("x"), 0o644); err != nil {
+			t.Fatalf("write file: %v", err)
+		}
+		linkRoot := filepath.Join(parent, "root-link")
+		if err := os.Symlink("real-root", linkRoot); err != nil {
+			t.Fatalf("create root symlink: %v", err)
+		}
+		_, _, err := buildFileDigestsFiltered(linkRoot, nil)
+		if err == nil || !strings.Contains(err.Error(), ruleInstallDigestSymlink) {
+			t.Fatalf("expected digest symlink-root error, got %v", err)
+		}
+	})
+
+	t.Run("buildFileDigests rejects non-directory root", func(t *testing.T) {
+		rootFile := filepath.Join(t.TempDir(), "not-a-dir.txt")
+		if err := os.WriteFile(rootFile, []byte("x"), 0o644); err != nil {
+			t.Fatalf("write root file: %v", err)
+		}
+		_, _, err := buildFileDigestsFiltered(rootFile, nil)
+		if err == nil || !strings.Contains(err.Error(), ruleInstallDigestSpecialFile) {
+			t.Fatalf("expected digest non-directory root error, got %v", err)
+		}
+	})
+
 	t.Run("buildFileDigests rejects special file entries", func(t *testing.T) {
 		if runtime.GOOS == "windows" {
 			t.Skip("fifo behavior differs on windows")
@@ -2037,6 +2070,44 @@ func TestCopyTreeNormalizedRejectsSymlink(t *testing.T) {
 	err := copyTreeNormalized(src, filepath.Join(dst, "copy"))
 	if err == nil || !strings.Contains(err.Error(), "contains symlink") {
 		t.Fatalf("expected symlink rejection, got %v", err)
+	}
+}
+
+func TestCopyTreeNormalizedRejectsSymlinkRoot(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlink permissions differ on windows")
+	}
+
+	parent := t.TempDir()
+	realRoot := filepath.Join(parent, "real-root")
+	if err := os.Mkdir(realRoot, 0o755); err != nil {
+		t.Fatalf("mkdir real root: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(realRoot, "regular.txt"), []byte("ok"), 0o644); err != nil {
+		t.Fatalf("write regular file: %v", err)
+	}
+	linkRoot := filepath.Join(parent, "root-link")
+	if err := os.Symlink("real-root", linkRoot); err != nil {
+		t.Fatalf("create root symlink: %v", err)
+	}
+
+	dst := t.TempDir()
+	err := copyTreeNormalized(linkRoot, filepath.Join(dst, "copy"))
+	if err == nil || !strings.Contains(err.Error(), ruleInstallSourceSymlink) {
+		t.Fatalf("expected symlink-root rejection, got %v", err)
+	}
+}
+
+func TestCopyTreeNormalizedRejectsNonDirectoryRoot(t *testing.T) {
+	rootFile := filepath.Join(t.TempDir(), "not-a-dir.txt")
+	if err := os.WriteFile(rootFile, []byte("x"), 0o644); err != nil {
+		t.Fatalf("write root file: %v", err)
+	}
+
+	dst := t.TempDir()
+	err := copyTreeNormalized(rootFile, filepath.Join(dst, "copy"))
+	if err == nil || !strings.Contains(err.Error(), ruleInstallSourceSpecialFile) {
+		t.Fatalf("expected non-directory-root rejection, got %v", err)
 	}
 }
 

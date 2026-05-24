@@ -44,6 +44,7 @@ const (
 	ruleInstallSourceFileCountExceeded  = "INSTALL_SOURCE_FILE_COUNT_EXCEEDED"
 	ruleInstallSourceTotalBytesExceeded = "INSTALL_SOURCE_TOTAL_BYTES_EXCEEDED"
 	ruleInstallSourceFileTooLarge       = "INSTALL_SOURCE_FILE_TOO_LARGE"
+	ruleInstallSourceSymlink            = "INSTALL_SOURCE_SYMLINK_DETECTED"
 	ruleInstallSourceSpecialFile        = "INSTALL_SOURCE_SPECIAL_FILE"
 	ruleInstallSourceChanged            = "INSTALL_SOURCE_CHANGED_DURING_COPY"
 	ruleInstallDigestSymlink            = "INSTALL_DIGEST_SYMLINK_DETECTED"
@@ -655,6 +656,9 @@ func installSkillAtomic(skillRoot string, targetRoot string, skillName string, r
 }
 
 func copyTreeNormalized(srcRoot string, dstRoot string) error {
+	if err := ensureInstallTreeRoot(srcRoot, "install source", ruleInstallSourceSymlink, ruleInstallSourceSpecialFile); err != nil {
+		return err
+	}
 	files := 0
 	var totalBytes int64
 	return filepath.WalkDir(srcRoot, func(path string, d os.DirEntry, walkErr error) error {
@@ -675,7 +679,7 @@ func copyTreeNormalized(srcRoot string, dstRoot string) error {
 			return fmt.Errorf("failed to stat source file during install: %w", err)
 		}
 		if srcInfo.Mode()&os.ModeSymlink != 0 {
-			return fmt.Errorf("install source contains symlink: %s", rel)
+			return fmt.Errorf("%s: install source contains symlink: %s", ruleInstallSourceSymlink, rel)
 		}
 		destPath := filepath.Join(dstRoot, rel)
 		if d.IsDir() {
@@ -864,6 +868,9 @@ func buildFileDigestsForLock(root string) ([]lockFileHash, string, error) {
 }
 
 func buildFileDigestsFiltered(root string, exclude map[string]struct{}) ([]lockFileHash, string, error) {
+	if err := ensureInstallTreeRoot(root, "digest input", ruleInstallDigestSymlink, ruleInstallDigestSpecialFile); err != nil {
+		return nil, "", fmt.Errorf("%w: %w", errDigestBuildFailed, err)
+	}
 	files := make([]lockFileHash, 0, 32)
 	digestedFiles := 0
 	var totalBytes int64
@@ -934,6 +941,20 @@ func buildFileDigestsFiltered(root string, exclude map[string]struct{}) ([]lockF
 		_, _ = io.WriteString(rootHasher, "\x00")
 	}
 	return files, hex.EncodeToString(rootHasher.Sum(nil)), nil
+}
+
+func ensureInstallTreeRoot(root string, label string, symlinkRuleID string, specialRuleID string) error {
+	rootInfo, err := os.Lstat(root)
+	if err != nil {
+		return err
+	}
+	if rootInfo.Mode()&os.ModeSymlink != 0 {
+		return fmt.Errorf("%s: %s root must not be a symlink: %s", symlinkRuleID, label, root)
+	}
+	if !rootInfo.IsDir() {
+		return fmt.Errorf("%s: %s root must be a directory: %s", specialRuleID, label, root)
+	}
+	return nil
 }
 
 func hashFileWithLimitChecked(path string, maxBytes int64, expectedInfo os.FileInfo) (sum string, size int64, err error) {

@@ -17,6 +17,7 @@ tests/CI:
 - Source metadata write-path hardening with symlink component rejection and non-regular target rejection
 - Install atomic finalize hardening for symlinked target entries
 - Install source-copy hardening with strict byte-limit writes and overflow cleanup
+- Install source-copy and digest root hardening for symlink/non-directory root rejection
 - Fetch atomic finalize hardening for symlinked output entries
 - Update dry-run hardening for symlinked target entries, symlinked URL/executable scan inputs, and non-directory/symlink scan roots
 - Scan/update walker hardening for symlink/non-directory root rejection and
