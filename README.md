@@ -187,6 +187,9 @@ subsequent runtime specifier targets remain pin-checked.
 Split inspector-address forms (`--inspect`, `--inspect-brk`, `--inspect-wait`)
 and split `--ext` forms are also interpreted before runtime target resolution
 so later runtime specifier targets remain pin-checked.
+Split `--watch` forms and split `--env-file`/`--preload` forms are interpreted
+before runtime target resolution so later runtime specifier targets remain
+pin-checked.
 Bounded base64/base64url/hex payload deobfuscation now rescans decoded text artifacts
 (depth-limited and size-limited, never executed) to catch hidden execution
 chains and decoded Unicode control/NFKC-drift signals.

@@ -2191,6 +2191,12 @@ func TestUnpinnedRuntimeToolDetection(t *testing.T) {
 		{line: "deno run --inspect-wait 127.0.0.1:9229 npm:create-next-app@15.4.1", want: false},
 		{line: "deno run --ext ts npm:create-next-app@latest", want: true},
 		{line: "deno run --ext ts npm:create-next-app@15.4.1", want: false},
+		{line: "deno run --env-file .env npm:create-next-app@latest", want: true},
+		{line: "deno run --env-file .env npm:create-next-app@15.4.1", want: false},
+		{line: "deno run --preload ./preload.ts npm:create-next-app@latest", want: true},
+		{line: "deno run --preload ./preload.ts npm:create-next-app@15.4.1", want: false},
+		{line: "deno run --watch src npm:create-next-app@latest", want: true},
+		{line: "deno run --watch src npm:create-next-app@15.4.1", want: false},
 		{line: "DENO RUN -R . npm:create-next-app@latest", want: true},
 		{line: "Deno Run -E PATH npm:create-next-app@15.4.1", want: false},
 		{line: "deno x npm:create-vite", want: true},
@@ -2822,6 +2828,12 @@ func TestIsUnpinnedDenoNpmRuntimeLine(t *testing.T) {
 		{line: "deno run --inspect-wait 127.0.0.1:9229 npm:create-next-app@15.4.1", want: false},
 		{line: "deno run --ext ts npm:create-next-app@latest", want: true},
 		{line: "deno run --ext ts npm:create-next-app@15.4.1", want: false},
+		{line: "deno run --env-file .env npm:create-next-app@latest", want: true},
+		{line: "deno run --env-file .env npm:create-next-app@15.4.1", want: false},
+		{line: "deno run --preload ./preload.ts npm:create-next-app@latest", want: true},
+		{line: "deno run --preload ./preload.ts npm:create-next-app@15.4.1", want: false},
+		{line: "deno run --watch src npm:create-next-app@latest", want: true},
+		{line: "deno run --watch src npm:create-next-app@15.4.1", want: false},
 		{line: "deno npm:create-vite@latest", want: true},
 		{line: "deno npm:create-vite@5.2.0", want: false},
 		{line: "deno", want: false},
@@ -3180,6 +3192,30 @@ func TestNextDenoRuntimeTarget(t *testing.T) {
 			ok:     true,
 		},
 		{
+			name:   "consumes env-file value and returns following target",
+			fields: []string{"deno", "run", "--env-file", ".env", "npm:create-next-app@latest"},
+			start:  2,
+			end:    5,
+			want:   "npm:create-next-app@latest",
+			ok:     true,
+		},
+		{
+			name:   "consumes preload value and returns following target",
+			fields: []string{"deno", "run", "--preload", "./preload.ts", "npm:create-next-app@latest"},
+			start:  2,
+			end:    5,
+			want:   "npm:create-next-app@latest",
+			ok:     true,
+		},
+		{
+			name:   "consumes watch value and returns following target",
+			fields: []string{"deno", "run", "--watch", "src", "npm:create-next-app@latest"},
+			start:  2,
+			end:    5,
+			want:   "npm:create-next-app@latest",
+			ok:     true,
+		},
+		{
 			name:   "returns false when start exceeds end",
 			fields: []string{"deno", "run", "npm:cowsay"},
 			start:  5,
@@ -3425,6 +3461,17 @@ func TestIsKnownDenoOptionalFlagValue(t *testing.T) {
 		fields = []string{"deno", "run", "--inspect-wait", "localhost:9229", "main.ts"}
 		if got := isKnownDenoOptionalFlagValue("--inspect-wait", "localhost:9229", fields, 4, len(fields)); !got {
 			t.Fatalf("isKnownDenoOptionalFlagValue(--inspect-wait,localhost:9229) = %v, want true", got)
+		}
+	})
+
+	t.Run("watch consumes value when candidate follows", func(t *testing.T) {
+		fields := []string{"deno", "run", "--watch", "src", "main.ts"}
+		if got := isKnownDenoOptionalFlagValue("--watch", "src", fields, 4, len(fields)); !got {
+			t.Fatalf("isKnownDenoOptionalFlagValue(--watch,src) = %v, want true", got)
+		}
+		fields = []string{"deno", "run", "--watch", "src"}
+		if got := isKnownDenoOptionalFlagValue("--watch", "src", fields, 4, len(fields)); got {
+			t.Fatalf("isKnownDenoOptionalFlagValue(--watch,src) = %v, want false", got)
 		}
 	})
 
@@ -3823,6 +3870,26 @@ func TestIsDenoInspectValue(t *testing.T) {
 	for _, tc := range cases {
 		if got := isDenoInspectValue(tc.value); got != tc.want {
 			t.Fatalf("isDenoInspectValue(%q) = %v, want %v", tc.value, got, tc.want)
+		}
+	}
+}
+
+func TestIsDenoWatchValue(t *testing.T) {
+	cases := []struct {
+		value string
+		want  bool
+	}{
+		{value: "src", want: true},
+		{value: "src,tests", want: true},
+		{value: "./src", want: true},
+		{value: "npm:create-vite", want: false},
+		{value: "https://example.com", want: false},
+		{value: "", want: false},
+		{value: "--bad", want: false},
+	}
+	for _, tc := range cases {
+		if got := isDenoWatchValue(tc.value); got != tc.want {
+			t.Fatalf("isDenoWatchValue(%q) = %v, want %v", tc.value, got, tc.want)
 		}
 	}
 }

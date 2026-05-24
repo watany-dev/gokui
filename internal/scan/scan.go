@@ -1638,6 +1638,8 @@ func nextDenoRuntimeTarget(fields []string, start int, end int) (string, bool) {
 		"--location":   {},
 		"--cert":       {},
 		"--lock":       {},
+		"--env-file":   {},
+		"--preload":    {},
 		"--seed":       {},
 		"--package":    {},
 		"--ext":        {},
@@ -1649,6 +1651,7 @@ func nextDenoRuntimeTarget(fields []string, start int, end int) (string, bool) {
 		"--inspect":          {},
 		"--inspect-brk":      {},
 		"--inspect-wait":     {},
+		"--watch":            {},
 		"--vendor":           {},
 		"--node-modules-dir": {},
 		"--allow-scripts":    {},
@@ -1741,6 +1744,11 @@ func isKnownDenoOptionalFlagValue(
 			return false
 		}
 		return isDenoInspectValue(value)
+	case "--watch":
+		if !hasDenoRuntimeCandidateAfter(fields, nextStart, end) {
+			return false
+		}
+		return isDenoWatchValue(value)
 	case "--vendor":
 		return value == "true" || value == "false"
 	case "--node-modules-dir":
@@ -1880,6 +1888,24 @@ func isDenoInspectValue(value string) bool {
 		return isNumericToken(strings.TrimPrefix(lower, "localhost:"))
 	}
 	return false
+}
+
+func isDenoWatchValue(value string) bool {
+	if value == "" || strings.HasPrefix(value, "-") {
+		return false
+	}
+	lower := strings.ToLower(value)
+	if strings.HasPrefix(lower, "npm:") || strings.HasPrefix(lower, "jsr:") ||
+		strings.HasPrefix(lower, "http://") || strings.HasPrefix(lower, "https://") {
+		return false
+	}
+	for _, part := range strings.Split(value, ",") {
+		token := strings.TrimSpace(part)
+		if token == "" || strings.HasPrefix(token, "-") {
+			return false
+		}
+	}
+	return true
 }
 
 func isNumericToken(token string) bool {
