@@ -15,6 +15,14 @@ import (
 	"testing/quick"
 )
 
+type archiveErrorStatter struct {
+	err error
+}
+
+func (s archiveErrorStatter) Stat() (os.FileInfo, error) {
+	return nil, s.err
+}
+
 func TestExtractArchiveZipSuccessAndDetectSkillRoot(t *testing.T) {
 	src := filepath.Join(t.TempDir(), "skill.zip")
 	createZip(t, src, map[string]string{
@@ -108,6 +116,105 @@ func TestExtractArchiveOpenFailures(t *testing.T) {
 			t.Fatalf("expected tar-open error, got %v", err)
 		}
 	})
+
+	t.Run("zip parse failure", func(t *testing.T) {
+		src := filepath.Join(t.TempDir(), "invalid.zip")
+		if err := os.WriteFile(src, []byte("not-a-zip"), 0o644); err != nil {
+			t.Fatalf("write invalid zip: %v", err)
+		}
+		err := ExtractArchive(src, "zip", dest, Limits{})
+		if err == nil || !strings.Contains(err.Error(), "failed to open zip archive") {
+			t.Fatalf("expected zip-parse error, got %v", err)
+		}
+	})
+
+	t.Run("zip source must be regular file", func(t *testing.T) {
+		srcDir := filepath.Join(t.TempDir(), "not-zip")
+		if err := os.Mkdir(srcDir, 0o755); err != nil {
+			t.Fatalf("mkdir source dir: %v", err)
+		}
+		err := ExtractArchive(srcDir, "zip", dest, Limits{})
+		if err == nil || !strings.Contains(err.Error(), ruleArchiveSourceSpecialFile) {
+			t.Fatalf("expected source-special-file error, got %v", err)
+		}
+	})
+
+	t.Run("tar source must be regular file", func(t *testing.T) {
+		srcDir := filepath.Join(t.TempDir(), "not-tar")
+		if err := os.Mkdir(srcDir, 0o755); err != nil {
+			t.Fatalf("mkdir source dir: %v", err)
+		}
+		err := ExtractArchive(srcDir, "tar", dest, Limits{})
+		if err == nil || !strings.Contains(err.Error(), ruleArchiveSourceSpecialFile) {
+			t.Fatalf("expected source-special-file error, got %v", err)
+		}
+	})
+
+	if runtime.GOOS != "windows" {
+		t.Run("zip source open denied", func(t *testing.T) {
+			src := filepath.Join(t.TempDir(), "blocked.zip")
+			createZip(t, src, map[string]string{
+				"SKILL.md": "---\nname: x\ndescription: d\n---\n",
+			})
+			if err := os.Chmod(src, 0o000); err != nil {
+				t.Fatalf("chmod blocked zip: %v", err)
+			}
+			defer os.Chmod(src, 0o644)
+
+			err := ExtractArchive(src, "zip", dest, Limits{})
+			if err == nil || !strings.Contains(err.Error(), "failed to open zip archive") {
+				t.Fatalf("expected zip-open denied error, got %v", err)
+			}
+		})
+
+		t.Run("tar source open denied", func(t *testing.T) {
+			src := filepath.Join(t.TempDir(), "blocked.tar")
+			createTar(t, src, []tarEntry{
+				{name: "SKILL.md", body: "---\nname: x\ndescription: d\n---\n"},
+			})
+			if err := os.Chmod(src, 0o000); err != nil {
+				t.Fatalf("chmod blocked tar: %v", err)
+			}
+			defer os.Chmod(src, 0o644)
+
+			err := ExtractArchive(src, "tar", dest, Limits{})
+			if err == nil || !strings.Contains(err.Error(), "failed to open tar archive") {
+				t.Fatalf("expected tar-open denied error, got %v", err)
+			}
+		})
+
+		t.Run("zip source symlink rejected", func(t *testing.T) {
+			dir := t.TempDir()
+			target := filepath.Join(dir, "skill.zip")
+			createZip(t, target, map[string]string{
+				"SKILL.md": "---\nname: x\ndescription: d\n---\n",
+			})
+			link := filepath.Join(dir, "skill-link.zip")
+			if err := os.Symlink("skill.zip", link); err != nil {
+				t.Fatalf("create zip symlink: %v", err)
+			}
+			err := ExtractArchive(link, "zip", dest, Limits{})
+			if err == nil || !strings.Contains(err.Error(), ruleArchiveSourceSymlinkDetected) {
+				t.Fatalf("expected source-symlink error, got %v", err)
+			}
+		})
+
+		t.Run("tar source symlink rejected", func(t *testing.T) {
+			dir := t.TempDir()
+			target := filepath.Join(dir, "skill.tar")
+			createTar(t, target, []tarEntry{
+				{name: "SKILL.md", body: "---\nname: x\ndescription: d\n---\n"},
+			})
+			link := filepath.Join(dir, "skill-link.tar")
+			if err := os.Symlink("skill.tar", link); err != nil {
+				t.Fatalf("create tar symlink: %v", err)
+			}
+			err := ExtractArchive(link, "tar", dest, Limits{})
+			if err == nil || !strings.Contains(err.Error(), ruleArchiveSourceSymlinkDetected) {
+				t.Fatalf("expected source-symlink error, got %v", err)
+			}
+		})
+	}
 }
 
 func TestExtractArchiveTarGzSuccess(t *testing.T) {
@@ -650,6 +757,44 @@ func TestSafeJoinPropertyRejectsParentTraversal(t *testing.T) {
 	}
 	if err := quick.Check(prop, &quick.Config{MaxCount: 500}); err != nil {
 		t.Fatalf("safeJoin traversal-rejection property failed: %v", err)
+	}
+}
+
+func TestEnsureArchiveSourceStableFromOpen(t *testing.T) {
+	dir := t.TempDir()
+	firstPath := filepath.Join(dir, "first.zip")
+	secondPath := filepath.Join(dir, "second.zip")
+	if err := os.WriteFile(firstPath, []byte("first"), 0o644); err != nil {
+		t.Fatalf("write first: %v", err)
+	}
+	if err := os.WriteFile(secondPath, []byte("second"), 0o644); err != nil {
+		t.Fatalf("write second: %v", err)
+	}
+
+	firstInfo, err := os.Lstat(firstPath)
+	if err != nil {
+		t.Fatalf("lstat first: %v", err)
+	}
+	if err := ensureArchiveSourceStableFromOpen(firstInfo, archiveErrorStatter{err: errors.New("stat fail")}, firstPath); err == nil || !strings.Contains(err.Error(), "failed to open archive source") {
+		t.Fatalf("expected archive source stat failure, got %v", err)
+	}
+
+	firstOpened, err := os.Open(firstPath)
+	if err != nil {
+		t.Fatalf("open first: %v", err)
+	}
+	defer firstOpened.Close()
+	if err := ensureArchiveSourceStableFromOpen(firstInfo, firstOpened, firstPath); err != nil {
+		t.Fatalf("same archive source identity should pass, got %v", err)
+	}
+
+	secondOpened, err := os.Open(secondPath)
+	if err != nil {
+		t.Fatalf("open second: %v", err)
+	}
+	defer secondOpened.Close()
+	if err := ensureArchiveSourceStableFromOpen(firstInfo, secondOpened, secondPath); err == nil || !strings.Contains(err.Error(), ruleArchiveSourceChanged) {
+		t.Fatalf("expected source-changed archive error, got %v", err)
 	}
 }
 

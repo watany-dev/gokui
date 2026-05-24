@@ -15,11 +15,14 @@ import (
 )
 
 const (
-	defaultMaxFiles       = 1000
-	defaultMaxTotalBytes  = 50 * 1024 * 1024
-	defaultMaxFileBytes   = 10 * 1024 * 1024
-	ruleArchivePathEscape = "ARCHIVE_PATH_ESCAPE"
-	ruleSymlinkInArchive  = "SYMLINK_IN_ARCHIVE"
+	defaultMaxFiles                  = 1000
+	defaultMaxTotalBytes             = 50 * 1024 * 1024
+	defaultMaxFileBytes              = 10 * 1024 * 1024
+	ruleArchivePathEscape            = "ARCHIVE_PATH_ESCAPE"
+	ruleSymlinkInArchive             = "SYMLINK_IN_ARCHIVE"
+	ruleArchiveSourceSymlinkDetected = "ARCHIVE_SOURCE_SYMLINK_DETECTED"
+	ruleArchiveSourceSpecialFile     = "ARCHIVE_SOURCE_SPECIAL_FILE"
+	ruleArchiveSourceChanged         = "ARCHIVE_SOURCE_CHANGED_DURING_OPEN"
 )
 
 // Limits controls archive extraction limits.
@@ -27,6 +30,10 @@ type Limits struct {
 	MaxFiles      int
 	MaxTotalBytes int64
 	MaxFileBytes  int64
+}
+
+type fileInfoStatter interface {
+	Stat() (os.FileInfo, error)
 }
 
 // ExtractArchive safely expands src archive into destDir.
@@ -107,11 +114,16 @@ func ensureEmptyDir(dir string) error {
 }
 
 func extractZip(src, dest string, limits Limits) error {
-	reader, err := zip.OpenReader(src)
+	file, info, err := openArchiveSource(src, "zip")
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	reader, err := zip.NewReader(file, info.Size())
 	if err != nil {
 		return fmt.Errorf("failed to open zip archive: %w", err)
 	}
-	defer reader.Close()
 
 	var files int
 	var totalBytes int64
@@ -199,9 +211,9 @@ func writeZipFile(file *zip.File, outPath string, maxBytes int64) (int64, error)
 }
 
 func extractTar(src, dest string, limits Limits) error {
-	file, err := os.Open(src)
+	file, _, err := openArchiveSource(src, "tar")
 	if err != nil {
-		return fmt.Errorf("failed to open tar archive: %w", err)
+		return err
 	}
 	defer file.Close()
 
@@ -270,6 +282,40 @@ func extractTar(src, dest string, limits Limits) error {
 	}
 
 	return nil
+}
+
+func openArchiveSource(src string, kind string) (*os.File, os.FileInfo, error) {
+	info, err := os.Lstat(src)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to open %s archive: %w", kind, err)
+	}
+	if info.Mode()&os.ModeSymlink != 0 {
+		return nil, nil, fmt.Errorf("%s: archive source must not be a symlink: %s", ruleArchiveSourceSymlinkDetected, src)
+	}
+	if !info.Mode().IsRegular() {
+		return nil, nil, fmt.Errorf("%s: archive source must be a regular file: %s", ruleArchiveSourceSpecialFile, src)
+	}
+
+	file, err := os.Open(src)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to open %s archive: %w", kind, err)
+	}
+	if err := ensureArchiveSourceStableFromOpen(info, file, src); err != nil {
+		_ = file.Close()
+		return nil, nil, err
+	}
+	return file, info, nil
+}
+
+func ensureArchiveSourceStableFromOpen(previous os.FileInfo, opened fileInfoStatter, src string) error {
+	current, err := opened.Stat()
+	if err != nil {
+		return fmt.Errorf("failed to open archive source: %s", src)
+	}
+	if os.SameFile(previous, current) {
+		return nil
+	}
+	return fmt.Errorf("%s: archive source changed during open: %s", ruleArchiveSourceChanged, src)
 }
 
 func writeTarFile(header *tar.Header, tarReader *tar.Reader, outPath string, maxBytes int64) (int64, error) {
