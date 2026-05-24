@@ -52,7 +52,7 @@ func TestCLIUsageSyntaxDocumentationSync(t *testing.T) {
 		"gokui inspect <local-dir|zip|github-source> [--format human|json|sarif|compact]",
 		"gokui vet <local-dir|zip|tar> [--format human|json|sarif|compact]",
 		"gokui install <source> --target codex --profile strict [--format human|json|sarif]",
-		"gokui update --dry-run [--target codex|custom:/path] [--format human|json]",
+		"gokui update --dry-run [--target codex|custom:/path] [--format human|json|sarif]",
 		"gokui lock verify [path] [--format human|json]",
 	}
 

@@ -58,6 +58,7 @@ skill-item keys for automation-friendly parsing, including `error_code` for
 status-aware automation. Update target entries and URL/executable scan inputs
 must not contain symlink path entries, and URL/executable scan roots must be
 non-symlink directories.
+It also supports `--format sarif` for CI/code-scanning ingestion.
 URL risk classification now flags shortener hosts and raw-IP URLs during scan.
 It also flags paste-site URLs, GitHub release asset URLs, and remote image
 URLs in markdown content for review.
@@ -141,7 +142,7 @@ gokui fetch github:owner/repo//path/to/skill@commit --out <quarantine-dir> [--fo
 gokui inspect <local-dir|zip|github-source> [--format human|json|sarif|compact]
 gokui vet <local-dir|zip|tar> [--format human|json|sarif|compact]
 gokui install <source> --target codex --profile strict [--format human|json|sarif]
-gokui update --dry-run [--target codex|custom:/path] [--format human|json]
+gokui update --dry-run [--target codex|custom:/path] [--format human|json|sarif]
 gokui lock verify [path] [--format human|json]
 ```
 
