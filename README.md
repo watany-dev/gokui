@@ -159,6 +159,8 @@ The same call-flag exclusion and separator handling are applied to `pnpm/yarn`
 `go run` pin checks also handle split-value flags (for example `-mod mod`,
 `-exec env`) and `--` separator forms when extracting module targets.
 Pre-subcommand forms such as `go -C <dir> run ...` are also parsed for pin checks.
+`deno run`/`deno x` npm-specifier execution (including `--package` forms) is
+also checked for unpinned package/version refs.
 Bounded base64/base64url/hex payload deobfuscation now rescans decoded text artifacts
 (depth-limited and size-limited, never executed) to catch hidden execution
 chains and decoded Unicode control/NFKC-drift signals.
