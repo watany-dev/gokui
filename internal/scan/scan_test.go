@@ -237,6 +237,20 @@ func TestClassifyMarkdownLinkSpoofing(t *testing.T) {
 			t.Fatalf("expected no findings for non-host label, got %+v", findings)
 		}
 	})
+
+	t.Run("ignores malformed display or target URLs", func(t *testing.T) {
+		line := "[https://trusted.example.com/%zz](https://evil.example.net/login)"
+		findings := classifyMarkdownLinkSpoofing(line, "SKILL.md", 14)
+		if len(findings) != 0 {
+			t.Fatalf("expected no findings for malformed display URL, got %+v", findings)
+		}
+
+		line = "[https://trusted.example.com/login](https://evil.example.net/%zz)"
+		findings = classifyMarkdownLinkSpoofing(line, "SKILL.md", 15)
+		if len(findings) != 0 {
+			t.Fatalf("expected no findings for malformed target URL, got %+v", findings)
+		}
+	})
 }
 
 func TestClassifyPathRisks(t *testing.T) {
@@ -883,6 +897,30 @@ func TestScanSkillRootWalkError(t *testing.T) {
 	}
 }
 
+func TestScanSkillRootWalkPermissionError(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("permission model differs on windows")
+	}
+
+	root := t.TempDir()
+	locked := filepath.Join(root, "locked")
+	if err := os.Mkdir(locked, 0o755); err != nil {
+		t.Fatalf("mkdir locked: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(locked, "SKILL.md"), []byte("x"), 0o644); err != nil {
+		t.Fatalf("write file: %v", err)
+	}
+	if err := os.Chmod(locked, 0o000); err != nil {
+		t.Fatalf("chmod locked: %v", err)
+	}
+	defer os.Chmod(locked, 0o755)
+
+	_, err := ScanSkillRoot(locked)
+	if err == nil || !strings.Contains(err.Error(), "failed walking skill files") {
+		t.Fatalf("expected walk permission error, got %v", err)
+	}
+}
+
 func TestScanSkillRootRejectsSymlinkSource(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("symlink permissions differ on windows")
@@ -900,6 +938,42 @@ func TestScanSkillRootRejectsSymlinkSource(t *testing.T) {
 	_, err := ScanSkillRoot(root)
 	if err == nil || !strings.Contains(err.Error(), ruleScanSymlinkInSource) {
 		t.Fatalf("expected symlink rule error, got %v", err)
+	}
+}
+
+func TestScanSkillRootRejectsSymlinkRoot(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlink permissions differ on windows")
+	}
+
+	parent := t.TempDir()
+	realRoot := filepath.Join(parent, "real-root")
+	if err := os.Mkdir(realRoot, 0o755); err != nil {
+		t.Fatalf("mkdir real root: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(realRoot, "SKILL.md"), []byte("---\nname: s\ndescription: d\n---\n"), 0o644); err != nil {
+		t.Fatalf("write skill: %v", err)
+	}
+	linkRoot := filepath.Join(parent, "root-link")
+	if err := os.Symlink("real-root", linkRoot); err != nil {
+		t.Fatalf("create root symlink: %v", err)
+	}
+
+	_, err := ScanSkillRoot(linkRoot)
+	if err == nil || !strings.Contains(err.Error(), ruleScanSymlinkInSource) {
+		t.Fatalf("expected symlink-root rejection, got %v", err)
+	}
+}
+
+func TestScanSkillRootRejectsNonDirectoryRoot(t *testing.T) {
+	rootFile := filepath.Join(t.TempDir(), "not-a-dir.md")
+	if err := os.WriteFile(rootFile, []byte("x"), 0o644); err != nil {
+		t.Fatalf("write root file: %v", err)
+	}
+
+	_, err := ScanSkillRoot(rootFile)
+	if err == nil || !strings.Contains(err.Error(), ruleScanSpecialFile) {
+		t.Fatalf("expected non-directory root rejection, got %v", err)
 	}
 }
 

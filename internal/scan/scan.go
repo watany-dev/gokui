@@ -272,6 +272,17 @@ func runeScriptGroup(r rune) (string, bool) {
 }
 
 func scanTargets(skillRoot string) ([]scanTarget, error) {
+	rootInfo, rootErr := os.Lstat(skillRoot)
+	if rootErr != nil {
+		return nil, fmt.Errorf("failed walking skill files for scan: %w", rootErr)
+	}
+	if rootInfo.Mode()&os.ModeSymlink != 0 {
+		return nil, fmt.Errorf("failed walking skill files for scan: %s: scan source root must not be a symlink: %s", ruleScanSymlinkInSource, skillRoot)
+	}
+	if !rootInfo.IsDir() {
+		return nil, fmt.Errorf("failed walking skill files for scan: %s: scan source root must be a directory: %s", ruleScanSpecialFile, skillRoot)
+	}
+
 	entries := make([]scanTarget, 0, 16)
 	scannedFiles := 0
 	err := filepath.WalkDir(skillRoot, func(path string, d os.DirEntry, walkErr error) error {

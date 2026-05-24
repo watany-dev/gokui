@@ -3,7 +3,7 @@
 This roadmap follows gokui's core position: it is a quarantine gate for Agent
 Skill bundles, not a convenience-first package manager.
 
-## Current Implementation Snapshot (May 23, 2026)
+## Current Implementation Snapshot (May 24, 2026)
 
 The following items are implemented in the current codebase and validated by
 tests/CI:
@@ -19,7 +19,8 @@ tests/CI:
 - Install source-copy hardening with strict byte-limit writes and overflow cleanup
 - Fetch atomic finalize hardening for symlinked output entries
 - Update dry-run hardening for symlinked target entries and symlinked URL/executable scan inputs
-- Scan/update walker hardening for non-regular file rejection before reads
+- Scan/update walker hardening for symlink/non-directory root rejection and
+  non-regular file rejection before reads
 - Commit-pinned GitHub source fetch and install/update/verify provenance checks
 - GitHub archive network hardening (strict redirect cap/constraints + response content-type/encoding validation)
 - GitHub archive strict stream-size enforcement with overflow-write prevention and cleanup
