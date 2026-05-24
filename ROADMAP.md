@@ -103,6 +103,7 @@ tests/CI:
   ignore call-flag command values as package refs
 - aligned pnpm/yarn dlx checks with the same package-flag and call-flag handling model
 - hardened go-run target extraction for split-value flags and separator forms
+- hardened go-run detection for pre-subcommand `go -C <dir> run ...` form
 - dependency manifest scanning coverage for `package.json`, `pyproject.toml`,
   `requirements.txt`, `uv.lock`, `go.mod`, `Gemfile`, and `deno.json` as
   first-class scan inputs
