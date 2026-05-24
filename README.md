@@ -150,6 +150,8 @@ Remote script import patterns (for example `source <(curl ...)`, `. <(curl ...)`
 `pnpm dlx`, `yarn dlx`, and `npm exec`, including `corepack`-wrapped forms)
 are now flagged under
 `UNPINNED_RUNTIME_TOOL`.
+Package-flag forms (for example `npm exec --package ...` and `npx -p ...`) are
+also resolved for pinning checks to reduce false positives on exact versions.
 Bounded base64/base64url/hex payload deobfuscation now rescans decoded text artifacts
 (depth-limited and size-limited, never executed) to catch hidden execution
 chains and decoded Unicode control/NFKC-drift signals.
