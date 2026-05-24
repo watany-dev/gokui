@@ -317,6 +317,11 @@ func runInstall(args []string, stdout io.Writer, stderr io.Writer) int {
 			_, _ = fmt.Fprintf(stdout, "%s\n", out)
 			return 2
 		}
+		if parsed.Format == "sarif" {
+			out, _ := json.MarshalIndent(buildInstallSARIFReport(report, parsed.Target), "", "  ")
+			_, _ = fmt.Fprintf(stdout, "%s\n", out)
+			return 2
+		}
 		_, _ = fmt.Fprintln(stdout, "gokui install report (pre-release)")
 		_, _ = fmt.Fprintf(stdout, "source: %s (%s)\n", report.Source.Input, report.Source.Kind)
 		_, _ = fmt.Fprintf(stdout, "decision: %s\n", report.Decision)
@@ -408,6 +413,11 @@ func runInstall(args []string, stdout io.Writer, stderr io.Writer) int {
 		_, _ = fmt.Fprintf(stdout, "%s\n", out)
 		return 0
 	}
+	if parsed.Format == "sarif" {
+		out, _ := json.MarshalIndent(buildInstallSARIFReport(report, parsed.Target), "", "  ")
+		_, _ = fmt.Fprintf(stdout, "%s\n", out)
+		return 0
+	}
 
 	_, _ = fmt.Fprintln(stdout, "gokui install report (pre-release)")
 	_, _ = fmt.Fprintf(stdout, "source: %s (%s)\n", report.Source.Input, report.Source.Kind)
@@ -469,10 +479,30 @@ func parseInstallArgs(args []string) (installArgs, error) {
 	if out.Target == "" {
 		return installArgs{}, fmt.Errorf("install target is required")
 	}
-	if out.Format != "human" && out.Format != "json" {
+	if out.Format != "human" && out.Format != "json" && out.Format != "sarif" {
 		return installArgs{}, fmt.Errorf("unsupported install format: %s", out.Format)
 	}
 	return out, nil
+}
+
+func buildInstallSARIFReport(report installReport, target string) inspectSARIFReport {
+	inspectEquivalent := inspectReport{
+		SchemaVersion: report.SchemaVersion,
+		PreRelease:    true,
+		Source:        report.Source,
+		Decision:      report.Decision,
+		Findings:      report.Findings,
+		Note: fmt.Sprintf(
+			"install target=%s profile=%s installed=%t path=%s error_code=%s; %s",
+			target,
+			report.PolicyProfile,
+			report.Installed,
+			report.InstalledPath,
+			report.ErrorCode,
+			report.Note,
+		),
+	}
+	return buildInspectSARIFReport(inspectEquivalent)
 }
 
 func installArgsRequestJSON(args []string) bool {

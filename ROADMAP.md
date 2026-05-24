@@ -31,6 +31,7 @@ tests/CI:
 - Stable JSON output contracts for all MVP commands
 - Machine-readable `error_code` support across command failure paths
 - SARIF output for `inspect` (`--format sarif`) for CI/code scanning integration
+- SARIF output for `install` (`--format sarif`) for policy findings export
 - `vet` command for skill-author local-source validation (`local-dir|zip|tar`)
 - compact summary output for `inspect`/`vet` (`--format compact`) for CI logs
 - CI SARIF smoke job for inspect output generation and artifact capture

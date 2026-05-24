@@ -1335,6 +1335,40 @@ func TestBuildInspectSARIFReport(t *testing.T) {
 	}
 }
 
+func TestBuildInspectCompactSummary(t *testing.T) {
+	report := inspectReport{
+		SchemaVersion: reportSchemaVersion,
+		PreRelease:    true,
+		Source: source{
+			Input: "./fixture",
+			Kind:  "local-dir",
+		},
+		Decision: "REJECTED",
+		Findings: []inspectFinding{
+			{ID: "A", Severity: "critical"},
+			{ID: "B", Severity: "high"},
+			{ID: "C", Severity: "medium"},
+			{ID: "D", Severity: "low"},
+		},
+	}
+
+	got := buildInspectCompactSummary(report)
+	required := []string{
+		"inspect decision=REJECTED",
+		"findings=4",
+		"critical=1",
+		"high=1",
+		"medium=1",
+		"low=1",
+		"source_kind=local-dir",
+	}
+	for _, token := range required {
+		if !strings.Contains(got, token) {
+			t.Fatalf("summary should include %q, got %q", token, got)
+		}
+	}
+}
+
 func TestInspectSeverityToSARIFLevel(t *testing.T) {
 	cases := []struct {
 		in   string
