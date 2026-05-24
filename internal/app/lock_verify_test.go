@@ -100,6 +100,15 @@ func TestParseLockVerifyArgs(t *testing.T) {
 		if lockVerifyArgsRequestJSON([]string{"--format", "human"}) {
 			t.Fatal("lockVerifyArgsRequestJSON() should be false for human format")
 		}
+		if !lockVerifyArgsRequestSARIF([]string{"--format", "sarif"}) {
+			t.Fatal("lockVerifyArgsRequestSARIF() should detect --format sarif")
+		}
+		if !lockVerifyArgsRequestSARIF([]string{"--format=sarif"}) {
+			t.Fatal("lockVerifyArgsRequestSARIF() should detect --format=sarif")
+		}
+		if lockVerifyArgsRequestSARIF([]string{"--format", "human"}) {
+			t.Fatal("lockVerifyArgsRequestSARIF() should be false for human format")
+		}
 
 		if got := extractLockVerifyPathArg([]string{"./skill", "--format", "json"}); got != "./skill" {
 			t.Fatalf("extractLockVerifyPathArg() = %q, want ./skill", got)
@@ -581,6 +590,29 @@ func TestRunLockVerifyErrorPathsAndDriftKinds(t *testing.T) {
 
 	stdout.Reset()
 	stderr.Reset()
+	code = runLockVerify([]string{"--bad", "--format", "sarif"}, &stdout, &stderr)
+	if code != 1 {
+		t.Fatalf("runLockVerify(parse sarif error) code = %d, want 1", code)
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("stderr should be empty for sarif parse error output, got %q", stderr.String())
+	}
+	var parseSARIF inspectSARIFReport
+	if err := json.Unmarshal([]byte(stdout.String()), &parseSARIF); err != nil {
+		t.Fatalf("sarif parse (parse error): %v", err)
+	}
+	if len(parseSARIF.Runs) != 1 || len(parseSARIF.Runs[0].Results) != 1 {
+		t.Fatalf("unexpected sarif parse-error structure: %+v", parseSARIF)
+	}
+	if parseSARIF.Runs[0].Results[0].RuleID != lockVerifyErrorCodeArgsInvalid {
+		t.Fatalf("parse sarif rule id = %q, want %q", parseSARIF.Runs[0].Results[0].RuleID, lockVerifyErrorCodeArgsInvalid)
+	}
+	if parseSARIF.Runs[0].Invocations[0].ExecutionSuccessful {
+		t.Fatal("parse sarif invocation should be executionSuccessful=false")
+	}
+
+	stdout.Reset()
+	stderr.Reset()
 	code = runLockVerify([]string{filepath.Join(t.TempDir(), "missing-skill")}, &stdout, &stderr)
 	if code != 1 {
 		t.Fatalf("runLockVerify(missing lock) code = %d, want 1", code)
@@ -606,6 +638,32 @@ func TestRunLockVerifyErrorPathsAndDriftKinds(t *testing.T) {
 	}
 	if strings.Contains(stdout.String(), "\"rule_id\":") {
 		t.Fatalf("stdout should omit rule_id when no rule-prefixed error is present, got %q", stdout.String())
+	}
+
+	stdout.Reset()
+	stderr.Reset()
+	code = runLockVerify([]string{filepath.Join(t.TempDir(), "missing-skill-sarif"), "--format", "sarif"}, &stdout, &stderr)
+	if code != 1 {
+		t.Fatalf("runLockVerify(missing lock sarif) code = %d, want 1", code)
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("stderr should be empty for sarif error output, got %q", stderr.String())
+	}
+	var readSARIF inspectSARIFReport
+	if err := json.Unmarshal([]byte(stdout.String()), &readSARIF); err != nil {
+		t.Fatalf("sarif parse (read error): %v", err)
+	}
+	if len(readSARIF.Runs) != 1 || len(readSARIF.Runs[0].Results) != 1 {
+		t.Fatalf("unexpected sarif read-error structure: %+v", readSARIF)
+	}
+	if readSARIF.Runs[0].Results[0].RuleID != lockVerifyErrorCodeReadLockfile {
+		t.Fatalf("read sarif rule id = %q, want %q", readSARIF.Runs[0].Results[0].RuleID, lockVerifyErrorCodeReadLockfile)
+	}
+	if readSARIF.Runs[0].Properties.Decision != "ERROR" {
+		t.Fatalf("read sarif decision = %q, want ERROR", readSARIF.Runs[0].Properties.Decision)
+	}
+	if !strings.Contains(readSARIF.Runs[0].Properties.Note, "error_code="+lockVerifyErrorCodeReadLockfile) {
+		t.Fatalf("read sarif note should include error_code, got %q", readSARIF.Runs[0].Properties.Note)
 	}
 
 	if runtime.GOOS != "windows" {
@@ -828,6 +886,67 @@ func TestClassifyLockVerifyError(t *testing.T) {
 		if got != tc.want {
 			t.Fatalf("%s: classifyLockVerifyError(%v) = %q, want %q", tc.name, tc.err, got, tc.want)
 		}
+	}
+}
+
+func TestBuildLockVerifySARIFErrorReport(t *testing.T) {
+	report := lockVerifyErrorReport{
+		SchemaVersion: reportSchemaVersion,
+		SkillPath:     "/tmp/skills/demo",
+		Status:        "ERROR",
+		ErrorCode:     lockVerifyErrorCodeReadLockfile,
+		Message:       "failed to read lockfile: /tmp/skills/demo/gokui.lock",
+		Note:          "lock verify failed before producing drift report",
+	}
+	sarif := buildLockVerifySARIFErrorReport(report)
+	if sarif.Version != "2.1.0" {
+		t.Fatalf("version = %q, want 2.1.0", sarif.Version)
+	}
+	if len(sarif.Runs) != 1 {
+		t.Fatalf("runs = %d, want 1", len(sarif.Runs))
+	}
+	run := sarif.Runs[0]
+	if len(run.Results) != 1 {
+		t.Fatalf("results = %d, want 1", len(run.Results))
+	}
+	if run.Results[0].RuleID != lockVerifyErrorCodeReadLockfile {
+		t.Fatalf("rule id = %q, want %q", run.Results[0].RuleID, lockVerifyErrorCodeReadLockfile)
+	}
+	if run.Results[0].Level != "error" {
+		t.Fatalf("level = %q, want error", run.Results[0].Level)
+	}
+	if len(run.Invocations) != 1 || run.Invocations[0].ExecutionSuccessful {
+		t.Fatalf("invocation should be unsuccessful, got %+v", run.Invocations)
+	}
+	if run.Properties.SourceKind != "installed-skill" {
+		t.Fatalf("source kind = %q, want installed-skill", run.Properties.SourceKind)
+	}
+}
+
+func TestWriteLockVerifySARIFErrorPreservesExplicitRuleID(t *testing.T) {
+	var stdout strings.Builder
+	var stderr strings.Builder
+	code := writeLockVerifySARIFError(&stdout, &stderr, lockVerifyErrorReport{
+		SchemaVersion: reportSchemaVersion,
+		SkillPath:     "/tmp/skills/demo",
+		Status:        "ERROR",
+		ErrorCode:     lockVerifyErrorCodeReadLockfile,
+		RuleID:        "EXPLICIT_RULE",
+		Message:       "EXPLICIT_RULE: synthetic lock verify error",
+		Note:          "test",
+	})
+	if code != 1 {
+		t.Fatalf("writeLockVerifySARIFError() code = %d, want 1", code)
+	}
+	var sarif inspectSARIFReport
+	if err := json.Unmarshal([]byte(stdout.String()), &sarif); err != nil {
+		t.Fatalf("sarif parse failed: %v", err)
+	}
+	if len(sarif.Runs) != 1 || len(sarif.Runs[0].Results) != 1 {
+		t.Fatalf("unexpected sarif structure: %+v", sarif)
+	}
+	if sarif.Runs[0].Results[0].RuleID != "EXPLICIT_RULE" {
+		t.Fatalf("rule id = %q, want EXPLICIT_RULE", sarif.Runs[0].Results[0].RuleID)
 	}
 }
 

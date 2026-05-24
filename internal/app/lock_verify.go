@@ -93,10 +93,21 @@ type fileInfoStatter interface {
 
 func runLockVerify(args []string, stdout io.Writer, stderr io.Writer) int {
 	requestedJSON := lockVerifyArgsRequestJSON(args)
+	requestedSARIF := lockVerifyArgsRequestSARIF(args)
 	parsed, err := parseLockVerifyArgs(args)
 	if err != nil {
 		if requestedJSON {
 			return writeLockVerifyJSONError(stdout, stderr, lockVerifyErrorReport{
+				SchemaVersion: reportSchemaVersion,
+				SkillPath:     extractLockVerifyPathArg(args),
+				Status:        "ERROR",
+				ErrorCode:     lockVerifyErrorCodeArgsInvalid,
+				Message:       err.Error(),
+				Note:          "lock verify failed before path validation",
+			})
+		}
+		if requestedSARIF {
+			return writeLockVerifySARIFError(stdout, stderr, lockVerifyErrorReport{
 				SchemaVersion: reportSchemaVersion,
 				SkillPath:     extractLockVerifyPathArg(args),
 				Status:        "ERROR",
@@ -111,15 +122,19 @@ func runLockVerify(args []string, stdout io.Writer, stderr io.Writer) int {
 
 	report, verifyErr := verifyLock(parsed.Path)
 	if verifyErr != nil {
+		errorReport := lockVerifyErrorReport{
+			SchemaVersion: reportSchemaVersion,
+			SkillPath:     filepath.Clean(parsed.Path),
+			Status:        "ERROR",
+			ErrorCode:     classifyLockVerifyError(verifyErr),
+			Message:       verifyErr.Error(),
+			Note:          "lock verify failed before producing drift report",
+		}
 		if parsed.Format == "json" {
-			return writeLockVerifyJSONError(stdout, stderr, lockVerifyErrorReport{
-				SchemaVersion: reportSchemaVersion,
-				SkillPath:     filepath.Clean(parsed.Path),
-				Status:        "ERROR",
-				ErrorCode:     classifyLockVerifyError(verifyErr),
-				Message:       verifyErr.Error(),
-				Note:          "lock verify failed before producing drift report",
-			})
+			return writeLockVerifyJSONError(stdout, stderr, errorReport)
+		}
+		if parsed.Format == "sarif" {
+			return writeLockVerifySARIFError(stdout, stderr, errorReport)
 		}
 		_, _ = fmt.Fprintln(stderr, verifyErr.Error())
 		return 1
@@ -175,6 +190,18 @@ func lockVerifyArgsRequestJSON(args []string) bool {
 			return true
 		}
 		if strings.HasPrefix(args[i], "--format=") && strings.TrimPrefix(args[i], "--format=") == "json" {
+			return true
+		}
+	}
+	return false
+}
+
+func lockVerifyArgsRequestSARIF(args []string) bool {
+	for i := 0; i < len(args); i++ {
+		if args[i] == "--format" && i+1 < len(args) && args[i+1] == "sarif" {
+			return true
+		}
+		if strings.HasPrefix(args[i], "--format=") && strings.TrimPrefix(args[i], "--format=") == "sarif" {
 			return true
 		}
 	}
@@ -372,6 +399,68 @@ func writeLockVerifyJSONError(stdout io.Writer, stderr io.Writer, report lockVer
 	}
 	_, _ = fmt.Fprintf(stdout, "%s\n", out)
 	return 1
+}
+
+func writeLockVerifySARIFError(stdout io.Writer, stderr io.Writer, report lockVerifyErrorReport) int {
+	report.Status = "ERROR"
+	report.ErrorCode = normalizeJSONErrorCode(report.ErrorCode, lockVerifyErrorCodeUnknown)
+	if report.RuleID == "" {
+		report.RuleID = inferRuleIDForJSONError(report.Message)
+	}
+	out, err := json.MarshalIndent(buildLockVerifySARIFErrorReport(report), "", "  ")
+	if err != nil {
+		_, _ = fmt.Fprintln(stderr, "failed to render lock verify sarif error report")
+		return 1
+	}
+	_, _ = fmt.Fprintf(stdout, "%s\n", out)
+	return 1
+}
+
+func buildLockVerifySARIFErrorReport(report lockVerifyErrorReport) inspectSARIFReport {
+	ruleID := report.ErrorCode
+	if report.RuleID != "" {
+		ruleID = report.RuleID
+	}
+	return inspectSARIFReport{
+		Version: "2.1.0",
+		Schema:  "https://json.schemastore.org/sarif-2.1.0.json",
+		Runs: []inspectSARIFRun{
+			{
+				Tool: inspectSARIFTool{
+					Driver: inspectSARIFDriver{
+						Name:    "gokui",
+						Version: "pre-release",
+						Rules: []inspectSARIFRule{
+							{
+								ID: ruleID,
+								ShortDescription: inspectSARIFMessageContainer{
+									Text: report.ErrorCode,
+								},
+							},
+						},
+					},
+				},
+				Results: []inspectSARIFResult{
+					{
+						RuleID:  ruleID,
+						Level:   "error",
+						Message: inspectSARIFMessageContainer{Text: report.Message},
+					},
+				},
+				Invocations: []inspectSARIFInvocation{
+					{ExecutionSuccessful: false},
+				},
+				Properties: inspectSARIFProperties{
+					SchemaVersion: report.SchemaVersion,
+					PreRelease:    true,
+					SourceInput:   report.SkillPath,
+					SourceKind:    "installed-skill",
+					Decision:      report.Status,
+					Note:          fmt.Sprintf("%s; error_code=%s", report.Note, report.ErrorCode),
+				},
+			},
+		},
+	}
 }
 
 func verifyLock(skillPath string) (lockVerifyReport, error) {
