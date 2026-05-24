@@ -49,6 +49,16 @@ func TestParseFetchArgs(t *testing.T) {
 			t.Fatalf("unexpected parse result: %+v", got)
 		}
 	})
+
+	t.Run("parses compact format", func(t *testing.T) {
+		got, err := parseFetchArgs([]string{"github:org/repo//skills/demo@8f3c2d1a4b5c6d7e8f901234567890abcdef1234", "--out", "/tmp/q", "--format", "compact"})
+		if err != nil {
+			t.Fatalf("parseFetchArgs() error = %v", err)
+		}
+		if got.Out != "/tmp/q" || got.Format != "compact" {
+			t.Fatalf("unexpected parse result: %+v", got)
+		}
+	})
 }
 
 func TestRunFetch(t *testing.T) {
@@ -240,6 +250,42 @@ func TestRunFetch(t *testing.T) {
 		}
 		if !strings.Contains(stdout.String(), "gokui fetch report (pre-release)") {
 			t.Fatalf("stdout should include human header, got %q", stdout.String())
+		}
+	})
+
+	t.Run("compact output is single-line summary", func(t *testing.T) {
+		sourceDir := createSkillSourceForInstallTest(t, "compact-fetch-skill")
+		fetchGitHubSkill = func(spec srcpkg.GitHubSpec) (string, func(), error) {
+			return sourceDir, nil, nil
+		}
+		outRoot := t.TempDir()
+
+		var stdout strings.Builder
+		var stderr strings.Builder
+		code := runFetch([]string{
+			"github:org/repo//skills/compact-fetch-skill@8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
+			"--out", outRoot,
+			"--format", "compact",
+		}, &stdout, &stderr)
+		if code != 0 {
+			t.Fatalf("runFetch(compact) code = %d, want 0\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
+		}
+		if stderr.Len() != 0 {
+			t.Fatalf("stderr should be empty for compact output, got %q", stderr.String())
+		}
+		line := strings.TrimSpace(stdout.String())
+		if strings.Contains(line, "\n") {
+			t.Fatalf("compact output should be single-line, got %q", line)
+		}
+		for _, marker := range []string{
+			"fetch decision=FETCHED",
+			"source_kind=github-source",
+			"source=\"github:org/repo//skills/compact-fetch-skill@8f3c2d1a4b5c6d7e8f901234567890abcdef1234\"",
+			"output=",
+		} {
+			if !strings.Contains(line, marker) {
+				t.Fatalf("compact output missing %q: %q", marker, line)
+			}
 		}
 	})
 
@@ -591,6 +637,29 @@ func TestFetchHelperFunctions(t *testing.T) {
 	}
 	if got := extractFetchSourceArg([]string{"github:org/repo//skills/x@8f3c2d1a4b5c6d7e8f901234567890abcdef1234", "--format", "json"}); !strings.HasPrefix(got, "github:") {
 		t.Fatalf("unexpected extracted source arg: %q", got)
+	}
+}
+
+func TestBuildFetchCompactSummary(t *testing.T) {
+	report := fetchReport{
+		Source: source{
+			Input: "github:org/repo//skills/x@8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
+			Kind:  "github-source",
+		},
+		Output:   "/tmp/q/x",
+		Decision: "FETCHED",
+	}
+	got := buildFetchCompactSummary(report)
+	required := []string{
+		"fetch decision=FETCHED",
+		"source_kind=github-source",
+		"source=\"github:org/repo//skills/x@8f3c2d1a4b5c6d7e8f901234567890abcdef1234\"",
+		"output=\"/tmp/q/x\"",
+	}
+	for _, marker := range required {
+		if !strings.Contains(got, marker) {
+			t.Fatalf("compact summary missing marker %q: %q", marker, got)
+		}
 	}
 }
 

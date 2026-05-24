@@ -304,6 +304,10 @@ func runFetch(args []string, stdout io.Writer, stderr io.Writer) int {
 		_, _ = fmt.Fprintf(stdout, "%s\n", out)
 		return 0
 	}
+	if parsed.Format == "compact" {
+		_, _ = fmt.Fprintf(stdout, "%s\n", buildFetchCompactSummary(report))
+		return 0
+	}
 
 	_, _ = fmt.Fprintln(stdout, "gokui fetch report (pre-release)")
 	_, _ = fmt.Fprintf(stdout, "source: %s (%s)\n", report.Source.Input, report.Source.Kind)
@@ -394,10 +398,20 @@ func parseFetchArgs(args []string) (fetchArgs, error) {
 	if strings.TrimSpace(out.Out) == "" {
 		return fetchArgs{}, fmt.Errorf("fetch output root is required (--out)")
 	}
-	if out.Format != "human" && out.Format != "json" {
+	if out.Format != "human" && out.Format != "json" && out.Format != "compact" {
 		return fetchArgs{}, fmt.Errorf("unsupported fetch format: %s", out.Format)
 	}
 	return out, nil
+}
+
+func buildFetchCompactSummary(report fetchReport) string {
+	return fmt.Sprintf(
+		"fetch decision=%s source_kind=%s source=%q output=%q",
+		report.Decision,
+		report.Source.Kind,
+		report.Source.Input,
+		report.Output,
+	)
 }
 
 func fetchSkillAtomic(skillRoot string, outRoot string, skillName string) (string, error) {
