@@ -22,7 +22,8 @@ depth continue to expand. `inspect` now performs pre-release structural validati
 basic markdown threat scanning, emits draft human/JSON reports, and supports
 `--format sarif` for CI/code-scanning pipelines. Decisions remain
 `PASS`/`REJECTED`. In JSON mode, fatal inspect failures emit
-machine-readable top-level `error_code` for automation. For GitHub sources, floating refs remain
+machine-readable top-level `error_code` for automation. In SARIF mode, fatal
+inspect and `vet` failures emit a single structured error result. For GitHub sources, floating refs remain
 inspect-only pre-release stubs, while commit-pinned refs are fetched and
 scanned.
 `fetch`, `inspect`, `vet`, `install`, `update`, and `lock verify` also support `--format compact` for single-line CI summaries.
