@@ -88,6 +88,7 @@ tests/CI:
 - critical detection of Perl decode-to-eval chains (base64/hex)
 - critical detection of Ruby decode-to-eval chains (base64/hex)
 - critical detection of multi-line continuation execution chains
+- critical detection of source/dot command-substitution execution chains
 - critical detection of chmod-then-execute local artifact chains
 - critical detection of secret-path reads combined with network exfiltration
 - medium-severity detection of NFKC normalization text drift with normalized rescanning
