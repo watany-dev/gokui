@@ -164,6 +164,15 @@ var bashWildcardPermissionPatterns = []*regexp.Regexp{
 	regexp.MustCompile(`(?i)\bbash\s*\(\s*\*\s*\)`),
 }
 
+// confusableFilenameRunes maps a conservative subset of Cyrillic/Greek homoglyphs
+// that are commonly used to visually mimic ASCII letters in filenames.
+var confusableFilenameRunes = map[rune]rune{
+	'А': 'A', 'В': 'B', 'Е': 'E', 'К': 'K', 'М': 'M', 'Н': 'H', 'О': 'O', 'Р': 'P', 'С': 'C', 'Т': 'T', 'Х': 'X', 'У': 'Y',
+	'а': 'a', 'е': 'e', 'о': 'o', 'р': 'p', 'с': 'c', 'х': 'x', 'у': 'y', 'і': 'i', 'ј': 'j',
+	'Α': 'A', 'Β': 'B', 'Ε': 'E', 'Ζ': 'Z', 'Η': 'H', 'Ι': 'I', 'Κ': 'K', 'Μ': 'M', 'Ν': 'N', 'Ο': 'O', 'Ρ': 'P', 'Τ': 'T', 'Υ': 'Y', 'Χ': 'X',
+	'α': 'a', 'β': 'b', 'ι': 'i', 'κ': 'k', 'ν': 'v', 'ο': 'o', 'ρ': 'p', 'τ': 't', 'υ': 'y', 'χ': 'x',
+}
+
 // ScanSkillRoot scans markdown instruction files under skillRoot.
 func ScanSkillRoot(skillRoot string) ([]Finding, error) {
 	targets, err := scanTargets(skillRoot)
@@ -214,18 +223,26 @@ func classifyPathRisks(relPath string) []Finding {
 	if stem == "" {
 		stem = name
 	}
-	if !hasMixedScriptLetters(stem) {
-		return nil
-	}
-	return []Finding{
-		{
+	findings := make([]Finding, 0, 2)
+	if hasMixedScriptLetters(stem) {
+		findings = append(findings, Finding{
 			ID:       "MIXED_SCRIPT_FILENAME",
 			Severity: "medium",
 			File:     filepath.ToSlash(relPath),
 			Line:     1,
 			Summary:  "filename contains mixed writing scripts",
-		},
+		})
 	}
+	if hasASCIIConfusableFilename(stem) {
+		findings = append(findings, Finding{
+			ID:       "CONFUSABLE_FILENAME",
+			Severity: "high",
+			File:     filepath.ToSlash(relPath),
+			Line:     1,
+			Summary:  "filename mixes ASCII with confusable non-ASCII characters",
+		})
+	}
+	return findings
 }
 
 func hasMixedScriptLetters(name string) bool {
@@ -242,6 +259,21 @@ func hasMixedScriptLetters(name string) bool {
 		}
 	}
 	return false
+}
+
+func hasASCIIConfusableFilename(name string) bool {
+	hasASCIIAlnum := false
+	hasNonASCIIConfusable := false
+	for _, r := range name {
+		if r <= unicode.MaxASCII && (unicode.IsLetter(r) || unicode.IsDigit(r)) {
+			hasASCIIAlnum = true
+			continue
+		}
+		if _, ok := confusableFilenameRunes[r]; ok {
+			hasNonASCIIConfusable = true
+		}
+	}
+	return hasASCIIAlnum && hasNonASCIIConfusable
 }
 
 func runeScriptGroup(r rune) (string, bool) {

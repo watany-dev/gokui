@@ -254,11 +254,27 @@ func TestClassifyMarkdownLinkSpoofing(t *testing.T) {
 }
 
 func TestClassifyPathRisks(t *testing.T) {
-	t.Run("detects mixed script letters in filename", func(t *testing.T) {
+	t.Run("detects mixed script and confusable filename risks", func(t *testing.T) {
 		findings := classifyPathRisks("docs/pay\u0440al.md")
 		assertHasID(t, findings, "MIXED_SCRIPT_FILENAME")
-		if findings[0].Severity != "medium" {
-			t.Fatalf("expected medium severity, got %q", findings[0].Severity)
+		assertHasID(t, findings, "CONFUSABLE_FILENAME")
+		for _, finding := range findings {
+			if finding.ID == "MIXED_SCRIPT_FILENAME" && finding.Severity != "medium" {
+				t.Fatalf("expected medium severity for mixed-script finding, got %q", finding.Severity)
+			}
+			if finding.ID == "CONFUSABLE_FILENAME" && finding.Severity != "high" {
+				t.Fatalf("expected high severity for confusable filename finding, got %q", finding.Severity)
+			}
+		}
+	})
+
+	t.Run("mixed script without confusable glyph does not raise confusable finding", func(t *testing.T) {
+		findings := classifyPathRisks("docs/alpha\u0416.md")
+		assertHasID(t, findings, "MIXED_SCRIPT_FILENAME")
+		for _, finding := range findings {
+			if finding.ID == "CONFUSABLE_FILENAME" {
+				t.Fatalf("unexpected confusable finding: %+v", finding)
+			}
 		}
 	})
 
