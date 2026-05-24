@@ -170,6 +170,8 @@ For `--reload`/`-r`, split cache-blocklist values are interpreted before target
 resolution so a pinned blocklist value cannot mask a later unpinned runtime target.
 For split `--allow-scripts` forms, package-like values are interpreted
 conservatively so later runtime specifier targets are still evaluated for pinning.
+For split `--allow-import` forms, host/URL allowlist-like values are interpreted
+before target resolution so later runtime specifier targets remain pin-checked.
 Bounded base64/base64url/hex payload deobfuscation now rescans decoded text artifacts
 (depth-limited and size-limited, never executed) to catch hidden execution
 chains and decoded Unicode control/NFKC-drift signals.

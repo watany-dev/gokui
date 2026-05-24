@@ -2131,6 +2131,10 @@ func TestUnpinnedRuntimeToolDetection(t *testing.T) {
 		{line: "deno run --allow-scripts sqlite3 main.ts", want: false},
 		{line: "deno run --allow-scripts=npm:sqlite3 npm:create-next-app@latest", want: true},
 		{line: "deno run --allow-scripts=npm:sqlite3 npm:create-next-app@15.4.1", want: false},
+		{line: "deno run --allow-import deno.land npm:create-next-app@latest", want: true},
+		{line: "deno run --allow-import deno.land npm:create-next-app@15.4.1", want: false},
+		{line: "deno run --allow-import=deno.land npm:create-next-app@latest", want: true},
+		{line: "deno run --allow-import=deno.land npm:create-next-app@15.4.1", want: false},
 		{line: "deno x npm:create-vite", want: true},
 		{line: "deno x npm:create-vite@5.2.0", want: false},
 		{line: "deno x -p npm:create-vite@5.2.0 create-vite", want: false},
@@ -2700,6 +2704,10 @@ func TestIsUnpinnedDenoNpmRuntimeLine(t *testing.T) {
 		{line: "deno run --allow-scripts sqlite3 main.ts", want: false},
 		{line: "deno run --allow-scripts=npm:sqlite3 npm:create-next-app@latest", want: true},
 		{line: "deno run --allow-scripts=npm:sqlite3 npm:create-next-app@15.4.1", want: false},
+		{line: "deno run --allow-import deno.land npm:create-next-app@latest", want: true},
+		{line: "deno run --allow-import deno.land npm:create-next-app@15.4.1", want: false},
+		{line: "deno run --allow-import=deno.land npm:create-next-app@latest", want: true},
+		{line: "deno run --allow-import=deno.land npm:create-next-app@15.4.1", want: false},
 		{line: "deno npm:create-vite@latest", want: true},
 		{line: "deno npm:create-vite@5.2.0", want: false},
 		{line: "deno", want: false},
@@ -2946,6 +2954,22 @@ func TestNextDenoRuntimeTarget(t *testing.T) {
 			ok:     true,
 		},
 		{
+			name:   "consumes allow-import value and returns following target",
+			fields: []string{"deno", "run", "--allow-import", "deno.land", "npm:create-next-app@latest"},
+			start:  2,
+			end:    5,
+			want:   "npm:create-next-app@latest",
+			ok:     true,
+		},
+		{
+			name:   "does not consume allow-import value when no following target exists",
+			fields: []string{"deno", "run", "--allow-import", "deno.land"},
+			start:  2,
+			end:    4,
+			want:   "deno.land",
+			ok:     true,
+		},
+		{
 			name:   "returns false when start exceeds end",
 			fields: []string{"deno", "run", "npm:cowsay"},
 			start:  5,
@@ -3124,6 +3148,20 @@ func TestIsKnownDenoOptionalFlagValue(t *testing.T) {
 		}
 	})
 
+	t.Run("allow-import consumes host value when candidate follows", func(t *testing.T) {
+		fields := []string{"deno", "run", "--allow-import", "deno.land", "main.ts"}
+		if got := isKnownDenoOptionalFlagValue("--allow-import", "deno.land", fields, 4, len(fields)); !got {
+			t.Fatalf("isKnownDenoOptionalFlagValue(--allow-import,deno.land) = %v, want true", got)
+		}
+	})
+
+	t.Run("allow-import rejects invalid values", func(t *testing.T) {
+		fields := []string{"deno", "run", "--allow-import", "deno.land", "main.ts"}
+		if got := isKnownDenoOptionalFlagValue("--allow-import", "npm:create-vite", fields, 4, len(fields)); got {
+			t.Fatalf("isKnownDenoOptionalFlagValue(--allow-import,npm:create-vite) = %v, want false", got)
+		}
+	})
+
 	t.Run("rejects empty and flag-like values", func(t *testing.T) {
 		fields := []string{"deno", "run", "main.ts"}
 		if got := isKnownDenoOptionalFlagValue("--vendor", "", fields, 0, len(fields)); got {
@@ -3201,6 +3239,60 @@ func TestIsScopedOrPackageRefToken(t *testing.T) {
 	for _, tc := range cases {
 		if got := isScopedOrPackageRefToken(tc.token); got != tc.want {
 			t.Fatalf("isScopedOrPackageRefToken(%q) = %v, want %v", tc.token, got, tc.want)
+		}
+	}
+}
+
+func TestIsDenoAllowImportValue(t *testing.T) {
+	cases := []struct {
+		value string
+		want  bool
+	}{
+		{value: "deno.land", want: true},
+		{value: "deno.land:443", want: true},
+		{value: "*.example.com", want: true},
+		{value: "https://deno.land", want: true},
+		{value: "http://deno.land", want: true},
+		{value: "[::1]:443", want: true},
+		{value: "deno.land,jsr.io:443", want: true},
+		{value: "deno.land,", want: false},
+		{value: "--bad", want: false},
+		{value: "npm:create-vite", want: false},
+		{value: "local-file", want: false},
+		{value: "", want: false},
+	}
+	for _, tc := range cases {
+		if got := isDenoAllowImportValue(tc.value); got != tc.want {
+			t.Fatalf("isDenoAllowImportValue(%q) = %v, want %v", tc.value, got, tc.want)
+		}
+	}
+}
+
+func TestIsHostLikeToken(t *testing.T) {
+	cases := []struct {
+		token string
+		want  bool
+	}{
+		{token: "deno.land", want: true},
+		{token: "deno.land:443", want: true},
+		{token: "*.example.com", want: true},
+		{token: "*.example.com:443", want: true},
+		{token: "[::1]:443", want: true},
+		{token: "[::1]", want: true},
+		{token: "[::1]:", want: false},
+		{token: "[::1]abc", want: false},
+		{token: "[::1", want: false},
+		{token: "deno.land:abc", want: false},
+		{token: "deno.land:", want: false},
+		{token: "example..com", want: true},
+		{token: "localhost", want: false},
+		{token: "npm:create-vite", want: false},
+		{token: "exa_mple.com", want: false},
+		{token: "bad host", want: false},
+	}
+	for _, tc := range cases {
+		if got := isHostLikeToken(tc.token); got != tc.want {
+			t.Fatalf("isHostLikeToken(%q) = %v, want %v", tc.token, got, tc.want)
 		}
 	}
 }

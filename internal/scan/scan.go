@@ -1647,6 +1647,7 @@ func nextDenoRuntimeTarget(fields []string, start int, end int) (string, bool) {
 		"--vendor":           {},
 		"--node-modules-dir": {},
 		"--allow-scripts":    {},
+		"--allow-import":     {},
 	}
 
 	for i := start; i < end; i++ {
@@ -1724,6 +1725,13 @@ func isKnownDenoOptionalFlagValue(
 			return false
 		}
 		return isDenoAllowScriptsValue(value)
+	case "--allow-import":
+		// Consume split allow-import values only when they look like import
+		// host/url allowlist entries and another runtime candidate follows.
+		if !hasDenoRuntimeCandidateAfter(fields, nextStart, end) {
+			return false
+		}
+		return isDenoAllowImportValue(value)
 	}
 	return false
 }
@@ -1769,6 +1777,74 @@ func isDenoAllowScriptsValue(value string) bool {
 			return false
 		}
 		if !isScopedOrPackageRefToken(token) {
+			return false
+		}
+	}
+	return true
+}
+
+func isDenoAllowImportValue(value string) bool {
+	if value == "" || strings.HasPrefix(value, "-") {
+		return false
+	}
+
+	for _, part := range strings.Split(value, ",") {
+		token := strings.TrimSpace(part)
+		if token == "" || strings.HasPrefix(token, "-") {
+			return false
+		}
+		if strings.HasPrefix(token, "https://") || strings.HasPrefix(token, "http://") {
+			continue
+		}
+		if isHostLikeToken(token) {
+			continue
+		}
+		return false
+	}
+	return true
+}
+
+func isHostLikeToken(token string) bool {
+	host := token
+	if strings.HasPrefix(host, "[") {
+		// IPv6 host forms for allowlist values.
+		endBracket := strings.Index(host, "]")
+		if endBracket < 0 {
+			return false
+		}
+		if endBracket+1 < len(host) {
+			if host[endBracket+1] != ':' {
+				return false
+			}
+			if endBracket+2 >= len(host) {
+				return false
+			}
+		}
+		return true
+	}
+	host = strings.TrimPrefix(host, "*.")
+	if idx := strings.LastIndex(host, ":"); idx >= 0 {
+		if idx == len(host)-1 {
+			return false
+		}
+		for i := idx + 1; i < len(host); i++ {
+			if host[i] < '0' || host[i] > '9' {
+				return false
+			}
+		}
+		host = host[:idx]
+	}
+	if host == "" || !strings.Contains(host, ".") {
+		return false
+	}
+	for i := 0; i < len(host); i++ {
+		ch := host[i]
+		switch {
+		case ch >= 'a' && ch <= 'z':
+		case ch >= 'A' && ch <= 'Z':
+		case ch >= '0' && ch <= '9':
+		case ch == '.', ch == '-':
+		default:
 			return false
 		}
 	}

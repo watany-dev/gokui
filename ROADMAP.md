@@ -114,6 +114,8 @@ tests/CI:
 - deno split `--allow-scripts` package-value forms are interpreted
   conservatively before target extraction so later runtime specifier targets are
   still evaluated for pinning
+- deno split `--allow-import` host/url allowlist forms are interpreted before
+  target extraction so later runtime specifier targets remain pin-checked
 - dependency manifest scanning coverage for `package.json`, `pyproject.toml`,
   `requirements.txt`, `uv.lock`, `go.mod`, `Gemfile`, and `deno.json` as
   first-class scan inputs
