@@ -88,6 +88,7 @@ func TestLockfileExampleSchemaSync(t *testing.T) {
 		`"type": "github"`,
 		`"input": "github:org/repo//skills/pdf-helper@8f3c2d1a4b5c6d7e8f901234567890abcdef1234"`,
 		`"kind": "github-source"`,
+		`"severity_overrides": []`,
 	}
 	for _, line := range required {
 		if !strings.Contains(section, line) {
@@ -160,6 +161,17 @@ func TestUpdateStatusErrorCodeMatrixDocumentationSync(t *testing.T) {
 	for _, row := range rows {
 		if !strings.Contains(readme, row) {
 			t.Fatalf("README missing update status/error_code matrix row: %q", row)
+		}
+	}
+
+	requiredAuditLines := []string{
+		"Install JSON reports and generated lockfiles also include",
+		"`severity_overrides` as an audit trail field",
+		"Update skill items also include `severity_overrides`",
+	}
+	for _, line := range requiredAuditLines {
+		if !strings.Contains(readme, line) {
+			t.Fatalf("README missing severity override audit documentation line: %q", line)
 		}
 	}
 }

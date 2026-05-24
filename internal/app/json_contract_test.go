@@ -179,6 +179,7 @@ func TestInstallMetadataJSONContract(t *testing.T) {
 		"decision",
 		"error_code",
 		"findings",
+		"severity_overrides",
 		"installed_path",
 		"installed",
 		"note",
@@ -202,6 +203,15 @@ func TestInstallMetadataJSONContract(t *testing.T) {
 		"skill",
 		"policy",
 		"findings",
+	})
+	var lockPolicyObj map[string]json.RawMessage
+	if err := json.Unmarshal(lock["policy"], &lockPolicyObj); err != nil {
+		t.Fatalf("json unmarshal install lock policy: %v", err)
+	}
+	assertJSONHasKeysContract(t, lockPolicyObj, []string{
+		"profile",
+		"decision",
+		"severity_overrides",
 	})
 }
 
@@ -235,6 +245,7 @@ func TestInstallJSONContract(t *testing.T) {
 		"decision",
 		"error_code",
 		"findings",
+		"severity_overrides",
 		"installed_path",
 		"installed",
 		"note",

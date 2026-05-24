@@ -50,19 +50,20 @@ type updateErrorReport struct {
 }
 
 type updateSkillItem struct {
-	Name               string           `json:"name"`
-	Path               string           `json:"path"`
-	Source             source           `json:"source"`
-	Status             string           `json:"status"`
-	ErrorCode          string           `json:"error_code"`
-	RuleID             string           `json:"rule_id,omitempty"`
-	Decision           string           `json:"decision"`
-	Diff               updateDiff       `json:"diff"`
-	Risk               updateRisk       `json:"risk"`
-	NewURLs            []string         `json:"new_urls"`
-	NewExecutableFiles []string         `json:"new_executable_files"`
-	Findings           []inspectFinding `json:"findings"`
-	Message            string           `json:"message"`
+	Name               string                  `json:"name"`
+	Path               string                  `json:"path"`
+	Source             source                  `json:"source"`
+	Status             string                  `json:"status"`
+	ErrorCode          string                  `json:"error_code"`
+	RuleID             string                  `json:"rule_id,omitempty"`
+	Decision           string                  `json:"decision"`
+	Diff               updateDiff              `json:"diff"`
+	Risk               updateRisk              `json:"risk"`
+	NewURLs            []string                `json:"new_urls"`
+	NewExecutableFiles []string                `json:"new_executable_files"`
+	Findings           []inspectFinding        `json:"findings"`
+	SeverityOverrides  []severityOverrideAudit `json:"severity_overrides"`
+	Message            string                  `json:"message"`
 }
 
 const (
@@ -423,6 +424,7 @@ func buildUpdateReport(targetRoot string) (updateReport, error) {
 			NewURLs:            []string{},
 			NewExecutableFiles: []string{},
 			Findings:           []inspectFinding{},
+			SeverityOverrides:  []severityOverrideAudit{},
 		}
 		lockPath := filepath.Join(skillPath, installLockFile)
 		lock, err := readInstallLock(lockPath)
@@ -438,6 +440,7 @@ func buildUpdateReport(targetRoot string) (updateReport, error) {
 			Input: lock.Source.Input,
 			Kind:  lock.Source.Kind,
 		}
+		item.SeverityOverrides = cloneSeverityOverrides(lock.Policy.SeverityOverrides)
 
 		enriched, err := evaluateUpdateSkill(item, lock)
 		if err != nil {

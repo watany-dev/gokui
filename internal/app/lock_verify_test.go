@@ -1406,6 +1406,32 @@ func TestVerifyInstallReportValidationBranches(t *testing.T) {
 			t.Fatalf("expected findings summary mismatch, got ok=%v detail=%q", ok, detail)
 		}
 	})
+
+	t.Run("severity overrides mismatch", func(t *testing.T) {
+		rep := valid
+		rep.SeverityOverrides = []severityOverrideAudit{
+			{
+				RuleID:            "PROMPT_OVERRIDE_LANGUAGE",
+				PreviousSeverity:  "high",
+				EffectiveSeverity: "medium",
+				Justification:     "approved for internal fixture",
+				ApprovedBy:        "sec-reviewer",
+				Source:            "policy-file",
+				AppliedAt:         "2026-05-24T00:00:00Z",
+			},
+		}
+		raw, err := json.MarshalIndent(rep, "", "  ")
+		if err != nil {
+			t.Fatalf("marshal report: %v", err)
+		}
+		writeReport(t, string(raw))
+
+		mutLock := lock
+		ok, detail := verifyInstallReport(skillPath, mutLock)
+		if ok || !strings.Contains(detail, "severity_overrides does not match") {
+			t.Fatalf("expected severity_overrides mismatch, got ok=%v detail=%q", ok, detail)
+		}
+	})
 }
 
 func TestVerifyLockStructureValidationBranches(t *testing.T) {
@@ -1520,6 +1546,23 @@ func TestVerifyLockStructureValidationBranches(t *testing.T) {
 			},
 			detailIn: "bytes is negative",
 		},
+		{
+			name: "invalid severity override entry",
+			mutate: func(l *installLock) {
+				l.Policy.SeverityOverrides = []severityOverrideAudit{
+					{
+						RuleID:            "",
+						PreviousSeverity:  "high",
+						EffectiveSeverity: "medium",
+						Justification:     "test",
+						ApprovedBy:        "tester",
+						Source:            "policy-file",
+						AppliedAt:         "2026-05-24T00:00:00Z",
+					},
+				}
+			},
+			detailIn: "severity_overrides is invalid",
+		},
 	}
 
 	for _, tc := range cases {
@@ -1555,6 +1598,145 @@ func TestLockVerifyHelpers(t *testing.T) {
 			t.Fatalf("expected invalid path: %s", p)
 		}
 	}
+}
+
+func TestSeverityOverrideAuditHelpers(t *testing.T) {
+	valid := []severityOverrideAudit{
+		{
+			RuleID:            "PROMPT_OVERRIDE_LANGUAGE",
+			PreviousSeverity:  "high",
+			EffectiveSeverity: "medium",
+			Justification:     "approved for controlled fixture",
+			ApprovedBy:        "security-reviewer",
+			Source:            "policy-file",
+			AppliedAt:         "2026-05-24T00:00:00Z",
+		},
+	}
+
+	if err := validateSeverityOverrideAudit(valid); err != nil {
+		t.Fatalf("validateSeverityOverrideAudit(valid) error = %v", err)
+	}
+	if !severityOverridesEqual(valid, valid) {
+		t.Fatal("severityOverridesEqual(valid, valid) should be true")
+	}
+	if severityOverridesEqual(valid, nil) {
+		t.Fatal("severityOverridesEqual(valid, nil) should be false")
+	}
+
+	t.Run("rejects invalid entries", func(t *testing.T) {
+		cases := []struct {
+			name       string
+			override   severityOverrideAudit
+			detailPart string
+		}{
+			{
+				name: "empty rule_id",
+				override: severityOverrideAudit{
+					PreviousSeverity:  "high",
+					EffectiveSeverity: "medium",
+					Justification:     "x",
+					ApprovedBy:        "y",
+					Source:            "policy-file",
+					AppliedAt:         "2026-05-24T00:00:00Z",
+				},
+				detailPart: "rule_id is empty",
+			},
+			{
+				name: "empty previous severity",
+				override: severityOverrideAudit{
+					RuleID:            "PROMPT_OVERRIDE_LANGUAGE",
+					EffectiveSeverity: "medium",
+					Justification:     "x",
+					ApprovedBy:        "y",
+					Source:            "policy-file",
+					AppliedAt:         "2026-05-24T00:00:00Z",
+				},
+				detailPart: "previous_severity is empty",
+			},
+			{
+				name: "empty effective severity",
+				override: severityOverrideAudit{
+					RuleID:           "PROMPT_OVERRIDE_LANGUAGE",
+					PreviousSeverity: "high",
+					Justification:    "x",
+					ApprovedBy:       "y",
+					Source:           "policy-file",
+					AppliedAt:        "2026-05-24T00:00:00Z",
+				},
+				detailPart: "effective_severity is empty",
+			},
+			{
+				name: "empty justification",
+				override: severityOverrideAudit{
+					RuleID:            "PROMPT_OVERRIDE_LANGUAGE",
+					PreviousSeverity:  "high",
+					EffectiveSeverity: "medium",
+					ApprovedBy:        "y",
+					Source:            "policy-file",
+					AppliedAt:         "2026-05-24T00:00:00Z",
+				},
+				detailPart: "justification is empty",
+			},
+			{
+				name: "empty approved_by",
+				override: severityOverrideAudit{
+					RuleID:            "PROMPT_OVERRIDE_LANGUAGE",
+					PreviousSeverity:  "high",
+					EffectiveSeverity: "medium",
+					Justification:     "x",
+					Source:            "policy-file",
+					AppliedAt:         "2026-05-24T00:00:00Z",
+				},
+				detailPart: "approved_by is empty",
+			},
+			{
+				name: "empty source",
+				override: severityOverrideAudit{
+					RuleID:            "PROMPT_OVERRIDE_LANGUAGE",
+					PreviousSeverity:  "high",
+					EffectiveSeverity: "medium",
+					Justification:     "x",
+					ApprovedBy:        "y",
+					AppliedAt:         "2026-05-24T00:00:00Z",
+				},
+				detailPart: "source is empty",
+			},
+			{
+				name: "empty applied_at",
+				override: severityOverrideAudit{
+					RuleID:            "PROMPT_OVERRIDE_LANGUAGE",
+					PreviousSeverity:  "high",
+					EffectiveSeverity: "medium",
+					Justification:     "x",
+					ApprovedBy:        "y",
+					Source:            "policy-file",
+				},
+				detailPart: "applied_at is empty",
+			},
+			{
+				name: "invalid applied_at",
+				override: severityOverrideAudit{
+					RuleID:            "PROMPT_OVERRIDE_LANGUAGE",
+					PreviousSeverity:  "high",
+					EffectiveSeverity: "medium",
+					Justification:     "x",
+					ApprovedBy:        "y",
+					Source:            "policy-file",
+					AppliedAt:         "not-rfc3339",
+				},
+				detailPart: "applied_at must be RFC3339",
+			},
+		}
+
+		for _, tc := range cases {
+			t.Run(tc.name, func(t *testing.T) {
+				err := validateSeverityOverrideAudit([]severityOverrideAudit{tc.override})
+				if err == nil || !strings.Contains(err.Error(), tc.detailPart) {
+					t.Fatalf("expected validation detail %q, got err=%v", tc.detailPart, err)
+				}
+			})
+		}
+	})
 }
 
 func TestLockRelativePathProperties(t *testing.T) {

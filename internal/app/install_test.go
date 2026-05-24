@@ -912,6 +912,7 @@ func TestRunInstallCompactOutput(t *testing.T) {
 		}
 		required := []string{
 			"install decision=REJECTED",
+			"overrides=0",
 			"installed=false",
 			"profile=strict",
 			"error_code=" + installErrorCodePolicyRejected,
@@ -948,6 +949,7 @@ func TestRunInstallCompactOutput(t *testing.T) {
 		}
 		required := []string{
 			"install decision=PASS",
+			"overrides=0",
 			"installed=true",
 			"profile=strict",
 			"target=\"custom:" + targetRoot + "\"",
@@ -985,6 +987,7 @@ func TestBuildInstallCompactSummary(t *testing.T) {
 		"high=1",
 		"medium=1",
 		"low=1",
+		"overrides=0",
 		"installed=false",
 		"profile=strict",
 		"target=\"custom:/tmp/skills\"",
@@ -2039,6 +2042,17 @@ func TestBuildLockSummaryCounts(t *testing.T) {
 		},
 		PolicyProfile: "strict",
 		Decision:      "PASS",
+		SeverityOverrides: []severityOverrideAudit{
+			{
+				RuleID:            "PROMPT_OVERRIDE_LANGUAGE",
+				PreviousSeverity:  "high",
+				EffectiveSeverity: "medium",
+				Justification:     "approved for controlled environment",
+				ApprovedBy:        "security-reviewer",
+				Source:            "policy-file",
+				AppliedAt:         "2026-05-24T00:00:00Z",
+			},
+		},
 		Findings: []inspectFinding{
 			{ID: "A", Severity: "critical"},
 			{ID: "B", Severity: "high"},
@@ -2052,6 +2066,12 @@ func TestBuildLockSummaryCounts(t *testing.T) {
 	}
 	if lock.Findings.Critical != 1 || lock.Findings.High != 1 || lock.Findings.Medium != 1 || lock.Findings.Low != 1 {
 		t.Fatalf("unexpected finding summary: %+v", lock.Findings)
+	}
+	if len(lock.Policy.SeverityOverrides) != 1 {
+		t.Fatalf("severity_overrides length = %d, want 1", len(lock.Policy.SeverityOverrides))
+	}
+	if lock.Policy.SeverityOverrides[0].RuleID != "PROMPT_OVERRIDE_LANGUAGE" {
+		t.Fatalf("severity override rule_id = %q", lock.Policy.SeverityOverrides[0].RuleID)
 	}
 }
 

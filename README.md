@@ -263,6 +263,9 @@ derived from rule-prefixed validation messages (for example
 
 When available, fetch JSON fatal errors also include optional `rule_id`
 derived from rule-prefixed source/materialization validation errors.
+Install JSON reports and generated lockfiles also include
+`severity_overrides` as an audit trail field (currently empty in strict mode
+unless explicit overrides are introduced in future policy phases).
 
 ### install (`--format json`)
 
@@ -336,6 +339,8 @@ Fatal command-level errors (`status=ERROR`) use:
 
 When available, update JSON fatal errors also include optional `rule_id`
 derived from rule-prefixed target/report validation messages.
+Update skill items also include `severity_overrides`, inherited from installed
+lock policy metadata for audit visibility.
 
 ## Exit Code Contract
 
@@ -603,7 +608,8 @@ beside the installed skill.
   },
   "policy": {
     "profile": "strict",
-    "decision": "pass"
+    "decision": "pass",
+    "severity_overrides": []
   },
   "findings": {
     "critical": 0,

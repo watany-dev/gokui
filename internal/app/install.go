@@ -63,15 +63,16 @@ type installArgs struct {
 }
 
 type installReport struct {
-	SchemaVersion string           `json:"schema_version"`
-	Source        source           `json:"source"`
-	PolicyProfile string           `json:"policy_profile"`
-	Decision      string           `json:"decision"`
-	ErrorCode     string           `json:"error_code"`
-	Findings      []inspectFinding `json:"findings"`
-	InstalledPath string           `json:"installed_path,omitempty"`
-	Installed     bool             `json:"installed"`
-	Note          string           `json:"note"`
+	SchemaVersion     string                  `json:"schema_version"`
+	Source            source                  `json:"source"`
+	PolicyProfile     string                  `json:"policy_profile"`
+	Decision          string                  `json:"decision"`
+	ErrorCode         string                  `json:"error_code"`
+	Findings          []inspectFinding        `json:"findings"`
+	SeverityOverrides []severityOverrideAudit `json:"severity_overrides"`
+	InstalledPath     string                  `json:"installed_path,omitempty"`
+	Installed         bool                    `json:"installed"`
+	Note              string                  `json:"note"`
 }
 
 type installErrorReport struct {
@@ -114,8 +115,9 @@ type lockFileHash struct {
 }
 
 type lockPolicy struct {
-	Profile  string `json:"profile"`
-	Decision string `json:"decision"`
+	Profile           string                  `json:"profile"`
+	Decision          string                  `json:"decision"`
+	SeverityOverrides []severityOverrideAudit `json:"severity_overrides"`
 }
 
 type lockFindingSummary struct {
@@ -296,14 +298,15 @@ func runInstall(args []string, stdout io.Writer, stderr io.Writer) int {
 	}
 
 	report := installReport{
-		SchemaVersion: reportSchemaVersion,
-		Source:        installSource,
-		PolicyProfile: parsed.Profile,
-		Decision:      decision,
-		Findings:      findings,
-		Installed:     false,
-		ErrorCode:     "",
-		Note:          "pre-release install applies strict structural and markdown checks",
+		SchemaVersion:     reportSchemaVersion,
+		Source:            installSource,
+		PolicyProfile:     parsed.Profile,
+		Decision:          decision,
+		Findings:          findings,
+		SeverityOverrides: []severityOverrideAudit{},
+		Installed:         false,
+		ErrorCode:         "",
+		Note:              "pre-release install applies strict structural and markdown checks",
 	}
 
 	if decision == "REJECTED" {
@@ -501,12 +504,13 @@ func buildInstallSARIFReport(report installReport, target string) inspectSARIFRe
 		Decision:      report.Decision,
 		Findings:      report.Findings,
 		Note: fmt.Sprintf(
-			"install target=%s profile=%s installed=%t path=%s error_code=%s; %s",
+			"install target=%s profile=%s installed=%t path=%s error_code=%s overrides=%d; %s",
 			target,
 			report.PolicyProfile,
 			report.Installed,
 			report.InstalledPath,
 			report.ErrorCode,
+			len(report.SeverityOverrides),
 			report.Note,
 		),
 	}
@@ -531,13 +535,14 @@ func buildInstallCompactSummary(report installReport, target string) string {
 		}
 	}
 	return fmt.Sprintf(
-		"install decision=%s findings=%d critical=%d high=%d medium=%d low=%d installed=%t profile=%s target=%q source_kind=%s source=%q error_code=%s",
+		"install decision=%s findings=%d critical=%d high=%d medium=%d low=%d overrides=%d installed=%t profile=%s target=%q source_kind=%s source=%q error_code=%s",
 		report.Decision,
 		len(report.Findings),
 		critical,
 		high,
 		medium,
 		low,
+		len(report.SeverityOverrides),
 		report.Installed,
 		report.PolicyProfile,
 		target,
@@ -912,8 +917,9 @@ func buildInstallLock(stagedSkill string, report installReport) (installLock, er
 			Files:      files,
 		},
 		Policy: lockPolicy{
-			Profile:  report.PolicyProfile,
-			Decision: strings.ToLower(report.Decision),
+			Profile:           report.PolicyProfile,
+			Decision:          strings.ToLower(report.Decision),
+			SeverityOverrides: cloneSeverityOverrides(report.SeverityOverrides),
 		},
 		Findings: summary,
 	}, nil

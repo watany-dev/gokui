@@ -48,6 +48,16 @@ func TestParseUpdateArgs(t *testing.T) {
 		}
 	})
 
+	t.Run("parses compact format", func(t *testing.T) {
+		got, err := parseUpdateArgs([]string{"--dry-run", "--format", "compact"})
+		if err != nil {
+			t.Fatalf("parseUpdateArgs() error = %v", err)
+		}
+		if got.Format != "compact" {
+			t.Fatalf("format = %q, want %q", got.Format, "compact")
+		}
+	})
+
 	t.Run("errors", func(t *testing.T) {
 		_, err := parseUpdateArgs(nil)
 		if err == nil || !strings.Contains(err.Error(), "requires --dry-run") {
@@ -507,6 +517,79 @@ func TestRunUpdateSARIFOutput(t *testing.T) {
 	})
 }
 
+func TestRunUpdateCompactOutput(t *testing.T) {
+	targetRoot := filepath.Join(t.TempDir(), "skills")
+	if err := os.MkdirAll(targetRoot, 0o755); err != nil {
+		t.Fatalf("mkdir target root: %v", err)
+	}
+
+	src := createSkillSourceForInstallTest(t, "compact-update-skill")
+	report := installReport{
+		SchemaVersion: reportSchemaVersion,
+		Source:        source{Input: src, Kind: "local-dir"},
+		PolicyProfile: "strict",
+		Decision:      "PASS",
+	}
+	if _, _, err := installSkillAtomic(src, targetRoot, "compact-update-skill", report); err != nil {
+		t.Fatalf("installSkillAtomic() error = %v", err)
+	}
+
+	var stdout strings.Builder
+	var stderr strings.Builder
+	code := runUpdate([]string{"--dry-run", "--target", "custom:" + targetRoot, "--format", "compact"}, &stdout, &stderr)
+	if code != 0 {
+		t.Fatalf("runUpdate(compact) code = %d, want 0\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("stderr should be empty for compact output, got %q", stderr.String())
+	}
+	line := strings.TrimSpace(stdout.String())
+	if strings.Contains(line, "\n") {
+		t.Fatalf("compact output should be single-line, got %q", line)
+	}
+	for _, marker := range []string{
+		"update total=1",
+		"up_to_date=1",
+		"changed=0",
+		"rejected=0",
+		"errors=0",
+		"target=\"" + targetRoot + "\"",
+	} {
+		if !strings.Contains(line, marker) {
+			t.Fatalf("compact output missing marker %q: %q", marker, line)
+		}
+	}
+}
+
+func TestBuildUpdateCompactSummary(t *testing.T) {
+	report := updateReport{
+		Target: "/tmp/skills",
+		Summary: updateSummary{
+			Total:    7,
+			UpToDate: 2,
+			Changed:  3,
+			Rejected: 1,
+			Skipped:  1,
+			Errors:   0,
+		},
+	}
+	got := buildUpdateCompactSummary(report)
+	required := []string{
+		"update total=7",
+		"up_to_date=2",
+		"changed=3",
+		"rejected=1",
+		"skipped=1",
+		"errors=0",
+		"target=\"/tmp/skills\"",
+	}
+	for _, marker := range required {
+		if !strings.Contains(got, marker) {
+			t.Fatalf("summary missing marker %q: %q", marker, got)
+		}
+	}
+}
+
 func TestRunUpdateJSONContractHasStableKeys(t *testing.T) {
 	targetRoot := filepath.Join(t.TempDir(), "skills")
 	if err := os.MkdirAll(targetRoot, 0o755); err != nil {
@@ -572,6 +655,7 @@ func TestRunUpdateJSONContractHasStableKeys(t *testing.T) {
 			"new_urls",
 			"new_executable_files",
 			"findings",
+			"severity_overrides",
 			"message",
 		})
 	}

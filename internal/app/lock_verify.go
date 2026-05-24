@@ -605,6 +605,9 @@ func verifyLockStructure(lock installLock) (bool, string) {
 	if !strings.EqualFold(strings.TrimSpace(lock.Policy.Decision), "pass") {
 		return false, fmt.Sprintf("lock policy decision must be pass for installed skill, got %s", lock.Policy.Decision)
 	}
+	if err := validateSeverityOverrideAudit(lock.Policy.SeverityOverrides); err != nil {
+		return false, fmt.Sprintf("lock policy severity_overrides is invalid: %v", err)
+	}
 
 	if !isSHA256Hex(lock.Skill.RootSHA256) {
 		return false, "lock skill root_sha256 must be a 64-char hex digest"
@@ -688,6 +691,12 @@ func verifyInstallReport(skillPath string, lock installLock) (bool, string) {
 	}
 	if !strings.EqualFold(strings.TrimSpace(report.Decision), strings.TrimSpace(lock.Policy.Decision)) {
 		return false, "install report decision does not match lock policy decision"
+	}
+	if err := validateSeverityOverrideAudit(report.SeverityOverrides); err != nil {
+		return false, fmt.Sprintf("install report severity_overrides is invalid: %v", err)
+	}
+	if !severityOverridesEqual(report.SeverityOverrides, lock.Policy.SeverityOverrides) {
+		return false, "install report severity_overrides does not match lock policy severity_overrides"
 	}
 	if !strings.EqualFold(strings.TrimSpace(report.Decision), "pass") {
 		return false, "install report decision must be pass for installed skill"
@@ -775,5 +784,47 @@ func hasWindowsDrivePathPrefix(path string) bool {
 	}
 	// Treat both "C:foo" (drive-relative) and "C:/foo" (absolute) as invalid
 	// lock-relative paths for cross-platform safety.
+	return true
+}
+
+func validateSeverityOverrideAudit(overrides []severityOverrideAudit) error {
+	for idx, override := range overrides {
+		if strings.TrimSpace(override.RuleID) == "" {
+			return fmt.Errorf("entry %d: rule_id is empty", idx)
+		}
+		if strings.TrimSpace(override.PreviousSeverity) == "" {
+			return fmt.Errorf("entry %d: previous_severity is empty", idx)
+		}
+		if strings.TrimSpace(override.EffectiveSeverity) == "" {
+			return fmt.Errorf("entry %d: effective_severity is empty", idx)
+		}
+		if strings.TrimSpace(override.Justification) == "" {
+			return fmt.Errorf("entry %d: justification is empty", idx)
+		}
+		if strings.TrimSpace(override.ApprovedBy) == "" {
+			return fmt.Errorf("entry %d: approved_by is empty", idx)
+		}
+		if strings.TrimSpace(override.Source) == "" {
+			return fmt.Errorf("entry %d: source is empty", idx)
+		}
+		if strings.TrimSpace(override.AppliedAt) == "" {
+			return fmt.Errorf("entry %d: applied_at is empty", idx)
+		}
+		if _, err := time.Parse(time.RFC3339, strings.TrimSpace(override.AppliedAt)); err != nil {
+			return fmt.Errorf("entry %d: applied_at must be RFC3339", idx)
+		}
+	}
+	return nil
+}
+
+func severityOverridesEqual(a []severityOverrideAudit, b []severityOverrideAudit) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
 	return true
 }

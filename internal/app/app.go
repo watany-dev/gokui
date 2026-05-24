@@ -127,6 +127,27 @@ type inspectFinding struct {
 	Summary  string `json:"summary"`
 }
 
+// severityOverrideAudit records explicit policy severity adjustments.
+// Current strict-profile behavior records an empty list unless overrides are enabled in future phases.
+type severityOverrideAudit struct {
+	RuleID            string `json:"rule_id"`
+	PreviousSeverity  string `json:"previous_severity"`
+	EffectiveSeverity string `json:"effective_severity"`
+	Justification     string `json:"justification"`
+	ApprovedBy        string `json:"approved_by"`
+	Source            string `json:"source"`
+	AppliedAt         string `json:"applied_at"`
+}
+
+func cloneSeverityOverrides(in []severityOverrideAudit) []severityOverrideAudit {
+	if len(in) == 0 {
+		return []severityOverrideAudit{}
+	}
+	out := make([]severityOverrideAudit, len(in))
+	copy(out, in)
+	return out
+}
+
 type skillFrontmatter struct {
 	Name        string
 	Description string
