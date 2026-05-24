@@ -2068,6 +2068,12 @@ func TestUnpinnedRuntimeToolDetection(t *testing.T) {
 		{line: "npm exec @scope/tool@1.2.3", want: false},
 		{line: "npm exec -- @scope/tool", want: true},
 		{line: "npm exec -- @scope/tool@1.2.3", want: false},
+		{line: "npm exec --package @scope/tool -- tool", want: true},
+		{line: "npm exec --package=@scope/tool -- tool", want: true},
+		{line: "npm exec -p @scope/tool -- tool", want: true},
+		{line: "npm exec --package @scope/tool@1.2.3 -- tool", want: false},
+		{line: "npm exec --package=@scope/tool@1.2.3 -- tool", want: false},
+		{line: "npm exec -p @scope/tool@1.2.3 -- tool", want: false},
 		{line: "npm --yes exec @scope/tool", want: true},
 		{line: "npm exec", want: false},
 		{line: "npm exec --", want: false},
@@ -2083,8 +2089,13 @@ func TestUnpinnedRuntimeToolDetection(t *testing.T) {
 		{line: "corepack pnpm@9.0.0 dlx @scope/tool@1.2.3", want: false},
 		{line: "corepack yarn dlx @scope/tool@1.2.3", want: false},
 		{line: "corepack npm exec @scope/tool@1.2.3", want: false},
+		{line: "corepack npm exec --package @scope/tool@1.2.3 -- tool", want: false},
 		{line: "corepack npm exec -- @scope/tool@1.2.3", want: false},
 		{line: "corepack npm exec --", want: false},
+		{line: "npx -p @scope/tool -c tool", want: true},
+		{line: "npx --package=@scope/tool -c tool", want: true},
+		{line: "npx -p @scope/tool@1.2.3 -c tool", want: false},
+		{line: "npx --package=@scope/tool@1.2.3 -c tool", want: false},
 		{line: "npx --yes", want: false},
 		{line: "go run github.com/acme/x@latest", want: true},
 		{line: "go run github.com/acme/x@main", want: true},
@@ -2175,6 +2186,61 @@ func TestIsUnpinnedLauncherCommand(t *testing.T) {
 	t.Run("accepts normalized launcher token from corepack wrappers", func(t *testing.T) {
 		if got := isUnpinnedLauncherCommand([]string{"corepack", "pnpm@9.0.0", "dlx", "@scope/pkg"}, "pnpm", 1); !got {
 			t.Fatalf("isUnpinnedLauncherCommand() = %v, want true", got)
+		}
+	})
+
+	t.Run("uses npm exec package flag values", func(t *testing.T) {
+		if got := isUnpinnedLauncherCommand([]string{"npm", "exec", "--package", "@scope/pkg@1.2.3", "--", "tool"}, "npm", 0); got {
+			t.Fatalf("isUnpinnedLauncherCommand() = %v, want false", got)
+		}
+		if got := isUnpinnedLauncherCommand([]string{"npm", "exec", "--package", "@scope/pkg", "--", "tool"}, "npm", 0); !got {
+			t.Fatalf("isUnpinnedLauncherCommand() = %v, want true", got)
+		}
+	})
+
+	t.Run("uses npx package flag values", func(t *testing.T) {
+		if got := isUnpinnedLauncherCommand([]string{"npx", "-p", "@scope/pkg@1.2.3", "-c", "tool"}, "npx", 0); got {
+			t.Fatalf("isUnpinnedLauncherCommand() = %v, want false", got)
+		}
+		if got := isUnpinnedLauncherCommand([]string{"npx", "-p", "@scope/pkg", "-c", "tool"}, "npx", 0); !got {
+			t.Fatalf("isUnpinnedLauncherCommand() = %v, want true", got)
+		}
+	})
+}
+
+func TestExtractPackageRefsFromFlags(t *testing.T) {
+	t.Run("extracts package refs from flag forms", func(t *testing.T) {
+		fields := []string{"npm", "exec", "--package", "@scope/pkg@1.2.3", "-p", "tool@2.0.0", "--package=other@3.0.0"}
+		got := extractPackageRefsFromFlags(fields, 2, len(fields))
+		want := []string{"@scope/pkg@1.2.3", "tool@2.0.0", "other@3.0.0"}
+		if len(got) != len(want) {
+			t.Fatalf("extractPackageRefsFromFlags() len = %d, want %d (%v)", len(got), len(want), got)
+		}
+		for i := range want {
+			if got[i] != want[i] {
+				t.Fatalf("extractPackageRefsFromFlags()[%d] = %q, want %q", i, got[i], want[i])
+			}
+		}
+	})
+
+	t.Run("ignores missing or invalid package flag values", func(t *testing.T) {
+		fields := []string{"npx", "--yes", "--package", "--", "-p=", "--package=", "-c", "tool"}
+		got := extractPackageRefsFromFlags(fields, 0, len(fields))
+		if len(got) != 0 {
+			t.Fatalf("extractPackageRefsFromFlags() = %v, want empty", got)
+		}
+	})
+
+	t.Run("handles start and end bounds", func(t *testing.T) {
+		fields := []string{"npm", "exec", "--package=@scope/pkg@1.2.3"}
+		got := extractPackageRefsFromFlags(fields, -10, len(fields)+10)
+		if len(got) != 1 || got[0] != "@scope/pkg@1.2.3" {
+			t.Fatalf("extractPackageRefsFromFlags() = %v, want [@scope/pkg@1.2.3]", got)
+		}
+
+		got = extractPackageRefsFromFlags(fields, 5, 3)
+		if got != nil {
+			t.Fatalf("extractPackageRefsFromFlags() = %v, want nil for start>=end", got)
 		}
 	})
 }

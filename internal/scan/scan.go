@@ -1366,6 +1366,15 @@ func sanitizeRuntimeToken(token string) string {
 func isUnpinnedLauncherCommand(fields []string, token string, tokenIndex int) bool {
 	switch token {
 	case "npx", "uvx", "bunx":
+		packageRefs := extractPackageRefsFromFlags(fields, tokenIndex+1, len(fields))
+		if len(packageRefs) > 0 {
+			for _, packageRef := range packageRefs {
+				if isUnpinnedPackageRef(packageRef) {
+					return true
+				}
+			}
+			return false
+		}
 		packageRef, ok := nextNonFlagField(fields, tokenIndex+1)
 		if !ok {
 			return false
@@ -1388,6 +1397,17 @@ func isUnpinnedLauncherCommand(fields []string, token string, tokenIndex int) bo
 		if !ok || subcommand != "exec" {
 			return false
 		}
+
+		packageRefs := extractPackageRefsFromFlags(fields, subcommandIndex+1, len(fields))
+		if len(packageRefs) > 0 {
+			for _, packageRef := range packageRefs {
+				if isUnpinnedPackageRef(packageRef) {
+					return true
+				}
+			}
+			return false
+		}
+
 		packageRef, ok := nextNonFlagField(fields, subcommandIndex+1)
 		if !ok {
 			return false
@@ -1524,6 +1544,48 @@ func nextNonFlagFieldWithIndex(fields []string, start int) (string, int, bool) {
 		return fields[i], i, true
 	}
 	return "", -1, false
+}
+
+func extractPackageRefsFromFlags(fields []string, start int, end int) []string {
+	if start < 0 {
+		start = 0
+	}
+	if end > len(fields) {
+		end = len(fields)
+	}
+	if start >= end {
+		return nil
+	}
+
+	out := make([]string, 0, 2)
+	for i := start; i < end; i++ {
+		token := strings.ToLower(strings.TrimSpace(fields[i]))
+		switch {
+		case token == "--package" || token == "-p":
+			if i+1 >= end {
+				continue
+			}
+			next := sanitizeRuntimeToken(fields[i+1])
+			if next == "" || strings.HasPrefix(next, "-") {
+				continue
+			}
+			out = append(out, next)
+			i++
+		case strings.HasPrefix(token, "--package="):
+			ref := sanitizeRuntimeToken(strings.TrimPrefix(fields[i], "--package="))
+			if ref == "" {
+				continue
+			}
+			out = append(out, ref)
+		case strings.HasPrefix(token, "-p="):
+			ref := sanitizeRuntimeToken(strings.TrimPrefix(fields[i], "-p="))
+			if ref == "" {
+				continue
+			}
+			out = append(out, ref)
+		}
+	}
+	return out
 }
 
 func classifyURLRisks(line string, relPath string, lineNum int, isMarkdown bool) []Finding {
