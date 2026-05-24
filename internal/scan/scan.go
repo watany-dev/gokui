@@ -63,6 +63,8 @@ var (
 	nodeHexEvalPattern              = regexp.MustCompile(`(?i)\b(?:eval|new\s+function)\s*\(\s*buffer\s*\.\s*from\s*\([^)\n]{0,260}['"]hex['"]\s*\)\s*\.toString\s*\(`)
 	perlBase64EvalPattern           = regexp.MustCompile(`(?i)\beval\b[^\n]{0,260}\b(?:decode_base64|mime::base64::decode_base64)\s*\(`)
 	perlHexEvalPattern              = regexp.MustCompile(`(?i)\beval\b[^\n]{0,260}\bpack\s*\(\s*['"]h\*['"]\s*,`)
+	rubyBase64EvalPattern           = regexp.MustCompile(`(?i)\beval\s*\([^)\n]{0,260}(?:base64\.decode64|strict_decode64|urlsafe_decode64)\s*\(`)
+	rubyHexEvalPattern              = regexp.MustCompile(`(?i)\beval\s*\([^)\n]{0,260}\.pack\s*\(\s*['"]h\*['"]`)
 	rubyRemoteEvalPattern           = regexp.MustCompile(`(?i)\beval\s*\(\s*(?:net::http\.get\s*\(\s*uri\s*\(\s*['"]https?://[^'"]+['"]\s*\)\s*\)|uri\.open\s*\(\s*['"]https?://[^'"]+['"]\s*\)\.read)`)
 	base64PipeExec                  = regexp.MustCompile(`(?i)\b(?:base64|openssl\s+base64)\b[^\n|]{0,300}\|\s*(?:sh|bash|zsh|pwsh|powershell|python|node)\b`)
 	base64SubshellExec              = regexp.MustCompile(`(?i)\b(?:sh|bash|zsh|pwsh|powershell|eval|python3?|node|ruby|perl)\b[^\n]{0,220}\$\([^)\n]{0,260}\b(?:base64|openssl\s+base64)\b[^)\n]{0,200}\s(?:-d|--decode)\b[^)\n]{0,120}\)`)
@@ -533,7 +535,7 @@ func scanVariantThreatFindings(variant string, target scanTarget, lineNum int) [
 			Summary:  "network output reaches shell/interpreter execution",
 		})
 	}
-	if base64PipeExec.MatchString(variant) || base64SubshellExec.MatchString(variant) || powerShellFromBase64ExecPattern.MatchString(variant) || pythonBase64ExecPattern.MatchString(variant) || nodeBase64EvalPattern.MatchString(variant) || perlBase64EvalPattern.MatchString(variant) {
+	if base64PipeExec.MatchString(variant) || base64SubshellExec.MatchString(variant) || powerShellFromBase64ExecPattern.MatchString(variant) || pythonBase64ExecPattern.MatchString(variant) || nodeBase64EvalPattern.MatchString(variant) || perlBase64EvalPattern.MatchString(variant) || rubyBase64EvalPattern.MatchString(variant) {
 		findings = append(findings, Finding{
 			ID:       "BASE64_PIPE_EXEC",
 			Severity: "critical",
@@ -542,7 +544,7 @@ func scanVariantThreatFindings(variant string, target scanTarget, lineNum int) [
 			Summary:  "decoded payload reaches interpreter execution",
 		})
 	}
-	if hexPipeExec.MatchString(variant) || hexSubshellExec.MatchString(variant) || powerShellFromHexExecPattern.MatchString(variant) || pythonHexExecPattern.MatchString(variant) || nodeHexEvalPattern.MatchString(variant) || perlHexEvalPattern.MatchString(variant) {
+	if hexPipeExec.MatchString(variant) || hexSubshellExec.MatchString(variant) || powerShellFromHexExecPattern.MatchString(variant) || pythonHexExecPattern.MatchString(variant) || nodeHexEvalPattern.MatchString(variant) || perlHexEvalPattern.MatchString(variant) || rubyHexEvalPattern.MatchString(variant) {
 		findings = append(findings, Finding{
 			ID:       "HEX_PIPE_EXEC",
 			Severity: "critical",

@@ -130,6 +130,8 @@ Local hex decode routed to `exec`/`eval` (for example Python `fromhex` or Node
 `Buffer.from(..., "hex")`) is now flagged as critical.
 Perl decode-to-`eval` chains (for example `decode_base64(...)` or
 `pack("H*", ...)`) are now flagged as critical.
+Ruby decode-to-`eval` chains (for example `Base64.decode64(...)` or
+`.pack("H*")`) are now flagged as critical.
 Multi-line continuation execution chains (for example pipe/shell chains or
 subshell chains split across lines) are now flagged as critical.
 `chmod +x` followed by execution of the same local artifact is now flagged as

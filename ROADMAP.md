@@ -86,6 +86,7 @@ tests/CI:
 - critical detection of local base64 decode-to-exec/eval chains (Python/Node)
 - critical detection of local hex decode-to-exec/eval chains (Python/Node)
 - critical detection of Perl decode-to-eval chains (base64/hex)
+- critical detection of Ruby decode-to-eval chains (base64/hex)
 - critical detection of multi-line continuation execution chains
 - critical detection of chmod-then-execute local artifact chains
 - critical detection of secret-path reads combined with network exfiltration
