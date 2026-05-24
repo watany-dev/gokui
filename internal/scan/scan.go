@@ -1631,19 +1631,15 @@ func nextDenoRuntimeTarget(fields []string, start int, end int) (string, bool) {
 	}
 
 	flagNeedsValue := map[string]struct{}{
-		"-c":                 {},
-		"--config":           {},
-		"--import-map":       {},
-		"--location":         {},
-		"--cert":             {},
-		"--lock":             {},
-		"--node-modules-dir": {},
-		"--seed":             {},
-		"--vendor":           {},
-		"-r":                 {},
-		"--reload":           {},
-		"--package":          {},
-		"-p":                 {},
+		"-c":           {},
+		"--config":     {},
+		"--import-map": {},
+		"--location":   {},
+		"--cert":       {},
+		"--lock":       {},
+		"--seed":       {},
+		"--package":    {},
+		"-p":           {},
 	}
 
 	for i := start; i < end; i++ {

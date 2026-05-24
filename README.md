@@ -163,6 +163,9 @@ Pre-subcommand forms such as `go -C <dir> run ...` are also parsed for pin check
 also checked for unpinned package/version refs.
 `deno run`/`deno x` jsr-specifier execution is also checked for unpinned refs.
 When `--package` is present for `deno x`, target specifiers are also evaluated.
+`deno run` target extraction also handles optional-value flag forms such as
+`--reload`/`-r`, `--vendor`, and `--node-modules-dir` without skipping unpinned
+runtime specifier targets.
 Bounded base64/base64url/hex payload deobfuscation now rescans decoded text artifacts
 (depth-limited and size-limited, never executed) to catch hidden execution
 chains and decoded Unicode control/NFKC-drift signals.

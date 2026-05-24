@@ -107,6 +107,8 @@ tests/CI:
 - unpinned-runtime detection for `deno run/x` npm specifier execution paths
 - unpinned-runtime detection for `deno run/x` jsr specifier execution paths
 - deno `--package` runtime checks also evaluate target specifiers for unpinned refs
+- deno runtime target extraction handles optional-value flags (`--reload`/`-r`,
+  `--vendor`, and `--node-modules-dir`) without skipping unpinned specifier targets
 - dependency manifest scanning coverage for `package.json`, `pyproject.toml`,
   `requirements.txt`, `uv.lock`, `go.mod`, `Gemfile`, and `deno.json` as
   first-class scan inputs
