@@ -1562,7 +1562,12 @@ func isUnpinnedDenoNpmRuntimeLine(lowerLine string) bool {
 				return true
 			}
 		}
-		return false
+		// When --package is present, still evaluate target specifiers.
+		target, ok := nextDenoRuntimeTarget(fields, start, len(fields))
+		if !ok {
+			return false
+		}
+		return isUnpinnedDenoRuntimeSpecifier(target)
 	}
 
 	target, ok := nextDenoRuntimeTarget(fields, start, len(fields))
