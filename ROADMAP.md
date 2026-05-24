@@ -28,6 +28,7 @@ tests/CI:
 - GitHub source parser length bounds (input and owner/repo/path/ref segments)
 - Atomic install with `.gokui-report.json` and `gokui.lock`
 - Built-in install policy profiles: `strict`, `team`, `research`
+- User policy loading from `~/.config/gokui/policy.toml` (`default_profile`)
 - Lock drift verification with per-check machine-readable codes
 - Stable JSON output contracts for all MVP commands
 - Machine-readable `error_code` support across command failure paths

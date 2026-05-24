@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/watany-dev/gokui/internal/limitio"
+	policypkg "github.com/watany-dev/gokui/internal/policy"
 	"github.com/watany-dev/gokui/internal/scan"
 	srcpkg "github.com/watany-dev/gokui/internal/source"
 )
@@ -33,6 +34,7 @@ var (
 	installMaxDigestTotalBytes int64 = 200 * 1024 * 1024
 	installMaxDigestFileBytes  int64 = 20 * 1024 * 1024
 	errDigestBuildFailed             = errors.New("failed to digest installed files")
+	loadUserPolicyConfig             = policypkg.LoadUserPolicy
 )
 
 const (
@@ -56,11 +58,12 @@ const (
 )
 
 type installArgs struct {
-	Source    string
-	Target    string
-	Profile   string
-	Format    string
-	Overrides []string
+	Source     string
+	Target     string
+	Profile    string
+	ProfileSet bool
+	Format     string
+	Overrides  []string
 }
 
 type installReport struct {
@@ -139,6 +142,7 @@ const (
 	installErrorCodeTargetPrepareFailed  = "INSTALL_TARGET_PREPARE_FAILED"
 	installErrorCodeWriteFailed          = "INSTALL_WRITE_FAILED"
 	installErrorCodePolicyRejected       = "INSTALL_POLICY_REJECTED"
+	installErrorCodePolicyLoadFailed     = "INSTALL_POLICY_LOAD_FAILED"
 	installErrorCodeUnknown              = "INSTALL_FAILED"
 )
 
@@ -185,6 +189,32 @@ func runInstall(args []string, stdout io.Writer, stderr io.Writer) int {
 		_, _ = fmt.Fprintf(stderr, "%s\n\n%s\n", err.Error(), usage())
 		return 1
 	}
+	if !parsed.ProfileSet {
+		userPolicy, foundPolicy, policyErr := loadUserPolicyConfig()
+		if policyErr != nil {
+			if emitInstallStructuredError(parsed.Format, stdout, stderr, installErrorReport{
+				SchemaVersion: reportSchemaVersion,
+				Status:        "ERROR",
+				ErrorCode:     installErrorCodePolicyLoadFailed,
+				Message:       policyErr.Error(),
+				Source: source{
+					Input: parsed.Source,
+					Kind:  detectSourceKind(parsed.Source),
+				},
+				Target:        parsed.Target,
+				PolicyProfile: parsed.Profile,
+				Note:          "failed to load user policy profile",
+			}) {
+				return 1
+			}
+			_, _ = fmt.Fprintln(stderr, policyErr.Error())
+			return 1
+		}
+		if foundPolicy && strings.TrimSpace(userPolicy.DefaultProfile) != "" {
+			parsed.Profile = userPolicy.DefaultProfile
+		}
+	}
+
 	sourceKind := detectSourceKind(parsed.Source)
 	parsed.Profile = normalizePolicyProfile(parsed.Profile)
 
@@ -482,9 +512,11 @@ func parseInstallArgs(args []string) (installArgs, error) {
 				return installArgs{}, fmt.Errorf("missing value for --profile")
 			}
 			out.Profile = args[i+1]
+			out.ProfileSet = true
 			i++
 		case strings.HasPrefix(arg, "--profile="):
 			out.Profile = strings.TrimPrefix(arg, "--profile=")
+			out.ProfileSet = true
 		case arg == "--format":
 			if i+1 >= len(args) {
 				return installArgs{}, fmt.Errorf("missing value for --format")
