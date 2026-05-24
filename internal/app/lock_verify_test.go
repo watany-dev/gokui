@@ -61,6 +61,16 @@ func TestParseLockVerifyArgs(t *testing.T) {
 		}
 	})
 
+	t.Run("path and compact format", func(t *testing.T) {
+		got, err := parseLockVerifyArgs([]string{"./skill", "--format", "compact"})
+		if err != nil {
+			t.Fatalf("parseLockVerifyArgs() error = %v", err)
+		}
+		if got.Path != "./skill" || got.Format != "compact" {
+			t.Fatalf("unexpected parse result for compact: %+v", got)
+		}
+	})
+
 	t.Run("errors", func(t *testing.T) {
 		_, err := parseLockVerifyArgs([]string{"--format"})
 		if err == nil || !strings.Contains(err.Error(), "missing value for --format") {
@@ -149,6 +159,31 @@ func TestVerifyLockAndRunLockVerify(t *testing.T) {
 
 	stdout.Reset()
 	stderr.Reset()
+	code = runLockVerify([]string{installedPath, "--format", "compact"}, &stdout, &stderr)
+	if code != 0 {
+		t.Fatalf("runLockVerify(compact verified) code = %d, want 0\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("stderr should be empty for compact verified output, got %q", stderr.String())
+	}
+	compactVerified := strings.TrimSpace(stdout.String())
+	if strings.Contains(compactVerified, "\n") {
+		t.Fatalf("compact output should be single-line, got %q", compactVerified)
+	}
+	for _, marker := range []string{
+		"lock_verify status=VERIFIED",
+		"failed=0",
+		"missing=0",
+		"changed=0",
+		"unexpected=0",
+	} {
+		if !strings.Contains(compactVerified, marker) {
+			t.Fatalf("compact verified output missing %q: %q", marker, compactVerified)
+		}
+	}
+
+	stdout.Reset()
+	stderr.Reset()
 	code = runLockVerify([]string{installedPath, "--format", "sarif"}, &stdout, &stderr)
 	if code != 0 {
 		t.Fatalf("runLockVerify(sarif verified) code = %d, want 0\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
@@ -232,6 +267,30 @@ func TestVerifyLockAndRunLockVerify(t *testing.T) {
 	if driftSARIF.Runs[0].Invocations[0].ExecutionSuccessful {
 		t.Fatal("drift sarif invocation should be executionSuccessful=false")
 	}
+
+	stdout.Reset()
+	stderr.Reset()
+	code = runLockVerify([]string{installedPath, "--format", "compact"}, &stdout, &stderr)
+	if code != 2 {
+		t.Fatalf("runLockVerify(compact drifted) code = %d, want 2\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("stderr should be empty for compact drifted output, got %q", stderr.String())
+	}
+	compactDrift := strings.TrimSpace(stdout.String())
+	if strings.Contains(compactDrift, "\n") {
+		t.Fatalf("compact output should be single-line, got %q", compactDrift)
+	}
+	for _, marker := range []string{
+		"lock_verify status=DRIFTED",
+		"failed=",
+		"changed=",
+		"path=",
+	} {
+		if !strings.Contains(compactDrift, marker) {
+			t.Fatalf("compact drifted output missing %q: %q", marker, compactDrift)
+		}
+	}
 }
 
 func TestBuildLockVerifySARIFReport(t *testing.T) {
@@ -293,6 +352,38 @@ func TestBuildLockVerifySARIFReport(t *testing.T) {
 	}
 	if !foundSummary || !foundMissing || !foundChanged || !foundUnexpected {
 		t.Fatalf("missing expected digest drift results: %+v", run.Results)
+	}
+}
+
+func TestBuildLockVerifyCompactSummary(t *testing.T) {
+	report := lockVerifyReport{
+		SkillPath: "/tmp/skills/demo",
+		Status:    "DRIFTED",
+		Checks: []lockVerifyCheck{
+			{Code: lockVerifyCodeSchema, Name: "schema", OK: true, Detail: "ok"},
+			{Code: lockVerifyCodeFileDigests, Name: "file_digests", OK: false, Detail: "missing=1 changed=1 unexpected=1"},
+			{Code: lockVerifyCodeRootHash, Name: "root_hash", OK: false, Detail: "hash mismatch"},
+		},
+		Drift: lockVerifyDriftInfo{
+			MissingFiles:    []string{"a.md"},
+			ChangedFiles:    []string{"b.md"},
+			UnexpectedFiles: []string{"c.md", "d.md"},
+		},
+	}
+	got := buildLockVerifyCompactSummary(report)
+	required := []string{
+		"lock_verify status=DRIFTED",
+		"checks=3",
+		"failed=2",
+		"missing=1",
+		"changed=1",
+		"unexpected=2",
+		"path=\"/tmp/skills/demo\"",
+	}
+	for _, marker := range required {
+		if !strings.Contains(got, marker) {
+			t.Fatalf("compact summary missing marker %q: %q", marker, got)
+		}
 	}
 }
 

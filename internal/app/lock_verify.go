@@ -139,6 +139,8 @@ func runLockVerify(args []string, stdout io.Writer, stderr io.Writer) int {
 			return 1
 		}
 		_, _ = fmt.Fprintf(stdout, "%s\n", out)
+	} else if parsed.Format == "compact" {
+		_, _ = fmt.Fprintf(stdout, "%s\n", buildLockVerifyCompactSummary(report))
 	} else {
 		_, _ = fmt.Fprintln(stdout, "gokui lock verify report (pre-release)")
 		_, _ = fmt.Fprintf(stdout, "path: %s\n", report.SkillPath)
@@ -222,10 +224,29 @@ func parseLockVerifyArgs(args []string) (lockVerifyArgs, error) {
 			out.Path = arg
 		}
 	}
-	if out.Format != "human" && out.Format != "json" && out.Format != "sarif" {
+	if out.Format != "human" && out.Format != "json" && out.Format != "sarif" && out.Format != "compact" {
 		return lockVerifyArgs{}, fmt.Errorf("unsupported lock verify format: %s", out.Format)
 	}
 	return out, nil
+}
+
+func buildLockVerifyCompactSummary(report lockVerifyReport) string {
+	failed := 0
+	for _, check := range report.Checks {
+		if !check.OK {
+			failed++
+		}
+	}
+	return fmt.Sprintf(
+		"lock_verify status=%s checks=%d failed=%d missing=%d changed=%d unexpected=%d path=%q",
+		report.Status,
+		len(report.Checks),
+		failed,
+		len(report.Drift.MissingFiles),
+		len(report.Drift.ChangedFiles),
+		len(report.Drift.UnexpectedFiles),
+		report.SkillPath,
+	)
 }
 
 func buildLockVerifySARIFReport(report lockVerifyReport) inspectSARIFReport {
