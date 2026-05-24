@@ -1641,6 +1641,10 @@ func nextDenoRuntimeTarget(fields []string, start int, end int) (string, bool) {
 		"--package":    {},
 		"-p":           {},
 	}
+	flagOptionalKnownValue := map[string]struct{}{
+		"--vendor":           {},
+		"--node-modules-dir": {},
+	}
 
 	for i := start; i < end; i++ {
 		token := strings.TrimSpace(fields[i])
@@ -1661,14 +1665,39 @@ func nextDenoRuntimeTarget(fields []string, start int, end int) (string, bool) {
 			if strings.Contains(token, "=") {
 				continue
 			}
-			if _, needsValue := flagNeedsValue[strings.ToLower(token)]; needsValue {
+			lowerToken := strings.ToLower(token)
+			if _, needsValue := flagNeedsValue[lowerToken]; needsValue {
 				i++
+				continue
+			}
+			if _, hasOptionalValue := flagOptionalKnownValue[lowerToken]; hasOptionalValue && i+1 < end {
+				next := strings.ToLower(sanitizeRuntimeToken(fields[i+1]))
+				if isKnownDenoOptionalFlagValue(lowerToken, next) {
+					i++
+				}
 			}
 			continue
 		}
 		return sanitizeRuntimeToken(token), true
 	}
 	return "", false
+}
+
+func isKnownDenoOptionalFlagValue(flag string, value string) bool {
+	if value == "" || strings.HasPrefix(value, "-") {
+		return false
+	}
+
+	switch flag {
+	case "--vendor":
+		return value == "true" || value == "false"
+	case "--node-modules-dir":
+		switch value {
+		case "auto", "manual", "none", "true", "false":
+			return true
+		}
+	}
+	return false
 }
 
 func isUnpinnedDenoNpmSpecifier(ref string) bool {
