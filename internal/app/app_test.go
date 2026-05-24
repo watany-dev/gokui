@@ -217,6 +217,27 @@ func TestRun(t *testing.T) {
 		}
 	})
 
+	t.Run("inspect compact emits single-line summary", func(t *testing.T) {
+		var stdout bytes.Buffer
+		var stderr bytes.Buffer
+
+		fixturePath := filepath.FromSlash("../../fixtures/clean-skill")
+		code := Run([]string{"inspect", fixturePath, "--format", "compact"}, &stdout, &stderr, cfg)
+		if code != 0 {
+			t.Fatalf("Run() code = %d, want 0\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
+		}
+		if stderr.Len() != 0 {
+			t.Fatalf("stderr should be empty, got %q", stderr.String())
+		}
+		out := strings.TrimSpace(stdout.String())
+		if !strings.HasPrefix(out, "inspect decision=PASS ") {
+			t.Fatalf("compact output should start with inspect summary, got %q", out)
+		}
+		if !strings.Contains(out, "findings=0") || !strings.Contains(out, "source_kind=local-dir") {
+			t.Fatalf("compact output should include deterministic fields, got %q", out)
+		}
+	})
+
 	t.Run("vet json emits stable pre-release report for local source", func(t *testing.T) {
 		var stdout bytes.Buffer
 		var stderr bytes.Buffer
@@ -256,6 +277,27 @@ func TestRun(t *testing.T) {
 		}
 		if !strings.Contains(stdout.String(), "gokui vet report (pre-release)") {
 			t.Fatalf("stdout should include vet report header, got %q", stdout.String())
+		}
+	})
+
+	t.Run("vet compact emits single-line summary", func(t *testing.T) {
+		var stdout bytes.Buffer
+		var stderr bytes.Buffer
+
+		fixturePath := filepath.FromSlash("../../fixtures/clean-skill")
+		code := Run([]string{"vet", fixturePath, "--format", "compact"}, &stdout, &stderr, cfg)
+		if code != 0 {
+			t.Fatalf("Run() code = %d, want 0\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
+		}
+		if stderr.Len() != 0 {
+			t.Fatalf("stderr should be empty, got %q", stderr.String())
+		}
+		out := strings.TrimSpace(stdout.String())
+		if !strings.HasPrefix(out, "vet decision=PASS ") {
+			t.Fatalf("compact output should start with vet summary, got %q", out)
+		}
+		if !strings.Contains(out, "findings=0") || !strings.Contains(out, "source_kind=local-dir") {
+			t.Fatalf("compact output should include deterministic fields, got %q", out)
 		}
 	})
 
@@ -710,6 +752,42 @@ func TestRun(t *testing.T) {
 		}
 	})
 
+	t.Run("inspect compact returns rejected exit code for risky fixture", func(t *testing.T) {
+		var stdout bytes.Buffer
+		var stderr bytes.Buffer
+
+		fixturePath := filepath.FromSlash("../../fixtures/fake-prereq-skill")
+		code := Run([]string{"inspect", fixturePath, "--format", "compact"}, &stdout, &stderr, cfg)
+		if code != 2 {
+			t.Fatalf("Run() code = %d, want 2\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
+		}
+		if stderr.Len() != 0 {
+			t.Fatalf("stderr should be empty, got %q", stderr.String())
+		}
+		out := strings.TrimSpace(stdout.String())
+		if !strings.Contains(out, "decision=REJECTED") {
+			t.Fatalf("compact output should include rejected decision, got %q", out)
+		}
+	})
+
+	t.Run("vet compact returns rejected exit code for risky fixture", func(t *testing.T) {
+		var stdout bytes.Buffer
+		var stderr bytes.Buffer
+
+		fixturePath := filepath.FromSlash("../../fixtures/fake-prereq-skill")
+		code := Run([]string{"vet", fixturePath, "--format", "compact"}, &stdout, &stderr, cfg)
+		if code != 2 {
+			t.Fatalf("Run() code = %d, want 2\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
+		}
+		if stderr.Len() != 0 {
+			t.Fatalf("stderr should be empty, got %q", stderr.String())
+		}
+		out := strings.TrimSpace(stdout.String())
+		if !strings.HasPrefix(out, "vet ") || !strings.Contains(out, "decision=REJECTED") {
+			t.Fatalf("compact output should include vet rejected decision, got %q", out)
+		}
+	})
+
 	t.Run("install succeeds for clean skill to custom target", func(t *testing.T) {
 		var stdout bytes.Buffer
 		var stderr bytes.Buffer
@@ -1033,6 +1111,16 @@ func TestParseInspectArgs(t *testing.T) {
 		}
 	})
 
+	t.Run("parses compact format", func(t *testing.T) {
+		input, format, err := parseInspectArgs([]string{"./skill", "--format", "compact"})
+		if err != nil {
+			t.Fatalf("parseInspectArgs() error = %v", err)
+		}
+		if input != "./skill" || format != "compact" {
+			t.Fatalf("got (%q, %q), want (%q, %q)", input, format, "./skill", "compact")
+		}
+	})
+
 	t.Run("errors when format value is missing", func(t *testing.T) {
 		_, _, err := parseInspectArgs([]string{"./skill", "--format"})
 		if err == nil || !strings.Contains(err.Error(), "missing value for --format") {
@@ -1079,6 +1167,16 @@ func TestParseVetArgs(t *testing.T) {
 		}
 		if input != "./skill" || format != "sarif" {
 			t.Fatalf("got (%q, %q), want (%q, %q)", input, format, "./skill", "sarif")
+		}
+	})
+
+	t.Run("parses compact format", func(t *testing.T) {
+		input, format, err := parseVetArgs([]string{"./skill", "--format", "compact"})
+		if err != nil {
+			t.Fatalf("parseVetArgs() error = %v", err)
+		}
+		if input != "./skill" || format != "compact" {
+			t.Fatalf("got (%q, %q), want (%q, %q)", input, format, "./skill", "compact")
 		}
 	})
 

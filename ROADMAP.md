@@ -31,6 +31,7 @@ tests/CI:
 - Machine-readable `error_code` support across command failure paths
 - SARIF output for `inspect` (`--format sarif`) for CI/code scanning integration
 - `vet` command for skill-author local-source validation (`local-dir|zip|tar`)
+- compact summary output for `inspect`/`vet` (`--format compact`) for CI logs
 - CI SARIF smoke job for inspect output generation and artifact capture
 - CI setup-go hardening to resolve the latest available Go patch release
 - `make vuln` hardened with patched Go toolchain baseline (`go1.26.3+auto`)
@@ -298,7 +299,7 @@ Exit criteria:
 Goal: make gokui useful in CI and team review.
 
 - Expand SARIF output coverage beyond `inspect`.
-- Add compact summary output for CI logs.
+- Expand compact summary output coverage for CI logs.
 - Expand `gokui vet` ergonomics for skill-author CI workflows.
 - Add baseline support for repositories with many skills.
 - Add rule documentation with examples and remediation notes.

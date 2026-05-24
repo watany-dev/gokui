@@ -222,8 +222,8 @@ gokui is pre-release software.
 usage:
   gokui version
   gokui fetch github:owner/repo//path/to/skill@commit --out <quarantine-dir> [--format human|json]
-  gokui inspect <local-dir|zip|github-source> [--format human|json|sarif]
-  gokui vet <local-dir|zip|tar> [--format human|json|sarif]
+  gokui inspect <local-dir|zip|github-source> [--format human|json|sarif|compact]
+  gokui vet <local-dir|zip|tar> [--format human|json|sarif|compact]
   gokui install <source> --target codex --profile strict [--format human|json]
   gokui update --dry-run [--target codex|custom:/path] [--format human|json]
   gokui lock verify [path] [--format human|json]`)
@@ -274,13 +274,19 @@ func runVet(args []string, stdout io.Writer, stderr io.Writer) int {
 	inspectArgs := []string{input}
 	if format != "human" {
 		inspectArgs = append(inspectArgs, "--format", format)
+	}
+	if format == "json" || format == "sarif" {
 		return runInspect(inspectArgs, stdout, stderr)
 	}
 
 	var inspectOut bytes.Buffer
 	code := runInspect(inspectArgs, &inspectOut, stderr)
 	inspectText := inspectOut.String()
-	inspectText = strings.Replace(inspectText, "gokui inspect report (pre-release)\n", "gokui vet report (pre-release)\n", 1)
+	if format == "compact" {
+		inspectText = strings.Replace(inspectText, "inspect ", "vet ", 1)
+	} else {
+		inspectText = strings.Replace(inspectText, "gokui inspect report (pre-release)\n", "gokui vet report (pre-release)\n", 1)
+	}
 	_, _ = io.WriteString(stdout, inspectText)
 	return code
 }
@@ -499,6 +505,13 @@ func runInspect(args []string, stdout io.Writer, stderr io.Writer) int {
 		}
 		return 0
 	}
+	if format == "compact" {
+		_, _ = fmt.Fprintf(stdout, "%s\n", buildInspectCompactSummary(report))
+		if report.Decision == "REJECTED" {
+			return 2
+		}
+		return 0
+	}
 
 	_, _ = fmt.Fprintln(stdout, "gokui inspect report (pre-release)")
 	_, _ = fmt.Fprintf(stdout, "source: %s (%s)\n", report.Source.Input, report.Source.Kind)
@@ -612,7 +625,7 @@ func parseInspectArgs(args []string) (input string, format string, err error) {
 	if input == "" {
 		return "", "", fmt.Errorf("inspect source is required")
 	}
-	if format != "human" && format != "json" && format != "sarif" {
+	if format != "human" && format != "json" && format != "sarif" && format != "compact" {
 		return "", "", fmt.Errorf("unsupported inspect format: %s", format)
 	}
 	return input, format, nil
@@ -646,10 +659,40 @@ func parseVetArgs(args []string) (input string, format string, err error) {
 	if input == "" {
 		return "", "", fmt.Errorf("vet source is required")
 	}
-	if format != "human" && format != "json" && format != "sarif" {
+	if format != "human" && format != "json" && format != "sarif" && format != "compact" {
 		return "", "", fmt.Errorf("unsupported vet format: %s", format)
 	}
 	return input, format, nil
+}
+
+func buildInspectCompactSummary(report inspectReport) string {
+	critical := 0
+	high := 0
+	medium := 0
+	low := 0
+	for _, finding := range report.Findings {
+		switch finding.Severity {
+		case "critical":
+			critical++
+		case "high":
+			high++
+		case "medium":
+			medium++
+		case "low":
+			low++
+		}
+	}
+	return fmt.Sprintf(
+		"inspect decision=%s findings=%d critical=%d high=%d medium=%d low=%d source_kind=%s source=%q",
+		report.Decision,
+		len(report.Findings),
+		critical,
+		high,
+		medium,
+		low,
+		report.Source.Kind,
+		report.Source.Input,
+	)
 }
 
 func buildInspectSARIFReport(report inspectReport) inspectSARIFReport {
