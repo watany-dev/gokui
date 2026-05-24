@@ -31,9 +31,11 @@ tests/CI:
 - Stable JSON output contracts for all MVP commands
 - Machine-readable `error_code` support across command failure paths
 - SARIF output for `inspect` (`--format sarif`) for CI/code scanning integration
+- SARIF output for `fetch` (`--format sarif`) for quarantine provenance export
 - SARIF output for `install` (`--format sarif`) for policy findings export
 - SARIF output for `update --dry-run` (`--format sarif`) for dry-run finding export
 - SARIF output for `lock verify` (`--format sarif`) for drift/check export
+- structured SARIF fatal-error output for `fetch`, `install`, `update`, and `lock verify`
 - `vet` command for skill-author local-source validation (`local-dir|zip|tar`)
 - compact summary output for `fetch`/`inspect`/`vet`/`install`/`update`/`lock verify` (`--format compact`) for CI logs
 - README rule documentation with remediation notes for high-signal security findings

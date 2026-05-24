@@ -26,7 +26,9 @@ machine-readable top-level `error_code` for automation. For GitHub sources, floa
 inspect-only pre-release stubs, while commit-pinned refs are fetched and
 scanned.
 `fetch`, `inspect`, `vet`, `install`, `update`, and `lock verify` also support `--format compact` for single-line CI summaries.
+`fetch` also supports `--format sarif` for quarantine provenance export in CI.
 `install` also supports `--format sarif` for policy findings export in CI.
+In SARIF mode, fatal install failures emit a single structured error result.
 `install` now supports local-dir/zip/tar sources with `--profile strict`,
 rejects high/critical findings, installs atomically to `--target codex` or
 `--target custom:/path`, writes `.gokui-report.json` and `gokui.lock`, allows
@@ -52,8 +54,9 @@ field consistency (including strict GitHub source syntax and commit pinning),
 validates lock/report structural integrity, validates GitHub source metadata
 integrity, reports drift, and emits per-check `code` fields in JSON output for
 automation (including missing/changed/unexpected file drift details). On fatal
-verify errors, JSON output includes top-level `error_code`. It also supports
-`--format sarif` for drift/check export in CI pipelines.
+verify errors, JSON output includes top-level `error_code`, and SARIF output
+emits a single structured error result. It also supports `--format sarif` for
+drift/check export in CI pipelines.
 `update --dry-run` now re-evaluates installed skills from lockfile source
 provenance for local-dir/zip/tar sources, reports added/removed/changed files,
 risk deltas, and new URL/executable signals. For GitHub sources, commit-pinned
@@ -63,6 +66,7 @@ status-aware automation. Update target entries and URL/executable scan inputs
 must not contain symlink path entries, and URL/executable scan roots must be
 non-symlink directories.
 It also supports `--format sarif` for CI/code-scanning ingestion.
+In SARIF mode, fatal update failures emit a single structured error result.
 URL risk classification now flags shortener hosts and raw-IP URLs during scan.
 It also flags paste-site URLs, GitHub release asset URLs, and remote image
 URLs in markdown content for review.
@@ -103,7 +107,9 @@ against a rejected fixture and uploads the SARIF artifact for review.
 `fetch` now supports commit-pinned GitHub sources and materializes them into a
 quarantine output root via `--out`, and records `.gokui-source.json`
 provenance metadata. In JSON mode, fetch failures return `error_code` for
-automation. Fetch output roots and output entries must not be symlink paths.
+automation. In SARIF mode, fatal fetch failures emit a single error result with
+`ruleId` derived from `rule_id` (if available) or `error_code`. Fetch output
+roots and output entries must not be symlink paths.
 GitHub archive downloads also enforce redirect safety constraints (HTTPS only,
 same host and port, and no redirect userinfo) plus response header validation
 for expected archive content types and content encoding. Streamed size limits
@@ -142,7 +148,7 @@ gokui lock verify
 Current pre-release CLI syntax:
 
 ```sh
-gokui fetch github:owner/repo//path/to/skill@commit --out <quarantine-dir> [--format human|json|compact]
+gokui fetch github:owner/repo//path/to/skill@commit --out <quarantine-dir> [--format human|json|sarif|compact]
 gokui inspect <local-dir|zip|github-source> [--format human|json|sarif|compact]
 gokui vet <local-dir|zip|tar> [--format human|json|sarif|compact]
 gokui install <source> --target codex --profile strict [--format human|json|sarif|compact] [--override RULE_ID ...]
