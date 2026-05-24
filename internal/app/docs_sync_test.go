@@ -164,6 +164,34 @@ func TestUpdateStatusErrorCodeMatrixDocumentationSync(t *testing.T) {
 	}
 }
 
+func TestRuleRemediationDocumentationSync(t *testing.T) {
+	readmeBytes, err := os.ReadFile("../../README.md")
+	if err != nil {
+		t.Fatalf("failed to read README.md: %v", err)
+	}
+	readme := string(readmeBytes)
+
+	required := []string{
+		"## Rule Reference and Remediation Notes",
+		"| `rule_id` | Typical severity | Example trigger | Remediation notes |",
+		"`DESCRIPTION_TOOL_INJECTION`",
+		"`PROMPT_OVERRIDE_LANGUAGE`",
+		"`UNPINNED_RUNTIME_TOOL`",
+		"`LINK_SPOOFING_URL_MISMATCH`",
+		"`RAW_HTML_MARKUP`",
+		"`NFKC_CHANGES_TEXT`",
+		"`ARCHIVE_PATH_ESCAPE`",
+		"`SYMLINK_IN_ARCHIVE`",
+		"`SYMLINK_IN_SCAN_SOURCE`",
+		"`LOCK_VERIFY_PATH_SYMLINK_DETECTED`",
+	}
+	for _, line := range required {
+		if !strings.Contains(readme, line) {
+			t.Fatalf("README missing rule remediation documentation line: %q", line)
+		}
+	}
+}
+
 func TestReleaseChecklistDocumentationSync(t *testing.T) {
 	readmeBytes, err := os.ReadFile("../../README.md")
 	if err != nil {

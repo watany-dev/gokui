@@ -36,6 +36,7 @@ tests/CI:
 - SARIF output for `lock verify` (`--format sarif`) for drift/check export
 - `vet` command for skill-author local-source validation (`local-dir|zip|tar`)
 - compact summary output for `fetch`/`inspect`/`vet`/`install`/`update`/`lock verify` (`--format compact`) for CI logs
+- README rule documentation with remediation notes for high-signal security findings
 - CI SARIF smoke job for inspect output generation and artifact capture
 - CI setup-go hardening to resolve the latest available Go patch release
 - `make vuln` hardened with patched Go toolchain baseline (`go1.26.3+auto`)

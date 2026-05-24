@@ -358,6 +358,31 @@ Status and error-code combinations are constrained as:
 | `REJECTED` | `POLICY_REJECTED`, `GITHUB_REF_NOT_PINNED` |
 | `ERROR` | `LOCKFILE_INVALID`, `GITHUB_SOURCE_INVALID`, `SOURCE_METADATA_INVALID`, `SOURCE_PREPARE_FAILED`, `EVALUATION_ERROR` |
 
+## Rule Reference and Remediation Notes
+
+The following high-signal `rule_id` values are intended for reviewer triage and
+CI policy routing. Severity may vary by context/profile, but the remediation
+guidance is stable.
+
+| `rule_id` | Typical severity | Example trigger | Remediation notes |
+| --- | --- | --- | --- |
+| `DESCRIPTION_TOOL_INJECTION` | high | `description` contains execution/setup language (for example "run this script first") | Keep `description` as pure applicability text; move operational steps out of frontmatter. |
+| `PROMPT_OVERRIDE_LANGUAGE` | high | instruction text asks to ignore/override prior prompts or system policy | Remove override language; require user-visible approval flow instead of hidden prompt control. |
+| `UNPINNED_RUNTIME_TOOL` | high | `npx foo`, `uvx foo`, `go run ...@latest`, remote script import | Pin immutable versions/commits and require integrity/provenance review before install. |
+| `LINK_SPOOFING_URL_MISMATCH` | high | markdown link display host differs from actual link target host | Make visible link text match destination host exactly; remove deceptive redirect chains. |
+| `RAW_HTML_MARKUP` | medium | raw HTML blocks/inline tags embedded in markdown instructions | Replace with plain markdown text unless HTML is strictly required and manually reviewed. |
+| `NFKC_CHANGES_TEXT` | medium | Unicode compatibility normalization changes instruction semantics | Rewrite with plain ASCII or unambiguous Unicode; remove compatibility confusables. |
+| `ARCHIVE_PATH_ESCAPE` | critical | archive entry resolves outside extraction root (`..`, absolute, canonical escape) | Rebuild archive with normalized relative paths and verify extraction root confinement. |
+| `SYMLINK_IN_ARCHIVE` | critical | archive contains symlink entries | Remove symlinks from distributed bundle; ship regular files only. |
+| `SYMLINK_IN_SCAN_SOURCE` | critical | scan source tree contains symlinked file/dir entry | Replace symlinked content with real files in the quarantined source before scanning. |
+| `LOCK_VERIFY_PATH_SYMLINK_DETECTED` | fatal verify guard | `lock verify` target path includes a symlink component | Verify/install from canonical non-symlink paths only; fix target path resolution in automation. |
+
+Operational guidance:
+
+- Treat `critical` and `high` findings as release blockers in strict profile.
+- For medium findings, require explicit reviewer acknowledgement in CI logs.
+- Prefer removing risky patterns over allow-listing; keep overrides auditable and minimal.
+
 ## Supported Targets
 
 The MVP target set is intentionally small:
