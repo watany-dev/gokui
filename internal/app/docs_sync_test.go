@@ -518,7 +518,9 @@ func TestInspectSARIFScriptHardeningSync(t *testing.T) {
 		`assert_no_symlink_components "$ROOT_DIR" "repository root path"`,
 		`if [[ "$out_path" != /* ]]; then`,
 		`out_path="$(pwd)/$out_path"`,
-		`mkdir -p "$(dirname "$out_path")"`,
+		`out_dir="$(dirname "$out_path")"`,
+		`assert_no_symlink_components "$out_dir" "inspect SARIF output directory"`,
+		`mkdir -p "$out_dir"`,
 		`create_fresh_file_for_write "$out_path" "inspect SARIF output path" SARIF_FD`,
 		`"$tmp_bin" inspect "$ROOT_DIR/fixtures/fake-prereq-skill" --format sarif >&"$SARIF_FD"`,
 		`exec {SARIF_FD}>&-`,
@@ -527,6 +529,15 @@ func TestInspectSARIFScriptHardeningSync(t *testing.T) {
 		if !strings.Contains(script, line) {
 			t.Fatalf("generate-inspect-sarif.sh missing hardening line: %q", line)
 		}
+	}
+
+	outDirCheck := strings.Index(script, `assert_no_symlink_components "$out_dir" "inspect SARIF output directory"`)
+	mkdirLine := strings.Index(script, `mkdir -p "$out_dir"`)
+	if outDirCheck == -1 || mkdirLine == -1 {
+		t.Fatal("generate-inspect-sarif.sh should include output directory symlink check and mkdir")
+	}
+	if outDirCheck > mkdirLine {
+		t.Fatal("generate-inspect-sarif.sh should reject symlinked output directory before mkdir -p")
 	}
 }
 

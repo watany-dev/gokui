@@ -56,7 +56,9 @@ create_fresh_file_for_write() {
 }
 
 assert_no_symlink_components "$ROOT_DIR" "repository root path"
-mkdir -p "$(dirname "$out_path")"
+out_dir="$(dirname "$out_path")"
+assert_no_symlink_components "$out_dir" "inspect SARIF output directory"
+mkdir -p "$out_dir"
 create_fresh_file_for_write "$out_path" "inspect SARIF output path" SARIF_FD
 
 tmp_bin="$(mktemp "${TMPDIR:-/tmp}/gokui-sarif-XXXXXX")"
