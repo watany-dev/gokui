@@ -73,8 +73,8 @@ func TestReleaseCheckPreflightRejectsExistingBuildOutput(t *testing.T) {
 	if exitCode == 0 {
 		t.Fatalf("expected non-zero exit when build output already exists\noutput:\n%s", out)
 	}
-	if !strings.Contains(out, "build output already exists") {
-		t.Fatalf("expected existing build output rejection message, got:\n%s", out)
+	if !strings.Contains(out, "release-check build output already exists:") {
+		t.Fatalf("expected build output collision rejection message, got:\n%s", out)
 	}
 }
 
@@ -97,8 +97,8 @@ func TestReleaseCheckPreflightRejectsExistingSARIFOutput(t *testing.T) {
 	if exitCode == 0 {
 		t.Fatalf("expected non-zero exit when SARIF output already exists\noutput:\n%s", out)
 	}
-	if !strings.Contains(out, "SARIF output already exists") {
-		t.Fatalf("expected existing SARIF output rejection message, got:\n%s", out)
+	if !strings.Contains(out, "release-check SARIF output already exists:") {
+		t.Fatalf("expected SARIF output collision rejection message, got:\n%s", out)
 	}
 }
 
