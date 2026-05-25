@@ -5,6 +5,7 @@ Use this template to record release-readiness evidence for a candidate commit.
 ## Metadata
 
 - Release date (UTC):
+- Mode (`offline` or `online`):
 - Candidate commit SHA:
 - Reviewer:
 - Environment:

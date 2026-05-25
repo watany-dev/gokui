@@ -246,6 +246,7 @@ func TestReleaseChecklistDocumentationSync(t *testing.T) {
 	}
 	template := string(templateBytes)
 	templateRequired := []string{
+		"Mode (`offline` or `online`):",
 		"Candidate commit SHA:",
 		"`make release-check`:",
 		"`make vuln` (required before final publication):",
