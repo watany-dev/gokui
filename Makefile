@@ -103,7 +103,7 @@ release-check-preflight:
 	assert_no_symlink_components "$(RELEASE_CHECK_BUILD_OUT_ABS)" "release-check build output path"; \
 	assert_no_symlink_components "$(RELEASE_CHECK_SARIF_OUT_ABS)" "release-check SARIF output path"; \
 	if [ "$(RELEASE_CHECK_BUILD_OUT_ABS)" = "$(RELEASE_CHECK_SARIF_OUT_ABS)" ]; then \
-		echo "release-check build and SARIF outputs must be different paths" >&2; \
+		echo "release-check build and SARIF outputs must be different paths: build=$(RELEASE_CHECK_BUILD_OUT_ABS) sarif=$(RELEASE_CHECK_SARIF_OUT_ABS)" >&2; \
 		exit 1; \
 	fi; \
 	if [ -e "$(RELEASE_CHECK_BUILD_OUT_ABS)" ]; then \

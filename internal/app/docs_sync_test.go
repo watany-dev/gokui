@@ -480,7 +480,7 @@ func TestMakefileVulnToolchainBaselineSync(t *testing.T) {
 		`assert_no_symlink_components "$(RELEASE_CHECK_SARIF_OUT_ABS)" "release-check SARIF output path"; \`,
 		`case "$(RELEASE_CHECK_BUILD_OUT)" in ""|"/"|"."|*/) \`,
 		`case "$(RELEASE_CHECK_SARIF_OUT)" in ""|"/"|"."|*/) \`,
-		`if [ "$(RELEASE_CHECK_BUILD_OUT_ABS)" = "$(RELEASE_CHECK_SARIF_OUT_ABS)" ]; then \`,
+		`echo "release-check build and SARIF outputs must be different paths: build=$(RELEASE_CHECK_BUILD_OUT_ABS) sarif=$(RELEASE_CHECK_SARIF_OUT_ABS)" >&2; \`,
 		`if [ -e "$(RELEASE_CHECK_BUILD_OUT_ABS)" ]; then \`,
 		`if [ -e "$(RELEASE_CHECK_SARIF_OUT_ABS)" ]; then \`,
 		"$(GO) build -trimpath -buildvcs=true -ldflags='$(LDFLAGS)' -o $(BUILD_OUT) $(MAIN_PKG)",

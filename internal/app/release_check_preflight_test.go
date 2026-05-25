@@ -52,6 +52,9 @@ func TestReleaseCheckPreflightRejectsSameOutputPath(t *testing.T) {
 	if !strings.Contains(out, "build and SARIF outputs must be different paths") {
 		t.Fatalf("expected distinct-path rejection message, got:\n%s", out)
 	}
+	if !strings.Contains(out, "build="+shared) || !strings.Contains(out, "sarif="+shared) {
+		t.Fatalf("expected distinct-path rejection to include concrete paths, got:\n%s", out)
+	}
 }
 
 func TestReleaseCheckPreflightRejectsSameOutputPathAfterNormalization(t *testing.T) {
@@ -72,6 +75,11 @@ func TestReleaseCheckPreflightRejectsSameOutputPathAfterNormalization(t *testing
 	}
 	if !strings.Contains(out, "build and SARIF outputs must be different paths") {
 		t.Fatalf("expected normalized distinct-path rejection message, got:\n%s", out)
+	}
+	buildAbs := filepath.Clean(buildOut)
+	sarifAbs := filepath.Clean(sarifOut)
+	if !strings.Contains(out, "build="+buildAbs) || !strings.Contains(out, "sarif="+sarifAbs) {
+		t.Fatalf("expected normalized distinct-path rejection to include concrete paths, got:\n%s", out)
 	}
 }
 
