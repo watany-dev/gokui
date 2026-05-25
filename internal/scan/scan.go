@@ -3269,6 +3269,9 @@ func parseRawIPHost(host string) net.IP {
 	if dottedIPv4, ok := parseDottedMixedBaseIPv4Host(host); ok {
 		return dottedIPv4
 	}
+	if abbreviatedIPv4, ok := parseAbbreviatedDottedIPv4Host(host); ok {
+		return abbreviatedIPv4
+	}
 	if numericIPv4, ok := parseIntegerIPv4Host(host); ok {
 		return numericIPv4
 	}
@@ -3341,6 +3344,37 @@ func parseDottedMixedBaseIPv4Host(host string) (net.IP, bool) {
 	return net.IPv4(values[0], values[1], values[2], values[3]), true
 }
 
+func parseAbbreviatedDottedIPv4Host(host string) (net.IP, bool) {
+	parts := strings.Split(host, ".")
+	if len(parts) != 2 && len(parts) != 3 {
+		return nil, false
+	}
+	if len(parts) == 2 {
+		a, ok := parseIPv4OctetWithMixedBase(parts[0])
+		if !ok {
+			return nil, false
+		}
+		b, ok := parseIPv4IntegerComponent(parts[1], 24)
+		if !ok {
+			return nil, false
+		}
+		return net.IPv4(byte(a), byte(b>>16), byte(b>>8), byte(b)), true
+	}
+	a, ok := parseIPv4OctetWithMixedBase(parts[0])
+	if !ok {
+		return nil, false
+	}
+	b, ok := parseIPv4OctetWithMixedBase(parts[1])
+	if !ok {
+		return nil, false
+	}
+	c, ok := parseIPv4IntegerComponent(parts[2], 16)
+	if !ok {
+		return nil, false
+	}
+	return net.IPv4(byte(a), byte(b), byte(c>>8), byte(c)), true
+}
+
 func parseIPv4OctetWithMixedBase(value string) (uint64, bool) {
 	if value == "" {
 		return 0, false
@@ -3378,6 +3412,48 @@ func parseIPv4OctetWithMixedBase(value string) (uint64, bool) {
 	}
 	parsed, err := strconv.ParseUint(number, base, 16)
 	if err != nil || parsed > 255 {
+		return 0, false
+	}
+	return parsed, true
+}
+
+func parseIPv4IntegerComponent(value string, bits int) (uint64, bool) {
+	if value == "" || bits <= 0 || bits > 32 {
+		return 0, false
+	}
+	base := 10
+	number := value
+	if len(value) > 2 && (strings.HasPrefix(value, "0x") || strings.HasPrefix(value, "0X")) {
+		base = 16
+		number = value[2:]
+		if number == "" {
+			return 0, false
+		}
+		for i := 0; i < len(number); i++ {
+			c := number[i]
+			isDigit := c >= '0' && c <= '9'
+			isLowerHex := c >= 'a' && c <= 'f'
+			isUpperHex := c >= 'A' && c <= 'F'
+			if !isDigit && !isLowerHex && !isUpperHex {
+				return 0, false
+			}
+		}
+	} else if len(value) > 1 && value[0] == '0' {
+		base = 8
+		for i := 1; i < len(value); i++ {
+			if value[i] < '0' || value[i] > '7' {
+				return 0, false
+			}
+		}
+	} else {
+		for i := 0; i < len(value); i++ {
+			if value[i] < '0' || value[i] > '9' {
+				return 0, false
+			}
+		}
+	}
+	parsed, err := strconv.ParseUint(number, base, bits)
+	if err != nil {
 		return 0, false
 	}
 	return parsed, true

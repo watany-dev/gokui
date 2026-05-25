@@ -924,9 +924,15 @@ func TestClassifyURLRisksEdgeCases(t *testing.T) {
 		assertHasID(t, findings, "RAW_IP_URL")
 	})
 
+	t.Run("detects abbreviated dotted ipv4 URL risks", func(t *testing.T) {
+		line := "visit https://127.1/setup and https://10.1.2/bootstrap"
+		findings := classifyURLRisks(line, "SKILL.md", 11, true)
+		assertHasID(t, findings, "RAW_IP_URL")
+	})
+
 	t.Run("normalizes trailing-dot and idna-dot-variant hosts", func(t *testing.T) {
 		line := "open https://bit.ly./x and https://bit。ly/x and https://192.168.1.44./setup and https://github.com./org/repo/releases/download/v1.0.0/a.tgz"
-		findings := classifyURLRisks(line, "SKILL.md", 11, true)
+		findings := classifyURLRisks(line, "SKILL.md", 12, true)
 		assertHasID(t, findings, "URL_SHORTENER")
 		assertHasID(t, findings, "RAW_IP_URL")
 		assertHasID(t, findings, "RELEASE_ASSET_URL")
@@ -934,7 +940,7 @@ func TestClassifyURLRisksEdgeCases(t *testing.T) {
 
 	t.Run("normalizes leading www risk hosts", func(t *testing.T) {
 		line := "open https://www.bit.ly/x and https://www.pastebin.com/x and https://www.github.com/org/repo/releases/download/v1.0.0/a.tgz"
-		findings := classifyURLRisks(line, "SKILL.md", 12, true)
+		findings := classifyURLRisks(line, "SKILL.md", 13, true)
 		assertHasID(t, findings, "URL_SHORTENER")
 		assertHasID(t, findings, "PASTE_SITE_URL")
 		assertHasID(t, findings, "RELEASE_ASSET_URL")
@@ -942,7 +948,7 @@ func TestClassifyURLRisksEdgeCases(t *testing.T) {
 
 	t.Run("detects github release-asset cdn url forms", func(t *testing.T) {
 		line := "open https://github-releases.githubusercontent.com/owner/repo/releases/download/v1.0.0/a.tgz and https://objects.githubusercontent.com/github-production-release-asset-2e65be/123?x=y"
-		findings := classifyURLRisks(line, "SKILL.md", 13, true)
+		findings := classifyURLRisks(line, "SKILL.md", 14, true)
 		assertHasID(t, findings, "RELEASE_ASSET_URL")
 	})
 }
@@ -1064,6 +1070,73 @@ func TestParseDottedMixedBaseIPv4Host(t *testing.T) {
 		for _, in := range []string{"0xc0.0xa8.0x01", "0300.0250.0001.0001.1", "0xGG.0xa8.0x01.0x01"} {
 			if _, ok := parseDottedMixedBaseIPv4Host(in); ok {
 				t.Fatalf("expected parse failure for %q", in)
+			}
+		}
+	})
+}
+
+func TestParseAbbreviatedDottedIPv4Host(t *testing.T) {
+	t.Run("parses abbreviated dotted ipv4 host forms", func(t *testing.T) {
+		cases := map[string]string{
+			"127.1":  "127.0.0.1",
+			"10.1.2": "10.1.0.2",
+		}
+		for in, want := range cases {
+			got, ok := parseAbbreviatedDottedIPv4Host(in)
+			if !ok || got == nil {
+				t.Fatalf("expected abbreviated dotted ipv4 parse to succeed for %q", in)
+			}
+			if got.String() != want {
+				t.Fatalf("expected %q from %q, got %q", want, in, got.String())
+			}
+		}
+	})
+
+	t.Run("rejects invalid abbreviated dotted ipv4 forms", func(t *testing.T) {
+		for _, in := range []string{"1", "1.2.3.4", "1.2.3.4.5", "1.example", "1.16777216", "1.2.65536"} {
+			if _, ok := parseAbbreviatedDottedIPv4Host(in); ok {
+				t.Fatalf("expected parse failure for %q", in)
+			}
+		}
+	})
+}
+
+func TestParseIPv4IntegerComponent(t *testing.T) {
+	t.Run("parses decimal octal and hex components with bit limits", func(t *testing.T) {
+		cases := []struct {
+			in   string
+			bits int
+			want uint64
+		}{
+			{in: "255", bits: 16, want: 255},
+			{in: "0377", bits: 16, want: 255},
+			{in: "0xff", bits: 16, want: 255},
+		}
+		for _, tc := range cases {
+			got, ok := parseIPv4IntegerComponent(tc.in, tc.bits)
+			if !ok || got != tc.want {
+				t.Fatalf("expected %q bits=%d to parse as %d, got %d (ok=%v)", tc.in, tc.bits, tc.want, got, ok)
+			}
+		}
+	})
+
+	t.Run("rejects invalid format and bit constraints", func(t *testing.T) {
+		cases := []struct {
+			in   string
+			bits int
+		}{
+			{in: "", bits: 8},
+			{in: "255", bits: 0},
+			{in: "255", bits: 33},
+			{in: "0x", bits: 16},
+			{in: "0xGG", bits: 16},
+			{in: "08", bits: 16},
+			{in: "example", bits: 16},
+			{in: "65536", bits: 16},
+		}
+		for _, tc := range cases {
+			if _, ok := parseIPv4IntegerComponent(tc.in, tc.bits); ok {
+				t.Fatalf("expected parse failure for %q bits=%d", tc.in, tc.bits)
 			}
 		}
 	})
