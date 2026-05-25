@@ -894,6 +894,15 @@ func TestClassifyPathRisks(t *testing.T) {
 		assertHasID(t, findings, "CONFUSABLE_FILENAME")
 	})
 
+	t.Run("detects confusable and mixed-script directory names", func(t *testing.T) {
+		findings := classifyPathRisks("docs/pay𝐩al/readme.md")
+		assertHasID(t, findings, "CONFUSABLE_FILENAME")
+
+		findings = classifyPathRisks("docs/payрal/readme.md")
+		assertHasID(t, findings, "MIXED_SCRIPT_FILENAME")
+		assertHasID(t, findings, "CONFUSABLE_FILENAME")
+	})
+
 	t.Run("ignores single script or non-letter separators", func(t *testing.T) {
 		cases := []string{
 			"docs/paypal.md",
@@ -907,6 +916,29 @@ func TestClassifyPathRisks(t *testing.T) {
 			}
 		}
 	})
+}
+
+func TestPathRiskComponents(t *testing.T) {
+	cases := []struct {
+		path string
+		want []string
+	}{
+		{path: "docs/paypal.md", want: []string{"docs", "paypal"}},
+		{path: "./docs//nested/readme.md", want: []string{"docs", "nested", "readme"}},
+		{path: "../docs/.hidden", want: []string{"docs", ".hidden"}},
+		{path: "", want: nil},
+	}
+	for _, tc := range cases {
+		got := pathRiskComponents(tc.path)
+		if len(got) != len(tc.want) {
+			t.Fatalf("pathRiskComponents(%q) len = %d, want %d (%v)", tc.path, len(got), len(tc.want), got)
+		}
+		for i := range tc.want {
+			if got[i] != tc.want[i] {
+				t.Fatalf("pathRiskComponents(%q)[%d] = %q, want %q", tc.path, i, got[i], tc.want[i])
+			}
+		}
+	}
 }
 
 func TestIsNFKCASCIIAlnumConfusable(t *testing.T) {

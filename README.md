@@ -271,8 +271,9 @@ flagged as medium-severity `NFKC_CHANGES_TEXT` findings, and normalized text is
 rescanned to catch fullwidth compatibility evasion patterns.
 Mixed-script filename patterns that can mimic trusted names are now flagged as
 medium severity findings.
-ASCII/non-ASCII homoglyph filename mixing (for example Cyrillic/Greek lookalikes,
-fullwidth characters, and compatibility-style Unicode glyphs)
+ASCII/non-ASCII homoglyph name mixing in path segments (for example
+Cyrillic/Greek lookalikes, fullwidth characters, and compatibility-style
+Unicode glyphs)
 is now flagged as high severity `CONFUSABLE_FILENAME`.
 Password-protected archive instructions are now flagged as high severity.
 JSON output contracts are now stability-tested across `inspect`, `fetch`,
@@ -572,7 +573,7 @@ guidance is stable.
 | `UNPINNED_RUNTIME_TOOL` | high | `npx foo`, `uvx foo`, `go run ...@latest`, `source/. <(curl ...)` | Pin immutable versions/commits and require integrity/provenance review before install. |
 | `LINK_SPOOFING_URL_MISMATCH` | high | markdown link display host differs from actual link target host | Make visible link text match destination host exactly; remove deceptive redirect chains. |
 | `RAW_HTML_MARKUP` | medium | raw HTML blocks/inline tags embedded in markdown instructions | Replace with plain markdown text unless HTML is strictly required and manually reviewed. |
-| `CONFUSABLE_FILENAME` | high | filename mixes ASCII with confusable non-ASCII characters (for example `payрal.md`, `payｐal.md`, `pay𝐩al.md`) | Rename files to plain ASCII (or a single clear script) and avoid lookalike characters. |
+| `CONFUSABLE_FILENAME` | high | filename or directory name mixes ASCII with confusable non-ASCII characters (for example `payрal.md`, `payｐal.md`, `pay𝐩al/`) | Rename files/directories to plain ASCII (or a single clear script) and avoid lookalike characters. |
 | `NFKC_CHANGES_TEXT` | medium | Unicode compatibility normalization changes instruction semantics | Rewrite with plain ASCII or unambiguous Unicode; remove compatibility confusables. |
 | `ARCHIVE_PATH_ESCAPE` | critical | archive entry resolves outside extraction root (`..`, absolute, canonical escape) | Rebuild archive with normalized relative paths and verify extraction root confinement. |
 | `SYMLINK_IN_ARCHIVE` | critical | archive contains symlink entries | Remove symlinks from distributed bundle; ship regular files only. |

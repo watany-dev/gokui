@@ -391,31 +391,57 @@ func ScanSkillRoot(skillRoot string) ([]Finding, error) {
 }
 
 func classifyPathRisks(relPath string) []Finding {
-	name := filepath.Base(relPath)
-	stem := strings.TrimSuffix(name, filepath.Ext(name))
-	if stem == "" {
-		stem = name
-	}
+	components := pathRiskComponents(relPath)
 	findings := make([]Finding, 0, 2)
-	if hasMixedScriptLetters(stem) {
+	hasMixedScript := false
+	hasConfusable := false
+	for _, component := range components {
+		if !hasMixedScript && hasMixedScriptLetters(component) {
+			hasMixedScript = true
+		}
+		if !hasConfusable && hasASCIIConfusableFilename(component) {
+			hasConfusable = true
+		}
+		if hasMixedScript && hasConfusable {
+			break
+		}
+	}
+	if hasMixedScript {
 		findings = append(findings, Finding{
 			ID:       "MIXED_SCRIPT_FILENAME",
 			Severity: "medium",
 			File:     filepath.ToSlash(relPath),
 			Line:     1,
-			Summary:  "filename contains mixed writing scripts",
+			Summary:  "path contains mixed writing scripts in filename or directory name",
 		})
 	}
-	if hasASCIIConfusableFilename(stem) {
+	if hasConfusable {
 		findings = append(findings, Finding{
 			ID:       "CONFUSABLE_FILENAME",
 			Severity: "high",
 			File:     filepath.ToSlash(relPath),
 			Line:     1,
-			Summary:  "filename mixes ASCII with confusable non-ASCII characters",
+			Summary:  "path mixes ASCII with confusable non-ASCII characters in filename or directory name",
 		})
 	}
 	return findings
+}
+
+func pathRiskComponents(relPath string) []string {
+	parts := strings.Split(filepath.ToSlash(relPath), "/")
+	components := make([]string, 0, len(parts))
+	for _, part := range parts {
+		part = strings.TrimSpace(part)
+		if part == "" || part == "." || part == ".." {
+			continue
+		}
+		stem := strings.TrimSuffix(part, filepath.Ext(part))
+		if stem == "" {
+			stem = part
+		}
+		components = append(components, stem)
+	}
+	return components
 }
 
 func hasMixedScriptLetters(name string) bool {
