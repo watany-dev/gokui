@@ -101,6 +101,7 @@ tests/CI:
 - nested-brace substring normalization also covers positional inner expansions (for example `${PPID:${1}}` and `${2:${3}:${4}}`) in `/proc/.../fd/...` and `/proc/.../task/.../fd/...` chains
 - nested-brace substring normalization also covers defaulted inner expansions (for example `${PPID:${OFF:-1}}` and `${2:${TOFF:-1}:${TLEN:-1}}`) in `/proc/.../fd/...` and `/proc/.../task/.../fd/...` chains
 - nested-brace substring normalization also covers inner fallback expressions that include another braced fallback (for example `${PPID:${OFF:-${ALT}}}` and `${2:${TOFF:-${TALT}}:${TLEN:-${LLEN}}}`) in `/proc/.../fd/...` and `/proc/.../task/.../fd/...` chains
+- nested-brace substring normalization also covers deeper multi-level inner fallback nesting (for example `${PPID:${OFF:-${ALT:-${DEF}}}}`) in `/proc/.../fd/...` and `/proc/.../task/.../fd/...` chains
 - critical detection of chmod-then-execute local artifact chains
 - critical detection of secret-path reads combined with network exfiltration
 - medium-severity detection of NFKC normalization text drift with normalized rescanning

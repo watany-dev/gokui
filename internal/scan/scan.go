@@ -1102,7 +1102,8 @@ func normalizeShellSpecialProcParams(line string) string {
 	if !strings.Contains(line, "/proc/") && !strings.Contains(line, "//proc//") {
 		return line
 	}
-	out := shellIndirectNamedPattern.ReplaceAllString(line, `${$1}`)
+	out := normalizeShellNestedSubstringExpansions(line)
+	out = shellIndirectNamedPattern.ReplaceAllString(out, `${$1}`)
 	out = shellIndirectPosPattern.ReplaceAllString(out, `${$1}`)
 	out = shellTrimPrefixNamedPattern.ReplaceAllString(out, `${$1}`)
 	out = shellTrimPrefixPosPattern.ReplaceAllString(out, `${$1}`)
@@ -1157,6 +1158,129 @@ func normalizeShellSpecialProcParams(line string) string {
 	out = shellProcDollarSubstringNamed.ReplaceAllString(out, `${$1}`)
 	out = shellProcDollarSubstringPos.ReplaceAllString(out, `${$1}`)
 	return out
+}
+
+func normalizeShellNestedSubstringExpansions(line string) string {
+	if !strings.Contains(line, "${") {
+		return line
+	}
+
+	var b strings.Builder
+	b.Grow(len(line))
+	for i := 0; i < len(line); {
+		if i+1 >= len(line) || line[i] != '$' || line[i+1] != '{' {
+			b.WriteByte(line[i])
+			i++
+			continue
+		}
+		end, head, ok := parseShellNestedSubstringExpansion(line, i)
+		if !ok {
+			b.WriteByte(line[i])
+			i++
+			continue
+		}
+		b.WriteString("${")
+		b.WriteString(head)
+		b.WriteByte('}')
+		i = end + 1
+	}
+	return b.String()
+}
+
+func parseShellNestedSubstringExpansion(line string, start int) (int, string, bool) {
+	if start+3 >= len(line) {
+		return -1, "", false
+	}
+
+	j := start + 2
+	if isShellNameStart(line[j]) {
+		j++
+		for j < len(line) && isShellNameChar(line[j]) {
+			j++
+		}
+	} else if isDigitByte(line[j]) {
+		k := 0
+		for j < len(line) && isDigitByte(line[j]) && k < 10 {
+			j++
+			k++
+		}
+		if k == 0 || (j < len(line) && isDigitByte(line[j])) {
+			return -1, "", false
+		}
+	} else {
+		return -1, "", false
+	}
+
+	if j >= len(line) || line[j] != ':' {
+		return -1, "", false
+	}
+
+	end := findShellParamExpansionEnd(line, start)
+	if end < 0 {
+		return -1, "", false
+	}
+	if !isNestedShellSubstringArgList(line, j+1, end) {
+		return -1, "", false
+	}
+	return end, line[start+2 : j], true
+}
+
+func isNestedShellSubstringArgList(line string, start, outerEnd int) bool {
+	if start+1 >= outerEnd || line[start] != '$' || line[start+1] != '{' {
+		return false
+	}
+
+	firstEnd := findShellParamExpansionEnd(line, start)
+	if firstEnd < 0 || firstEnd >= outerEnd {
+		return false
+	}
+	if firstEnd == outerEnd-1 {
+		return true
+	}
+	if firstEnd+2 >= outerEnd || line[firstEnd+1] != ':' {
+		return false
+	}
+
+	secondStart := firstEnd + 2
+	if secondStart+1 >= outerEnd || line[secondStart] != '$' || line[secondStart+1] != '{' {
+		return false
+	}
+	secondEnd := findShellParamExpansionEnd(line, secondStart)
+	return secondEnd == outerEnd-1
+}
+
+func findShellParamExpansionEnd(line string, start int) int {
+	depth := 0
+	for i := start; i < len(line); i++ {
+		if i+1 < len(line) && line[i] == '$' && line[i+1] == '{' {
+			depth++
+			i++
+			continue
+		}
+		if line[i] != '}' {
+			continue
+		}
+		depth--
+		if depth == 0 {
+			return i
+		}
+		if depth < 0 {
+			return -1
+		}
+	}
+	return -1
+}
+
+func isShellNameStart(c byte) bool {
+	return c == '_' || (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z')
+}
+
+func isShellNameChar(c byte) bool {
+	return isShellNameStart(c) || isDigitByte(c)
+}
+
+func isDigitByte(c byte) bool {
+	return c >= '0' && c <= '9'
 }
 
 func normalizeShellProcCommandSubstitutions(line string) string {

@@ -1926,6 +1926,41 @@ func TestNormalizeShellSpecialProcParamsNestedFallbackBraceSubstringExpansion(t 
 	}
 }
 
+func TestNormalizeShellNestedSubstringExpansionsDeepNestedFallback(t *testing.T) {
+	line := `command-p source "//proc//${PPID:${OFF:-${ALT:-${DEF}}}}//task//${2:${TOFF:-${TALT:-${TD}}}:${TLEN:-${LLEN:-${LD}}}}//fd//0"`
+	got := normalizeShellNestedSubstringExpansions(line)
+	if strings.Contains(got, ":${OFF:-${ALT:-${DEF}}}") || strings.Contains(got, ":${TOFF:-${TALT:-${TD}}}:${TLEN:-${LLEN:-${LD}}}") {
+		t.Fatalf("expected deep nested fallback-brace substring expansion to be normalized, got %q", got)
+	}
+	if !strings.Contains(got, `//proc//${PPID}//task//${2}//fd//0`) {
+		t.Fatalf("expected normalized proc path, got %q", got)
+	}
+}
+
+func TestParseShellNestedSubstringExpansionRejectsInvalidHeads(t *testing.T) {
+	line := `${12345678901:${OFF}}`
+	if _, _, ok := parseShellNestedSubstringExpansion(line, 0); ok {
+		t.Fatalf("expected positional head with >10 digits to be rejected")
+	}
+	line = `${-BAD:${OFF}}`
+	if _, _, ok := parseShellNestedSubstringExpansion(line, 0); ok {
+		t.Fatalf("expected non-name/non-positional head to be rejected")
+	}
+}
+
+func TestParseShellNestedSubstringExpansionRejectsNonNestedArgs(t *testing.T) {
+	line := `${PPID:1}`
+	if _, _, ok := parseShellNestedSubstringExpansion(line, 0); ok {
+		t.Fatalf("expected non-nested substring args to be rejected")
+	}
+}
+
+func TestFindShellParamExpansionEndRejectsUnbalancedClosing(t *testing.T) {
+	if got := findShellParamExpansionEnd("}", 0); got != -1 {
+		t.Fatalf("expected unbalanced closing brace to return -1, got %d", got)
+	}
+}
+
 func TestNormalizeShellSpecialProcParamsDoesNotRewriteDefaultExpansion(t *testing.T) {
 	line := `command-p source "//proc//${PPID:-1}//task//${2:-1}//fd//0"`
 	got := normalizeShellSpecialProcParams(line)
