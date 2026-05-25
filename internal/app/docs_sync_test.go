@@ -309,6 +309,8 @@ func TestMakefileVulnToolchainBaselineSync(t *testing.T) {
 
 	required := []string{
 		"VULN_GOTOOLCHAIN ?= go1.26.3+auto",
+		"BUILD_OUT ?= gokui",
+		"$(GO) build -trimpath -buildvcs=true -ldflags='$(LDFLAGS)' -o $(BUILD_OUT) $(MAIN_PKG)",
 		"GOTOOLCHAIN=$(VULN_GOTOOLCHAIN) $(GO) tool govulncheck ./...",
 		"release-evidence-offline:",
 		"./scripts/collect-release-evidence.sh",
