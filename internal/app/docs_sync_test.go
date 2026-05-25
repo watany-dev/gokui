@@ -616,28 +616,15 @@ func extractReleaseCheckErrorCodesFromTable(t *testing.T, doc, label string) []s
 	section := doc[start:]
 	lines := strings.Split(section, "\n")
 
-	codeRe := regexp.MustCompile("`(RC_[A-Z0-9_]+)`")
-	codes := make(map[string]struct{})
+	var builder strings.Builder
 	for _, line := range lines {
 		if strings.TrimSpace(line) == "" {
 			break
 		}
-		m := codeRe.FindStringSubmatch(line)
-		if len(m) < 2 {
-			continue
-		}
-		codes[m[1]] = struct{}{}
+		builder.WriteString(line)
+		builder.WriteByte('\n')
 	}
-	if len(codes) == 0 {
-		t.Fatalf("%s release-check code table has no RC_* entries", label)
-	}
-
-	out := make([]string, 0, len(codes))
-	for code := range codes {
-		out = append(out, code)
-	}
-	sort.Strings(out)
-	return out
+	return extractReleaseCheckErrorCodesFromText(t, builder.String(), label+" release-check code table")
 }
 
 func extractReleaseCheckErrorCodesFromAgents(t *testing.T, agents string) []string {
@@ -653,26 +640,7 @@ func extractReleaseCheckErrorCodesFromAgents(t *testing.T, agents string) []stri
 	if sectionEnd > 0 {
 		section = section[:sectionEnd]
 	}
-
-	codeRe := regexp.MustCompile("`(RC_[A-Z0-9_]+)`")
-	matches := codeRe.FindAllStringSubmatch(section, -1)
-	if len(matches) == 0 {
-		t.Fatal("AGENTS.md release-check machine-readable code section has no RC_* entries")
-	}
-
-	codes := make(map[string]struct{}, len(matches))
-	for _, m := range matches {
-		if len(m) < 2 {
-			continue
-		}
-		codes[m[1]] = struct{}{}
-	}
-	out := make([]string, 0, len(codes))
-	for code := range codes {
-		out = append(out, code)
-	}
-	sort.Strings(out)
-	return out
+	return extractReleaseCheckErrorCodesFromText(t, section, "AGENTS.md release-check machine-readable code section")
 }
 
 func extractReleaseCheckErrorCodesFromRoadmap(t *testing.T, roadmap string) []string {
@@ -688,11 +656,15 @@ func extractReleaseCheckErrorCodesFromRoadmap(t *testing.T, roadmap string) []st
 	if lineEnd > 0 {
 		section = section[:lineEnd]
 	}
+	return extractReleaseCheckErrorCodesFromText(t, section, "ROADMAP.md release-check machine-readable code set line")
+}
 
+func extractReleaseCheckErrorCodesFromText(t *testing.T, text, label string) []string {
+	t.Helper()
 	codeRe := regexp.MustCompile("`(RC_[A-Z0-9_]+)`")
-	matches := codeRe.FindAllStringSubmatch(section, -1)
+	matches := codeRe.FindAllStringSubmatch(text, -1)
 	if len(matches) == 0 {
-		t.Fatal("ROADMAP.md release-check machine-readable code set line has no RC_* entries")
+		t.Fatalf("%s has no RC_* entries", label)
 	}
 
 	codes := make(map[string]struct{}, len(matches))
