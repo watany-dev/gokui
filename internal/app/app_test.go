@@ -430,6 +430,92 @@ func TestRun(t *testing.T) {
 		}
 	})
 
+	t.Run("fetch then install then update-up-to-date compact then lock-verify compact workflow", func(t *testing.T) {
+		var stdout bytes.Buffer
+		var stderr bytes.Buffer
+
+		origFetch := fetchGitHubSkill
+		t.Cleanup(func() { fetchGitHubSkill = origFetch })
+		const skillName = "fetch-install-update-up-to-date-compact-workflow-skill"
+		sourceDir := createSkillSourceForInstallTest(t, skillName)
+		fetchGitHubSkill = func(spec srcpkg.GitHubSpec) (string, func(), error) {
+			return sourceDir, nil, nil
+		}
+
+		outRoot := filepath.Join(t.TempDir(), "quarantine")
+		code := Run([]string{"fetch", "github:org/repo//skills/" + skillName + "@8f3c2d1a4b5c6d7e8f901234567890abcdef1234", "--out", outRoot, "--format", "compact"}, &stdout, &stderr, cfg)
+		if code != 0 {
+			t.Fatalf("Run(fetch compact install-update-up-to-date workflow) code = %d, want 0\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
+		}
+		if stderr.Len() != 0 {
+			t.Fatalf("stderr should be empty for fetch compact, got %q", stderr.String())
+		}
+		fetchOut := strings.TrimSpace(stdout.String())
+		if !strings.HasPrefix(fetchOut, "fetch decision=FETCHED ") {
+			t.Fatalf("fetch compact output should include fetched decision, got %q", fetchOut)
+		}
+		if !strings.Contains(fetchOut, "source_kind=github-source") {
+			t.Fatalf("fetch compact output should include github source kind, got %q", fetchOut)
+		}
+		fetchParts := strings.SplitN(fetchOut, ` output="`, 2)
+		if len(fetchParts) != 2 || !strings.HasSuffix(fetchParts[1], `"`) {
+			t.Fatalf("fetch compact output should include quoted output path, got %q", fetchOut)
+		}
+		fetchedSkillPath := strings.TrimSuffix(fetchParts[1], `"`)
+		if strings.TrimSpace(fetchedSkillPath) == "" {
+			t.Fatalf("fetch compact output path should be non-empty, got %q", fetchOut)
+		}
+
+		installTarget := filepath.Join(t.TempDir(), "skills")
+		stdout.Reset()
+		stderr.Reset()
+		code = Run([]string{"install", fetchedSkillPath, "--target", "custom:" + installTarget, "--profile", "strict", "--format", "compact"}, &stdout, &stderr, cfg)
+		if code != 0 {
+			t.Fatalf("Run(install compact update-up-to-date workflow) code = %d, want 0\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
+		}
+		if stderr.Len() != 0 {
+			t.Fatalf("stderr should be empty for install compact, got %q", stderr.String())
+		}
+		installOut := strings.TrimSpace(stdout.String())
+		if !strings.HasPrefix(installOut, "install decision=PASS ") {
+			t.Fatalf("install compact output should include pass decision, got %q", installOut)
+		}
+		if !strings.Contains(installOut, "installed=true") || !strings.Contains(installOut, "profile=strict") || !strings.Contains(installOut, "source_kind=local-dir") {
+			t.Fatalf("install compact output should include deterministic fields, got %q", installOut)
+		}
+
+		stdout.Reset()
+		stderr.Reset()
+		code = Run([]string{"update", "--dry-run", "--target", "custom:" + installTarget, "--format", "compact"}, &stdout, &stderr, cfg)
+		if code != 0 {
+			t.Fatalf("Run(update compact up-to-date fetched-install workflow) code = %d, want 0\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
+		}
+		if stderr.Len() != 0 {
+			t.Fatalf("stderr should be empty for update compact, got %q", stderr.String())
+		}
+		updateOut := strings.TrimSpace(stdout.String())
+		if !strings.HasPrefix(updateOut, "update total=1 up_to_date=1 changed=0 rejected=0 skipped=0 errors=0 ") {
+			t.Fatalf("update compact output should include stable up-to-date summary, got %q", updateOut)
+		}
+
+		stdout.Reset()
+		stderr.Reset()
+		code = Run([]string{"lock", "verify", filepath.Join(installTarget, skillName), "--format", "compact"}, &stdout, &stderr, cfg)
+		if code != 0 {
+			t.Fatalf("Run(lock verify compact fetched-install-update-up-to-date workflow) code = %d, want 0\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
+		}
+		if stderr.Len() != 0 {
+			t.Fatalf("stderr should be empty for lock verify compact, got %q", stderr.String())
+		}
+		lockOut := strings.TrimSpace(stdout.String())
+		if !strings.HasPrefix(lockOut, "lock_verify status=VERIFIED ") {
+			t.Fatalf("lock verify compact output should include verified status, got %q", lockOut)
+		}
+		if !strings.Contains(lockOut, "failed=0") {
+			t.Fatalf("lock verify compact output should include zero failed checks, got %q", lockOut)
+		}
+	})
+
 	t.Run("fetch then install then update-rejected then lock-verify workflow", func(t *testing.T) {
 		var stdout bytes.Buffer
 		var stderr bytes.Buffer
