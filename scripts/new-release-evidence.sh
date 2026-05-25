@@ -26,31 +26,27 @@ assert_no_symlink_components() {
   done
 }
 
-create_fresh_file_for_write() {
+create_temp_file_for_write() {
+  local dir="$1"
+  local base="$2"
+  local path_var="$3"
+  local fd_var="$4"
+  local tmp_path
+  tmp_path="$(mktemp "$dir/.${base}.tmp.XXXXXX")"
+  local fd
+  exec {fd}>>"$tmp_path"
+  printf -v "$path_var" '%s' "$tmp_path"
+  printf -v "$fd_var" '%s' "$fd"
+}
+
+assert_output_path_available() {
   local path="$1"
   local label="$2"
-  local fd_var="$3"
   assert_no_symlink_components "$path" "$label"
   if [ -e "$path" ]; then
     echo "${label} already exists: $path" >&2
     exit 1
   fi
-
-  local dir
-  dir="$(dirname "$path")"
-  local base
-  base="$(basename "$path")"
-  local tmp_path
-  tmp_path="$(mktemp "$dir/.${base}.tmp.XXXXXX")"
-  local fd
-  exec {fd}>>"$tmp_path"
-  if ! mv -n "$tmp_path" "$path"; then
-    exec {fd}>&-
-    rm -f "$tmp_path"
-    echo "${label} already exists: $path" >&2
-    exit 1
-  fi
-  printf -v "$fd_var" '%s' "$fd"
 }
 
 assert_no_symlink_components "$ROOT_DIR" "repository root path"
@@ -67,7 +63,15 @@ mkdir -p "$OUT_DIR"
 TS="$(date -u +%Y%m%dT%H%M%SZ)"
 COMMIT_SHA="$(git -C "$ROOT_DIR" rev-parse HEAD 2>/dev/null || echo unknown)"
 OUT_PATH="$OUT_DIR/${TS}-${COMMIT_SHA}.md"
-create_fresh_file_for_write "$OUT_PATH" "release evidence output path" EVIDENCE_FD
+assert_output_path_available "$OUT_PATH" "release evidence output path"
+OUT_BASENAME="$(basename "$OUT_PATH")"
+create_temp_file_for_write "$OUT_DIR" "$OUT_BASENAME" TMP_EVIDENCE_PATH EVIDENCE_FD
+cleanup() {
+  if [ -n "${TMP_EVIDENCE_PATH:-}" ]; then
+    rm -f "$TMP_EVIDENCE_PATH"
+  fi
+}
+trap cleanup EXIT
 
 {
   echo "# Release Evidence - $TS"
@@ -78,5 +82,10 @@ create_fresh_file_for_write "$OUT_PATH" "release evidence output path" EVIDENCE_
   cat "$TEMPLATE_PATH"
 } >&${EVIDENCE_FD}
 exec {EVIDENCE_FD}>&-
+if ! mv -n "$TMP_EVIDENCE_PATH" "$OUT_PATH"; then
+  echo "release evidence output path already exists: $OUT_PATH" >&2
+  exit 1
+fi
+TMP_EVIDENCE_PATH=""
 
 echo "Created $OUT_PATH"
