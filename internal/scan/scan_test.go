@@ -903,6 +903,11 @@ func TestClassifyPathRisks(t *testing.T) {
 		assertHasID(t, findings, "CONFUSABLE_FILENAME")
 	})
 
+	t.Run("detects confusable and mixed-script extension names", func(t *testing.T) {
+		findings := classifyPathRisks("docs/readme.mе")
+		assertHasID(t, findings, "CONFUSABLE_FILENAME")
+	})
+
 	t.Run("ignores single script or non-letter separators", func(t *testing.T) {
 		cases := []string{
 			"docs/paypal.md",
@@ -926,6 +931,7 @@ func TestPathRiskComponents(t *testing.T) {
 		{path: "docs/paypal.md", want: []string{"docs", "paypal"}},
 		{path: "./docs//nested/readme.md", want: []string{"docs", "nested", "readme"}},
 		{path: "../docs/.hidden", want: []string{"docs", ".hidden"}},
+		{path: "docs/archive.tar.gz", want: []string{"docs", "archive.tar"}},
 		{path: "", want: nil},
 	}
 	for _, tc := range cases {
@@ -937,6 +943,47 @@ func TestPathRiskComponents(t *testing.T) {
 			if got[i] != tc.want[i] {
 				t.Fatalf("pathRiskComponents(%q)[%d] = %q, want %q", tc.path, i, got[i], tc.want[i])
 			}
+		}
+	}
+}
+
+func TestPathRiskRawComponents(t *testing.T) {
+	cases := []struct {
+		path string
+		want []string
+	}{
+		{path: "docs/paypal.md", want: []string{"docs", "paypal.md"}},
+		{path: "./docs//nested/readme.md", want: []string{"docs", "nested", "readme.md"}},
+		{path: "../docs/.hidden", want: []string{"docs", ".hidden"}},
+		{path: "", want: nil},
+	}
+	for _, tc := range cases {
+		got := pathRiskRawComponents(tc.path)
+		if len(got) != len(tc.want) {
+			t.Fatalf("pathRiskRawComponents(%q) len = %d, want %d (%v)", tc.path, len(got), len(tc.want), got)
+		}
+		for i := range tc.want {
+			if got[i] != tc.want[i] {
+				t.Fatalf("pathRiskRawComponents(%q)[%d] = %q, want %q", tc.path, i, got[i], tc.want[i])
+			}
+		}
+	}
+}
+
+func TestHasASCIIAlnum(t *testing.T) {
+	cases := []struct {
+		value string
+		want  bool
+	}{
+		{value: "readme", want: true},
+		{value: "v2", want: true},
+		{value: "тест", want: false},
+		{value: "あいう", want: false},
+		{value: ".-_", want: false},
+	}
+	for _, tc := range cases {
+		if got := hasASCIIAlnum(tc.value); got != tc.want {
+			t.Fatalf("hasASCIIAlnum(%q) = %v, want %v", tc.value, got, tc.want)
 		}
 	}
 }

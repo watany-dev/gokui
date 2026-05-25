@@ -392,14 +392,16 @@ func ScanSkillRoot(skillRoot string) ([]Finding, error) {
 
 func classifyPathRisks(relPath string) []Finding {
 	components := pathRiskComponents(relPath)
+	rawComponents := pathRiskRawComponents(relPath)
 	findings := make([]Finding, 0, 2)
 	hasMixedScript := false
 	hasConfusable := false
-	for _, component := range components {
+	for i, component := range components {
 		if !hasMixedScript && hasMixedScriptLetters(component) {
 			hasMixedScript = true
 		}
-		if !hasConfusable && hasASCIIConfusableFilename(component) {
+		stemHasASCII := hasASCIIAlnum(component)
+		if !hasConfusable && (hasASCIIConfusableFilename(component) || (stemHasASCII && i < len(rawComponents) && hasASCIIConfusableFilename(rawComponents[i]))) {
 			hasConfusable = true
 		}
 		if hasMixedScript && hasConfusable {
@@ -428,6 +430,19 @@ func classifyPathRisks(relPath string) []Finding {
 }
 
 func pathRiskComponents(relPath string) []string {
+	rawParts := pathRiskRawComponents(relPath)
+	components := make([]string, 0, len(rawParts))
+	for _, part := range rawParts {
+		stem := strings.TrimSuffix(part, filepath.Ext(part))
+		if stem == "" {
+			stem = part
+		}
+		components = append(components, stem)
+	}
+	return components
+}
+
+func pathRiskRawComponents(relPath string) []string {
 	parts := strings.Split(filepath.ToSlash(relPath), "/")
 	components := make([]string, 0, len(parts))
 	for _, part := range parts {
@@ -435,11 +450,7 @@ func pathRiskComponents(relPath string) []string {
 		if part == "" || part == "." || part == ".." {
 			continue
 		}
-		stem := strings.TrimSuffix(part, filepath.Ext(part))
-		if stem == "" {
-			stem = part
-		}
-		components = append(components, stem)
+		components = append(components, part)
 	}
 	return components
 }
@@ -455,6 +466,15 @@ func hasMixedScriptLetters(name string) bool {
 			if len(scripts) > 1 {
 				return true
 			}
+		}
+	}
+	return false
+}
+
+func hasASCIIAlnum(name string) bool {
+	for _, r := range name {
+		if r <= unicode.MaxASCII && (unicode.IsLetter(r) || unicode.IsDigit(r)) {
+			return true
 		}
 	}
 	return false
