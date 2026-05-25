@@ -228,6 +228,8 @@ func TestReadmeCriticalPatternDocumentationSync(t *testing.T) {
 		"/proc/thread-self/fd/0",
 		"/proc/<pid>/fd/0",
 		"/proc/<pid>/task/<tid>/fd/0",
+		"/proc/thread-self/task/<tid>/fd/0",
+		"task-path `fd/00` variants",
 	}
 	for _, line := range required {
 		if !strings.Contains(readme, line) {
