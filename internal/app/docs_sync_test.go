@@ -356,6 +356,9 @@ func TestReleaseChecklistDocumentationSync(t *testing.T) {
 	if !strings.Contains(releaseDoc, "expected output/log files already exist") {
 		t.Fatal("RELEASE.md should document output/log collision fail-closed behavior")
 	}
+	if !strings.Contains(releaseDoc, "created atomically and written via open file") || !strings.Contains(releaseDoc, "descriptors to reduce path-swap race windows") {
+		t.Fatal("RELEASE.md should document atomic descriptor-backed release script outputs")
+	}
 	if !strings.Contains(releaseDoc, "keep failing build artifacts for") || !strings.Contains(releaseDoc, "skip subsequent vuln/cleanup steps") {
 		t.Fatal("RELEASE.md should document failure-artifact retention and skip behavior")
 	}
@@ -381,6 +384,8 @@ func TestReleaseCheckDocumentationSync(t *testing.T) {
 		"clean that artifact automatically",
 		"fail closed when repository-root/output/log paths include",
 		"when expected output/log files already exist",
+		"created atomically and written via open file",
+		"descriptors to reduce path-swap race windows",
 		"keep failing build artifacts",
 		"for investigation and skip subsequent vuln/cleanup steps",
 		"git status --short --untracked-files=no",

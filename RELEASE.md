@@ -98,6 +98,8 @@ Evidence file names end with `-offline-audit.md` or `-online-audit.md`
 depending on whether `--with-vuln` is enabled.
 Release scripts fail closed when repository-root/output/log paths include
 symlink components or expected output/log files already exist.
+Evidence and SARIF outputs are created atomically and written via open file
+descriptors to reduce path-swap race windows during script execution.
 When offline gate steps fail, evidence scripts keep failing build artifacts for
 investigation and skip subsequent vuln/cleanup steps.
 

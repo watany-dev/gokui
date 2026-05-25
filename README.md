@@ -390,6 +390,8 @@ their clean-tree check evaluates tracked files only
 `.cache/gokui-release-check` and clean that artifact automatically.
 Release scripts fail closed when repository-root/output/log paths include
 symlink components, and when expected output/log files already exist.
+Evidence and SARIF outputs are created atomically and written via open file
+descriptors to reduce path-swap race windows during script execution.
 When offline gate steps fail, release-evidence scripts keep failing build artifacts
 for investigation and skip subsequent vuln/cleanup steps.
 Generated evidence filenames end with `-offline-audit.md` or
