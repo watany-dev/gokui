@@ -493,8 +493,8 @@ func TestReleaseChecklistDocumentationSync(t *testing.T) {
 		!strings.Contains(releaseDoc, "RC_PREFLIGHT_SARIF_OUT_EXISTS") {
 		t.Fatal("RELEASE.md should document release-check preflight machine-readable error codes")
 	}
-	if !strings.Contains(releaseDoc, "non-root file paths") || !strings.Contains(releaseDoc, "directory-like paths ending with `/`") {
-		t.Fatal("RELEASE.md should document release-check non-root and non-directory output path guards")
+	if !strings.Contains(releaseDoc, "non-root file paths") || !strings.Contains(releaseDoc, "directory-like paths ending with `/`") || !strings.Contains(releaseDoc, "under `.git/`") {
+		t.Fatal("RELEASE.md should document release-check non-root/non-directory/.git output path guards")
 	}
 	if !strings.Contains(releaseDoc, "preflight checks run before format/test/race/vuln gate") {
 		t.Fatal("RELEASE.md should document release-check preflight-first execution ordering")
@@ -563,6 +563,7 @@ func TestReleaseCheckDocumentationSync(t *testing.T) {
 		"RC_PREFLIGHT_SARIF_OUT_EXISTS",
 		"non-root file paths",
 		"directory-like paths ending with `/`",
+		"located under `.git/`",
 		"fail closed when repository-root/output/log paths include",
 		"when expected output/log files already exist",
 		"created atomically and written via open file",
@@ -749,6 +750,7 @@ func TestMakefileVulnToolchainBaselineSync(t *testing.T) {
 		"RELEASE_CHECK_SARIF_OUT ?= $(CACHE_DIR)/inspect-results.sarif",
 		"RELEASE_CHECK_BUILD_OUT_ABS := $(abspath $(RELEASE_CHECK_BUILD_OUT))",
 		"RELEASE_CHECK_SARIF_OUT_ABS := $(abspath $(RELEASE_CHECK_SARIF_OUT))",
+		"RELEASE_CHECK_GIT_DIR_ABS := $(abspath .git)",
 		"release-check-preflight:",
 		"release-check: release-check-preflight",
 		"$(MAKE) check; \\",
@@ -761,6 +763,9 @@ func TestMakefileVulnToolchainBaselineSync(t *testing.T) {
 		"emit_preflight_error() {",
 		`echo "[$$code] $$message" >&2; \`,
 		"assert_no_symlink_components() {",
+		"assert_not_git_path() {",
+		`assert_not_git_path "$(RELEASE_CHECK_BUILD_OUT_ABS)" "release-check build output path" "RC_PREFLIGHT_BUILD_OUT_INVALID"; \`,
+		`assert_not_git_path "$(RELEASE_CHECK_SARIF_OUT_ABS)" "release-check SARIF output path" "RC_PREFLIGHT_SARIF_OUT_INVALID"; \`,
 		`assert_no_symlink_components "$(RELEASE_CHECK_BUILD_OUT_ABS)" "release-check build output path" "RC_PREFLIGHT_BUILD_OUT_SYMLINK"; \`,
 		`assert_no_symlink_components "$(RELEASE_CHECK_SARIF_OUT_ABS)" "release-check SARIF output path" "RC_PREFLIGHT_SARIF_OUT_SYMLINK"; \`,
 		`case "$(RELEASE_CHECK_BUILD_OUT)" in ""|"/"|"."|*/) \`,
@@ -1024,7 +1029,7 @@ func TestRoadmapReleaseEvidenceHardeningSync(t *testing.T) {
 		"inspect-sarif output path hardening (symlink path-component rejection, restrictive SARIF file permissions, fail-closed output-collision checks, and atomic file creation with descriptor-backed writes)",
 		"release script repository-root path hardening (reject symlinked repository-root execution paths)",
 		"release-evidence gate hardening with isolated build output (`BUILD_OUT`) and tracked-file clean-tree checks (`git status --short --untracked-files=no`)",
-		"release-check gate hardening with isolated build output (`RELEASE_CHECK_BUILD_OUT`), preflight-first execution ordering, absolute-path preflight normalization, symlink/collision fail-closed build/SARIF output guards (including non-root-path and distinct-path enforcement), machine-readable preflight/cleanup error codes, and failure-safe cleanup for build/SARIF artifacts",
+		"release-check gate hardening with isolated build output (`RELEASE_CHECK_BUILD_OUT`), preflight-first execution ordering, absolute-path preflight normalization, symlink/collision fail-closed build/SARIF output guards (including non-root-path, `.git` path rejection, and distinct-path enforcement), machine-readable preflight/cleanup error codes, and failure-safe cleanup for build/SARIF artifacts",
 		"release-evidence metadata mode annotation (`offline|online`) and mode-specific evidence filename suffixes (`-offline-audit.md` / `-online-audit.md`)",
 	}
 	for _, line := range required {

@@ -11,6 +11,7 @@ RELEASE_CHECK_BUILD_OUT ?= $(CACHE_DIR)/gokui-release-check
 RELEASE_CHECK_SARIF_OUT ?= $(CACHE_DIR)/inspect-results.sarif
 RELEASE_CHECK_BUILD_OUT_ABS := $(abspath $(RELEASE_CHECK_BUILD_OUT))
 RELEASE_CHECK_SARIF_OUT_ABS := $(abspath $(RELEASE_CHECK_SARIF_OUT))
+RELEASE_CHECK_GIT_DIR_ABS := $(abspath .git)
 
 export GOCACHE ?= $(CACHE_DIR)/go-build
 export GOMODCACHE ?= $(CACHE_DIR)/gomod
@@ -98,12 +99,24 @@ release-check-preflight:
 			current="$$parent"; \
 		done; \
 	}; \
+	assert_not_git_path() { \
+		path="$$1"; \
+		label="$$2"; \
+		code="$$3"; \
+		case "$$path" in \
+			"$(RELEASE_CHECK_GIT_DIR_ABS)"|"$(RELEASE_CHECK_GIT_DIR_ABS)"/*) \
+				emit_preflight_error "$$code" "$$label must be a non-root file path outside .git: $$path"; \
+			;; \
+		esac; \
+	}; \
 	case "$(RELEASE_CHECK_BUILD_OUT)" in ""|"/"|"."|*/) \
 		emit_preflight_error "RC_PREFLIGHT_BUILD_OUT_INVALID" "release-check build output path must be a non-root file path"; \
 	;; esac; \
 	case "$(RELEASE_CHECK_SARIF_OUT)" in ""|"/"|"."|*/) \
 		emit_preflight_error "RC_PREFLIGHT_SARIF_OUT_INVALID" "release-check SARIF output path must be a non-root file path"; \
 	;; esac; \
+	assert_not_git_path "$(RELEASE_CHECK_BUILD_OUT_ABS)" "release-check build output path" "RC_PREFLIGHT_BUILD_OUT_INVALID"; \
+	assert_not_git_path "$(RELEASE_CHECK_SARIF_OUT_ABS)" "release-check SARIF output path" "RC_PREFLIGHT_SARIF_OUT_INVALID"; \
 	assert_no_symlink_components "$(RELEASE_CHECK_BUILD_OUT_ABS)" "release-check build output path" "RC_PREFLIGHT_BUILD_OUT_SYMLINK"; \
 	assert_no_symlink_components "$(RELEASE_CHECK_SARIF_OUT_ABS)" "release-check SARIF output path" "RC_PREFLIGHT_SARIF_OUT_SYMLINK"; \
 	if [ "$(RELEASE_CHECK_BUILD_OUT_ABS)" = "$(RELEASE_CHECK_SARIF_OUT_ABS)" ]; then \

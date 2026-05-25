@@ -211,6 +211,48 @@ func TestReleaseCheckPreflightRejectsRootOrDirectoryLikeSARIFOutput(t *testing.T
 	}
 }
 
+func TestReleaseCheckPreflightRejectsBuildOutputInsideGitDir(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("release-check preflight path contracts are exercised on POSIX in CI")
+	}
+
+	tmp := t.TempDir()
+	exitCode, out := runReleaseCheckPreflight(t, map[string]string{
+		"RELEASE_CHECK_BUILD_OUT": filepath.Join(".git", "hooks", "pre-commit"),
+		"RELEASE_CHECK_SARIF_OUT": filepath.Join(tmp, "inspect.sarif"),
+	})
+	if exitCode == 0 {
+		t.Fatalf("expected non-zero exit for build output inside .git\noutput:\n%s", out)
+	}
+	if !strings.Contains(out, "[RC_PREFLIGHT_BUILD_OUT_INVALID]") {
+		t.Fatalf("expected build output invalid-path rejection code, got:\n%s", out)
+	}
+	if !strings.Contains(out, "outside .git") {
+		t.Fatalf("expected build output invalid-path rejection to mention .git guard, got:\n%s", out)
+	}
+}
+
+func TestReleaseCheckPreflightRejectsSARIFOutputInsideGitDir(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("release-check preflight path contracts are exercised on POSIX in CI")
+	}
+
+	tmp := t.TempDir()
+	exitCode, out := runReleaseCheckPreflight(t, map[string]string{
+		"RELEASE_CHECK_BUILD_OUT": filepath.Join(tmp, "build.out"),
+		"RELEASE_CHECK_SARIF_OUT": filepath.Join(".git", "logs", "HEAD"),
+	})
+	if exitCode == 0 {
+		t.Fatalf("expected non-zero exit for SARIF output inside .git\noutput:\n%s", out)
+	}
+	if !strings.Contains(out, "[RC_PREFLIGHT_SARIF_OUT_INVALID]") {
+		t.Fatalf("expected SARIF output invalid-path rejection code, got:\n%s", out)
+	}
+	if !strings.Contains(out, "outside .git") {
+		t.Fatalf("expected SARIF output invalid-path rejection to mention .git guard, got:\n%s", out)
+	}
+}
+
 func TestReleaseCheckPreflightRejectsSymlinkPathComponent(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("symlink path-component check is exercised on POSIX in CI")
