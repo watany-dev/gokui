@@ -24,6 +24,7 @@ set -euo pipefail
 
 target="${1:-}"
 shift || true
+block_cleanup="${FAKE_BLOCK_CLEANUP:-0}"
 
 build_out=""
 sarif_out=""
@@ -45,11 +46,17 @@ case "$target" in
 	build)
 		mkdir -p "$(dirname "$build_out")"
 		: > "$build_out"
+		if [ "$block_cleanup" = "1" ]; then
+			chmod 0555 "$(dirname "$build_out")"
+		fi
 		exit 0
 		;;
 	inspect-sarif)
 		mkdir -p "$(dirname "$sarif_out")"
 		: > "$sarif_out"
+		if [ "$block_cleanup" = "1" ]; then
+			chmod 0555 "$(dirname "$sarif_out")"
+		fi
 		exit 0
 		;;
 	vuln)
@@ -67,12 +74,16 @@ esac
 	return path
 }
 
-func runReleaseCheck(t *testing.T, fakeMake, buildOut, sarifOut string, withVuln bool) (int, string) {
+func runReleaseCheck(t *testing.T, fakeMake, buildOut, sarifOut string, withVuln bool, blockCleanup bool) (int, string) {
 	t.Helper()
 
 	vuln := "0"
 	if withVuln {
 		vuln = "1"
+	}
+	block := "0"
+	if blockCleanup {
+		block = "1"
 	}
 
 	cmd := exec.Command(
@@ -83,6 +94,7 @@ func runReleaseCheck(t *testing.T, fakeMake, buildOut, sarifOut string, withVuln
 		"RELEASE_CHECK_BUILD_OUT="+buildOut,
 		"RELEASE_CHECK_SARIF_OUT="+sarifOut,
 		"RELEASE_CHECK_VULN="+vuln,
+		"FAKE_BLOCK_CLEANUP="+block,
 	)
 
 	out, err := cmd.CombinedOutput()
@@ -115,7 +127,7 @@ func TestReleaseCheckCleansArtifactsOnSuccess(t *testing.T) {
 	sarifOut := filepath.Join(tmp, "inspect.sarif")
 	fakeMake := writeFakeSubmake(t, false)
 
-	exitCode, out := runReleaseCheck(t, fakeMake, buildOut, sarifOut, false)
+	exitCode, out := runReleaseCheck(t, fakeMake, buildOut, sarifOut, false, false)
 	if exitCode != 0 {
 		t.Fatalf("expected zero exit from release-check success path, got %d\noutput:\n%s", exitCode, out)
 	}
@@ -137,7 +149,7 @@ func TestReleaseCheckCleansArtifactsOnFailure(t *testing.T) {
 	sarifOut := filepath.Join(tmp, "inspect.sarif")
 	fakeMake := writeFakeSubmake(t, true)
 
-	exitCode, out := runReleaseCheck(t, fakeMake, buildOut, sarifOut, true)
+	exitCode, out := runReleaseCheck(t, fakeMake, buildOut, sarifOut, true, false)
 	if exitCode == 0 {
 		t.Fatalf("expected non-zero exit from release-check failure path\noutput:\n%s", out)
 	}
@@ -146,5 +158,33 @@ func TestReleaseCheckCleansArtifactsOnFailure(t *testing.T) {
 	}
 	if _, err := os.Stat(sarifOut); !os.IsNotExist(err) {
 		t.Fatalf("expected release-check cleanup to remove SARIF artifact after failure, stat err=%v", err)
+	}
+}
+
+func TestReleaseCheckFailsClosedWhenCleanupRemovalFails(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("release-check shell contract is exercised on POSIX in CI")
+	}
+
+	tmp := t.TempDir()
+	buildDir := filepath.Join(tmp, "build-dir")
+	sarifDir := filepath.Join(tmp, "sarif-dir")
+	buildOut := filepath.Join(buildDir, "release-build")
+	sarifOut := filepath.Join(sarifDir, "inspect.sarif")
+	fakeMake := writeFakeSubmake(t, false)
+	t.Cleanup(func() {
+		_ = os.Chmod(buildDir, 0o755)
+		_ = os.Chmod(sarifDir, 0o755)
+	})
+
+	exitCode, out := runReleaseCheck(t, fakeMake, buildOut, sarifOut, false, true)
+	if exitCode == 0 {
+		t.Fatalf("expected non-zero exit when cleanup removal fails\noutput:\n%s", out)
+	}
+	if _, err := os.Stat(buildOut); err != nil {
+		t.Fatalf("expected build artifact to remain when cleanup fails, stat err=%v", err)
+	}
+	if _, err := os.Stat(sarifOut); err != nil {
+		t.Fatalf("expected SARIF artifact to remain when cleanup fails, stat err=%v", err)
 	}
 }
