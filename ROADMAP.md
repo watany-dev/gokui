@@ -97,7 +97,7 @@ tests/CI:
 - critical detection of multi-line continuation execution chains
 - critical detection of source/dot command-substitution execution chains
 - critical detection of pipe-to-stdin source/dot execution chains
-- pipe-to-stdin source/dot detection covers quoted and escaped-quoted stdin targets (including `/dev/stdin`, `/proc/self/fd/0`, and `-`) and delimiter-terminated forms
+- pipe-to-stdin source/dot detection covers quoted and escaped-quoted stdin targets (including `/dev/stdin`, `/dev/fd/0`, `/proc/self/fd/0`, and `-`) and delimiter-terminated forms
 - critical detection of chmod-then-execute local artifact chains
 - critical detection of secret-path reads combined with network exfiltration
 - medium-severity detection of NFKC normalization text drift with normalized rescanning

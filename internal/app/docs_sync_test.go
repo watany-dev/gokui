@@ -217,6 +217,7 @@ func TestReadmeCriticalPatternDocumentationSync(t *testing.T) {
 		"curl | source /dev/stdin",
 		"decode output piped to `source`/`.` via stdin",
 		"quoted/escaped-quoted stdin targets",
+		"/dev/fd/0",
 	}
 	for _, line := range required {
 		if !strings.Contains(readme, line) {
