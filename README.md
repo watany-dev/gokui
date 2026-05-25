@@ -410,6 +410,8 @@ When offline gate steps fail, release-evidence scripts keep failing build artifa
 for investigation and skip subsequent vuln/cleanup steps.
 Cleanup-removal failures are also tagged with machine-readable code
 `RC_CLEANUP_REMOVE_FAILED`.
+When one or more removals fail, a summary line is emitted with
+`RC_CLEANUP_REMOVE_FAILED_SUMMARY`.
 Generated evidence filenames end with `-offline-audit.md` or
 `-online-audit.md` based on mode.
 

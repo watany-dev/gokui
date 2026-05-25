@@ -386,6 +386,9 @@ func TestReleaseChecklistDocumentationSync(t *testing.T) {
 	if !strings.Contains(releaseDoc, "RC_CLEANUP_REMOVE_FAILED") {
 		t.Fatal("RELEASE.md should document cleanup failure machine-readable error code")
 	}
+	if !strings.Contains(releaseDoc, "RC_CLEANUP_REMOVE_FAILED_SUMMARY") {
+		t.Fatal("RELEASE.md should document cleanup failure summary machine-readable error code")
+	}
 }
 
 func TestReleaseCheckDocumentationSync(t *testing.T) {
@@ -428,6 +431,7 @@ func TestReleaseCheckDocumentationSync(t *testing.T) {
 		"keep failing build artifacts",
 		"for investigation and skip subsequent vuln/cleanup steps",
 		"RC_CLEANUP_REMOVE_FAILED",
+		"RC_CLEANUP_REMOVE_FAILED_SUMMARY",
 		"git status --short --untracked-files=no",
 		"-offline-audit.md",
 		"-online-audit.md",
@@ -498,6 +502,7 @@ func TestMakefileVulnToolchainBaselineSync(t *testing.T) {
 		"cleanup_release_check_outputs() {",
 		`for output_path in "$(RELEASE_CHECK_BUILD_OUT_ABS)" "$(RELEASE_CHECK_SARIF_OUT_ABS)"; do \`,
 		`echo "[RC_CLEANUP_REMOVE_FAILED] release-check cleanup failed for output path: $$output_path" >&2; \`,
+		`echo "[RC_CLEANUP_REMOVE_FAILED_SUMMARY] release-check cleanup failed for $$failed_count output path(s)" >&2; \`,
 		"emit_preflight_error() {",
 		`echo "[$$code] $$message" >&2; \`,
 		"assert_no_symlink_components() {",

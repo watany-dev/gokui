@@ -119,6 +119,8 @@ When offline gate steps fail, evidence scripts keep failing build artifacts for
 investigation and skip subsequent vuln/cleanup steps.
 Cleanup-removal failures are tagged with machine-readable code
 `RC_CLEANUP_REMOVE_FAILED`.
+When one or more removals fail, a summary line is emitted with
+`RC_CLEANUP_REMOVE_FAILED_SUMMARY`.
 
 At minimum, capture:
 - mode (`offline` or `online`)

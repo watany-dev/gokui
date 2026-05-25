@@ -119,12 +119,17 @@ release-check: release-check-preflight
 	@set -e; \
 	cleanup_release_check_outputs() { \
 		failed=0; \
+		failed_count=0; \
 		for output_path in "$(RELEASE_CHECK_BUILD_OUT_ABS)" "$(RELEASE_CHECK_SARIF_OUT_ABS)"; do \
 			if [ -e "$$output_path" ] && ! rm -f -- "$$output_path"; then \
 				echo "[RC_CLEANUP_REMOVE_FAILED] release-check cleanup failed for output path: $$output_path" >&2; \
 				failed=1; \
+				failed_count=$$((failed_count + 1)); \
 			fi; \
 		done; \
+		if [ "$$failed_count" -ne 0 ]; then \
+			echo "[RC_CLEANUP_REMOVE_FAILED_SUMMARY] release-check cleanup failed for $$failed_count output path(s)" >&2; \
+		fi; \
 		return "$$failed"; \
 	}; \
 	$(MAKE) check; \
