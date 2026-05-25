@@ -510,8 +510,13 @@ func TestReleaseEvidenceScriptExecutionContractSync(t *testing.T) {
 	script := string(scriptBytes)
 
 	required := []string{
+		"umask 077",
+		"assert_no_symlink_components()",
 		`EVIDENCE_MODE="offline"`,
 		`EVIDENCE_MODE="online"`,
+		`assert_no_symlink_components "$OUT_DIR" "evidence directory"`,
+		`assert_no_symlink_components "$LOG_DIR" "evidence log directory"`,
+		`assert_no_symlink_components "$OUT_PATH" "evidence path"`,
 		`echo "- Mode: ${EVIDENCE_MODE}"`,
 		`git status --short --untracked-files=no`,
 		`BUILD_OUT=$ROOT_DIR/.cache/gokui-release-evidence make release-check-offline`,
