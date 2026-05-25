@@ -116,10 +116,20 @@ release-check-preflight:
 	fi
 release-check: release-check-preflight
 	@set -e; \
+	cleanup_release_check_outputs() { \
+		failed=0; \
+		for output_path in "$(RELEASE_CHECK_BUILD_OUT_ABS)" "$(RELEASE_CHECK_SARIF_OUT_ABS)"; do \
+			if [ -e "$$output_path" ] && ! rm -f -- "$$output_path"; then \
+				echo "release-check cleanup failed for output path: $$output_path" >&2; \
+				failed=1; \
+			fi; \
+		done; \
+		return "$$failed"; \
+	}; \
 	$(MAKE) check; \
 	$(MAKE) test; \
 	$(MAKE) test-race; \
-	trap 'rm -f -- "$(RELEASE_CHECK_BUILD_OUT_ABS)" "$(RELEASE_CHECK_SARIF_OUT_ABS)"' EXIT; \
+	trap 'cleanup_release_check_outputs' EXIT; \
 	$(MAKE) build BUILD_OUT=$(RELEASE_CHECK_BUILD_OUT_ABS); \
 	$(MAKE) inspect-sarif INSPECT_SARIF_OUT=$(RELEASE_CHECK_SARIF_OUT_ABS); \
 	if [ "$(RELEASE_CHECK_VULN)" = "1" ]; then \
