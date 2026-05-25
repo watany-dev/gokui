@@ -114,6 +114,7 @@ var (
 	shellIndirectNamedPattern       = regexp.MustCompile(`\$\{!([A-Za-z_][A-Za-z0-9_]*)\}`)
 	shellIndirectPosPattern         = regexp.MustCompile(`\$\{!([0-9]{1,10})\}`)
 	shellArithmeticExpansionPattern = regexp.MustCompile(`\$\(\([^\n]{1,120}?\)\)`)
+	shellAnsiCQuotePattern          = regexp.MustCompile(`\$'[^'\n]{1,120}'`)
 
 	promptOverridePattern = regexp.MustCompile(`(?i)\b(?:ignore|override|bypass)\b.{0,80}\b(?:previous|prior|system|higher|earlier)\b.{0,40}\b(?:instruction|instructions|prompt|prompts)\b`)
 
@@ -1068,6 +1069,7 @@ func normalizeShellSpecialProcParams(line string) string {
 	out = shellIndirectPosPattern.ReplaceAllString(out, `${$1}`)
 	out = normalizeShellProcCommandSubstitutions(out)
 	out = shellArithmeticExpansionPattern.ReplaceAllString(out, "$$$$")
+	out = shellAnsiCQuotePattern.ReplaceAllString(out, "$$$$")
 	out = strings.ReplaceAll(out, "$!", "$$")
 	out = strings.ReplaceAll(out, "$?", "$$")
 	out = strings.ReplaceAll(out, "$#", "$$")
