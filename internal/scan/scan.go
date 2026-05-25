@@ -3541,6 +3541,7 @@ func parseDisplayLinkHost(label string) (string, bool) {
 	if strings.HasPrefix(trimmed, "<") && strings.HasSuffix(trimmed, ">") && len(trimmed) > 2 {
 		trimmed = strings.TrimSpace(trimmed[1 : len(trimmed)-1])
 	}
+	trimmed = unwrapMarkdownEmphasis(trimmed)
 	trimmed = unwrapMarkdownCodeSpan(trimmed)
 	if trimmed == "" || strings.Contains(trimmed, " ") {
 		return "", false
@@ -3555,6 +3556,26 @@ func parseDisplayLinkHost(label string) (string, bool) {
 		return "", false
 	}
 	return parseURLHost("https://" + trimmed)
+}
+
+func unwrapMarkdownEmphasis(value string) string {
+	if strings.HasPrefix(value, "**") && strings.HasSuffix(value, "**") && len(value) > 4 {
+		return strings.TrimSpace(value[2 : len(value)-2])
+	}
+	if strings.HasPrefix(value, "__") && strings.HasSuffix(value, "__") && len(value) > 4 {
+		return strings.TrimSpace(value[2 : len(value)-2])
+	}
+	if strings.HasPrefix(value, "*") && strings.HasSuffix(value, "*") && len(value) > 2 {
+		if value[1] != '*' && value[len(value)-2] != '*' {
+			return strings.TrimSpace(value[1 : len(value)-1])
+		}
+	}
+	if strings.HasPrefix(value, "_") && strings.HasSuffix(value, "_") && len(value) > 2 {
+		if value[1] != '_' && value[len(value)-2] != '_' {
+			return strings.TrimSpace(value[1 : len(value)-1])
+		}
+	}
+	return value
 }
 
 func parseMarkdownLinkTargetHost(target string) (string, bool) {

@@ -1001,6 +1001,22 @@ func TestClassifyMarkdownLinkSpoofing(t *testing.T) {
 		}
 	})
 
+	t.Run("handles emphasis-wrapped display URLs", func(t *testing.T) {
+		line := "[**https://trusted.example.com/login**](https://evil.example.net/login)"
+		findings := classifyMarkdownLinkSpoofing(line, "SKILL.md", 13)
+		assertHasID(t, findings, "LINK_SPOOFING_URL_MISMATCH")
+
+		line = "[_https://trusted.example.com/login_](https://evil.example.net/login)"
+		findings = classifyMarkdownLinkSpoofing(line, "SKILL.md", 13)
+		assertHasID(t, findings, "LINK_SPOOFING_URL_MISMATCH")
+
+		line = "[__https://trusted.example.com/login__](https://trusted.example.com/login)"
+		findings = classifyMarkdownLinkSpoofing(line, "SKILL.md", 13)
+		if len(findings) != 0 {
+			t.Fatalf("expected no findings for equivalent emphasis-wrapped display URL, got %+v", findings)
+		}
+	})
+
 	t.Run("handles markdown link targets with titles", func(t *testing.T) {
 		line := "[https://trusted.example.com/login](https://evil.example.net/login \"reference docs\")"
 		findings := classifyMarkdownLinkSpoofing(line, "SKILL.md", 13)
@@ -1219,6 +1235,35 @@ func TestBuildMarkdownReferenceUsageContinuationVariant(t *testing.T) {
 		}
 		if _, ok := buildMarkdownReferenceUsageContinuationVariant([]string{"plain text", "[auth]"}, 0); ok {
 			t.Fatalf("expected no continuation variant when current line lacks closing bracket")
+		}
+	})
+}
+
+func TestUnwrapMarkdownEmphasis(t *testing.T) {
+	t.Run("unwraps supported outer emphasis markers", func(t *testing.T) {
+		if got := unwrapMarkdownEmphasis("**https://trusted.example.com/login**"); got != "https://trusted.example.com/login" {
+			t.Fatalf("expected double-asterisk unwrap, got %q", got)
+		}
+		if got := unwrapMarkdownEmphasis("__https://trusted.example.com/login__"); got != "https://trusted.example.com/login" {
+			t.Fatalf("expected double-underscore unwrap, got %q", got)
+		}
+		if got := unwrapMarkdownEmphasis("*https://trusted.example.com/login*"); got != "https://trusted.example.com/login" {
+			t.Fatalf("expected single-asterisk unwrap, got %q", got)
+		}
+		if got := unwrapMarkdownEmphasis("_https://trusted.example.com/login_"); got != "https://trusted.example.com/login" {
+			t.Fatalf("expected single-underscore unwrap, got %q", got)
+		}
+	})
+
+	t.Run("keeps malformed or non-emphasis values unchanged", func(t *testing.T) {
+		if got := unwrapMarkdownEmphasis("*https://trusted.example.com/login**"); got != "*https://trusted.example.com/login**" {
+			t.Fatalf("expected mismatched markers to remain unchanged, got %q", got)
+		}
+		if got := unwrapMarkdownEmphasis("**"); got != "**" {
+			t.Fatalf("expected short marker-only value to remain unchanged, got %q", got)
+		}
+		if got := unwrapMarkdownEmphasis("https://trusted.example.com/login"); got != "https://trusted.example.com/login" {
+			t.Fatalf("expected plain value to remain unchanged, got %q", got)
 		}
 	})
 }
