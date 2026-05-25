@@ -3375,6 +3375,7 @@ func parseDisplayLinkHost(label string) (string, bool) {
 	if strings.HasPrefix(trimmed, "<") && strings.HasSuffix(trimmed, ">") && len(trimmed) > 2 {
 		trimmed = strings.TrimSpace(trimmed[1 : len(trimmed)-1])
 	}
+	trimmed = unwrapMarkdownCodeSpan(trimmed)
 	if trimmed == "" || strings.Contains(trimmed, " ") {
 		return "", false
 	}
@@ -3388,6 +3389,24 @@ func parseDisplayLinkHost(label string) (string, bool) {
 		return "", false
 	}
 	return parseURLHost("https://" + trimmed)
+}
+
+func unwrapMarkdownCodeSpan(value string) string {
+	if !strings.HasPrefix(value, "`") {
+		return value
+	}
+	width := 0
+	for width < len(value) && value[width] == '`' {
+		width++
+	}
+	if width == 0 || len(value) <= width*2 {
+		return value
+	}
+	fence := strings.Repeat("`", width)
+	if !strings.HasSuffix(value, fence) {
+		return value
+	}
+	return strings.TrimSpace(value[width : len(value)-width])
 }
 
 func containsIDNALabelSeparator(value string) bool {

@@ -916,6 +916,18 @@ func TestClassifyMarkdownLinkSpoofing(t *testing.T) {
 		}
 	})
 
+	t.Run("handles inline-code display URLs", func(t *testing.T) {
+		line := "[`https://trusted.example.com/login`](https://evil.example.net/login)"
+		findings := classifyMarkdownLinkSpoofing(line, "SKILL.md", 13)
+		assertHasID(t, findings, "LINK_SPOOFING_URL_MISMATCH")
+
+		line = "[`https://trusted.example.com/login`](https://trusted.example.com/login)"
+		findings = classifyMarkdownLinkSpoofing(line, "SKILL.md", 13)
+		if len(findings) != 0 {
+			t.Fatalf("expected no findings for equivalent inline-code display URL, got %+v", findings)
+		}
+	})
+
 	t.Run("ignores malformed display or target URLs", func(t *testing.T) {
 		line := "[https://trusted.example.com/%zz](https://evil.example.net/login)"
 		findings := classifyMarkdownLinkSpoofing(line, "SKILL.md", 14)
