@@ -368,6 +368,8 @@ func TestReleaseEvidenceScriptExecutionContractSync(t *testing.T) {
 	script := string(scriptBytes)
 
 	required := []string{
+		`EVIDENCE_MODE="offline"`,
+		`EVIDENCE_MODE="online"`,
 		`git status --short --untracked-files=no`,
 		`BUILD_OUT=$ROOT_DIR/.cache/gokui-release-evidence make release-check-offline`,
 		`cleanup evidence build artifact`,

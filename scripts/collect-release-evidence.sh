@@ -6,6 +6,7 @@ OUT_DIR="$ROOT_DIR/releases/evidence"
 LOG_DIR="$OUT_DIR/logs"
 WITH_VULN=0
 AUDIT_KIND="offline-audit"
+EVIDENCE_MODE="offline"
 
 usage() {
   cat <<USAGE
@@ -21,6 +22,7 @@ while [ "$#" -gt 0 ]; do
     --with-vuln)
       WITH_VULN=1
       AUDIT_KIND="online-audit"
+      EVIDENCE_MODE="online"
       ;;
     -h|--help)
       usage
@@ -100,6 +102,7 @@ run_git_clean_check() {
   echo
   echo "## Metadata"
   echo "- Generated (UTC): ${TS}"
+  echo "- Mode: ${EVIDENCE_MODE}"
   echo "- Candidate commit SHA: ${COMMIT_SHA}"
   echo "- Host: $(uname -srm)"
   echo "- Go version: $(go version 2>/dev/null || echo unknown)"
