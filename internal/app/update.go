@@ -18,7 +18,7 @@ import (
 	srcpkg "github.com/watany-dev/gokui/internal/source"
 )
 
-var updateURLPattern = regexp.MustCompile(`(?:https?://|//)[^\s<>"')\]]+`)
+var updateURLPattern = regexp.MustCompile(`(?i)(?:https?://|//)[^\s<>"')\]]+`)
 
 var (
 	updateMaxURLScanFileBytes int64 = 1_000_000
