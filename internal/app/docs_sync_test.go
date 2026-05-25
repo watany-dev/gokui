@@ -350,6 +350,15 @@ func TestReleaseChecklistDocumentationSync(t *testing.T) {
 	if !strings.Contains(releaseDoc, "mode (`offline` or `online`)") {
 		t.Fatal("RELEASE.md should require recording evidence mode in captured metadata")
 	}
+	if !strings.Contains(releaseDoc, "fail closed when repository-root/output/log paths include") {
+		t.Fatal("RELEASE.md should document fail-closed path hardening for release scripts")
+	}
+	if !strings.Contains(releaseDoc, "expected output/log files already exist") {
+		t.Fatal("RELEASE.md should document output/log collision fail-closed behavior")
+	}
+	if !strings.Contains(releaseDoc, "keep failing build artifacts for") || !strings.Contains(releaseDoc, "skip subsequent vuln/cleanup steps") {
+		t.Fatal("RELEASE.md should document failure-artifact retention and skip behavior")
+	}
 }
 
 func TestReleaseCheckDocumentationSync(t *testing.T) {

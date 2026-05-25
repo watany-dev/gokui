@@ -96,6 +96,10 @@ For evidence scripts, clean-tree checks are tracked-files only
 `.cache/gokui-release-evidence`.
 Evidence file names end with `-offline-audit.md` or `-online-audit.md`
 depending on whether `--with-vuln` is enabled.
+Release scripts fail closed when repository-root/output/log paths include
+symlink components or expected output/log files already exist.
+When offline gate steps fail, evidence scripts keep failing build artifacts for
+investigation and skip subsequent vuln/cleanup steps.
 
 At minimum, capture:
 - mode (`offline` or `online`)
