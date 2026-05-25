@@ -1242,11 +1242,23 @@ func isNestedShellSubstringArgList(line string, start, outerEnd int) bool {
 	}
 
 	secondStart := firstEnd + 2
-	if secondStart+1 >= outerEnd || line[secondStart] != '$' || line[secondStart+1] != '{' {
+	if secondStart+1 < outerEnd && line[secondStart] == '$' && line[secondStart+1] == '{' {
+		secondEnd := findShellParamExpansionEnd(line, secondStart)
+		return secondEnd == outerEnd-1
+	}
+	return isPlainSubstringArg(line, secondStart, outerEnd)
+}
+
+func isPlainSubstringArg(line string, start, outerEnd int) bool {
+	if start >= outerEnd {
 		return false
 	}
-	secondEnd := findShellParamExpansionEnd(line, secondStart)
-	return secondEnd == outerEnd-1
+	for i := start; i < outerEnd; i++ {
+		if line[i] == '{' || line[i] == '}' || line[i] == '\n' {
+			return false
+		}
+	}
+	return true
 }
 
 func findShellParamExpansionEnd(line string, start int) int {
