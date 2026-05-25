@@ -79,10 +79,11 @@ release-check-preflight:
 	assert_no_symlink_components() { \
 		path="$$1"; \
 		label="$$2"; \
+		code="$$3"; \
 		current="$$path"; \
 		while :; do \
 			if [ -L "$$current" ]; then \
-				echo "$$label contains symlink path component: $$current" >&2; \
+				echo "[$$code] $$label contains symlink path component: $$current" >&2; \
 				exit 1; \
 			fi; \
 			parent="$$(dirname "$$current")"; \
@@ -93,25 +94,25 @@ release-check-preflight:
 		done; \
 	}; \
 	case "$(RELEASE_CHECK_BUILD_OUT)" in ""|"/"|"."|*/) \
-		echo "release-check build output path must be a non-root file path" >&2; \
+		echo "[RC_PREFLIGHT_BUILD_OUT_INVALID] release-check build output path must be a non-root file path" >&2; \
 		exit 1; \
 	;; esac; \
 	case "$(RELEASE_CHECK_SARIF_OUT)" in ""|"/"|"."|*/) \
-		echo "release-check SARIF output path must be a non-root file path" >&2; \
+		echo "[RC_PREFLIGHT_SARIF_OUT_INVALID] release-check SARIF output path must be a non-root file path" >&2; \
 		exit 1; \
 	;; esac; \
-	assert_no_symlink_components "$(RELEASE_CHECK_BUILD_OUT_ABS)" "release-check build output path"; \
-	assert_no_symlink_components "$(RELEASE_CHECK_SARIF_OUT_ABS)" "release-check SARIF output path"; \
+	assert_no_symlink_components "$(RELEASE_CHECK_BUILD_OUT_ABS)" "release-check build output path" "RC_PREFLIGHT_BUILD_OUT_SYMLINK"; \
+	assert_no_symlink_components "$(RELEASE_CHECK_SARIF_OUT_ABS)" "release-check SARIF output path" "RC_PREFLIGHT_SARIF_OUT_SYMLINK"; \
 	if [ "$(RELEASE_CHECK_BUILD_OUT_ABS)" = "$(RELEASE_CHECK_SARIF_OUT_ABS)" ]; then \
-		echo "release-check build and SARIF outputs must be different paths: build=$(RELEASE_CHECK_BUILD_OUT_ABS) sarif=$(RELEASE_CHECK_SARIF_OUT_ABS)" >&2; \
+		echo "[RC_PREFLIGHT_OUTPUT_PATH_CONFLICT] release-check build and SARIF outputs must be different paths: build=$(RELEASE_CHECK_BUILD_OUT_ABS) sarif=$(RELEASE_CHECK_SARIF_OUT_ABS)" >&2; \
 		exit 1; \
 	fi; \
 	if [ -e "$(RELEASE_CHECK_BUILD_OUT_ABS)" ]; then \
-		echo "release-check build output already exists: $(RELEASE_CHECK_BUILD_OUT_ABS)" >&2; \
+		echo "[RC_PREFLIGHT_BUILD_OUT_EXISTS] release-check build output already exists: $(RELEASE_CHECK_BUILD_OUT_ABS)" >&2; \
 		exit 1; \
 	fi; \
 	if [ -e "$(RELEASE_CHECK_SARIF_OUT_ABS)" ]; then \
-		echo "release-check SARIF output already exists: $(RELEASE_CHECK_SARIF_OUT_ABS)" >&2; \
+		echo "[RC_PREFLIGHT_SARIF_OUT_EXISTS] release-check SARIF output already exists: $(RELEASE_CHECK_SARIF_OUT_ABS)" >&2; \
 		exit 1; \
 	fi
 release-check: release-check-preflight

@@ -52,6 +52,9 @@ func TestReleaseCheckPreflightRejectsSameOutputPath(t *testing.T) {
 	if !strings.Contains(out, "build and SARIF outputs must be different paths") {
 		t.Fatalf("expected distinct-path rejection message, got:\n%s", out)
 	}
+	if !strings.Contains(out, "[RC_PREFLIGHT_OUTPUT_PATH_CONFLICT]") {
+		t.Fatalf("expected distinct-path rejection code, got:\n%s", out)
+	}
 	if !strings.Contains(out, "build="+shared) || !strings.Contains(out, "sarif="+shared) {
 		t.Fatalf("expected distinct-path rejection to include concrete paths, got:\n%s", out)
 	}
@@ -75,6 +78,9 @@ func TestReleaseCheckPreflightRejectsSameOutputPathAfterNormalization(t *testing
 	}
 	if !strings.Contains(out, "build and SARIF outputs must be different paths") {
 		t.Fatalf("expected normalized distinct-path rejection message, got:\n%s", out)
+	}
+	if !strings.Contains(out, "[RC_PREFLIGHT_OUTPUT_PATH_CONFLICT]") {
+		t.Fatalf("expected normalized distinct-path rejection code, got:\n%s", out)
 	}
 	buildAbs := filepath.Clean(buildOut)
 	sarifAbs := filepath.Clean(sarifOut)
@@ -105,6 +111,9 @@ func TestReleaseCheckPreflightRejectsExistingBuildOutput(t *testing.T) {
 	if !strings.Contains(out, "release-check build output already exists:") {
 		t.Fatalf("expected build output collision rejection message, got:\n%s", out)
 	}
+	if !strings.Contains(out, "[RC_PREFLIGHT_BUILD_OUT_EXISTS]") {
+		t.Fatalf("expected build output collision rejection code, got:\n%s", out)
+	}
 }
 
 func TestReleaseCheckPreflightRejectsExistingSARIFOutput(t *testing.T) {
@@ -128,6 +137,9 @@ func TestReleaseCheckPreflightRejectsExistingSARIFOutput(t *testing.T) {
 	}
 	if !strings.Contains(out, "release-check SARIF output already exists:") {
 		t.Fatalf("expected SARIF output collision rejection message, got:\n%s", out)
+	}
+	if !strings.Contains(out, "[RC_PREFLIGHT_SARIF_OUT_EXISTS]") {
+		t.Fatalf("expected SARIF output collision rejection code, got:\n%s", out)
 	}
 }
 
@@ -157,6 +169,9 @@ func TestReleaseCheckPreflightRejectsRootOrDirectoryLikeBuildOutput(t *testing.T
 			}
 			if !strings.Contains(out, "build output path must be a non-root file path") {
 				t.Fatalf("expected non-root build output rejection message, got:\n%s", out)
+			}
+			if !strings.Contains(out, "[RC_PREFLIGHT_BUILD_OUT_INVALID]") {
+				t.Fatalf("expected non-root build output rejection code, got:\n%s", out)
 			}
 		})
 	}
@@ -189,6 +204,9 @@ func TestReleaseCheckPreflightRejectsRootOrDirectoryLikeSARIFOutput(t *testing.T
 			if !strings.Contains(out, "SARIF output path must be a non-root file path") {
 				t.Fatalf("expected non-root SARIF output rejection message, got:\n%s", out)
 			}
+			if !strings.Contains(out, "[RC_PREFLIGHT_SARIF_OUT_INVALID]") {
+				t.Fatalf("expected non-root SARIF output rejection code, got:\n%s", out)
+			}
 		})
 	}
 }
@@ -218,6 +236,9 @@ func TestReleaseCheckPreflightRejectsSymlinkPathComponent(t *testing.T) {
 	if !strings.Contains(out, "release-check build output path contains symlink path component") {
 		t.Fatalf("expected build symlink-component rejection message, got:\n%s", out)
 	}
+	if !strings.Contains(out, "[RC_PREFLIGHT_BUILD_OUT_SYMLINK]") {
+		t.Fatalf("expected build symlink-component rejection code, got:\n%s", out)
+	}
 }
 
 func TestReleaseCheckPreflightRejectsSARIFSymlinkPathComponent(t *testing.T) {
@@ -244,6 +265,9 @@ func TestReleaseCheckPreflightRejectsSARIFSymlinkPathComponent(t *testing.T) {
 	}
 	if !strings.Contains(out, "release-check SARIF output path contains symlink path component") {
 		t.Fatalf("expected SARIF symlink-component rejection message, got:\n%s", out)
+	}
+	if !strings.Contains(out, "[RC_PREFLIGHT_SARIF_OUT_SYMLINK]") {
+		t.Fatalf("expected SARIF symlink-component rejection code, got:\n%s", out)
 	}
 }
 
