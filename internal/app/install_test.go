@@ -824,6 +824,34 @@ func TestRunInstallJSONOutput(t *testing.T) {
 			}
 		})
 
+		t.Run("source-prepare archive special-file errors include rule_id", func(t *testing.T) {
+			sourceDir := filepath.Join(t.TempDir(), "not-archive.zip")
+			if err := os.Mkdir(sourceDir, 0o755); err != nil {
+				t.Fatalf("mkdir source dir: %v", err)
+			}
+
+			var stdout strings.Builder
+			var stderr strings.Builder
+			code := runInstall([]string{
+				sourceDir,
+				"--target", "custom:" + filepath.Join(t.TempDir(), "skills"),
+				"--profile", "strict",
+				"--format", "json",
+			}, &stdout, &stderr)
+			if code != 1 {
+				t.Fatalf("runInstall(json archive special-file) code = %d, want 1\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
+			}
+			if stderr.Len() != 0 {
+				t.Fatalf("stderr should be empty for json errors, got %q", stderr.String())
+			}
+			if !strings.Contains(stdout.String(), "\"error_code\": \""+installErrorCodeSourcePrepareFailed+"\"") {
+				t.Fatalf("stdout should include source-prepare error_code, got %q", stdout.String())
+			}
+			if !strings.Contains(stdout.String(), "\"rule_id\": \"ARCHIVE_SOURCE_SPECIAL_FILE\"") {
+				t.Fatalf("stdout should include archive source special-file rule_id, got %q", stdout.String())
+			}
+		})
+
 		t.Run("source metadata validation failure for github source", func(t *testing.T) {
 			metaSource := createSkillSourceForInstallTest(t, "json-meta-invalid")
 			if err := writeSourceMetadata(metaSource, sourceMetadata{
@@ -1755,6 +1783,42 @@ func TestRunInstallSARIFOutput(t *testing.T) {
 		}
 		if sarif.Runs[0].Results[0].RuleID != "ARCHIVE_SOURCE_SYMLINK_DETECTED" {
 			t.Fatalf("rule id = %q, want ARCHIVE_SOURCE_SYMLINK_DETECTED", sarif.Runs[0].Results[0].RuleID)
+		}
+		if sarif.Runs[0].Properties.Decision != "ERROR" {
+			t.Fatalf("decision = %q, want ERROR", sarif.Runs[0].Properties.Decision)
+		}
+	})
+
+	t.Run("sarif source-prepare archive special-file includes rule_id", func(t *testing.T) {
+		sourceDir := filepath.Join(t.TempDir(), "not-archive.zip")
+		if err := os.Mkdir(sourceDir, 0o755); err != nil {
+			t.Fatalf("mkdir source dir: %v", err)
+		}
+
+		var stdout strings.Builder
+		var stderr strings.Builder
+		code := runInstall([]string{
+			sourceDir,
+			"--target", "custom:" + filepath.Join(t.TempDir(), "skills"),
+			"--profile", "strict",
+			"--format", "sarif",
+		}, &stdout, &stderr)
+		if code != 1 {
+			t.Fatalf("runInstall(sarif archive special-file) code = %d, want 1\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
+		}
+		if stderr.Len() != 0 {
+			t.Fatalf("stderr should be empty for sarif errors, got %q", stderr.String())
+		}
+
+		var sarif inspectSARIFReport
+		if err := json.Unmarshal([]byte(stdout.String()), &sarif); err != nil {
+			t.Fatalf("sarif parse failed: %v", err)
+		}
+		if len(sarif.Runs) != 1 || len(sarif.Runs[0].Results) != 1 {
+			t.Fatalf("unexpected sarif structure: %+v", sarif)
+		}
+		if sarif.Runs[0].Results[0].RuleID != "ARCHIVE_SOURCE_SPECIAL_FILE" {
+			t.Fatalf("rule id = %q, want ARCHIVE_SOURCE_SPECIAL_FILE", sarif.Runs[0].Results[0].RuleID)
 		}
 		if sarif.Runs[0].Properties.Decision != "ERROR" {
 			t.Fatalf("decision = %q, want ERROR", sarif.Runs[0].Properties.Decision)

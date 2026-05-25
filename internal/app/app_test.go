@@ -1809,6 +1809,30 @@ func TestRun(t *testing.T) {
 		}
 	})
 
+	t.Run("vet surfaces archive source special-file rule_id in json error", func(t *testing.T) {
+		var stdout bytes.Buffer
+		var stderr bytes.Buffer
+
+		sourceDir := filepath.Join(t.TempDir(), "not-archive.zip")
+		if err := os.Mkdir(sourceDir, 0o755); err != nil {
+			t.Fatalf("mkdir source dir: %v", err)
+		}
+
+		code := Run([]string{"vet", sourceDir, "--format", "json"}, &stdout, &stderr, cfg)
+		if code != 1 {
+			t.Fatalf("Run() code = %d, want 1\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
+		}
+		if stderr.Len() != 0 {
+			t.Fatalf("stderr should be empty, got %q", stderr.String())
+		}
+		if !strings.Contains(stdout.String(), "\"error_code\": \""+inspectErrorCodeSourcePrepareFailed+"\"") {
+			t.Fatalf("stdout should include source-prepare-failed error code, got %q", stdout.String())
+		}
+		if !strings.Contains(stdout.String(), "\"rule_id\": \"ARCHIVE_SOURCE_SPECIAL_FILE\"") {
+			t.Fatalf("stdout should include archive-source special-file rule_id, got %q", stdout.String())
+		}
+	})
+
 	t.Run("vet rejects github source", func(t *testing.T) {
 		var stdout bytes.Buffer
 		var stderr bytes.Buffer
@@ -1891,6 +1915,35 @@ func TestRun(t *testing.T) {
 		}
 		if sarif.Runs[0].Results[0].RuleID != "ARCHIVE_SOURCE_SYMLINK_DETECTED" {
 			t.Fatalf("rule id = %q, want ARCHIVE_SOURCE_SYMLINK_DETECTED", sarif.Runs[0].Results[0].RuleID)
+		}
+	})
+
+	t.Run("vet surfaces archive source special-file rule_id in sarif error", func(t *testing.T) {
+		var stdout bytes.Buffer
+		var stderr bytes.Buffer
+
+		sourceDir := filepath.Join(t.TempDir(), "not-archive.zip")
+		if err := os.Mkdir(sourceDir, 0o755); err != nil {
+			t.Fatalf("mkdir source dir: %v", err)
+		}
+
+		code := Run([]string{"vet", sourceDir, "--format", "sarif"}, &stdout, &stderr, cfg)
+		if code != 1 {
+			t.Fatalf("Run() code = %d, want 1\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
+		}
+		if stderr.Len() != 0 {
+			t.Fatalf("stderr should be empty, got %q", stderr.String())
+		}
+
+		var sarif inspectSARIFReport
+		if err := json.Unmarshal(stdout.Bytes(), &sarif); err != nil {
+			t.Fatalf("sarif parse failed: %v", err)
+		}
+		if len(sarif.Runs) != 1 || len(sarif.Runs[0].Results) != 1 {
+			t.Fatalf("unexpected sarif structure: %+v", sarif)
+		}
+		if sarif.Runs[0].Results[0].RuleID != "ARCHIVE_SOURCE_SPECIAL_FILE" {
+			t.Fatalf("rule id = %q, want ARCHIVE_SOURCE_SPECIAL_FILE", sarif.Runs[0].Results[0].RuleID)
 		}
 	})
 
@@ -2067,6 +2120,35 @@ func TestRun(t *testing.T) {
 		}
 		if sarif.Runs[0].Results[0].RuleID != "ARCHIVE_SOURCE_SYMLINK_DETECTED" {
 			t.Fatalf("rule id = %q, want ARCHIVE_SOURCE_SYMLINK_DETECTED", sarif.Runs[0].Results[0].RuleID)
+		}
+	})
+
+	t.Run("inspect surfaces archive source special-file rule_id in sarif error", func(t *testing.T) {
+		var stdout bytes.Buffer
+		var stderr bytes.Buffer
+
+		sourceDir := filepath.Join(t.TempDir(), "not-archive.zip")
+		if err := os.Mkdir(sourceDir, 0o755); err != nil {
+			t.Fatalf("mkdir source dir: %v", err)
+		}
+
+		code := Run([]string{"inspect", sourceDir, "--format", "sarif"}, &stdout, &stderr, cfg)
+		if code != 1 {
+			t.Fatalf("Run() code = %d, want 1\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
+		}
+		if stderr.Len() != 0 {
+			t.Fatalf("stderr should be empty, got %q", stderr.String())
+		}
+
+		var sarif inspectSARIFReport
+		if err := json.Unmarshal(stdout.Bytes(), &sarif); err != nil {
+			t.Fatalf("sarif parse failed: %v", err)
+		}
+		if len(sarif.Runs) != 1 || len(sarif.Runs[0].Results) != 1 {
+			t.Fatalf("unexpected sarif structure: %+v", sarif)
+		}
+		if sarif.Runs[0].Results[0].RuleID != "ARCHIVE_SOURCE_SPECIAL_FILE" {
+			t.Fatalf("rule id = %q, want ARCHIVE_SOURCE_SPECIAL_FILE", sarif.Runs[0].Results[0].RuleID)
 		}
 	})
 
@@ -2316,6 +2398,30 @@ func TestRun(t *testing.T) {
 		}
 		if !strings.Contains(stdout.String(), "\"rule_id\": \"ARCHIVE_SOURCE_SYMLINK_DETECTED\"") {
 			t.Fatalf("stdout should include archive-source symlink rule_id, got %q", stdout.String())
+		}
+	})
+
+	t.Run("inspect surfaces archive source special-file rule_id in json error", func(t *testing.T) {
+		var stdout bytes.Buffer
+		var stderr bytes.Buffer
+
+		sourceDir := filepath.Join(t.TempDir(), "not-archive.zip")
+		if err := os.Mkdir(sourceDir, 0o755); err != nil {
+			t.Fatalf("mkdir source dir: %v", err)
+		}
+
+		code := Run([]string{"inspect", sourceDir, "--format", "json"}, &stdout, &stderr, cfg)
+		if code != 1 {
+			t.Fatalf("Run() code = %d, want 1\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
+		}
+		if stderr.Len() != 0 {
+			t.Fatalf("stderr should be empty for json output, got %q", stderr.String())
+		}
+		if !strings.Contains(stdout.String(), "\"error_code\": \""+inspectErrorCodeSourcePrepareFailed+"\"") {
+			t.Fatalf("stdout should include source-prepare-failed code, got %q", stdout.String())
+		}
+		if !strings.Contains(stdout.String(), "\"rule_id\": \"ARCHIVE_SOURCE_SPECIAL_FILE\"") {
+			t.Fatalf("stdout should include archive-source special-file rule_id, got %q", stdout.String())
 		}
 	})
 
