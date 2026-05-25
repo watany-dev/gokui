@@ -468,7 +468,7 @@ func TestMakefileVulnToolchainBaselineSync(t *testing.T) {
 		`if [ -e "$(RELEASE_CHECK_SARIF_OUT)" ]; then \`,
 		"$(GO) build -trimpath -buildvcs=true -ldflags='$(LDFLAGS)' -o $(BUILD_OUT) $(MAIN_PKG)",
 		"$(MAKE) build BUILD_OUT=$(RELEASE_CHECK_BUILD_OUT)",
-		`trap 'rm -f "$(RELEASE_CHECK_BUILD_OUT)" "$(RELEASE_CHECK_SARIF_OUT)"' EXIT; \`,
+		`trap 'rm -f -- "$(RELEASE_CHECK_BUILD_OUT)" "$(RELEASE_CHECK_SARIF_OUT)"' EXIT; \`,
 		"GOTOOLCHAIN=$(VULN_GOTOOLCHAIN) $(GO) tool govulncheck ./...",
 		"release-evidence-offline:",
 		"./scripts/collect-release-evidence.sh",

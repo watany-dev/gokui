@@ -104,7 +104,7 @@ release-check: check test test-race
 		echo "release-check SARIF output already exists: $(RELEASE_CHECK_SARIF_OUT)" >&2; \
 		exit 1; \
 	fi; \
-	trap 'rm -f "$(RELEASE_CHECK_BUILD_OUT)" "$(RELEASE_CHECK_SARIF_OUT)"' EXIT; \
+	trap 'rm -f -- "$(RELEASE_CHECK_BUILD_OUT)" "$(RELEASE_CHECK_SARIF_OUT)"' EXIT; \
 	$(MAKE) build BUILD_OUT=$(RELEASE_CHECK_BUILD_OUT); \
 	$(MAKE) inspect-sarif INSPECT_SARIF_OUT=$(RELEASE_CHECK_SARIF_OUT); \
 	if [ "$(RELEASE_CHECK_VULN)" = "1" ]; then \
