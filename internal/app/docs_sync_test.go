@@ -117,6 +117,44 @@ func TestReleaseCheckErrorCodeSetSyncAcrossPrimaryDocs(t *testing.T) {
 	}
 }
 
+func TestReleaseCheckErrorCodeSetSyncAcrossSourceOfTruthDocs(t *testing.T) {
+	agentsBytes, err := os.ReadFile("../../AGENTS.md")
+	if err != nil {
+		t.Fatalf("failed to read AGENTS.md: %v", err)
+	}
+	readmeBytes, err := os.ReadFile("../../README.md")
+	if err != nil {
+		t.Fatalf("failed to read README.md: %v", err)
+	}
+	releaseBytes, err := os.ReadFile("../../RELEASE.md")
+	if err != nil {
+		t.Fatalf("failed to read RELEASE.md: %v", err)
+	}
+	roadmapBytes, err := os.ReadFile("../../ROADMAP.md")
+	if err != nil {
+		t.Fatalf("failed to read ROADMAP.md: %v", err)
+	}
+
+	agentsCodes := extractReleaseCheckErrorCodesFromAgents(t, string(agentsBytes))
+	readmeCodes := extractReleaseCheckErrorCodesFromTable(t, string(readmeBytes), "README.md")
+	releaseCodes := extractReleaseCheckErrorCodesFromTable(t, string(releaseBytes), "RELEASE.md")
+	roadmapCodes := extractReleaseCheckErrorCodesFromRoadmap(t, string(roadmapBytes))
+
+	agentsJoined := strings.Join(agentsCodes, ",")
+	readmeJoined := strings.Join(readmeCodes, ",")
+	releaseJoined := strings.Join(releaseCodes, ",")
+	roadmapJoined := strings.Join(roadmapCodes, ",")
+	if agentsJoined != readmeJoined || readmeJoined != releaseJoined || releaseJoined != roadmapJoined {
+		t.Fatalf(
+			"release-check code set mismatch across AGENTS.md / README.md / RELEASE.md / ROADMAP.md\nAGENTS:  %s\nREADME:  %s\nRELEASE: %s\nROADMAP: %s",
+			agentsJoined,
+			readmeJoined,
+			releaseJoined,
+			roadmapJoined,
+		)
+	}
+}
+
 func TestCLIUsageSyntaxDocumentationSync(t *testing.T) {
 	readmeBytes, err := os.ReadFile("../../README.md")
 	if err != nil {
@@ -620,6 +658,41 @@ func extractReleaseCheckErrorCodesFromAgents(t *testing.T, agents string) []stri
 	matches := codeRe.FindAllStringSubmatch(section, -1)
 	if len(matches) == 0 {
 		t.Fatal("AGENTS.md release-check machine-readable code section has no RC_* entries")
+	}
+
+	codes := make(map[string]struct{}, len(matches))
+	for _, m := range matches {
+		if len(m) < 2 {
+			continue
+		}
+		codes[m[1]] = struct{}{}
+	}
+	out := make([]string, 0, len(codes))
+	for code := range codes {
+		out = append(out, code)
+	}
+	sort.Strings(out)
+	return out
+}
+
+func extractReleaseCheckErrorCodesFromRoadmap(t *testing.T, roadmap string) []string {
+	t.Helper()
+
+	const sectionStart = "- release-check machine-readable error code set for automation routing"
+	start := strings.Index(roadmap, sectionStart)
+	if start < 0 {
+		t.Fatal("ROADMAP.md missing release-check machine-readable error code set line")
+	}
+	section := roadmap[start:]
+	lineEnd := strings.Index(section, "\n")
+	if lineEnd > 0 {
+		section = section[:lineEnd]
+	}
+
+	codeRe := regexp.MustCompile("`(RC_[A-Z0-9_]+)`")
+	matches := codeRe.FindAllStringSubmatch(section, -1)
+	if len(matches) == 0 {
+		t.Fatal("ROADMAP.md release-check machine-readable code set line has no RC_* entries")
 	}
 
 	codes := make(map[string]struct{}, len(matches))
