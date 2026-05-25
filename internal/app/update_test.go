@@ -1105,7 +1105,7 @@ func TestRunUpdateDryRunRejectedAndError(t *testing.T) {
 			PolicyProfile: "strict",
 			Decision:      "PASS",
 		}
-		_, _, err := installSkillAtomic(src, targetRoot, "policy-update-invalid-severity", report)
+		installedPath, _, err := installSkillAtomic(src, targetRoot, "policy-update-invalid-severity", report)
 		if err != nil {
 			t.Fatalf("installSkillAtomic() error = %v", err)
 		}
@@ -1130,6 +1130,31 @@ func TestRunUpdateDryRunRejectedAndError(t *testing.T) {
 		}
 		if !strings.Contains(stdout.String(), "\"error_code\": \""+updateCodeEvaluationError+"\"") {
 			t.Fatalf("stdout should include evaluation error_code, got %q", stdout.String())
+		}
+
+		// Dry-run evaluation errors must not mutate installed lock baseline.
+		lockState, err := verifyLock(installedPath)
+		if err != nil {
+			t.Fatalf("verifyLock() error = %v", err)
+		}
+		if lockState.Status != "VERIFIED" {
+			t.Fatalf("lock status after error dry-run = %q, want VERIFIED", lockState.Status)
+		}
+		if len(lockState.Drift.MissingFiles) != 0 || len(lockState.Drift.ChangedFiles) != 0 || len(lockState.Drift.UnexpectedFiles) != 0 {
+			t.Fatalf("unexpected drift after error dry-run: %+v", lockState.Drift)
+		}
+
+		stdout.Reset()
+		stderr.Reset()
+		lockCode := runLockVerify([]string{installedPath, "--format", "json"}, &stdout, &stderr)
+		if lockCode != 0 {
+			t.Fatalf("runLockVerify(after error dry-run) code = %d, want 0\nstdout=%q\nstderr=%q", lockCode, stdout.String(), stderr.String())
+		}
+		if stderr.Len() != 0 {
+			t.Fatalf("stderr should be empty for lock verify, got %q", stderr.String())
+		}
+		if !strings.Contains(stdout.String(), "\"status\": \"VERIFIED\"") {
+			t.Fatalf("lock verify output should remain VERIFIED, got %q", stdout.String())
 		}
 	})
 
