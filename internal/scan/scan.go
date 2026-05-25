@@ -1067,8 +1067,10 @@ func normalizeShellSpecialProcParams(line string) string {
 	out = shellIndirectPosPattern.ReplaceAllString(out, `${$1}`)
 	out = strings.ReplaceAll(out, "$!", "$$")
 	out = strings.ReplaceAll(out, "$?", "$$")
+	out = strings.ReplaceAll(out, "$#", "$$")
 	out = strings.ReplaceAll(out, "${!}", "$$")
 	out = strings.ReplaceAll(out, "${?}", "$$")
+	out = strings.ReplaceAll(out, "${#}", "$$")
 	return out
 }
 
