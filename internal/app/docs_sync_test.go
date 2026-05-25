@@ -66,6 +66,26 @@ func TestAgentsReleaseCheckErrorCodeDocumentationSync(t *testing.T) {
 	}
 }
 
+func TestAgentsReleaseCheckErrorCodeSetMatchesReadme(t *testing.T) {
+	agentsBytes, err := os.ReadFile("../../AGENTS.md")
+	if err != nil {
+		t.Fatalf("failed to read AGENTS.md: %v", err)
+	}
+	readmeBytes, err := os.ReadFile("../../README.md")
+	if err != nil {
+		t.Fatalf("failed to read README.md: %v", err)
+	}
+
+	agentsCodes := extractReleaseCheckErrorCodesFromAgents(t, string(agentsBytes))
+	readmeCodes := extractReleaseCheckErrorCodesFromTable(t, string(readmeBytes), "README.md")
+
+	agentsJoined := strings.Join(agentsCodes, ",")
+	readmeJoined := strings.Join(readmeCodes, ",")
+	if agentsJoined != readmeJoined {
+		t.Fatalf("release-check code set mismatch between AGENTS.md and README.md\nAGENTS: %s\nREADME: %s", agentsJoined, readmeJoined)
+	}
+}
+
 func TestCLIUsageSyntaxDocumentationSync(t *testing.T) {
 	readmeBytes, err := os.ReadFile("../../README.md")
 	if err != nil {
@@ -543,6 +563,41 @@ func extractReleaseCheckErrorCodesFromTable(t *testing.T, doc, label string) []s
 		t.Fatalf("%s release-check code table has no RC_* entries", label)
 	}
 
+	out := make([]string, 0, len(codes))
+	for code := range codes {
+		out = append(out, code)
+	}
+	sort.Strings(out)
+	return out
+}
+
+func extractReleaseCheckErrorCodesFromAgents(t *testing.T, agents string) []string {
+	t.Helper()
+
+	const sectionStart = "Release-check machine-readable error codes are part of the current operational"
+	start := strings.Index(agents, sectionStart)
+	if start < 0 {
+		t.Fatal("AGENTS.md missing release-check machine-readable error code section")
+	}
+	section := agents[start:]
+	sectionEnd := strings.Index(section, "\n## ")
+	if sectionEnd > 0 {
+		section = section[:sectionEnd]
+	}
+
+	codeRe := regexp.MustCompile("`(RC_[A-Z0-9_]+)`")
+	matches := codeRe.FindAllStringSubmatch(section, -1)
+	if len(matches) == 0 {
+		t.Fatal("AGENTS.md release-check machine-readable code section has no RC_* entries")
+	}
+
+	codes := make(map[string]struct{}, len(matches))
+	for _, m := range matches {
+		if len(m) < 2 {
+			continue
+		}
+		codes[m[1]] = struct{}{}
+	}
 	out := make([]string, 0, len(codes))
 	for code := range codes {
 		out = append(out, code)
