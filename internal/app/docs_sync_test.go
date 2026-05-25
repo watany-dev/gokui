@@ -322,6 +322,42 @@ func TestMakefileVulnToolchainBaselineSync(t *testing.T) {
 	}
 }
 
+func TestReleaseEvidenceModeNamingDocumentationSync(t *testing.T) {
+	scriptBytes, err := os.ReadFile("../../scripts/collect-release-evidence.sh")
+	if err != nil {
+		t.Fatalf("failed to read collect-release-evidence.sh: %v", err)
+	}
+	script := string(scriptBytes)
+	scriptRequired := []string{
+		`AUDIT_KIND="offline-audit"`,
+		`AUDIT_KIND="online-audit"`,
+		`BASENAME="${TS}-${COMMIT_SHA}-${AUDIT_KIND}"`,
+	}
+	for _, line := range scriptRequired {
+		if !strings.Contains(script, line) {
+			t.Fatalf("collect-release-evidence.sh missing mode naming line: %q", line)
+		}
+	}
+
+	readmeBytes, err := os.ReadFile("../../README.md")
+	if err != nil {
+		t.Fatalf("failed to read README.md: %v", err)
+	}
+	readme := string(readmeBytes)
+	if !strings.Contains(readme, "`-offline-audit.md` or") || !strings.Contains(readme, "`-online-audit.md`") {
+		t.Fatal("README.md should document offline/online evidence filename suffixes")
+	}
+
+	releaseBytes, err := os.ReadFile("../../RELEASE.md")
+	if err != nil {
+		t.Fatalf("failed to read RELEASE.md: %v", err)
+	}
+	releaseDoc := string(releaseBytes)
+	if !strings.Contains(releaseDoc, "`-offline-audit.md` or `-online-audit.md`") {
+		t.Fatal("RELEASE.md should document offline/online evidence filename suffixes")
+	}
+}
+
 func TestRoadmapRuleIDsAreImplemented(t *testing.T) {
 	roadmapBytes, err := os.ReadFile("../../ROADMAP.md")
 	if err != nil {
