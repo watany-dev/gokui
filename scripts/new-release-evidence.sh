@@ -26,9 +26,10 @@ assert_no_symlink_components() {
   done
 }
 
-create_fresh_file() {
+create_fresh_file_for_write() {
   local path="$1"
   local label="$2"
+  local fd_var="$3"
   assert_no_symlink_components "$path" "$label"
   if [ -e "$path" ]; then
     echo "${label} already exists: $path" >&2
@@ -41,11 +42,15 @@ create_fresh_file() {
   base="$(basename "$path")"
   local tmp_path
   tmp_path="$(mktemp "$dir/.${base}.tmp.XXXXXX")"
+  local fd
+  exec {fd}>>"$tmp_path"
   if ! mv -n "$tmp_path" "$path"; then
+    exec {fd}>&-
     rm -f "$tmp_path"
     echo "${label} already exists: $path" >&2
     exit 1
   fi
+  printf -v "$fd_var" '%s' "$fd"
 }
 
 assert_no_symlink_components "$ROOT_DIR" "repository root path"
@@ -62,8 +67,7 @@ mkdir -p "$OUT_DIR"
 TS="$(date -u +%Y%m%dT%H%M%SZ)"
 COMMIT_SHA="$(git -C "$ROOT_DIR" rev-parse HEAD 2>/dev/null || echo unknown)"
 OUT_PATH="$OUT_DIR/${TS}-${COMMIT_SHA}.md"
-create_fresh_file "$OUT_PATH" "release evidence output path"
-exec {EVIDENCE_FD}>>"$OUT_PATH"
+create_fresh_file_for_write "$OUT_PATH" "release evidence output path" EVIDENCE_FD
 
 {
   echo "# Release Evidence - $TS"

@@ -28,9 +28,10 @@ assert_no_symlink_components() {
   done
 }
 
-create_fresh_file() {
+create_fresh_file_for_write() {
   local path="$1"
   local label="$2"
+  local fd_var="$3"
   assert_no_symlink_components "$path" "$label"
   if [ -e "$path" ]; then
     echo "${label} already exists: $path" >&2
@@ -43,17 +44,20 @@ create_fresh_file() {
   base="$(basename "$path")"
   local tmp_path
   tmp_path="$(mktemp "$dir/.${base}.tmp.XXXXXX")"
+  local fd
+  exec {fd}>>"$tmp_path"
   if ! mv -n "$tmp_path" "$path"; then
+    exec {fd}>&-
     rm -f "$tmp_path"
     echo "${label} already exists: $path" >&2
     exit 1
   fi
+  printf -v "$fd_var" '%s' "$fd"
 }
 
 assert_no_symlink_components "$ROOT_DIR" "repository root path"
 mkdir -p "$(dirname "$out_path")"
-create_fresh_file "$out_path" "inspect SARIF output path"
-exec {SARIF_FD}>>"$out_path"
+create_fresh_file_for_write "$out_path" "inspect SARIF output path" SARIF_FD
 
 tmp_bin="$(mktemp "${TMPDIR:-/tmp}/gokui-sarif-XXXXXX")"
 cleanup() {
