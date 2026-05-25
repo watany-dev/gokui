@@ -86,6 +86,37 @@ func TestAgentsReleaseCheckErrorCodeSetMatchesReadme(t *testing.T) {
 	}
 }
 
+func TestReleaseCheckErrorCodeSetSyncAcrossPrimaryDocs(t *testing.T) {
+	agentsBytes, err := os.ReadFile("../../AGENTS.md")
+	if err != nil {
+		t.Fatalf("failed to read AGENTS.md: %v", err)
+	}
+	readmeBytes, err := os.ReadFile("../../README.md")
+	if err != nil {
+		t.Fatalf("failed to read README.md: %v", err)
+	}
+	releaseBytes, err := os.ReadFile("../../RELEASE.md")
+	if err != nil {
+		t.Fatalf("failed to read RELEASE.md: %v", err)
+	}
+
+	agentsCodes := extractReleaseCheckErrorCodesFromAgents(t, string(agentsBytes))
+	readmeCodes := extractReleaseCheckErrorCodesFromTable(t, string(readmeBytes), "README.md")
+	releaseCodes := extractReleaseCheckErrorCodesFromTable(t, string(releaseBytes), "RELEASE.md")
+
+	agentsJoined := strings.Join(agentsCodes, ",")
+	readmeJoined := strings.Join(readmeCodes, ",")
+	releaseJoined := strings.Join(releaseCodes, ",")
+	if agentsJoined != readmeJoined || readmeJoined != releaseJoined {
+		t.Fatalf(
+			"release-check code set mismatch across AGENTS.md / README.md / RELEASE.md\nAGENTS:  %s\nREADME:  %s\nRELEASE: %s",
+			agentsJoined,
+			readmeJoined,
+			releaseJoined,
+		)
+	}
+}
+
 func TestCLIUsageSyntaxDocumentationSync(t *testing.T) {
 	readmeBytes, err := os.ReadFile("../../README.md")
 	if err != nil {
