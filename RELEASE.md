@@ -36,6 +36,8 @@ This runs:
 `release-check` fails closed when build/SARIF output paths include symlink
 components, when either output already exists, or when build and SARIF outputs
 resolve to the same path.
+Release-check build/SARIF output paths must also be non-root file paths and
+must not be directory-like paths ending with `/`.
 
 To override the isolated release-check build artifact path:
 

@@ -350,6 +350,9 @@ func TestReleaseChecklistDocumentationSync(t *testing.T) {
 	if !strings.Contains(releaseDoc, "fails closed when build/SARIF output paths include symlink") || !strings.Contains(releaseDoc, "build and SARIF outputs") || !strings.Contains(releaseDoc, "resolve to the same path") {
 		t.Fatal("RELEASE.md should document release-check build/SARIF output preflight fail-closed behavior")
 	}
+	if !strings.Contains(releaseDoc, "non-root file paths") || !strings.Contains(releaseDoc, "directory-like paths ending with `/`") {
+		t.Fatal("RELEASE.md should document release-check non-root and non-directory output path guards")
+	}
 	if !strings.Contains(releaseDoc, "mode (`offline` or `online`)") {
 		t.Fatal("RELEASE.md should require recording evidence mode in captured metadata")
 	}
@@ -391,6 +394,8 @@ func TestReleaseCheckDocumentationSync(t *testing.T) {
 		"fails closed when build/SARIF output paths include symlink",
 		"build and SARIF outputs",
 		"resolve to the same path",
+		"non-root file paths",
+		"directory-like paths ending with `/`",
 		"fail closed when repository-root/output/log paths include",
 		"when expected output/log files already exist",
 		"created atomically and written via open file",
