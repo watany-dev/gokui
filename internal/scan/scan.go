@@ -3403,6 +3403,7 @@ func normalizeHost(host string) string {
 	if ascii, err := idna.Lookup.ToASCII(normalized); err == nil && ascii != "" {
 		normalized = strings.ToLower(ascii)
 	}
+	normalized = strings.TrimSuffix(normalized, ".")
 	return normalized
 }
 
