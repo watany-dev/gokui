@@ -272,6 +272,9 @@ func TestReleaseChecklistDocumentationSync(t *testing.T) {
 	if !strings.Contains(releaseDoc, ".cache/gokui-release-evidence") {
 		t.Fatal("RELEASE.md should document isolated BUILD_OUT path for evidence scripts")
 	}
+	if !strings.Contains(releaseDoc, "mode (`offline` or `online`)") {
+		t.Fatal("RELEASE.md should require recording evidence mode in captured metadata")
+	}
 }
 
 func TestReleaseCheckDocumentationSync(t *testing.T) {

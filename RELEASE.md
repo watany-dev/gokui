@@ -90,6 +90,7 @@ Evidence file names end with `-offline-audit.md` or `-online-audit.md`
 depending on whether `--with-vuln` is enabled.
 
 At minimum, capture:
+- mode (`offline` or `online`)
 - commit SHA
 - executed commands
 - pass/fail result per gate
