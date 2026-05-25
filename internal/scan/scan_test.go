@@ -860,6 +860,20 @@ func TestClassifyMarkdownLinkSpoofing(t *testing.T) {
 		}
 	})
 
+	t.Run("detects idna dot-variant mismatch without scheme in label", func(t *testing.T) {
+		line := "[trusted。example．com](https://evil.example.com/login)"
+		findings := classifyMarkdownLinkSpoofing(line, "SKILL.md", 12)
+		assertHasID(t, findings, "LINK_SPOOFING_URL_MISMATCH")
+	})
+
+	t.Run("does not flag idna dot-variant equivalence without scheme in label", func(t *testing.T) {
+		line := "[trusted。example｡com](https://trusted.example.com/login)"
+		findings := classifyMarkdownLinkSpoofing(line, "SKILL.md", 12)
+		if len(findings) != 0 {
+			t.Fatalf("expected no findings for equivalent IDNA dot-variant label host, got %+v", findings)
+		}
+	})
+
 	t.Run("does not flag trailing idna dot-variant host equivalence", func(t *testing.T) {
 		line := "[https://trusted.example.com。/login](https://trusted.example.com/login)"
 		findings := classifyMarkdownLinkSpoofing(line, "SKILL.md", 12)

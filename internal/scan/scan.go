@@ -3378,10 +3378,20 @@ func parseDisplayLinkHost(label string) (string, bool) {
 	if strings.Contains(trimmed, "://") {
 		return parseURLHost(trimmed)
 	}
-	if !strings.Contains(trimmed, ".") {
+	if !containsIDNALabelSeparator(trimmed) {
 		return "", false
 	}
 	return parseURLHost("https://" + trimmed)
+}
+
+func containsIDNALabelSeparator(value string) bool {
+	for _, r := range value {
+		switch r {
+		case '.', '。', '．', '｡':
+			return true
+		}
+	}
+	return false
 }
 
 func parseURLHost(raw string) (string, bool) {
