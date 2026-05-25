@@ -894,6 +894,11 @@ func TestClassifyPathRisks(t *testing.T) {
 		assertHasID(t, findings, "CONFUSABLE_FILENAME")
 	})
 
+	t.Run("detects compatibility-only filename token", func(t *testing.T) {
+		findings := classifyPathRisks("docs/ｐａｙｐａｌ.md")
+		assertHasID(t, findings, "CONFUSABLE_FILENAME")
+	})
+
 	t.Run("detects confusable and mixed-script directory names", func(t *testing.T) {
 		findings := classifyPathRisks("docs/pay𝐩al/readme.md")
 		assertHasID(t, findings, "CONFUSABLE_FILENAME")
@@ -933,6 +938,7 @@ func TestClassifyPathRisks(t *testing.T) {
 		cases := []string{
 			"docs/paypal.md",
 			"docs/\u0442\u0435\u0441\u0442.md",
+			"docs/①②.md",
 			"docs/123-test.md",
 			"docs/.\u0442\u0435\u0441\u0442",
 		}
@@ -1043,6 +1049,24 @@ func TestIsNFKCASCIIAlnumToken(t *testing.T) {
 	for _, tc := range cases {
 		if got := isNFKCASCIIAlnumToken(tc.value); got != tc.want {
 			t.Fatalf("isNFKCASCIIAlnumToken(%q) = %v, want %v", tc.value, got, tc.want)
+		}
+	}
+}
+
+func TestIsNFKCASCIILetterToken(t *testing.T) {
+	cases := []struct {
+		value string
+		want  bool
+	}{
+		{value: "ｍｄ", want: true},
+		{value: "①②", want: false},
+		{value: "md", want: false},
+		{value: "＋", want: false},
+		{value: "", want: false},
+	}
+	for _, tc := range cases {
+		if got := isNFKCASCIILetterToken(tc.value); got != tc.want {
+			t.Fatalf("isNFKCASCIILetterToken(%q) = %v, want %v", tc.value, got, tc.want)
 		}
 	}
 }

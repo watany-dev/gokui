@@ -406,7 +406,7 @@ func classifyPathRisks(relPath string) []Finding {
 			hasMixedScript = true
 		}
 		stemHasASCII := hasASCIIAlnum(component)
-		if !hasConfusable && (hasASCIIConfusableFilename(component) || hasConfusableExtension(rawComponent) || (stemHasASCII && hasASCIIConfusableFilename(rawComponent))) {
+		if !hasConfusable && (hasASCIIConfusableFilename(component) || hasConfusableExtension(rawComponent) || isNFKCASCIILetterToken(component) || (stemHasASCII && hasASCIIConfusableFilename(rawComponent))) {
 			hasConfusable = true
 		}
 		if hasMixedScript && hasConfusable {
@@ -529,6 +529,19 @@ func isNFKCASCIIAlnumToken(value string) bool {
 		}
 	}
 	return true
+}
+
+func isNFKCASCIILetterToken(value string) bool {
+	if !isNFKCASCIIAlnumToken(value) {
+		return false
+	}
+	normalized := norm.NFKC.String(value)
+	for _, r := range normalized {
+		if r <= unicode.MaxASCII && unicode.IsLetter(r) {
+			return true
+		}
+	}
+	return false
 }
 
 func isFullwidthASCIIConfusable(r rune) bool {
