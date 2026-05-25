@@ -22,7 +22,7 @@ Current MVP command set:
 
 ```text
 gokui fetch github:owner/repo//path/to/skill@commit --out <quarantine-dir>
-gokui inspect <local-dir|zip|github-source>
+gokui inspect <local-dir|zip|tar|github-source>
 gokui vet <local-dir|zip|tar>
 gokui install <source> --target codex --profile strict|team|research
 gokui update --dry-run
