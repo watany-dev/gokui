@@ -338,6 +338,7 @@ func TestMakefileVulnToolchainBaselineSync(t *testing.T) {
 		"RELEASE_CHECK_BUILD_OUT ?= $(CACHE_DIR)/gokui-release-check",
 		"$(GO) build -trimpath -buildvcs=true -ldflags='$(LDFLAGS)' -o $(BUILD_OUT) $(MAIN_PKG)",
 		"$(MAKE) build BUILD_OUT=$(RELEASE_CHECK_BUILD_OUT)",
+		"@rm -f $(RELEASE_CHECK_BUILD_OUT)",
 		"GOTOOLCHAIN=$(VULN_GOTOOLCHAIN) $(GO) tool govulncheck ./...",
 		"release-evidence-offline:",
 		"./scripts/collect-release-evidence.sh",
