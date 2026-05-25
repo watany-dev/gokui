@@ -297,6 +297,7 @@ func TestReleaseCheckDocumentationSync(t *testing.T) {
 		"inspect-sarif smoke generation, and govulncheck",
 		"BUILD_OUT=.cache/gokui-release-evidence",
 		".cache/gokui-release-check",
+		"clean that artifact automatically",
 		"git status --short --untracked-files=no",
 		"-offline-audit.md",
 		"-online-audit.md",
