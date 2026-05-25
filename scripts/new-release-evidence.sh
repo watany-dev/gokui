@@ -83,6 +83,7 @@ trap cleanup EXIT
 } >&${EVIDENCE_FD}
 exec {EVIDENCE_FD}>&-
 if ! mv -n "$TMP_EVIDENCE_PATH" "$OUT_PATH"; then
+  rm -f "$TMP_EVIDENCE_PATH"
   echo "release evidence output path already exists: $OUT_PATH" >&2
   exit 1
 fi

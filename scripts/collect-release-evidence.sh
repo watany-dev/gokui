@@ -140,6 +140,7 @@ run_step() {
   set -e
   exec {log_fd}>&-
   if ! mv -n "$tmp_log_path" "$log_path"; then
+    rm -f "$tmp_log_path"
     echo "log path already exists: $log_path" >&2
     exit 1
   fi
@@ -173,6 +174,7 @@ run_git_clean_check() {
   fi
   exec {log_fd}>&-
   if ! mv -n "$tmp_log_path" "$log_path"; then
+    rm -f "$tmp_log_path"
     echo "log path already exists: $log_path" >&2
     exit 1
   fi
@@ -233,6 +235,7 @@ fi
 
 exec {EVIDENCE_FD}>&-
 if ! mv -n "$TMP_EVIDENCE_PATH" "$OUT_PATH"; then
+  rm -f "$TMP_EVIDENCE_PATH"
   echo "evidence path already exists: $OUT_PATH" >&2
   exit 1
 fi

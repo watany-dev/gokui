@@ -86,6 +86,7 @@ grep -q '"version": "2.1.0"' "$TMP_SARIF_PATH"
 grep -q '"FAKE_PREREQ_EXECUTION"' "$TMP_SARIF_PATH"
 
 if ! mv -n "$TMP_SARIF_PATH" "$out_path"; then
+  rm -f "$TMP_SARIF_PATH"
   echo "inspect SARIF output path already exists: $out_path" >&2
   exit 1
 fi

@@ -527,6 +527,7 @@ func TestInspectSARIFScriptHardeningSync(t *testing.T) {
 		`grep -q '"version": "2.1.0"' "$TMP_SARIF_PATH"`,
 		`grep -q '"FAKE_PREREQ_EXECUTION"' "$TMP_SARIF_PATH"`,
 		`mv -n "$TMP_SARIF_PATH" "$out_path"`,
+		`rm -f "$TMP_SARIF_PATH"`,
 		`exec {SARIF_FD}>&-`,
 	}
 	for _, line := range required {
@@ -579,6 +580,8 @@ func TestReleaseEvidenceScriptExecutionContractSync(t *testing.T) {
 		`rm -f \"$ROOT_DIR/.cache/gokui-release-evidence\"`,
 		`mv -n "$tmp_log_path" "$log_path"`,
 		`mv -n "$TMP_EVIDENCE_PATH" "$OUT_PATH"`,
+		`rm -f "$tmp_log_path"`,
+		`rm -f "$TMP_EVIDENCE_PATH"`,
 		`exec {EVIDENCE_FD}>&-`,
 	}
 	for _, line := range required {
@@ -619,6 +622,7 @@ func TestReleaseEvidenceTemplateScriptHardeningSync(t *testing.T) {
 		`assert_output_path_available "$OUT_PATH" "release evidence output path"`,
 		`create_temp_file_for_write "$OUT_DIR" "$OUT_BASENAME" TMP_EVIDENCE_PATH EVIDENCE_FD`,
 		`mv -n "$TMP_EVIDENCE_PATH" "$OUT_PATH"`,
+		`rm -f "$TMP_EVIDENCE_PATH"`,
 		`exec {EVIDENCE_FD}>&-`,
 	}
 	for _, line := range required {
