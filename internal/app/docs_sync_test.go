@@ -220,6 +220,7 @@ func TestReadmeCriticalPatternDocumentationSync(t *testing.T) {
 		"/dev/fd/0",
 		"/proc/thread-self/fd/0",
 		"/proc/<pid>/fd/0",
+		"/proc/<pid>/task/<tid>/fd/0",
 	}
 	for _, line := range required {
 		if !strings.Contains(readme, line) {
