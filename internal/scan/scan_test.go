@@ -923,6 +923,13 @@ func TestClassifyPathRisks(t *testing.T) {
 
 		findings = classifyPathRisks("docs/.ｍｄ")
 		assertHasID(t, findings, "CONFUSABLE_FILENAME")
+
+		findings = classifyPathRisks("docs/readme.①②")
+		for _, finding := range findings {
+			if finding.ID == "CONFUSABLE_FILENAME" {
+				t.Fatalf("unexpected confusable finding for numeric-only compatibility extension: %+v", finding)
+			}
+		}
 	})
 
 	t.Run("detects additional cyrillic confusable glyphs", func(t *testing.T) {
@@ -1001,24 +1008,6 @@ func TestPathRiskRawComponents(t *testing.T) {
 	}
 }
 
-func TestHasASCIIAlnum(t *testing.T) {
-	cases := []struct {
-		value string
-		want  bool
-	}{
-		{value: "readme", want: true},
-		{value: "v2", want: true},
-		{value: "тест", want: false},
-		{value: "あいう", want: false},
-		{value: ".-_", want: false},
-	}
-	for _, tc := range cases {
-		if got := hasASCIIAlnum(tc.value); got != tc.want {
-			t.Fatalf("hasASCIIAlnum(%q) = %v, want %v", tc.value, got, tc.want)
-		}
-	}
-}
-
 func TestHasConfusableExtension(t *testing.T) {
 	cases := []struct {
 		value string
@@ -1027,6 +1016,7 @@ func TestHasConfusableExtension(t *testing.T) {
 		{value: "readme.mе", want: true},
 		{value: "readme.ｍｄ", want: true},
 		{value: ".ｍｄ", want: true},
+		{value: "readme.①②", want: false},
 		{value: "readme.md", want: false},
 		{value: ".git", want: false},
 		{value: "readme", want: false},

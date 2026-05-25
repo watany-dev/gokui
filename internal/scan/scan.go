@@ -405,8 +405,7 @@ func classifyPathRisks(relPath string) []Finding {
 		if !hasMixedScript && hasMixedScriptLetters(component) {
 			hasMixedScript = true
 		}
-		stemHasASCII := hasASCIIAlnum(component)
-		if !hasConfusable && (hasASCIIConfusableFilename(component) || hasConfusableExtension(rawComponent) || isNFKCASCIILetterToken(component) || (stemHasASCII && hasASCIIConfusableFilename(rawComponent))) {
+		if !hasConfusable && (hasASCIIConfusableFilename(component) || hasConfusableExtension(rawComponent) || isNFKCASCIILetterToken(component)) {
 			hasConfusable = true
 		}
 		if hasMixedScript && hasConfusable {
@@ -475,15 +474,6 @@ func hasMixedScriptLetters(name string) bool {
 	return false
 }
 
-func hasASCIIAlnum(name string) bool {
-	for _, r := range name {
-		if r <= unicode.MaxASCII && (unicode.IsLetter(r) || unicode.IsDigit(r)) {
-			return true
-		}
-	}
-	return false
-}
-
 func hasConfusableExtension(name string) bool {
 	ext := strings.TrimPrefix(filepath.Ext(name), ".")
 	if ext == "" && strings.HasPrefix(name, ".") && len(name) > 1 && !strings.Contains(name[1:], ".") {
@@ -499,7 +489,7 @@ func hasConfusableExtension(name string) bool {
 	}
 	// Also treat all-compatibility extension tokens (for example fullwidth
 	// ".ｍｄ") as confusable even when the original token contains no ASCII.
-	return isNFKCASCIIAlnumToken(ext)
+	return isNFKCASCIILetterToken(ext)
 }
 
 func hasASCIIConfusableFilename(name string) bool {
