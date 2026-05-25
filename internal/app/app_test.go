@@ -2165,6 +2165,42 @@ func TestRun(t *testing.T) {
 		}
 	})
 
+	t.Run("inspect surfaces archive source symlink rule_id in json error", func(t *testing.T) {
+		if runtime.GOOS == "windows" {
+			t.Skip("symlink permissions differ on windows")
+		}
+
+		base := t.TempDir()
+		realParent := filepath.Join(base, "real-parent")
+		if err := os.Mkdir(realParent, 0o755); err != nil {
+			t.Fatalf("mkdir real parent: %v", err)
+		}
+		archivePath := filepath.Join(realParent, "clean.zip")
+		createZipArchive(t, archivePath, map[string]string{
+			"clean-skill/SKILL.md": "---\nname: clean-skill\ndescription: Use when validating archive source symlink rule propagation.\n---\n",
+		})
+		linkParent := filepath.Join(base, "link-parent")
+		if err := os.Symlink("real-parent", linkParent); err != nil {
+			t.Fatalf("create parent symlink: %v", err)
+		}
+
+		var stdout bytes.Buffer
+		var stderr bytes.Buffer
+		code := Run([]string{"inspect", filepath.Join(linkParent, "clean.zip"), "--format", "json"}, &stdout, &stderr, cfg)
+		if code != 1 {
+			t.Fatalf("Run() code = %d, want 1\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
+		}
+		if stderr.Len() != 0 {
+			t.Fatalf("stderr should be empty for json output, got %q", stderr.String())
+		}
+		if !strings.Contains(stdout.String(), "\"error_code\": \""+inspectErrorCodeSourcePrepareFailed+"\"") {
+			t.Fatalf("stdout should include source-prepare-failed code, got %q", stdout.String())
+		}
+		if !strings.Contains(stdout.String(), "\"rule_id\": \"ARCHIVE_SOURCE_SYMLINK_DETECTED\"") {
+			t.Fatalf("stdout should include archive-source symlink rule_id, got %q", stdout.String())
+		}
+	})
+
 	t.Run("inspect surfaces description tool injection rule_id in json error", func(t *testing.T) {
 		var stdout bytes.Buffer
 		var stderr bytes.Buffer
