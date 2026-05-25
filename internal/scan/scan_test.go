@@ -892,6 +892,37 @@ func TestClassifyURLRisksEdgeCases(t *testing.T) {
 		assertHasID(t, findings, "RAW_IP_URL")
 		assertHasID(t, findings, "REMOTE_IMAGE_URL")
 	})
+
+	t.Run("detects bracketed IPv6 URL risks", func(t *testing.T) {
+		line := "visit https://[2001:db8::1]/setup and //[2001:db8::2]/boot and ![x](https://[2001:db8::3]/x.png)"
+		findings := classifyURLRisks(line, "SKILL.md", 6, true)
+		assertHasID(t, findings, "RAW_IP_URL")
+		assertHasID(t, findings, "REMOTE_IMAGE_URL")
+	})
+}
+
+func TestExtractURLCandidates(t *testing.T) {
+	t.Run("collects both standard and bracketed ipv6 urls", func(t *testing.T) {
+		line := "https://example.com and https://[2001:db8::1]/x and //[2001:db8::2]/y"
+		got := extractURLCandidates(line)
+		if len(got) < 3 {
+			t.Fatalf("expected at least three URL candidates, got %+v", got)
+		}
+	})
+
+	t.Run("deduplicates overlapping matches", func(t *testing.T) {
+		line := "https://[2001:db8::1]/x"
+		got := extractURLCandidates(line)
+		if len(got) != 1 {
+			t.Fatalf("expected one deduplicated URL candidate, got %+v", got)
+		}
+	})
+
+	t.Run("returns nil when no url candidates exist", func(t *testing.T) {
+		if got := extractURLCandidates("plain text"); got != nil {
+			t.Fatalf("expected nil URL candidates, got %+v", got)
+		}
+	})
 }
 
 func TestClassifyMarkdownLinkSpoofing(t *testing.T) {

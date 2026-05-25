@@ -84,6 +84,7 @@ var (
 
 	externalBinaryPattern              = regexp.MustCompile(`(?i)\bhttps?://\S+\.(?:zip|exe|msi|dmg|pkg|tar\.gz|tgz)\b`)
 	urlPattern                         = regexp.MustCompile(`(?i)(?:https?://|//)[^\s<>"')\]]+`)
+	ipv6URLPattern                     = regexp.MustCompile(`(?i)(?:https?://|//)\[[0-9a-f:.%]+\](?::\d+)?[^\s<>"')]*`)
 	rawHTMLPattern                     = regexp.MustCompile(`(?i)<\s*(?:script|iframe|object|embed|form|link|meta|img|svg|video|audio)\b`)
 	markdownLinkPattern                = regexp.MustCompile(`\[(?P<label>[^\]]+)\]\((?P<target>[^)\n]+)\)`)
 	markdownReferenceLinkPattern       = regexp.MustCompile(`\[(?P<label>[^\]]+)\][ \t]*\[(?P<ref>[^\]]*)\]`)
@@ -3166,7 +3167,7 @@ func nextGoRunTarget(fields []string, start int, end int) (string, bool) {
 }
 
 func classifyURLRisks(line string, relPath string, lineNum int, isMarkdown bool) []Finding {
-	matches := urlPattern.FindAllString(line, -1)
+	matches := extractURLCandidates(line)
 	if len(matches) == 0 {
 		return nil
 	}
@@ -3229,6 +3230,47 @@ func classifyURLRisks(line string, relPath string, lineNum int, isMarkdown bool)
 		}
 	}
 	return out
+}
+
+func extractURLCandidates(line string) []string {
+	base := urlPattern.FindAllString(line, -1)
+	ipv6 := ipv6URLPattern.FindAllString(line, -1)
+	if len(base) == 0 && len(ipv6) == 0 {
+		return nil
+	}
+
+	seen := make(map[string]struct{}, len(base)+len(ipv6))
+	out := make([]string, 0, len(base)+len(ipv6))
+	for _, raw := range base {
+		if isBracketedIPv6PrefixFragment(raw, ipv6) {
+			continue
+		}
+		if _, ok := seen[raw]; ok {
+			continue
+		}
+		seen[raw] = struct{}{}
+		out = append(out, raw)
+	}
+	for _, raw := range ipv6 {
+		if _, ok := seen[raw]; ok {
+			continue
+		}
+		seen[raw] = struct{}{}
+		out = append(out, raw)
+	}
+	return out
+}
+
+func isBracketedIPv6PrefixFragment(candidate string, ipv6Matches []string) bool {
+	if !strings.Contains(candidate, "[") || strings.Contains(candidate, "]") {
+		return false
+	}
+	for _, full := range ipv6Matches {
+		if strings.HasPrefix(full, candidate) {
+			return true
+		}
+	}
+	return false
 }
 
 func isRemoteImageLine(line string) bool {
