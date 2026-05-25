@@ -38,33 +38,6 @@ assert_no_symlink_components() {
   done
 }
 
-create_fresh_file_for_write() {
-  local path="$1"
-  local label="$2"
-  local fd_var="$3"
-  assert_no_symlink_components "$path" "$label"
-  if [ -e "$path" ]; then
-    echo "${label} already exists: $path" >&2
-    exit 1
-  fi
-
-  local dir
-  dir="$(dirname "$path")"
-  local base
-  base="$(basename "$path")"
-  local tmp_path
-  tmp_path="$(mktemp "$dir/.${base}.tmp.XXXXXX")"
-  local fd
-  exec {fd}>>"$tmp_path"
-  if ! mv -n "$tmp_path" "$path"; then
-    exec {fd}>&-
-    rm -f "$tmp_path"
-    echo "${label} already exists: $path" >&2
-    exit 1
-  fi
-  printf -v "$fd_var" '%s' "$fd"
-}
-
 create_temp_file_for_write() {
   local dir="$1"
   local base="$2"
@@ -154,14 +127,22 @@ run_step() {
   local command_text="$2"
   local log_path="$3"
 
+  assert_output_path_available "$log_path" "log path"
+  local log_basename
+  log_basename="$(basename "$log_path")"
+  local tmp_log_path
   local log_fd
-  create_fresh_file_for_write "$log_path" "log path" log_fd
+  create_temp_file_for_write "$LOG_DIR" "$log_basename" tmp_log_path log_fd
 
   set +e
   bash -lc "cd \"$ROOT_DIR\" && ${command_text}" >&"$log_fd" 2>&1
   local rc=$?
   set -e
   exec {log_fd}>&-
+  if ! mv -n "$tmp_log_path" "$log_path"; then
+    echo "log path already exists: $log_path" >&2
+    exit 1
+  fi
 
   append_step_result "$step_name" "$command_text" "$rc" "$log_path"
 }
@@ -171,15 +152,19 @@ run_git_clean_check() {
   local command_text="git status --short --untracked-files=no"
   local log_path="$LOG_DIR/${BASENAME}-git-status.log"
 
+  assert_output_path_available "$log_path" "log path"
+  local log_basename
+  log_basename="$(basename "$log_path")"
+  local tmp_log_path
   local log_fd
-  create_fresh_file_for_write "$log_path" "log path" log_fd
+  create_temp_file_for_write "$LOG_DIR" "$log_basename" tmp_log_path log_fd
 
   set +e
   bash -lc "cd \"$ROOT_DIR\" && git status --short --untracked-files=no" >&"$log_fd" 2>&1
   local rc=$?
   set -e
 
-  if [ "$rc" -eq 0 ] && [ -s "$log_path" ]; then
+  if [ "$rc" -eq 0 ] && [ -s "$tmp_log_path" ]; then
     rc=1
     {
       echo
@@ -187,6 +172,10 @@ run_git_clean_check() {
     } >&"$log_fd"
   fi
   exec {log_fd}>&-
+  if ! mv -n "$tmp_log_path" "$log_path"; then
+    echo "log path already exists: $log_path" >&2
+    exit 1
+  fi
 
   append_step_result "$step_name" "$command_text" "$rc" "$log_path"
 }
