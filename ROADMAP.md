@@ -73,6 +73,7 @@ tests/CI:
 - release-evidence template path/output hardening (symlink path-component rejection and restrictive template-output file permissions)
 - release-evidence output/log path hardening (symlink path-component rejection, restrictive evidence/log file permissions, fail-closed output/log collision checks, and failure-artifact retention)
 - inspect-sarif output path hardening (symlink path-component rejection, restrictive SARIF file permissions, and fail-closed output-collision checks)
+- release script repository-root path hardening (reject symlinked repository-root execution paths)
 - release-evidence gate hardening with isolated build output (`BUILD_OUT`) and tracked-file clean-tree checks (`git status --short --untracked-files=no`)
 - release-check gate hardening with isolated build output (`RELEASE_CHECK_BUILD_OUT`) and failure-safe cleanup for build/SARIF artifacts
 - release-evidence metadata mode annotation (`offline|online`) and mode-specific evidence filename suffixes (`-offline-audit.md` / `-online-audit.md`)

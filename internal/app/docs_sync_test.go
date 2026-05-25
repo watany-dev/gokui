@@ -492,6 +492,7 @@ func TestInspectSARIFScriptHardeningSync(t *testing.T) {
 	required := []string{
 		"umask 077",
 		"assert_no_symlink_components()",
+		`assert_no_symlink_components "$ROOT_DIR" "repository root path"`,
 		`assert_no_symlink_components "$out_path" "inspect SARIF output path"`,
 		`mkdir -p "$(dirname "$out_path")"`,
 		`if [ -e "$out_path" ]; then`,
@@ -513,6 +514,7 @@ func TestReleaseEvidenceScriptExecutionContractSync(t *testing.T) {
 	required := []string{
 		"umask 077",
 		"assert_no_symlink_components()",
+		`assert_no_symlink_components "$ROOT_DIR" "repository root path"`,
 		`EVIDENCE_MODE="offline"`,
 		`EVIDENCE_MODE="online"`,
 		`assert_no_symlink_components "$OUT_DIR" "evidence directory"`,
@@ -546,6 +548,7 @@ func TestReleaseEvidenceTemplateScriptHardeningSync(t *testing.T) {
 	required := []string{
 		"umask 077",
 		"assert_no_symlink_components()",
+		`assert_no_symlink_components "$ROOT_DIR" "repository root path"`,
 		`assert_no_symlink_components "$TEMPLATE_PATH" "release evidence template path"`,
 		`assert_no_symlink_components "$OUT_DIR" "release evidence output directory"`,
 		`assert_no_symlink_components "$OUT_PATH" "release evidence output path"`,
@@ -623,6 +626,7 @@ func TestRoadmapReleaseEvidenceHardeningSync(t *testing.T) {
 		"automated online release evidence collection mode (includes vuln step)",
 		"release-evidence output/log path hardening (symlink path-component rejection, restrictive evidence/log file permissions, fail-closed output/log collision checks, and failure-artifact retention)",
 		"inspect-sarif output path hardening (symlink path-component rejection, restrictive SARIF file permissions, and fail-closed output-collision checks)",
+		"release script repository-root path hardening (reject symlinked repository-root execution paths)",
 		"release-evidence gate hardening with isolated build output (`BUILD_OUT`) and tracked-file clean-tree checks (`git status --short --untracked-files=no`)",
 		"release-check gate hardening with isolated build output (`RELEASE_CHECK_BUILD_OUT`) and failure-safe cleanup for build/SARIF artifacts",
 		"release-evidence metadata mode annotation (`offline|online`) and mode-specific evidence filename suffixes (`-offline-audit.md` / `-online-audit.md`)",

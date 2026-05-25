@@ -25,6 +25,8 @@ assert_no_symlink_components() {
   done
 }
 
+assert_no_symlink_components "$ROOT_DIR" "repository root path"
+
 if [ ! -f "$TEMPLATE_PATH" ]; then
   echo "missing template: $TEMPLATE_PATH" >&2
   exit 1

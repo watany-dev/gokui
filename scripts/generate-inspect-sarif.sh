@@ -3,6 +3,7 @@ set -euo pipefail
 
 umask 077
 
+ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 out_path="${1:-inspect-results.sarif}"
 
 assert_no_symlink_components() {
@@ -23,6 +24,7 @@ assert_no_symlink_components() {
   done
 }
 
+assert_no_symlink_components "$ROOT_DIR" "repository root path"
 assert_no_symlink_components "$out_path" "inspect SARIF output path"
 mkdir -p "$(dirname "$out_path")"
 if [ -e "$out_path" ]; then
@@ -36,10 +38,10 @@ cleanup() {
 }
 trap cleanup EXIT
 
-go build -trimpath -buildvcs=true -o "$tmp_bin" ./cmd/gokui
+go -C "$ROOT_DIR" build -trimpath -buildvcs=true -o "$tmp_bin" ./cmd/gokui
 
 set +e
-"$tmp_bin" inspect ./fixtures/fake-prereq-skill --format sarif > "$out_path"
+"$tmp_bin" inspect "$ROOT_DIR/fixtures/fake-prereq-skill" --format sarif > "$out_path"
 exit_code=$?
 set -e
 

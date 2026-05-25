@@ -37,6 +37,8 @@ assert_no_symlink_components() {
   done
 }
 
+assert_no_symlink_components "$ROOT_DIR" "repository root path"
+
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --with-vuln)
