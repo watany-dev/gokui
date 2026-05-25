@@ -75,7 +75,7 @@ tests/CI:
 - inspect-sarif output path hardening (symlink path-component rejection, restrictive SARIF file permissions, fail-closed output-collision checks, and atomic file creation with descriptor-backed writes)
 - release script repository-root path hardening (reject symlinked repository-root execution paths)
 - release-evidence gate hardening with isolated build output (`BUILD_OUT`) and tracked-file clean-tree checks (`git status --short --untracked-files=no`)
-- release-check gate hardening with isolated build output (`RELEASE_CHECK_BUILD_OUT`), symlink/collision fail-closed build/SARIF output guards (including distinct-path enforcement), and failure-safe cleanup for build/SARIF artifacts
+- release-check gate hardening with isolated build output (`RELEASE_CHECK_BUILD_OUT`), symlink/collision fail-closed build/SARIF output guards (including non-root-path and distinct-path enforcement), and failure-safe cleanup for build/SARIF artifacts
 - release-evidence metadata mode annotation (`offline|online`) and mode-specific evidence filename suffixes (`-offline-audit.md` / `-online-audit.md`)
 - URL risk classification for shortener hosts and raw-IP URLs (including scheme-relative `//host/...` forms, bracketed/zone-id IPv6 hosts, decimal/hex/octal and abbreviated/mixed-base dotted IPv4 hosts, and normalized trailing-dot/IDNA dot-variant hosts)
 - shortener/paste-site URL risk classification includes configured subdomain matches
