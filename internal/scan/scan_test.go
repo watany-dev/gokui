@@ -2199,6 +2199,10 @@ func TestUnpinnedRuntimeToolDetection(t *testing.T) {
 		{line: "deno run --watch src npm:create-next-app@15.4.1", want: false},
 		{line: "deno run --watch-exclude dist npm:create-next-app@latest", want: true},
 		{line: "deno run --watch-exclude dist npm:create-next-app@15.4.1", want: false},
+		{line: "deno run --watch-hmr src npm:create-next-app@latest", want: true},
+		{line: "deno run --watch-hmr src npm:create-next-app@15.4.1", want: false},
+		{line: "deno run --conditions deno npm:create-next-app@latest", want: true},
+		{line: "deno run --conditions deno npm:create-next-app@15.4.1", want: false},
 		{line: "deno run --coverage coverage npm:create-next-app@latest", want: true},
 		{line: "deno run --coverage coverage npm:create-next-app@15.4.1", want: false},
 		{line: "deno run --coverage npm:create-next-app@latest", want: true},
@@ -2207,6 +2211,9 @@ func TestUnpinnedRuntimeToolDetection(t *testing.T) {
 		{line: "deno run --no-check remote npm:create-next-app@latest", want: true},
 		{line: "deno run --no-check remote npm:create-next-app@15.4.1", want: false},
 		{line: "deno run --no-check npm:create-next-app@latest", want: true},
+		{line: "deno run --check all npm:create-next-app@latest", want: true},
+		{line: "deno run --check all npm:create-next-app@15.4.1", want: false},
+		{line: "deno run --check npm:create-next-app@latest", want: true},
 		{line: "deno run --log-level debug npm:create-next-app@latest", want: true},
 		{line: "deno run --log-level debug npm:create-next-app@15.4.1", want: false},
 		{line: "deno run --unstable-kv npm:create-next-app@latest", want: true},
@@ -2856,6 +2863,10 @@ func TestIsUnpinnedDenoNpmRuntimeLine(t *testing.T) {
 		{line: "deno run --watch src npm:create-next-app@15.4.1", want: false},
 		{line: "deno run --watch-exclude dist npm:create-next-app@latest", want: true},
 		{line: "deno run --watch-exclude dist npm:create-next-app@15.4.1", want: false},
+		{line: "deno run --watch-hmr src npm:create-next-app@latest", want: true},
+		{line: "deno run --watch-hmr src npm:create-next-app@15.4.1", want: false},
+		{line: "deno run --conditions deno npm:create-next-app@latest", want: true},
+		{line: "deno run --conditions deno npm:create-next-app@15.4.1", want: false},
 		{line: "deno run --coverage coverage npm:create-next-app@latest", want: true},
 		{line: "deno run --coverage coverage npm:create-next-app@15.4.1", want: false},
 		{line: "deno run --coverage npm:create-next-app@latest", want: true},
@@ -2864,6 +2875,9 @@ func TestIsUnpinnedDenoNpmRuntimeLine(t *testing.T) {
 		{line: "deno run --no-check remote npm:create-next-app@latest", want: true},
 		{line: "deno run --no-check remote npm:create-next-app@15.4.1", want: false},
 		{line: "deno run --no-check npm:create-next-app@latest", want: true},
+		{line: "deno run --check all npm:create-next-app@latest", want: true},
+		{line: "deno run --check all npm:create-next-app@15.4.1", want: false},
+		{line: "deno run --check npm:create-next-app@latest", want: true},
 		{line: "deno run --log-level debug npm:create-next-app@latest", want: true},
 		{line: "deno run --log-level debug npm:create-next-app@15.4.1", want: false},
 		{line: "deno run --unstable-kv npm:create-next-app@latest", want: true},
@@ -3264,6 +3278,22 @@ func TestNextDenoRuntimeTarget(t *testing.T) {
 			ok:     true,
 		},
 		{
+			name:   "consumes watch-hmr value and returns following target",
+			fields: []string{"deno", "run", "--watch-hmr", "src", "npm:create-next-app@latest"},
+			start:  2,
+			end:    5,
+			want:   "npm:create-next-app@latest",
+			ok:     true,
+		},
+		{
+			name:   "consumes conditions split value and returns following target",
+			fields: []string{"deno", "run", "--conditions", "deno", "npm:create-next-app@latest"},
+			start:  2,
+			end:    5,
+			want:   "npm:create-next-app@latest",
+			ok:     true,
+		},
+		{
 			name:   "consumes coverage split value and returns following target",
 			fields: []string{"deno", "run", "--coverage", "coverage", "npm:create-next-app@latest"},
 			start:  2,
@@ -3298,6 +3328,22 @@ func TestNextDenoRuntimeTarget(t *testing.T) {
 		{
 			name:   "does not consume no-check when next token is runtime target",
 			fields: []string{"deno", "run", "--no-check", "npm:create-next-app@latest"},
+			start:  2,
+			end:    4,
+			want:   "npm:create-next-app@latest",
+			ok:     true,
+		},
+		{
+			name:   "consumes check split value and returns following target",
+			fields: []string{"deno", "run", "--check", "all", "npm:create-next-app@latest"},
+			start:  2,
+			end:    5,
+			want:   "npm:create-next-app@latest",
+			ok:     true,
+		},
+		{
+			name:   "does not consume check when next token is runtime target",
+			fields: []string{"deno", "run", "--check", "npm:create-next-app@latest"},
 			start:  2,
 			end:    4,
 			want:   "npm:create-next-app@latest",
@@ -3400,6 +3446,13 @@ func TestHasDenoRuntimeCandidateAfter(t *testing.T) {
 		{
 			name:   "skips required-value flags and finds target",
 			fields: []string{"deno", "run", "--config", "deno.json", "main.ts"},
+			start:  2,
+			end:    5,
+			want:   true,
+		},
+		{
+			name:   "skips conditions split value and finds target",
+			fields: []string{"deno", "run", "--conditions", "deno", "main.ts"},
 			start:  2,
 			end:    5,
 			want:   true,
@@ -3606,6 +3659,17 @@ func TestIsKnownDenoOptionalFlagValue(t *testing.T) {
 		}
 	})
 
+	t.Run("watch-hmr consumes value when candidate follows", func(t *testing.T) {
+		fields := []string{"deno", "run", "--watch-hmr", "src", "main.ts"}
+		if got := isKnownDenoOptionalFlagValue("--watch-hmr", "src", fields, 4, len(fields)); !got {
+			t.Fatalf("isKnownDenoOptionalFlagValue(--watch-hmr,src) = %v, want true", got)
+		}
+		fields = []string{"deno", "run", "--watch-hmr", "src"}
+		if got := isKnownDenoOptionalFlagValue("--watch-hmr", "src", fields, 4, len(fields)); got {
+			t.Fatalf("isKnownDenoOptionalFlagValue(--watch-hmr,src) = %v, want false", got)
+		}
+	})
+
 	t.Run("coverage consumes value when candidate follows", func(t *testing.T) {
 		fields := []string{"deno", "run", "--coverage", "coverage", "main.ts"}
 		if got := isKnownDenoOptionalFlagValue("--coverage", "coverage", fields, 4, len(fields)); !got {
@@ -3625,6 +3689,17 @@ func TestIsKnownDenoOptionalFlagValue(t *testing.T) {
 		fields = []string{"deno", "run", "--no-check", "remote"}
 		if got := isKnownDenoOptionalFlagValue("--no-check", "remote", fields, 4, len(fields)); got {
 			t.Fatalf("isKnownDenoOptionalFlagValue(--no-check,remote) = %v, want false", got)
+		}
+	})
+
+	t.Run("check consumes value when candidate follows", func(t *testing.T) {
+		fields := []string{"deno", "run", "--check", "all", "main.ts"}
+		if got := isKnownDenoOptionalFlagValue("--check", "all", fields, 4, len(fields)); !got {
+			t.Fatalf("isKnownDenoOptionalFlagValue(--check,all) = %v, want true", got)
+		}
+		fields = []string{"deno", "run", "--check", "all"}
+		if got := isKnownDenoOptionalFlagValue("--check", "all", fields, 4, len(fields)); got {
+			t.Fatalf("isKnownDenoOptionalFlagValue(--check,all) = %v, want false", got)
 		}
 	})
 

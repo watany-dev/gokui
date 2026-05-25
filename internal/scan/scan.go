@@ -1635,6 +1635,7 @@ func nextDenoRuntimeTarget(fields []string, start int, end int) (string, bool) {
 		"-c":              {},
 		"--config":        {},
 		"--import-map":    {},
+		"--conditions":    {},
 		"--location":      {},
 		"--cert":          {},
 		"--lock":          {},
@@ -1652,6 +1653,7 @@ func nextDenoRuntimeTarget(fields []string, start int, end int) (string, bool) {
 	flagOptionalKnownValue := map[string]struct{}{
 		"--reload":           {},
 		"-r":                 {},
+		"--check":            {},
 		"--no-check":         {},
 		"--coverage":         {},
 		"--inspect":          {},
@@ -1659,6 +1661,7 @@ func nextDenoRuntimeTarget(fields []string, start int, end int) (string, bool) {
 		"--inspect-wait":     {},
 		"--watch":            {},
 		"--watch-exclude":    {},
+		"--watch-hmr":        {},
 		"--vendor":           {},
 		"--node-modules-dir": {},
 		"--allow-scripts":    {},
@@ -1751,6 +1754,11 @@ func isKnownDenoOptionalFlagValue(
 			return false
 		}
 		return isDenoCoverageValue(value)
+	case "--check":
+		if !hasDenoRuntimeCandidateAfter(fields, nextStart, end) {
+			return false
+		}
+		return isDenoCheckValue(value)
 	case "--no-check":
 		if !hasDenoRuntimeCandidateAfter(fields, nextStart, end) {
 			return false
@@ -1767,6 +1775,11 @@ func isKnownDenoOptionalFlagValue(
 		}
 		return isDenoWatchValue(value)
 	case "--watch-exclude":
+		if !hasDenoRuntimeCandidateAfter(fields, nextStart, end) {
+			return false
+		}
+		return isDenoWatchValue(value)
+	case "--watch-hmr":
 		if !hasDenoRuntimeCandidateAfter(fields, nextStart, end) {
 			return false
 		}
@@ -1928,6 +1941,13 @@ func isDenoCoverageValue(value string) bool {
 		}
 	}
 	return true
+}
+
+func isDenoCheckValue(value string) bool {
+	if value == "" || strings.HasPrefix(value, "-") {
+		return false
+	}
+	return strings.EqualFold(strings.TrimSpace(value), "all")
 }
 
 func isDenoNoCheckValue(value string) bool {
@@ -2273,6 +2293,7 @@ func hasDenoRuntimeCandidateAfter(fields []string, start int, end int) bool {
 		"-c":              {},
 		"--config":        {},
 		"--import-map":    {},
+		"--conditions":    {},
 		"--location":      {},
 		"--cert":          {},
 		"--lock":          {},
