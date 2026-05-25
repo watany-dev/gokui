@@ -3456,21 +3456,27 @@ func hasANSIOSCEscape(line string) bool {
 }
 
 func classifyMarkdownLinkSpoofing(line string, relPath string, lineNum int) []Finding {
-	matches := markdownLinkPattern.FindAllStringSubmatch(line, -1)
+	matches := markdownLinkPattern.FindAllStringSubmatchIndex(line, -1)
 	if len(matches) == 0 {
 		return nil
 	}
 
 	out := make([]Finding, 0, len(matches))
 	for _, match := range matches {
-		if len(match) < 3 {
+		if len(match) < 6 {
 			continue
 		}
-		displayHost, ok := parseDisplayLinkHost(match[1])
+		start := match[0]
+		if start > 0 && line[start-1] == '!' {
+			continue
+		}
+		label := line[match[2]:match[3]]
+		target := line[match[4]:match[5]]
+		displayHost, ok := parseDisplayLinkHost(label)
 		if !ok {
 			continue
 		}
-		targetHost, ok := parseMarkdownLinkTargetHost(match[2])
+		targetHost, ok := parseMarkdownLinkTargetHost(target)
 		if !ok {
 			continue
 		}

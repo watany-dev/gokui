@@ -1125,6 +1125,14 @@ func TestClassifyMarkdownLinkSpoofing(t *testing.T) {
 		}
 	})
 
+	t.Run("ignores image markdown forms", func(t *testing.T) {
+		line := "![https://trusted.example.com/login](https://evil.example.net/login)"
+		findings := classifyMarkdownLinkSpoofing(line, "SKILL.md", 13)
+		if len(findings) != 0 {
+			t.Fatalf("expected no findings for image markdown, got %+v", findings)
+		}
+	})
+
 	t.Run("handles angle-bracketed display URLs", func(t *testing.T) {
 		line := "[<https://trusted.example.com/login>](https://evil.example.net/login)"
 		findings := classifyMarkdownLinkSpoofing(line, "SKILL.md", 13)
