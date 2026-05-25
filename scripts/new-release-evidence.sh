@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+set -o noclobber
 
 umask 077
 

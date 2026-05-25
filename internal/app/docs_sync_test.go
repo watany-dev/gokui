@@ -503,6 +503,7 @@ func TestInspectSARIFScriptHardeningSync(t *testing.T) {
 	script := string(scriptBytes)
 
 	required := []string{
+		"set -o noclobber",
 		"umask 077",
 		"assert_no_symlink_components()",
 		`assert_no_symlink_components "$ROOT_DIR" "repository root path"`,
@@ -527,6 +528,7 @@ func TestReleaseEvidenceScriptExecutionContractSync(t *testing.T) {
 	script := string(scriptBytes)
 
 	required := []string{
+		"set -o noclobber",
 		"umask 077",
 		"assert_no_symlink_components()",
 		`assert_no_symlink_components "$ROOT_DIR" "repository root path"`,
@@ -561,6 +563,7 @@ func TestReleaseEvidenceTemplateScriptHardeningSync(t *testing.T) {
 	script := string(scriptBytes)
 
 	required := []string{
+		"set -o noclobber",
 		"umask 077",
 		"assert_no_symlink_components()",
 		`assert_no_symlink_components "$ROOT_DIR" "repository root path"`,
