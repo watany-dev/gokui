@@ -3238,8 +3238,10 @@ func isGitHubReleaseAssetURL(host string, path string) bool {
 	if host == "github.com" && (strings.Contains(lowerPath, "/releases/download/") || strings.Contains(lowerPath, "/releases/latest/download/")) {
 		return true
 	}
-	if host == "api.github.com" && strings.Contains(lowerPath, "/repos/") && strings.Contains(lowerPath, "/releases/assets/") {
-		return true
+	if host == "api.github.com" && strings.Contains(lowerPath, "/repos/") {
+		if strings.Contains(lowerPath, "/releases/assets/") || isGitHubAPIReleaseIDAssetsPath(lowerPath) {
+			return true
+		}
 	}
 	if host == "github-releases.githubusercontent.com" {
 		return true
@@ -3248,6 +3250,26 @@ func isGitHubReleaseAssetURL(host string, path string) bool {
 		return true
 	}
 	return false
+}
+
+func isGitHubAPIReleaseIDAssetsPath(path string) bool {
+	trimmed := strings.Trim(path, "/")
+	if trimmed == "" {
+		return false
+	}
+	parts := strings.Split(trimmed, "/")
+	if len(parts) != 6 {
+		return false
+	}
+	if parts[0] != "repos" || parts[1] == "" || parts[2] == "" || parts[3] != "releases" || parts[5] != "assets" {
+		return false
+	}
+	for _, ch := range parts[4] {
+		if ch < '0' || ch > '9' {
+			return false
+		}
+	}
+	return parts[4] != ""
 }
 
 func normalizeURLRiskHost(host string) string {
