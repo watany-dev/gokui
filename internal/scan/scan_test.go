@@ -903,8 +903,11 @@ func TestClassifyPathRisks(t *testing.T) {
 		assertHasID(t, findings, "CONFUSABLE_FILENAME")
 	})
 
-	t.Run("detects confusable and mixed-script extension names", func(t *testing.T) {
+	t.Run("detects confusable extension names", func(t *testing.T) {
 		findings := classifyPathRisks("docs/readme.mе")
+		assertHasID(t, findings, "CONFUSABLE_FILENAME")
+
+		findings = classifyPathRisks("docs/тест.mе")
 		assertHasID(t, findings, "CONFUSABLE_FILENAME")
 	})
 
@@ -984,6 +987,23 @@ func TestHasASCIIAlnum(t *testing.T) {
 	for _, tc := range cases {
 		if got := hasASCIIAlnum(tc.value); got != tc.want {
 			t.Fatalf("hasASCIIAlnum(%q) = %v, want %v", tc.value, got, tc.want)
+		}
+	}
+}
+
+func TestHasConfusableExtension(t *testing.T) {
+	cases := []struct {
+		value string
+		want  bool
+	}{
+		{value: "readme.mе", want: true},
+		{value: "readme.md", want: false},
+		{value: "readme", want: false},
+		{value: "тест.mе", want: true},
+	}
+	for _, tc := range cases {
+		if got := hasConfusableExtension(tc.value); got != tc.want {
+			t.Fatalf("hasConfusableExtension(%q) = %v, want %v", tc.value, got, tc.want)
 		}
 	}
 }

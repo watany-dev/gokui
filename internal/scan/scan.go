@@ -397,11 +397,15 @@ func classifyPathRisks(relPath string) []Finding {
 	hasMixedScript := false
 	hasConfusable := false
 	for i, component := range components {
+		rawComponent := ""
+		if i < len(rawComponents) {
+			rawComponent = rawComponents[i]
+		}
 		if !hasMixedScript && hasMixedScriptLetters(component) {
 			hasMixedScript = true
 		}
 		stemHasASCII := hasASCIIAlnum(component)
-		if !hasConfusable && (hasASCIIConfusableFilename(component) || (stemHasASCII && i < len(rawComponents) && hasASCIIConfusableFilename(rawComponents[i]))) {
+		if !hasConfusable && (hasASCIIConfusableFilename(component) || hasConfusableExtension(rawComponent) || (stemHasASCII && hasASCIIConfusableFilename(rawComponent))) {
 			hasConfusable = true
 		}
 		if hasMixedScript && hasConfusable {
@@ -478,6 +482,14 @@ func hasASCIIAlnum(name string) bool {
 		}
 	}
 	return false
+}
+
+func hasConfusableExtension(name string) bool {
+	ext := strings.TrimPrefix(filepath.Ext(name), ".")
+	if ext == "" {
+		return false
+	}
+	return hasASCIIConfusableFilename(ext)
 }
 
 func hasASCIIConfusableFilename(name string) bool {
