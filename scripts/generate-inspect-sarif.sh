@@ -1,7 +1,30 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+umask 077
+
 out_path="${1:-inspect-results.sarif}"
+
+assert_no_symlink_components() {
+  local path="$1"
+  local label="$2"
+  local current="$path"
+  while :; do
+    if [ -L "$current" ]; then
+      echo "${label} contains symlink path component: $current" >&2
+      exit 1
+    fi
+    local parent
+    parent="$(dirname "$current")"
+    if [ "$parent" = "$current" ]; then
+      break
+    fi
+    current="$parent"
+  done
+}
+
+assert_no_symlink_components "$out_path" "inspect SARIF output path"
+mkdir -p "$(dirname "$out_path")"
 
 tmp_bin="$(mktemp "${TMPDIR:-/tmp}/gokui-sarif-XXXXXX")"
 cleanup() {
