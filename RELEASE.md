@@ -76,6 +76,8 @@ toolchain baseline.
   - `fetch`, `inspect`, `install`, `update`, `lock verify`
 - SARIF contract smoke check:
   - `make inspect-sarif` (expects reject exit code path and emits `inspect-results.sarif`)
+- release-check stderr error codes:
+  - see `README.md` -> `Automation Error Codes` -> `release-check`
 - Exit code contract:
   - success: `0`
   - fatal error: `1`

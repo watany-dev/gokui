@@ -409,6 +409,10 @@ func TestReleaseChecklistDocumentationSync(t *testing.T) {
 	if !strings.Contains(releaseDoc, "preflight checks run before format/test/race/vuln gate") {
 		t.Fatal("RELEASE.md should document release-check preflight-first execution ordering")
 	}
+	if !strings.Contains(releaseDoc, "release-check stderr error codes:") ||
+		!strings.Contains(releaseDoc, "see `README.md` -> `Automation Error Codes` -> `release-check`") {
+		t.Fatal("RELEASE.md should link release-check stderr code reference in README automation error section")
+	}
 	if !strings.Contains(releaseDoc, "mode (`offline` or `online`)") {
 		t.Fatal("RELEASE.md should require recording evidence mode in captured metadata")
 	}
