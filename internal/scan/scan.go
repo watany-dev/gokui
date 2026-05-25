@@ -1084,7 +1084,7 @@ func normalizeShellSpecialProcParams(line string) string {
 }
 
 func normalizeShellProcCommandSubstitutions(line string) string {
-	if !strings.Contains(line, "$(") {
+	if !strings.Contains(line, "$(") && !strings.Contains(line, "`") {
 		return line
 	}
 
@@ -1105,6 +1105,17 @@ func normalizeShellProcCommandSubstitutions(line string) string {
 			}
 			b.WriteString("$$")
 			i += 2 + closeIdx + 1
+			continue
+		}
+		if line[i] == '`' {
+			closeIdx := strings.IndexByte(line[i+1:], '`')
+			if closeIdx < 0 {
+				b.WriteByte(line[i])
+				i++
+				continue
+			}
+			b.WriteString("$$")
+			i += 1 + closeIdx + 1
 			continue
 		}
 		b.WriteByte(line[i])
