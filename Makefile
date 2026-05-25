@@ -92,11 +92,11 @@ release-check: check test test-race
 	}; \
 	assert_no_symlink_components "$(RELEASE_CHECK_BUILD_OUT)" "release-check build output path"; \
 	assert_no_symlink_components "$(RELEASE_CHECK_SARIF_OUT)" "release-check SARIF output path"; \
-	case "$(RELEASE_CHECK_BUILD_OUT)" in ""|"/"|".") \
+	case "$(RELEASE_CHECK_BUILD_OUT)" in ""|"/"|"."|*/) \
 		echo "release-check build output path must be a non-root file path" >&2; \
 		exit 1; \
 	;; esac; \
-	case "$(RELEASE_CHECK_SARIF_OUT)" in ""|"/"|".") \
+	case "$(RELEASE_CHECK_SARIF_OUT)" in ""|"/"|"."|*/) \
 		echo "release-check SARIF output path must be a non-root file path" >&2; \
 		exit 1; \
 	;; esac; \
