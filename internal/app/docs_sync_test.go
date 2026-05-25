@@ -217,6 +217,7 @@ func TestReadmeCriticalPatternDocumentationSync(t *testing.T) {
 		"curl | source /dev/stdin",
 		"decode output piped to `source`/`.` via stdin",
 		"quoted/escaped-quoted stdin targets",
+		"embedded in quoted command strings",
 		"/dev/fd/0",
 		"/proc/thread-self/fd/0",
 		"/proc/<pid>/fd/0",
