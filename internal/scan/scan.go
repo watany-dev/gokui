@@ -3266,6 +3266,9 @@ func parseRawIPHost(host string) net.IP {
 	if ip := net.ParseIP(host); ip != nil {
 		return ip
 	}
+	if dottedIPv4, ok := parseDottedMixedBaseIPv4Host(host); ok {
+		return dottedIPv4
+	}
 	if numericIPv4, ok := parseIntegerIPv4Host(host); ok {
 		return numericIPv4
 	}
@@ -3320,6 +3323,64 @@ func parseIntegerIPv4Host(host string) (net.IP, bool) {
 		return nil, false
 	}
 	return net.IPv4(byte(value>>24), byte(value>>16), byte(value>>8), byte(value)), true
+}
+
+func parseDottedMixedBaseIPv4Host(host string) (net.IP, bool) {
+	parts := strings.Split(host, ".")
+	if len(parts) != 4 {
+		return nil, false
+	}
+	values := [4]byte{}
+	for i, part := range parts {
+		parsed, ok := parseIPv4OctetWithMixedBase(part)
+		if !ok {
+			return nil, false
+		}
+		values[i] = byte(parsed)
+	}
+	return net.IPv4(values[0], values[1], values[2], values[3]), true
+}
+
+func parseIPv4OctetWithMixedBase(value string) (uint64, bool) {
+	if value == "" {
+		return 0, false
+	}
+	base := 10
+	number := value
+	if len(value) > 2 && (strings.HasPrefix(value, "0x") || strings.HasPrefix(value, "0X")) {
+		base = 16
+		number = value[2:]
+		if number == "" {
+			return 0, false
+		}
+		for i := 0; i < len(number); i++ {
+			c := number[i]
+			isDigit := c >= '0' && c <= '9'
+			isLowerHex := c >= 'a' && c <= 'f'
+			isUpperHex := c >= 'A' && c <= 'F'
+			if !isDigit && !isLowerHex && !isUpperHex {
+				return 0, false
+			}
+		}
+	} else if len(value) > 1 && value[0] == '0' {
+		base = 8
+		for i := 1; i < len(value); i++ {
+			if value[i] < '0' || value[i] > '7' {
+				return 0, false
+			}
+		}
+	} else {
+		for i := 0; i < len(value); i++ {
+			if value[i] < '0' || value[i] > '9' {
+				return 0, false
+			}
+		}
+	}
+	parsed, err := strconv.ParseUint(number, base, 16)
+	if err != nil || parsed > 255 {
+		return 0, false
+	}
+	return parsed, true
 }
 
 func extractURLCandidates(line string) []string {
