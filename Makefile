@@ -7,6 +7,7 @@ GOFMT_TARGETS := cmd internal
 MAIN_PKG := ./cmd/gokui
 BUILD_OUT ?= gokui
 CACHE_DIR ?= $(CURDIR)/.cache
+RELEASE_CHECK_BUILD_OUT ?= $(CACHE_DIR)/gokui-release-check
 
 export GOCACHE ?= $(CACHE_DIR)/go-build
 export GOMODCACHE ?= $(CACHE_DIR)/gomod
@@ -70,13 +71,15 @@ actionlint:
 
 check: fmt-check lint typecheck deadcode coverage
 
-release-check: check test test-race build
+release-check: check test test-race
+	$(MAKE) build BUILD_OUT=$(RELEASE_CHECK_BUILD_OUT)
 	$(MAKE) inspect-sarif INSPECT_SARIF_OUT=$(CACHE_DIR)/inspect-results.sarif
 ifeq ($(RELEASE_CHECK_VULN),1)
 	$(MAKE) vuln
 else
 	@echo "Skipping vuln check (RELEASE_CHECK_VULN=$(RELEASE_CHECK_VULN))"
 endif
+	@rm -f $(RELEASE_CHECK_BUILD_OUT)
 
 release-check-offline:
 	$(MAKE) release-check RELEASE_CHECK_VULN=0

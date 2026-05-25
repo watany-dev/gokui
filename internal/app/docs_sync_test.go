@@ -272,6 +272,9 @@ func TestReleaseChecklistDocumentationSync(t *testing.T) {
 	if !strings.Contains(releaseDoc, ".cache/gokui-release-evidence") {
 		t.Fatal("RELEASE.md should document isolated BUILD_OUT path for evidence scripts")
 	}
+	if !strings.Contains(releaseDoc, ".cache/gokui-release-check") {
+		t.Fatal("RELEASE.md should document isolated release-check build output path")
+	}
 	if !strings.Contains(releaseDoc, "mode (`offline` or `online`)") {
 		t.Fatal("RELEASE.md should require recording evidence mode in captured metadata")
 	}
@@ -293,6 +296,7 @@ func TestReleaseCheckDocumentationSync(t *testing.T) {
 		"make release-evidence-online",
 		"inspect-sarif smoke generation, and govulncheck",
 		"BUILD_OUT=.cache/gokui-release-evidence",
+		".cache/gokui-release-check",
 		"git status --short --untracked-files=no",
 		"-offline-audit.md",
 		"-online-audit.md",
@@ -331,7 +335,9 @@ func TestMakefileVulnToolchainBaselineSync(t *testing.T) {
 	required := []string{
 		"VULN_GOTOOLCHAIN ?= go1.26.3+auto",
 		"BUILD_OUT ?= gokui",
+		"RELEASE_CHECK_BUILD_OUT ?= $(CACHE_DIR)/gokui-release-check",
 		"$(GO) build -trimpath -buildvcs=true -ldflags='$(LDFLAGS)' -o $(BUILD_OUT) $(MAIN_PKG)",
+		"$(MAKE) build BUILD_OUT=$(RELEASE_CHECK_BUILD_OUT)",
 		"GOTOOLCHAIN=$(VULN_GOTOOLCHAIN) $(GO) tool govulncheck ./...",
 		"release-evidence-offline:",
 		"./scripts/collect-release-evidence.sh",

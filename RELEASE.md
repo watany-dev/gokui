@@ -29,7 +29,7 @@ This runs:
 - coverage threshold check
 - full tests
 - race tests
-- build
+- build (isolated output: `.cache/gokui-release-check`, auto-cleaned)
 - inspect SARIF smoke generation (`make inspect-sarif`)
 - `govulncheck`
 

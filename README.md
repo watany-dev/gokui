@@ -382,6 +382,8 @@ make release-evidence-online
 `release-check-offline` with `BUILD_OUT=.cache/gokui-release-evidence`, and
 their clean-tree check evaluates tracked files only
 (`git status --short --untracked-files=no`).
+`make release-check`/`make release-check-offline` build to
+`.cache/gokui-release-check` and clean that artifact automatically.
 Generated evidence filenames end with `-offline-audit.md` or
 `-online-audit.md` based on mode.
 
