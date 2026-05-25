@@ -287,9 +287,12 @@ func TestReleaseCheckDocumentationSync(t *testing.T) {
 		"make release-check-offline",
 		"make inspect-sarif",
 		"make release-evidence-offline",
+		"make release-evidence-online",
 		"inspect-sarif smoke generation, and govulncheck",
 		"BUILD_OUT=.cache/gokui-release-evidence",
 		"git status --short --untracked-files=no",
+		"-offline-audit.md",
+		"-online-audit.md",
 	}
 	for _, line := range required {
 		if !strings.Contains(readme, line) {
