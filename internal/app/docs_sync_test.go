@@ -531,14 +531,18 @@ func TestReleaseEvidenceScriptExecutionContractSync(t *testing.T) {
 		"set -o noclobber",
 		"umask 077",
 		"assert_no_symlink_components()",
+		"create_fresh_file()",
+		`tmp_path="$(mktemp "$dir/.${base}.tmp.XXXXXX")"`,
+		`mv -n "$tmp_path" "$path"`,
 		`assert_no_symlink_components "$ROOT_DIR" "repository root path"`,
 		`EVIDENCE_MODE="offline"`,
 		`EVIDENCE_MODE="online"`,
 		`assert_no_symlink_components "$OUT_DIR" "evidence directory"`,
 		`assert_no_symlink_components "$LOG_DIR" "evidence log directory"`,
-		`assert_no_symlink_components "$OUT_PATH" "evidence path"`,
-		`if [ -e "$OUT_PATH" ]; then`,
-		`if [ -e "$log_path" ]; then`,
+		`create_fresh_file "$OUT_PATH" "evidence path"`,
+		`create_fresh_file "$log_path" "log path"`,
+		`exec {EVIDENCE_FD}>>"$OUT_PATH"`,
+		`exec {log_fd}> "$log_path"`,
 		`echo "- Mode: ${EVIDENCE_MODE}"`,
 		`git status --short --untracked-files=no`,
 		`BUILD_OUT=\"$ROOT_DIR/.cache/gokui-release-evidence\" make release-check-offline`,
@@ -547,6 +551,7 @@ func TestReleaseEvidenceScriptExecutionContractSync(t *testing.T) {
 		"preserve failing build artifact for investigation",
 		`cleanup evidence build artifact`,
 		`rm -f \"$ROOT_DIR/.cache/gokui-release-evidence\"`,
+		`exec {EVIDENCE_FD}>&-`,
 	}
 	for _, line := range required {
 		if !strings.Contains(script, line) {
@@ -652,7 +657,7 @@ func TestRoadmapReleaseEvidenceHardeningSync(t *testing.T) {
 	required := []string{
 		"automated offline release evidence collection with per-step logs",
 		"automated online release evidence collection mode (includes vuln step)",
-		"release-evidence output/log path hardening (symlink path-component rejection, restrictive evidence/log file permissions, fail-closed output/log collision checks, and failure-artifact retention)",
+		"release-evidence output/log path hardening (symlink path-component rejection, restrictive evidence/log file permissions, fail-closed output/log collision checks, atomic file creation with descriptor-backed writes, and failure-artifact retention)",
 		"inspect-sarif output path hardening (symlink path-component rejection, restrictive SARIF file permissions, and fail-closed output-collision checks)",
 		"release script repository-root path hardening (reject symlinked repository-root execution paths)",
 		"release-evidence gate hardening with isolated build output (`BUILD_OUT`) and tracked-file clean-tree checks (`git status --short --untracked-files=no`)",

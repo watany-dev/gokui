@@ -38,6 +38,28 @@ assert_no_symlink_components() {
   done
 }
 
+create_fresh_file() {
+  local path="$1"
+  local label="$2"
+  assert_no_symlink_components "$path" "$label"
+  if [ -e "$path" ]; then
+    echo "${label} already exists: $path" >&2
+    exit 1
+  fi
+
+  local dir
+  dir="$(dirname "$path")"
+  local base
+  base="$(basename "$path")"
+  local tmp_path
+  tmp_path="$(mktemp "$dir/.${base}.tmp.XXXXXX")"
+  if ! mv -n "$tmp_path" "$path"; then
+    rm -f "$tmp_path"
+    echo "${label} already exists: $path" >&2
+    exit 1
+  fi
+}
+
 assert_no_symlink_components "$ROOT_DIR" "repository root path"
 
 while [ "$#" -gt 0 ]; do
@@ -68,11 +90,8 @@ TS="$(date -u +%Y%m%dT%H%M%SZ)"
 COMMIT_SHA="$(git -C "$ROOT_DIR" rev-parse HEAD 2>/dev/null || echo unknown)"
 BASENAME="${TS}-${COMMIT_SHA}-${AUDIT_KIND}"
 OUT_PATH="$OUT_DIR/${BASENAME}.md"
-assert_no_symlink_components "$OUT_PATH" "evidence path"
-if [ -e "$OUT_PATH" ]; then
-  echo "release evidence output already exists: $OUT_PATH" >&2
-  exit 1
-fi
+create_fresh_file "$OUT_PATH" "evidence path"
+exec {EVIDENCE_FD}>>"$OUT_PATH"
 
 FAILED_STEPS=0
 
@@ -92,7 +111,7 @@ append_step_result() {
     echo "- ${step_name}: ${result}"
     echo "  - command: \`${command_text}\`"
     echo "  - log: \`${log_path#"$ROOT_DIR"/}\`"
-  } >> "$OUT_PATH"
+  } >&${EVIDENCE_FD}
 }
 
 run_step() {
@@ -100,16 +119,15 @@ run_step() {
   local command_text="$2"
   local log_path="$3"
 
-  assert_no_symlink_components "$log_path" "log path"
-  if [ -e "$log_path" ]; then
-    echo "release evidence log already exists: $log_path" >&2
-    exit 1
-  fi
+  create_fresh_file "$log_path" "log path"
+  local log_fd
+  exec {log_fd}> "$log_path"
 
   set +e
-  bash -lc "cd \"$ROOT_DIR\" && ${command_text}" >"$log_path" 2>&1
+  bash -lc "cd \"$ROOT_DIR\" && ${command_text}" >&"$log_fd" 2>&1
   local rc=$?
   set -e
+  exec {log_fd}>&-
 
   append_step_result "$step_name" "$command_text" "$rc" "$log_path"
 }
@@ -119,22 +137,23 @@ run_git_clean_check() {
   local command_text="git status --short --untracked-files=no"
   local log_path="$LOG_DIR/${BASENAME}-git-status.log"
 
-  assert_no_symlink_components "$log_path" "log path"
-  if [ -e "$log_path" ]; then
-    echo "release evidence log already exists: $log_path" >&2
-    exit 1
-  fi
+  create_fresh_file "$log_path" "log path"
+  local log_fd
+  exec {log_fd}> "$log_path"
 
   set +e
-  bash -lc "cd \"$ROOT_DIR\" && git status --short --untracked-files=no" >"$log_path" 2>&1
+  bash -lc "cd \"$ROOT_DIR\" && git status --short --untracked-files=no" >&"$log_fd" 2>&1
   local rc=$?
   set -e
 
   if [ "$rc" -eq 0 ] && [ -s "$log_path" ]; then
     rc=1
-    echo >> "$log_path"
-    echo "expected clean tracked working tree, but git status returned output" >> "$log_path"
+    {
+      echo
+      echo "expected clean tracked working tree, but git status returned output"
+    } >&"$log_fd"
   fi
+  exec {log_fd}>&-
 
   append_step_result "$step_name" "$command_text" "$rc" "$log_path"
 }
@@ -150,7 +169,7 @@ run_git_clean_check() {
   echo "- Go version: $(go version 2>/dev/null || echo unknown)"
   echo
   echo "## Automated Steps"
-} > "$OUT_PATH"
+} >&${EVIDENCE_FD}
 
 run_git_clean_check
 run_step "release-check-offline" "GOCACHE=\"$ROOT_DIR/.cache/go-build\" GOMODCACHE=\"$ROOT_DIR/.cache/gomod\" GOPATH=\"$ROOT_DIR/.cache/gopath\" XDG_CACHE_HOME=\"$ROOT_DIR/.cache/xdg\" BUILD_OUT=\"$ROOT_DIR/.cache/gokui-release-evidence\" make release-check-offline" "$LOG_DIR/${BASENAME}-release-check-offline.log"
@@ -161,12 +180,12 @@ elif [ "$WITH_VULN" -eq 1 ]; then
   {
     echo "- vuln: SKIPPED"
     echo "  - reason: skipped because prior step already failed"
-  } >> "$OUT_PATH"
+  } >&${EVIDENCE_FD}
 else
   {
     echo "- vuln: SKIPPED"
     echo "  - reason: run with --with-vuln to include online vulnerability check"
-  } >> "$OUT_PATH"
+  } >&${EVIDENCE_FD}
 fi
 
 if [ "$FAILED_STEPS" -eq 0 ]; then
@@ -175,7 +194,7 @@ else
   {
     echo "- cleanup evidence build artifact: SKIPPED"
     echo "  - reason: preserve failing build artifact for investigation"
-  } >> "$OUT_PATH"
+  } >&${EVIDENCE_FD}
 fi
 
 {
@@ -188,7 +207,9 @@ fi
   fi
   echo "- Evidence file: \`${OUT_PATH#"$ROOT_DIR"/}\`"
   echo "- Logs directory: \`${LOG_DIR#"$ROOT_DIR"/}\`"
-} >> "$OUT_PATH"
+} >&${EVIDENCE_FD}
+
+exec {EVIDENCE_FD}>&-
 
 echo "Created $OUT_PATH"
 if [ "$FAILED_STEPS" -ne 0 ]; then
