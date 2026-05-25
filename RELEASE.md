@@ -122,6 +122,18 @@ Cleanup-removal failures are tagged with machine-readable code
 When one or more removals fail, a summary line is emitted with
 `RC_CLEANUP_REMOVE_FAILED_SUMMARY`.
 
+| Release-check code | Typical trigger |
+| --- | --- |
+| `RC_PREFLIGHT_BUILD_OUT_INVALID` | `RELEASE_CHECK_BUILD_OUT` is root-like (`/`, `.`, empty) or ends with `/` |
+| `RC_PREFLIGHT_SARIF_OUT_INVALID` | `RELEASE_CHECK_SARIF_OUT` is root-like (`/`, `.`, empty) or ends with `/` |
+| `RC_PREFLIGHT_BUILD_OUT_SYMLINK` | Build output path or ancestor contains a symlink component |
+| `RC_PREFLIGHT_SARIF_OUT_SYMLINK` | SARIF output path or ancestor contains a symlink component |
+| `RC_PREFLIGHT_OUTPUT_PATH_CONFLICT` | Build and SARIF outputs resolve to the same absolute path |
+| `RC_PREFLIGHT_BUILD_OUT_EXISTS` | Build output path already exists before gate execution |
+| `RC_PREFLIGHT_SARIF_OUT_EXISTS` | SARIF output path already exists before gate execution |
+| `RC_CLEANUP_REMOVE_FAILED` | Cleanup failed to remove one output path |
+| `RC_CLEANUP_REMOVE_FAILED_SUMMARY` | Cleanup failed to remove one or more output paths (summary line with count) |
+
 At minimum, capture:
 - mode (`offline` or `online`)
 - commit SHA

@@ -389,6 +389,9 @@ func TestReleaseChecklistDocumentationSync(t *testing.T) {
 	if !strings.Contains(releaseDoc, "RC_CLEANUP_REMOVE_FAILED_SUMMARY") {
 		t.Fatal("RELEASE.md should document cleanup failure summary machine-readable error code")
 	}
+	if !strings.Contains(releaseDoc, "| Release-check code | Typical trigger |") {
+		t.Fatal("RELEASE.md should include release-check machine-readable code table")
+	}
 }
 
 func TestReleaseCheckDocumentationSync(t *testing.T) {
@@ -432,6 +435,7 @@ func TestReleaseCheckDocumentationSync(t *testing.T) {
 		"for investigation and skip subsequent vuln/cleanup steps",
 		"RC_CLEANUP_REMOVE_FAILED",
 		"RC_CLEANUP_REMOVE_FAILED_SUMMARY",
+		"| Release-check code | Typical trigger |",
 		"git status --short --untracked-files=no",
 		"-offline-audit.md",
 		"-online-audit.md",
