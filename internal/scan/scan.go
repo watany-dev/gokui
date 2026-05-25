@@ -87,6 +87,10 @@ var (
 	shellAssignDefaultPosPattern    = regexp.MustCompile(`\$\{([0-9]{1,10}):=([^}\n]+)\}`)
 	shellAssignNamedPattern         = regexp.MustCompile(`\$\{([A-Za-z_][A-Za-z0-9_]*)=([^}\n]+)\}`)
 	shellAssignPosPattern           = regexp.MustCompile(`\$\{([0-9]{1,10})=([^}\n]+)\}`)
+	shellSetSubDefaultNamedPattern  = regexp.MustCompile(`\$\{([A-Za-z_][A-Za-z0-9_]*):\+([^}\n]+)\}`)
+	shellSetSubDefaultPosPattern    = regexp.MustCompile(`\$\{([0-9]{1,10}):\+([^}\n]+)\}`)
+	shellSetSubNamedPattern         = regexp.MustCompile(`\$\{([A-Za-z_][A-Za-z0-9_]*)\+([^}\n]+)\}`)
+	shellSetSubPosPattern           = regexp.MustCompile(`\$\{([0-9]{1,10})\+([^}\n]+)\}`)
 
 	promptOverridePattern = regexp.MustCompile(`(?i)\b(?:ignore|override|bypass)\b.{0,80}\b(?:previous|prior|system|higher|earlier)\b.{0,40}\b(?:instruction|instructions|prompt|prompts)\b`)
 
@@ -1005,6 +1009,10 @@ func normalizeShellAssignDefaultExpansions(line string) string {
 	out = shellAssignDefaultPosPattern.ReplaceAllString(out, `${$1:-$2}`)
 	out = shellAssignNamedPattern.ReplaceAllString(out, `${$1-$2}`)
 	out = shellAssignPosPattern.ReplaceAllString(out, `${$1-$2}`)
+	out = shellSetSubDefaultNamedPattern.ReplaceAllString(out, `${$1:-$2}`)
+	out = shellSetSubDefaultPosPattern.ReplaceAllString(out, `${$1:-$2}`)
+	out = shellSetSubNamedPattern.ReplaceAllString(out, `${$1-$2}`)
+	out = shellSetSubPosPattern.ReplaceAllString(out, `${$1-$2}`)
 	return out
 }
 
