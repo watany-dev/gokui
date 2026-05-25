@@ -706,6 +706,7 @@ Critical patterns include:
 - nested-brace substring normalization also covers deeper multi-level inner fallback nesting (for example `${PPID:${OFF:-${ALT:-${DEF}}}}`) in `/proc/.../fd/...` and `/proc/.../task/.../fd/...` chains
 - nested-brace substring normalization also covers mixed nested/plain forms (for example `${PPID:${OFF}:1}` and `${2:${TOFF}:${TLEN:-1}}`) in `/proc/.../fd/...` and `/proc/.../task/.../fd/...` chains
 - nested-brace substring normalization also covers plain-first nested-second forms (for example `${PPID:1:${LEN:-1}}` and `${2:2:${TLEN:-${TALT}}}`) in `/proc/.../fd/...` and `/proc/.../task/.../fd/...` chains
+- nested-brace substring normalization also covers spaced plain-first nested-second forms (for example `${PPID:1: ${LEN:-1}}` and `${2: 2 : ${TLEN:-${TALT}}}`) in `/proc/.../fd/...` and `/proc/.../task/.../fd/...` chains
 - `chmod +x` followed by local execution of the same artifact
 - access to `.env`, `~/.ssh`, `~/.aws`, browser profiles, keychains, wallets,
   cookies, or API tokens combined with network send

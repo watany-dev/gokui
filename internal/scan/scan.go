@@ -1227,6 +1227,8 @@ func parseShellNestedSubstringExpansion(line string, start int) (int, string, bo
 }
 
 func isNestedShellSubstringArgList(line string, start, outerEnd int) bool {
+	start = skipShellSpace(line, start, outerEnd)
+	outerEnd = trimShellSpaceRight(line, start, outerEnd)
 	if start+1 >= outerEnd || line[start] != '$' || line[start+1] != '{' {
 		return false
 	}
@@ -1243,6 +1245,8 @@ func isNestedShellSubstringArgList(line string, start, outerEnd int) bool {
 	}
 
 	secondStart := firstEnd + 2
+	secondStart = skipShellSpace(line, secondStart, outerEnd)
+	outerEnd = trimShellSpaceRight(line, secondStart, outerEnd)
 	if secondStart+1 < outerEnd && line[secondStart] == '$' && line[secondStart+1] == '{' {
 		secondEnd := findShellParamExpansionEnd(line, secondStart)
 		return secondEnd == outerEnd-1
@@ -1263,6 +1267,8 @@ func isPlainSubstringArg(line string, start, outerEnd int) bool {
 }
 
 func isPlainFirstNestedSecondSubstringArgList(line string, start, outerEnd int) bool {
+	start = skipShellSpace(line, start, outerEnd)
+	outerEnd = trimShellSpaceRight(line, start, outerEnd)
 	sep := -1
 	for i := start; i < outerEnd; i++ {
 		if line[i] == ':' {
@@ -1279,12 +1285,29 @@ func isPlainFirstNestedSecondSubstringArgList(line string, start, outerEnd int) 
 	if !isPlainSubstringArg(line, start, sep) {
 		return false
 	}
-	secondStart := sep + 1
+	secondStart := skipShellSpace(line, sep+1, outerEnd)
+	outerEnd = trimShellSpaceRight(line, secondStart, outerEnd)
 	if secondStart+1 < outerEnd && line[secondStart] == '$' && line[secondStart+1] == '{' {
 		secondEnd := findShellParamExpansionEnd(line, secondStart)
 		return secondEnd == outerEnd-1
 	}
 	return false
+}
+
+func skipShellSpace(line string, start, outerEnd int) int {
+	i := start
+	for i < outerEnd && (line[i] == ' ' || line[i] == '\t') {
+		i++
+	}
+	return i
+}
+
+func trimShellSpaceRight(line string, start, outerEnd int) int {
+	i := outerEnd
+	for i > start && (line[i-1] == ' ' || line[i-1] == '\t') {
+		i--
+	}
+	return i
 }
 
 func findShellParamExpansionEnd(line string, start int) int {
