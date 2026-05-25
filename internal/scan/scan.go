@@ -18,6 +18,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/watany-dev/gokui/internal/limitio"
+	"golang.org/x/net/idna"
 	"golang.org/x/text/unicode/norm"
 )
 
@@ -3397,7 +3398,11 @@ func parseURLHost(raw string) (string, bool) {
 
 func normalizeHost(host string) string {
 	normalized := strings.ToLower(strings.TrimSpace(host))
+	normalized = strings.TrimSuffix(normalized, ".")
 	normalized = strings.TrimPrefix(normalized, "www.")
+	if ascii, err := idna.Lookup.ToASCII(normalized); err == nil && ascii != "" {
+		normalized = strings.ToLower(ascii)
+	}
 	return normalized
 }
 

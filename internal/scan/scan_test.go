@@ -836,6 +836,14 @@ func TestClassifyMarkdownLinkSpoofing(t *testing.T) {
 		}
 	})
 
+	t.Run("does not flag idn and punycode host equivalence", func(t *testing.T) {
+		line := "[https://bücher.example/login](https://xn--bcher-kva.example/login)"
+		findings := classifyMarkdownLinkSpoofing(line, "SKILL.md", 12)
+		if len(findings) != 0 {
+			t.Fatalf("expected no findings for equivalent IDN hosts, got %+v", findings)
+		}
+	})
+
 	t.Run("ignores non-host labels", func(t *testing.T) {
 		line := "[click here](https://trusted.example.com/login)"
 		findings := classifyMarkdownLinkSpoofing(line, "SKILL.md", 13)
