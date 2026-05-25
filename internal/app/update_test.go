@@ -422,6 +422,60 @@ func TestRunUpdateDryRunStatuses(t *testing.T) {
 	}
 }
 
+func TestRunUpdateDryRunDetectsSchemeRelativeNewURLs(t *testing.T) {
+	targetRoot := filepath.Join(t.TempDir(), "skills")
+	if err := os.MkdirAll(targetRoot, 0o755); err != nil {
+		t.Fatalf("mkdir target root: %v", err)
+	}
+
+	src := createSkillSourceForInstallTest(t, "update-scheme-relative-url-skill")
+	report := installReport{
+		SchemaVersion: "0.1.0-draft",
+		Source:        source{Input: src, Kind: "local-dir"},
+		PolicyProfile: "strict",
+		Decision:      "PASS",
+	}
+	if _, _, err := installSkillAtomic(src, targetRoot, "update-scheme-relative-url-skill", report); err != nil {
+		t.Fatalf("installSkillAtomic() error = %v", err)
+	}
+
+	if err := os.WriteFile(filepath.Join(src, "README.md"), []byte("see //example.com/new-resource"), 0o644); err != nil {
+		t.Fatalf("write scheme-relative URL content: %v", err)
+	}
+
+	var stdout strings.Builder
+	var stderr strings.Builder
+	code := runUpdate([]string{"--dry-run", "--target", "custom:" + targetRoot, "--format", "json"}, &stdout, &stderr)
+	if code != 0 {
+		t.Fatalf("runUpdate(scheme-relative url) code = %d, want 0\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("stderr should be empty, got %q", stderr.String())
+	}
+
+	var updateOut updateReport
+	if err := json.Unmarshal([]byte(stdout.String()), &updateOut); err != nil {
+		t.Fatalf("json unmarshal update output: %v", err)
+	}
+	if len(updateOut.Skills) != 1 {
+		t.Fatalf("skills length = %d, want 1", len(updateOut.Skills))
+	}
+	if updateOut.Skills[0].Status != "CHANGED" {
+		t.Fatalf("status = %q, want CHANGED", updateOut.Skills[0].Status)
+	}
+
+	found := false
+	for _, u := range updateOut.Skills[0].NewURLs {
+		if u == "//example.com/new-resource" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("expected scheme-relative URL in new_urls, got %+v", updateOut.Skills[0].NewURLs)
+	}
+}
+
 func TestRunUpdateDryRunDoesNotMutateInstalledLockState(t *testing.T) {
 	targetRoot := filepath.Join(t.TempDir(), "skills")
 	if err := os.MkdirAll(targetRoot, 0o755); err != nil {

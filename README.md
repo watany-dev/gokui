@@ -85,7 +85,8 @@ emits a single structured error result. It also supports `--format sarif` for
 drift/check export in CI pipelines.
 `update --dry-run` now re-evaluates installed skills from lockfile source
 provenance for local-dir/zip/tar sources, reports added/removed/changed files,
-risk deltas, and new URL/executable signals. For GitHub sources, commit-pinned
+risk deltas, and new URL/executable signals (including scheme-relative
+`//host/...` URLs). For GitHub sources, commit-pinned
 refs are evaluated and floating refs are rejected. Lockfile source fields are
 also validated strictly (kind/input/type consistency + canonical lowercase form
 without surrounding whitespace), lock policy fields are validated for
