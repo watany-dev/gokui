@@ -1025,6 +1025,22 @@ func TestClassifyMarkdownLinkSpoofing(t *testing.T) {
 		}
 	})
 
+	t.Run("handles nested wrappers around display URLs", func(t *testing.T) {
+		line := "[**<https://trusted.example.com/login>**](https://evil.example.net/login)"
+		findings := classifyMarkdownLinkSpoofing(line, "SKILL.md", 13)
+		assertHasID(t, findings, "LINK_SPOOFING_URL_MISMATCH")
+
+		line = "[`<https://trusted.example.com/login>`](https://evil.example.net/login)"
+		findings = classifyMarkdownLinkSpoofing(line, "SKILL.md", 13)
+		assertHasID(t, findings, "LINK_SPOOFING_URL_MISMATCH")
+
+		line = "[`<https://trusted.example.com/login>`](https://trusted.example.com/login)"
+		findings = classifyMarkdownLinkSpoofing(line, "SKILL.md", 13)
+		if len(findings) != 0 {
+			t.Fatalf("expected no findings for equivalent nested-wrapper display URL, got %+v", findings)
+		}
+	})
+
 	t.Run("handles markdown link targets with titles", func(t *testing.T) {
 		line := "[https://trusted.example.com/login](https://evil.example.net/login \"reference docs\")"
 		findings := classifyMarkdownLinkSpoofing(line, "SKILL.md", 13)
@@ -1272,6 +1288,22 @@ func TestUnwrapMarkdownEmphasis(t *testing.T) {
 		}
 		if got := unwrapMarkdownEmphasis("https://trusted.example.com/login"); got != "https://trusted.example.com/login" {
 			t.Fatalf("expected plain value to remain unchanged, got %q", got)
+		}
+	})
+}
+
+func TestUnwrapDisplayLinkLabel(t *testing.T) {
+	t.Run("unwraps nested code emphasis and angle wrappers", func(t *testing.T) {
+		got := unwrapDisplayLinkLabel(" **`<https://trusted.example.com/login>`** ")
+		if got != "https://trusted.example.com/login" {
+			t.Fatalf("expected fully unwrapped display label, got %q", got)
+		}
+	})
+
+	t.Run("returns original value when no wrappers are present", func(t *testing.T) {
+		got := unwrapDisplayLinkLabel("https://trusted.example.com/login")
+		if got != "https://trusted.example.com/login" {
+			t.Fatalf("expected unchanged display label, got %q", got)
 		}
 	})
 }

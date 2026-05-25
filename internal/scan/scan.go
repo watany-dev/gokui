@@ -3537,12 +3537,7 @@ func normalizeMarkdownReferenceID(value string) string {
 }
 
 func parseDisplayLinkHost(label string) (string, bool) {
-	trimmed := strings.TrimSpace(label)
-	if strings.HasPrefix(trimmed, "<") && strings.HasSuffix(trimmed, ">") && len(trimmed) > 2 {
-		trimmed = strings.TrimSpace(trimmed[1 : len(trimmed)-1])
-	}
-	trimmed = unwrapMarkdownEmphasis(trimmed)
-	trimmed = unwrapMarkdownCodeSpan(trimmed)
+	trimmed := unwrapDisplayLinkLabel(label)
 	if trimmed == "" || strings.Contains(trimmed, " ") {
 		return "", false
 	}
@@ -3556,6 +3551,23 @@ func parseDisplayLinkHost(label string) (string, bool) {
 		return "", false
 	}
 	return parseURLHost("https://" + trimmed)
+}
+
+func unwrapDisplayLinkLabel(label string) string {
+	trimmed := strings.TrimSpace(label)
+	for range 4 {
+		previous := trimmed
+		if strings.HasPrefix(trimmed, "<") && strings.HasSuffix(trimmed, ">") && len(trimmed) > 2 {
+			trimmed = strings.TrimSpace(trimmed[1 : len(trimmed)-1])
+		}
+		trimmed = unwrapMarkdownEmphasis(trimmed)
+		trimmed = unwrapMarkdownCodeSpan(trimmed)
+		trimmed = strings.TrimSpace(trimmed)
+		if trimmed == previous {
+			break
+		}
+	}
+	return trimmed
 }
 
 func unwrapMarkdownEmphasis(value string) string {
