@@ -72,14 +72,15 @@ actionlint:
 check: fmt-check lint typecheck deadcode coverage
 
 release-check: check test test-race
-	$(MAKE) build BUILD_OUT=$(RELEASE_CHECK_BUILD_OUT)
-	$(MAKE) inspect-sarif INSPECT_SARIF_OUT=$(CACHE_DIR)/inspect-results.sarif
-ifeq ($(RELEASE_CHECK_VULN),1)
-	$(MAKE) vuln
-else
-	@echo "Skipping vuln check (RELEASE_CHECK_VULN=$(RELEASE_CHECK_VULN))"
-endif
-	@rm -f $(RELEASE_CHECK_BUILD_OUT)
+	@set -e; \
+	trap 'rm -f "$(RELEASE_CHECK_BUILD_OUT)"' EXIT; \
+	$(MAKE) build BUILD_OUT=$(RELEASE_CHECK_BUILD_OUT); \
+	$(MAKE) inspect-sarif INSPECT_SARIF_OUT=$(CACHE_DIR)/inspect-results.sarif; \
+	if [ "$(RELEASE_CHECK_VULN)" = "1" ]; then \
+		$(MAKE) vuln; \
+	else \
+		echo "Skipping vuln check (RELEASE_CHECK_VULN=$(RELEASE_CHECK_VULN))"; \
+	fi
 
 release-check-offline:
 	$(MAKE) release-check RELEASE_CHECK_VULN=0
