@@ -436,6 +436,92 @@ func TestRun(t *testing.T) {
 		}
 	})
 
+	t.Run("fetch then install then update-error then lock-verify workflow", func(t *testing.T) {
+		var stdout bytes.Buffer
+		var stderr bytes.Buffer
+
+		origFetch := fetchGitHubSkill
+		t.Cleanup(func() { fetchGitHubSkill = origFetch })
+		sourceDir := createSkillSourceForInstallTest(t, "fetch-install-update-error-workflow-skill")
+		fetchGitHubSkill = func(spec srcpkg.GitHubSpec) (string, func(), error) {
+			return sourceDir, nil, nil
+		}
+
+		outRoot := filepath.Join(t.TempDir(), "quarantine")
+		code := Run([]string{"fetch", "github:org/repo//skills/fetch-install-update-error-workflow-skill@8f3c2d1a4b5c6d7e8f901234567890abcdef1234", "--out", outRoot, "--format", "json"}, &stdout, &stderr, cfg)
+		if code != 0 {
+			t.Fatalf("Run(fetch json install-update-error workflow) code = %d, want 0\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
+		}
+		if stderr.Len() != 0 {
+			t.Fatalf("stderr should be empty for fetch json, got %q", stderr.String())
+		}
+
+		var fetchOut fetchReport
+		if err := json.Unmarshal(stdout.Bytes(), &fetchOut); err != nil {
+			t.Fatalf("fetch json parse failed: %v\nstdout=%q", err, stdout.String())
+		}
+		if fetchOut.Decision != "FETCHED" || strings.TrimSpace(fetchOut.Output) == "" {
+			t.Fatalf("unexpected fetch report: %+v", fetchOut)
+		}
+
+		installTarget := filepath.Join(t.TempDir(), "skills")
+		stdout.Reset()
+		stderr.Reset()
+		code = Run([]string{"install", fetchOut.Output, "--target", "custom:" + installTarget, "--profile", "strict", "--format", "json"}, &stdout, &stderr, cfg)
+		if code != 0 {
+			t.Fatalf("Run(install fetched json update-error workflow) code = %d, want 0\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
+		}
+		if stderr.Len() != 0 {
+			t.Fatalf("stderr should be empty for install json, got %q", stderr.String())
+		}
+
+		var installOut installReport
+		if err := json.Unmarshal(stdout.Bytes(), &installOut); err != nil {
+			t.Fatalf("install json parse failed: %v\nstdout=%q", err, stdout.String())
+		}
+		if installOut.Decision != "PASS" || !installOut.Installed || strings.TrimSpace(installOut.InstalledPath) == "" {
+			t.Fatalf("unexpected install report: %+v", installOut)
+		}
+
+		// Mutate fetched source after install so update dry-run fails with evaluation error.
+		if err := os.WriteFile(filepath.Join(fetchOut.Output, ".gokui-policy.toml"), []byte("unknown_key = 1\n"), 0o644); err != nil {
+			t.Fatalf("write invalid repository policy: %v", err)
+		}
+
+		stdout.Reset()
+		stderr.Reset()
+		code = Run([]string{"update", "--dry-run", "--target", "custom:" + installTarget, "--format", "json"}, &stdout, &stderr, cfg)
+		if code != 1 {
+			t.Fatalf("Run(update dry-run error fetched-install workflow) code = %d, want 1\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
+		}
+		if stderr.Len() != 0 {
+			t.Fatalf("stderr should be empty for update json, got %q", stderr.String())
+		}
+		var updateOut updateReport
+		if err := json.Unmarshal(stdout.Bytes(), &updateOut); err != nil {
+			t.Fatalf("update json parse failed: %v\nstdout=%q", err, stdout.String())
+		}
+		if updateOut.Summary.Errors != 1 {
+			t.Fatalf("expected one error skill, got %+v", updateOut.Summary)
+		}
+		if len(updateOut.Skills) != 1 || updateOut.Skills[0].Status != "ERROR" {
+			t.Fatalf("unexpected update skill status: %+v", updateOut.Skills)
+		}
+
+		stdout.Reset()
+		stderr.Reset()
+		code = Run([]string{"lock", "verify", installOut.InstalledPath, "--format", "json"}, &stdout, &stderr, cfg)
+		if code != 0 {
+			t.Fatalf("Run(lock verify fetched-install-update-error workflow) code = %d, want 0\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
+		}
+		if stderr.Len() != 0 {
+			t.Fatalf("stderr should be empty for lock verify json, got %q", stderr.String())
+		}
+		if !strings.Contains(stdout.String(), "\"status\": \"VERIFIED\"") {
+			t.Fatalf("lock verify output should be VERIFIED, got %q", stdout.String())
+		}
+	})
+
 	t.Run("fetch then inspect rejected then install rejected workflow", func(t *testing.T) {
 		var stdout bytes.Buffer
 		var stderr bytes.Buffer
