@@ -914,6 +914,18 @@ func TestClassifyPathRisks(t *testing.T) {
 		assertHasID(t, findings, "CONFUSABLE_FILENAME")
 	})
 
+	t.Run("detects additional cyrillic confusable glyphs", func(t *testing.T) {
+		cases := []string{
+			"docs/sһell.md",
+			"docs/tooӏs.md",
+			"docs/neԝs.md",
+		}
+		for _, path := range cases {
+			findings := classifyPathRisks(path)
+			assertHasID(t, findings, "CONFUSABLE_FILENAME")
+		}
+	})
+
 	t.Run("ignores single script or non-letter separators", func(t *testing.T) {
 		cases := []string{
 			"docs/paypal.md",
