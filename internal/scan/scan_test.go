@@ -913,6 +913,14 @@ func TestClassifyURLRisksEdgeCases(t *testing.T) {
 		assertHasID(t, findings, "RAW_IP_URL")
 		assertHasID(t, findings, "RELEASE_ASSET_URL")
 	})
+
+	t.Run("normalizes leading www risk hosts", func(t *testing.T) {
+		line := "open https://www.bit.ly/x and https://www.pastebin.com/x and https://www.github.com/org/repo/releases/download/v1.0.0/a.tgz"
+		findings := classifyURLRisks(line, "SKILL.md", 9, true)
+		assertHasID(t, findings, "URL_SHORTENER")
+		assertHasID(t, findings, "PASTE_SITE_URL")
+		assertHasID(t, findings, "RELEASE_ASSET_URL")
+	})
 }
 
 func TestExtractURLCandidates(t *testing.T) {

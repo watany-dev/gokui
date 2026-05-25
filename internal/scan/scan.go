@@ -3234,10 +3234,12 @@ func classifyURLRisks(line string, relPath string, lineNum int, isMarkdown bool)
 
 func normalizeURLRiskHost(host string) string {
 	normalized := strings.ToLower(strings.TrimSpace(host))
+	normalized = strings.TrimPrefix(normalized, "www.")
 	normalized = strings.TrimSuffix(normalized, ".")
 	if ascii, err := idna.Lookup.ToASCII(normalized); err == nil && ascii != "" {
 		normalized = strings.ToLower(ascii)
 	}
+	normalized = strings.TrimPrefix(normalized, "www.")
 	normalized = strings.TrimSuffix(normalized, ".")
 	return normalized
 }
