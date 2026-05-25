@@ -52,7 +52,7 @@ type Finding struct {
 
 var (
 	curlPipePattern                 = regexp.MustCompile(`(?i)\b(?:curl|wget)\b[^\n|]{0,300}\|\s*(?:sh|bash|zsh|pwsh|powershell|python3?|node|ruby|perl)\b`)
-	curlPipeSourceStdInExecPattern  = regexp.MustCompile(`(?i)\b(?:curl|wget)\b[^\n|]{0,300}\|\s*(?:source|\.)\s+(?:/dev/stdin|/proc/self/fd/0|-)\b`)
+	curlPipeSourceStdInExecPattern  = regexp.MustCompile(`(?i)\b(?:curl|wget)\b[^\n|]{0,300}\|\s*(?:source|\.)\s+['"]?(?:/dev/stdin|/proc/self/fd/0|-)['"]?(?:\s|$|[;&|)])`)
 	curlSubshellExecPattern         = regexp.MustCompile(`(?i)\b(?:sh|bash|zsh|source|pwsh|powershell|eval|python3?|node|ruby|perl)\b[^\n]{0,200}\$\(\s*(?:curl|wget)\b`)
 	curlBacktickExecPattern         = regexp.MustCompile("(?i)\\b(?:sh|bash|zsh|source|pwsh|powershell|eval|python3?|node|ruby|perl)\\b[^\\n]{0,200}`\\s*(?:curl|wget)\\b")
 	curlDotSubshellExecPattern      = regexp.MustCompile(`(?i)(?:^|[;&|]\s*)\.\s+\$\(\s*(?:curl|wget)\b`)
@@ -72,12 +72,12 @@ var (
 	rubyHexEvalPattern              = regexp.MustCompile(`(?i)\beval\s*\([^)\n]{0,260}\.pack\s*\(\s*['"]h\*['"]`)
 	rubyRemoteEvalPattern           = regexp.MustCompile(`(?i)\beval\s*\(\s*(?:net::http\.get\s*\(\s*uri\s*\(\s*['"]https?://[^'"]+['"]\s*\)\s*\)|uri\.open\s*\(\s*['"]https?://[^'"]+['"]\s*\)\.read)`)
 	base64PipeExec                  = regexp.MustCompile(`(?i)\b(?:base64|openssl\s+base64)\b[^\n|]{0,300}\|\s*(?:sh|bash|zsh|pwsh|powershell|python|node)\b`)
-	base64PipeSourceStdInExec       = regexp.MustCompile(`(?i)\b(?:base64|openssl\s+base64)\b[^\n|]{0,300}\|\s*(?:source|\.)\s+(?:/dev/stdin|/proc/self/fd/0|-)\b`)
+	base64PipeSourceStdInExec       = regexp.MustCompile(`(?i)\b(?:base64|openssl\s+base64)\b[^\n|]{0,300}\|\s*(?:source|\.)\s+['"]?(?:/dev/stdin|/proc/self/fd/0|-)['"]?(?:\s|$|[;&|)])`)
 	base64SubshellExec              = regexp.MustCompile(`(?i)\b(?:sh|bash|zsh|source|pwsh|powershell|eval|python3?|node|ruby|perl)\b[^\n]{0,220}\$\([^)\n]{0,260}\b(?:base64|openssl\s+base64)\b[^)\n]{0,200}\s(?:-d|--decode)\b[^)\n]{0,120}\)`)
 	base64DotSubshellExec           = regexp.MustCompile(`(?i)(?:^|[;&|]\s*)\.\s+\$\([^)\n]{0,260}\b(?:base64|openssl\s+base64)\b[^)\n]{0,200}\s(?:-d|--decode)\b[^)\n]{0,120}\)`)
 	powerShellFromBase64ExecPattern = regexp.MustCompile(`(?i)(?:\b(?:iex|invoke-expression)\b[^\n]{0,320}\bfrombase64string\s*\(|\bfrombase64string\s*\([^\n]{0,320}\b(?:iex|invoke-expression)\b)`)
 	hexPipeExec                     = regexp.MustCompile(`(?i)\b(?:xxd\s+-r(?:\s+-p)?|unhexlify|fromhex|hexdecode)\b[^\n|]{0,300}\|\s*(?:sh|bash|zsh|pwsh|powershell|python|node)\b`)
-	hexPipeSourceStdInExec          = regexp.MustCompile(`(?i)\b(?:xxd\s+-r(?:\s+-p)?|unhexlify|fromhex|hexdecode)\b[^\n|]{0,300}\|\s*(?:source|\.)\s+(?:/dev/stdin|/proc/self/fd/0|-)\b`)
+	hexPipeSourceStdInExec          = regexp.MustCompile(`(?i)\b(?:xxd\s+-r(?:\s+-p)?|unhexlify|fromhex|hexdecode)\b[^\n|]{0,300}\|\s*(?:source|\.)\s+['"]?(?:/dev/stdin|/proc/self/fd/0|-)['"]?(?:\s|$|[;&|)])`)
 	hexSubshellExec                 = regexp.MustCompile(`(?i)\b(?:sh|bash|zsh|source|pwsh|powershell|eval|python3?|node|ruby|perl)\b[^\n]{0,220}\$\([^)\n]{0,260}\b(?:xxd\s+-r(?:\s+-p)?|unhexlify|fromhex|hexdecode)\b[^)\n]{0,200}\)`)
 	hexDotSubshellExec              = regexp.MustCompile(`(?i)(?:^|[;&|]\s*)\.\s+\$\([^)\n]{0,260}\b(?:xxd\s+-r(?:\s+-p)?|unhexlify|fromhex|hexdecode)\b[^)\n]{0,200}\)`)
 	powerShellFromHexExecPattern    = regexp.MustCompile(`(?i)(?:\b(?:iex|invoke-expression)\b[^\n]{0,320}\bfromhexstring\s*\(|\bfromhexstring\s*\([^\n]{0,320}\b(?:iex|invoke-expression)\b)`)
