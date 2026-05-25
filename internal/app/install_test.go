@@ -1713,6 +1713,54 @@ func TestRunInstallSARIFOutput(t *testing.T) {
 		}
 	})
 
+	t.Run("sarif source-prepare archive ancestor symlink includes rule_id", func(t *testing.T) {
+		if runtime.GOOS == "windows" {
+			t.Skip("symlink permissions differ on windows")
+		}
+
+		base := t.TempDir()
+		realParent := filepath.Join(base, "real-parent")
+		if err := os.Mkdir(realParent, 0o755); err != nil {
+			t.Fatalf("mkdir real parent: %v", err)
+		}
+		archivePath := filepath.Join(realParent, "clean.zip")
+		createZipArchive(t, archivePath, map[string]string{
+			"sarif-install-symlink-skill/SKILL.md": "---\nname: sarif-install-symlink-skill\ndescription: Use when validating install archive source symlink sarif propagation.\n---\n",
+		})
+		linkParent := filepath.Join(base, "link-parent")
+		if err := os.Symlink("real-parent", linkParent); err != nil {
+			t.Fatalf("create parent symlink: %v", err)
+		}
+
+		var stdout strings.Builder
+		var stderr strings.Builder
+		code := runInstall([]string{
+			filepath.Join(linkParent, "clean.zip"),
+			"--target", "custom:" + filepath.Join(t.TempDir(), "skills"),
+			"--profile", "strict",
+			"--format", "sarif",
+		}, &stdout, &stderr)
+		if code != 1 {
+			t.Fatalf("runInstall(sarif archive symlink ancestor) code = %d, want 1\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
+		}
+		if stderr.Len() != 0 {
+			t.Fatalf("stderr should be empty for sarif errors, got %q", stderr.String())
+		}
+		var sarif inspectSARIFReport
+		if err := json.Unmarshal([]byte(stdout.String()), &sarif); err != nil {
+			t.Fatalf("sarif parse failed: %v", err)
+		}
+		if len(sarif.Runs) != 1 || len(sarif.Runs[0].Results) != 1 {
+			t.Fatalf("unexpected sarif structure: %+v", sarif)
+		}
+		if sarif.Runs[0].Results[0].RuleID != "ARCHIVE_SOURCE_SYMLINK_DETECTED" {
+			t.Fatalf("rule id = %q, want ARCHIVE_SOURCE_SYMLINK_DETECTED", sarif.Runs[0].Results[0].RuleID)
+		}
+		if sarif.Runs[0].Properties.Decision != "ERROR" {
+			t.Fatalf("decision = %q, want ERROR", sarif.Runs[0].Properties.Decision)
+		}
+	})
+
 	t.Run("sarif rejection returns code 2 and rejected decision", func(t *testing.T) {
 		source := createSkillSourceForInstallTest(t, "sarif-install-rejected")
 		skillFile := filepath.Join(source, "SKILL.md")
