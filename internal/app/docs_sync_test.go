@@ -347,6 +347,9 @@ func TestReleaseChecklistDocumentationSync(t *testing.T) {
 	if !strings.Contains(releaseDoc, ".cache/gokui-release-check") {
 		t.Fatal("RELEASE.md should document isolated release-check build output path")
 	}
+	if !strings.Contains(releaseDoc, "fails closed when build/SARIF output paths include symlink") || !strings.Contains(releaseDoc, "build and SARIF outputs") || !strings.Contains(releaseDoc, "resolve to the same path") {
+		t.Fatal("RELEASE.md should document release-check build/SARIF output preflight fail-closed behavior")
+	}
 	if !strings.Contains(releaseDoc, "mode (`offline` or `online`)") {
 		t.Fatal("RELEASE.md should require recording evidence mode in captured metadata")
 	}
@@ -385,6 +388,9 @@ func TestReleaseCheckDocumentationSync(t *testing.T) {
 		"BUILD_OUT=.cache/gokui-release-evidence",
 		".cache/gokui-release-check",
 		"clean that artifact automatically",
+		"fails closed when build/SARIF output paths include symlink",
+		"build and SARIF outputs",
+		"resolve to the same path",
 		"fail closed when repository-root/output/log paths include",
 		"when expected output/log files already exist",
 		"created atomically and written via open file",

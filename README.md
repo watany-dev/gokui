@@ -388,6 +388,9 @@ their clean-tree check evaluates tracked files only
 (`git status --short --untracked-files=no`).
 `make release-check`/`make release-check-offline` build to
 `.cache/gokui-release-check` and clean that artifact automatically.
+`release-check` fails closed when build/SARIF output paths include symlink
+components, when either output already exists, or when build and SARIF outputs
+resolve to the same path.
 Release scripts fail closed when repository-root/output/log paths include
 symlink components, and when expected output/log files already exist.
 Evidence and SARIF outputs are created atomically and written via open file

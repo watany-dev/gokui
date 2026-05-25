@@ -33,6 +33,10 @@ This runs:
 - inspect SARIF smoke generation (`make inspect-sarif`)
 - `govulncheck`
 
+`release-check` fails closed when build/SARIF output paths include symlink
+components, when either output already exists, or when build and SARIF outputs
+resolve to the same path.
+
 To override the isolated release-check build artifact path:
 
 ```sh
