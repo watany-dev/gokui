@@ -3,6 +3,7 @@ package app
 import (
 	"os"
 	"regexp"
+	"sort"
 	"strings"
 	"testing"
 )
@@ -493,6 +494,61 @@ func TestReleaseCheckDocumentationSync(t *testing.T) {
 			t.Fatalf("README missing release-check documentation line: %q", line)
 		}
 	}
+}
+
+func TestReleaseCheckErrorCodeTableSyncBetweenReadmeAndReleaseDocs(t *testing.T) {
+	readmeBytes, err := os.ReadFile("../../README.md")
+	if err != nil {
+		t.Fatalf("failed to read README.md: %v", err)
+	}
+	releaseBytes, err := os.ReadFile("../../RELEASE.md")
+	if err != nil {
+		t.Fatalf("failed to read RELEASE.md: %v", err)
+	}
+
+	readmeCodes := extractReleaseCheckErrorCodesFromTable(t, string(readmeBytes), "README.md")
+	releaseCodes := extractReleaseCheckErrorCodesFromTable(t, string(releaseBytes), "RELEASE.md")
+
+	readmeJoined := strings.Join(readmeCodes, ",")
+	releaseJoined := strings.Join(releaseCodes, ",")
+	if readmeJoined != releaseJoined {
+		t.Fatalf("release-check code table mismatch between README.md and RELEASE.md\nREADME:  %s\nRELEASE: %s", readmeJoined, releaseJoined)
+	}
+}
+
+func extractReleaseCheckErrorCodesFromTable(t *testing.T, doc, label string) []string {
+	t.Helper()
+
+	const tableHeader = "| Release-check code | Typical trigger |"
+	start := strings.Index(doc, tableHeader)
+	if start < 0 {
+		t.Fatalf("%s missing release-check code table header", label)
+	}
+	section := doc[start:]
+	lines := strings.Split(section, "\n")
+
+	codeRe := regexp.MustCompile("`(RC_[A-Z0-9_]+)`")
+	codes := make(map[string]struct{})
+	for _, line := range lines {
+		if strings.TrimSpace(line) == "" {
+			break
+		}
+		m := codeRe.FindStringSubmatch(line)
+		if len(m) < 2 {
+			continue
+		}
+		codes[m[1]] = struct{}{}
+	}
+	if len(codes) == 0 {
+		t.Fatalf("%s release-check code table has no RC_* entries", label)
+	}
+
+	out := make([]string, 0, len(codes))
+	for code := range codes {
+		out = append(out, code)
+	}
+	sort.Strings(out)
+	return out
 }
 
 func TestLocalBuildArtifactIgnoreSync(t *testing.T) {
