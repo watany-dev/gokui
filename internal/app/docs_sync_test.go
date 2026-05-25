@@ -466,7 +466,11 @@ func TestMakefileVulnToolchainBaselineSync(t *testing.T) {
 		"RELEASE_CHECK_SARIF_OUT ?= $(CACHE_DIR)/inspect-results.sarif",
 		"RELEASE_CHECK_BUILD_OUT_ABS := $(abspath $(RELEASE_CHECK_BUILD_OUT))",
 		"RELEASE_CHECK_SARIF_OUT_ABS := $(abspath $(RELEASE_CHECK_SARIF_OUT))",
-		"release-check: check test test-race",
+		"release-check-preflight:",
+		"release-check: release-check-preflight",
+		"$(MAKE) check; \\",
+		"$(MAKE) test; \\",
+		"$(MAKE) test-race; \\",
 		"assert_no_symlink_components() {",
 		`assert_no_symlink_components "$(RELEASE_CHECK_BUILD_OUT_ABS)" "release-check build output path"; \`,
 		`assert_no_symlink_components "$(RELEASE_CHECK_SARIF_OUT_ABS)" "release-check SARIF output path"; \`,
@@ -727,7 +731,7 @@ func TestRoadmapReleaseEvidenceHardeningSync(t *testing.T) {
 		"inspect-sarif output path hardening (symlink path-component rejection, restrictive SARIF file permissions, fail-closed output-collision checks, and atomic file creation with descriptor-backed writes)",
 		"release script repository-root path hardening (reject symlinked repository-root execution paths)",
 		"release-evidence gate hardening with isolated build output (`BUILD_OUT`) and tracked-file clean-tree checks (`git status --short --untracked-files=no`)",
-		"release-check gate hardening with isolated build output (`RELEASE_CHECK_BUILD_OUT`), absolute-path preflight normalization, symlink/collision fail-closed build/SARIF output guards (including non-root-path and distinct-path enforcement), and failure-safe cleanup for build/SARIF artifacts",
+		"release-check gate hardening with isolated build output (`RELEASE_CHECK_BUILD_OUT`), preflight-first execution ordering, absolute-path preflight normalization, symlink/collision fail-closed build/SARIF output guards (including non-root-path and distinct-path enforcement), and failure-safe cleanup for build/SARIF artifacts",
 		"release-evidence metadata mode annotation (`offline|online`) and mode-specific evidence filename suffixes (`-offline-audit.md` / `-online-audit.md`)",
 	}
 	for _, line := range required {

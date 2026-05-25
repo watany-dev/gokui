@@ -28,7 +28,7 @@ LDFLAGS := -s -w \
 	-X main.commit=$(COMMIT) \
 	-X main.date=$(DATE)
 
-.PHONY: build fmt fmt-check lint typecheck deadcode test test-race coverage vuln actionlint check release-check release-check-offline release-evidence release-evidence-offline release-evidence-online inspect-sarif
+.PHONY: build fmt fmt-check lint typecheck deadcode test test-race coverage vuln actionlint check release-check-preflight release-check release-check-offline release-evidence release-evidence-offline release-evidence-online inspect-sarif
 
 build:
 	$(GO) build -trimpath -buildvcs=true -ldflags='$(LDFLAGS)' -o $(BUILD_OUT) $(MAIN_PKG)
@@ -74,7 +74,7 @@ actionlint:
 
 check: fmt-check lint typecheck deadcode coverage
 
-release-check: check test test-race
+release-check-preflight:
 	@set -e; \
 	assert_no_symlink_components() { \
 		path="$$1"; \
@@ -113,7 +113,12 @@ release-check: check test test-race
 	if [ -e "$(RELEASE_CHECK_SARIF_OUT_ABS)" ]; then \
 		echo "release-check SARIF output already exists: $(RELEASE_CHECK_SARIF_OUT_ABS)" >&2; \
 		exit 1; \
-	fi; \
+	fi
+release-check: release-check-preflight
+	@set -e; \
+	$(MAKE) check; \
+	$(MAKE) test; \
+	$(MAKE) test-race; \
 	trap 'rm -f -- "$(RELEASE_CHECK_BUILD_OUT_ABS)" "$(RELEASE_CHECK_SARIF_OUT_ABS)"' EXIT; \
 	$(MAKE) build BUILD_OUT=$(RELEASE_CHECK_BUILD_OUT_ABS); \
 	$(MAKE) inspect-sarif INSPECT_SARIF_OUT=$(RELEASE_CHECK_SARIF_OUT_ABS); \
