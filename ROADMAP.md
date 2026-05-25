@@ -70,6 +70,7 @@ tests/CI:
 - `make vuln` hardened with patched Go toolchain baseline (`go1.26.3+auto`)
 - automated offline release evidence collection with per-step logs
 - automated online release evidence collection mode (includes vuln step)
+- release-evidence template output hardening (symlink path-component rejection and restrictive template-output file permissions)
 - release-evidence output/log path hardening (symlink path-component rejection and restrictive evidence/log file permissions)
 - inspect-sarif output path hardening (symlink path-component rejection and restrictive SARIF file permissions)
 - release-evidence gate hardening with isolated build output (`BUILD_OUT`) and tracked-file clean-tree checks (`git status --short --untracked-files=no`)

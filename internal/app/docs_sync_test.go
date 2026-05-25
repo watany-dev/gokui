@@ -525,6 +525,26 @@ func TestReleaseEvidenceScriptExecutionContractSync(t *testing.T) {
 	}
 }
 
+func TestReleaseEvidenceTemplateScriptHardeningSync(t *testing.T) {
+	scriptBytes, err := os.ReadFile("../../scripts/new-release-evidence.sh")
+	if err != nil {
+		t.Fatalf("failed to read new-release-evidence.sh: %v", err)
+	}
+	script := string(scriptBytes)
+
+	required := []string{
+		"umask 077",
+		"assert_no_symlink_components()",
+		`assert_no_symlink_components "$OUT_DIR" "release evidence output directory"`,
+		`assert_no_symlink_components "$OUT_PATH" "release evidence output path"`,
+	}
+	for _, line := range required {
+		if !strings.Contains(script, line) {
+			t.Fatalf("new-release-evidence.sh missing hardening line: %q", line)
+		}
+	}
+}
+
 func TestGitignoreReleaseEvidenceArtifactsSync(t *testing.T) {
 	gitignoreBytes, err := os.ReadFile("../../.gitignore")
 	if err != nil {
