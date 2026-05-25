@@ -874,6 +874,7 @@ func scanTextFile(target scanTarget) ([]Finding, error) {
 func scanVariantThreatFindings(variant string, target scanTarget, lineNum int) []Finding {
 	findings := make([]Finding, 0, 8)
 	normalizedAssignDefaults := normalizeShellAssignDefaultExpansions(variant)
+	normalizedAssignDefaults = normalizeShellSpecialProcParams(normalizedAssignDefaults)
 	curlSourceStdinMatch := curlPipeSourceStdInExecPattern.MatchString(variant)
 	if !curlSourceStdinMatch && normalizedAssignDefaults != variant {
 		curlSourceStdinMatch = curlPipeSourceStdInExecPattern.MatchString(normalizedAssignDefaults)
@@ -1053,6 +1054,15 @@ func normalizeShellAssignDefaultExpansions(line string) string {
 	out = shellErrorDefaultPosPattern.ReplaceAllString(out, `${$1:-$2}`)
 	out = shellErrorNamedPattern.ReplaceAllString(out, `${$1-$2}`)
 	out = shellErrorPosPattern.ReplaceAllString(out, `${$1-$2}`)
+	return out
+}
+
+func normalizeShellSpecialProcParams(line string) string {
+	if !strings.Contains(line, "/proc/") && !strings.Contains(line, "//proc//") {
+		return line
+	}
+	out := strings.ReplaceAll(line, "$!", "$$")
+	out = strings.ReplaceAll(out, "$?", "$$")
 	return out
 }
 
