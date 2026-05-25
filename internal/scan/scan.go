@@ -1564,17 +1564,16 @@ func buildContinuationVariant(lines []string, idx int) (string, bool) {
 		return "", false
 	}
 
-	parts := []string{start}
-	joined := start
+	parts := []string{trimContinuationSegment(start)}
 	added := 0
 	for j := idx + 1; j < len(lines) && added < maxJoinedContinuationLines; j++ {
 		next := strings.TrimSpace(lines[j])
 		if next == "" {
 			break
 		}
-		parts = append(parts, next)
+		parts = append(parts, trimContinuationSegment(next))
 		added++
-		joined = strings.Join(parts, " ")
+		joined := strings.Join(parts, " ")
 		if !shouldJoinWithNextLine(joined) {
 			return joined, true
 		}
@@ -1583,6 +1582,14 @@ func buildContinuationVariant(lines []string, idx int) (string, bool) {
 		return strings.Join(parts, " "), true
 	}
 	return "", false
+}
+
+func trimContinuationSegment(segment string) string {
+	trimmed := strings.TrimSpace(segment)
+	if strings.HasSuffix(trimmed, "\\") {
+		return strings.TrimSpace(strings.TrimSuffix(trimmed, "\\"))
+	}
+	return trimmed
 }
 
 func shouldJoinWithNextLine(line string) bool {
