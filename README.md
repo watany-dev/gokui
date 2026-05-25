@@ -115,6 +115,7 @@ including scheme-relative (`//host/...`) URL forms and bracketed IPv6 hosts.
 It also normalizes trailing-dot and IDNA dot-variant URL hosts during
 classification, and treats IPv6 zone-id and decimal-encoded IPv4 forms as
 raw-IP hosts.
+It also treats hex- and octal-encoded integer IPv4 host forms as raw-IP hosts.
 It also flags paste-site URLs, GitHub release asset URLs, and remote image
 URLs in markdown content for review.
 GitHub release asset URL detection also covers known GitHub CDN release-asset

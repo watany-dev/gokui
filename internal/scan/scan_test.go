@@ -912,9 +912,15 @@ func TestClassifyURLRisksEdgeCases(t *testing.T) {
 		assertHasID(t, findings, "RAW_IP_URL")
 	})
 
+	t.Run("detects hex-and-octal-encoded ipv4 URL risks", func(t *testing.T) {
+		line := "visit https://0xC0A80101/setup and https://030052000401/setup"
+		findings := classifyURLRisks(line, "SKILL.md", 9, true)
+		assertHasID(t, findings, "RAW_IP_URL")
+	})
+
 	t.Run("normalizes trailing-dot and idna-dot-variant hosts", func(t *testing.T) {
 		line := "open https://bit.ly./x and https://bit。ly/x and https://192.168.1.44./setup and https://github.com./org/repo/releases/download/v1.0.0/a.tgz"
-		findings := classifyURLRisks(line, "SKILL.md", 9, true)
+		findings := classifyURLRisks(line, "SKILL.md", 10, true)
 		assertHasID(t, findings, "URL_SHORTENER")
 		assertHasID(t, findings, "RAW_IP_URL")
 		assertHasID(t, findings, "RELEASE_ASSET_URL")
@@ -922,7 +928,7 @@ func TestClassifyURLRisksEdgeCases(t *testing.T) {
 
 	t.Run("normalizes leading www risk hosts", func(t *testing.T) {
 		line := "open https://www.bit.ly/x and https://www.pastebin.com/x and https://www.github.com/org/repo/releases/download/v1.0.0/a.tgz"
-		findings := classifyURLRisks(line, "SKILL.md", 10, true)
+		findings := classifyURLRisks(line, "SKILL.md", 11, true)
 		assertHasID(t, findings, "URL_SHORTENER")
 		assertHasID(t, findings, "PASTE_SITE_URL")
 		assertHasID(t, findings, "RELEASE_ASSET_URL")
@@ -930,7 +936,7 @@ func TestClassifyURLRisksEdgeCases(t *testing.T) {
 
 	t.Run("detects github release-asset cdn url forms", func(t *testing.T) {
 		line := "open https://github-releases.githubusercontent.com/owner/repo/releases/download/v1.0.0/a.tgz and https://objects.githubusercontent.com/github-production-release-asset-2e65be/123?x=y"
-		findings := classifyURLRisks(line, "SKILL.md", 11, true)
+		findings := classifyURLRisks(line, "SKILL.md", 12, true)
 		assertHasID(t, findings, "RELEASE_ASSET_URL")
 	})
 }
@@ -1013,23 +1019,24 @@ func TestIsGitHubReleaseAssetURL(t *testing.T) {
 	})
 }
 
-func TestParseDecimalIPv4Host(t *testing.T) {
-	t.Run("parses valid decimal-encoded ipv4 host", func(t *testing.T) {
-		got, ok := parseDecimalIPv4Host("3232235777")
-		if !ok || got == nil {
-			t.Fatalf("expected decimal ipv4 host parse to succeed")
-		}
-		if got.String() != "192.168.1.1" {
-			t.Fatalf("expected 192.168.1.1, got %q", got.String())
+func TestParseIntegerIPv4Host(t *testing.T) {
+	t.Run("parses decimal hex and octal ipv4 host values", func(t *testing.T) {
+		for _, in := range []string{"3232235777", "0xC0A80101", "030052000401"} {
+			got, ok := parseIntegerIPv4Host(in)
+			if !ok || got == nil {
+				t.Fatalf("expected integer ipv4 host parse to succeed for %q", in)
+			}
+			if got.String() != "192.168.1.1" {
+				t.Fatalf("expected 192.168.1.1 from %q, got %q", in, got.String())
+			}
 		}
 	})
 
-	t.Run("rejects non-numeric and out-of-range values", func(t *testing.T) {
-		if _, ok := parseDecimalIPv4Host("example.com"); ok {
-			t.Fatal("expected non-numeric value to fail decimal ipv4 parse")
-		}
-		if _, ok := parseDecimalIPv4Host("4294967296"); ok {
-			t.Fatal("expected out-of-range value to fail decimal ipv4 parse")
+	t.Run("rejects invalid or out-of-range integer host values", func(t *testing.T) {
+		for _, in := range []string{"example.com", "4294967296", "089"} {
+			if _, ok := parseIntegerIPv4Host(in); ok {
+				t.Fatalf("expected parse failure for %q", in)
+			}
 		}
 	})
 }

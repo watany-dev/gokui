@@ -3266,7 +3266,7 @@ func parseRawIPHost(host string) net.IP {
 	if ip := net.ParseIP(host); ip != nil {
 		return ip
 	}
-	if numericIPv4, ok := parseDecimalIPv4Host(host); ok {
+	if numericIPv4, ok := parseIntegerIPv4Host(host); ok {
 		return numericIPv4
 	}
 	// IPv6 zone identifiers (for example "fe80::1%eth0") are valid URL hosts
@@ -3279,16 +3279,43 @@ func parseRawIPHost(host string) net.IP {
 	return nil
 }
 
-func parseDecimalIPv4Host(host string) (net.IP, bool) {
+func parseIntegerIPv4Host(host string) (net.IP, bool) {
 	if host == "" {
 		return nil, false
 	}
-	for i := 0; i < len(host); i++ {
-		if host[i] < '0' || host[i] > '9' {
+
+	base := 10
+	number := host
+	if len(host) > 2 && (strings.HasPrefix(host, "0x") || strings.HasPrefix(host, "0X")) {
+		base = 16
+		number = host[2:]
+		if number == "" {
 			return nil, false
 		}
+		for i := 0; i < len(number); i++ {
+			c := number[i]
+			isDigit := c >= '0' && c <= '9'
+			isLowerHex := c >= 'a' && c <= 'f'
+			isUpperHex := c >= 'A' && c <= 'F'
+			if !isDigit && !isLowerHex && !isUpperHex {
+				return nil, false
+			}
+		}
+	} else if len(host) > 1 && host[0] == '0' {
+		base = 8
+		for i := 1; i < len(host); i++ {
+			if host[i] < '0' || host[i] > '7' {
+				return nil, false
+			}
+		}
+	} else {
+		for i := 0; i < len(host); i++ {
+			if host[i] < '0' || host[i] > '9' {
+				return nil, false
+			}
+		}
 	}
-	value, err := strconv.ParseUint(host, 10, 32)
+	value, err := strconv.ParseUint(number, base, 32)
 	if err != nil {
 		return nil, false
 	}

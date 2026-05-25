@@ -68,7 +68,7 @@ tests/CI:
 - `make vuln` hardened with patched Go toolchain baseline (`go1.26.3+auto`)
 - automated offline release evidence collection with per-step logs
 - automated online release evidence collection mode (includes vuln step)
-- URL risk classification for shortener hosts and raw-IP URLs (including scheme-relative `//host/...` forms, bracketed/zone-id IPv6 hosts, decimal-encoded IPv4 hosts, and normalized trailing-dot/IDNA dot-variant hosts)
+- URL risk classification for shortener hosts and raw-IP URLs (including scheme-relative `//host/...` forms, bracketed/zone-id IPv6 hosts, decimal/hex/octal-encoded IPv4 hosts, and normalized trailing-dot/IDNA dot-variant hosts)
 - URL risk classification for paste-site URLs and GitHub release asset URLs (including known GitHub CDN release-asset hosts and object-path forms)
 - URL risk classification for remote image URLs in markdown content
 - raw HTML markup detection in markdown scanning
