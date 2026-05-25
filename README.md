@@ -699,7 +699,7 @@ files, and common dependency manifests (including `deno.json` and
 Critical patterns include:
 
 - `curl | sh`, `wget | bash`, `curl | source /dev/stdin` (including quoted/escaped-quoted stdin targets and chains embedded in quoted command strings), or equivalent network-to-interpreter flows
-- `base64 -d | sh`, `xxd -r -p | sh`, decode output piped to `source`/`.` via stdin (including `/dev/fd/0`, `/proc/self/fd/0`, `/proc/thread-self/fd/0`, `/proc/<pid>/fd/0`, `/proc/<pid>/task/<tid>/fd/0`, and `-` targets), `eval`, `EncodedCommand`, and similar obfuscation
+- `base64 -d | sh`, `xxd -r -p | sh`, decode output piped to `source`/`.` via stdin (including `/dev/fd/0`, `/proc/self/fd/0`, `/proc/thread-self/fd/0`, `/proc/<pid>/fd/0`, `/proc/<pid>/task/<tid>/fd/0`, and `-` targets), with optional `builtin`/`command` prefixes, `eval`, `EncodedCommand`, and similar obfuscation
 - `chmod +x` followed by local execution of the same artifact
 - access to `.env`, `~/.ssh`, `~/.aws`, browser profiles, keychains, wallets,
   cookies, or API tokens combined with network send
