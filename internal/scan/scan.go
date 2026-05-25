@@ -826,6 +826,9 @@ func scanTextFile(target scanTarget) ([]Finding, error) {
 			findings = append(findings, scanVariantThreatFindings(variant, target, lineNum)...)
 			if target.Kind == "markdown" {
 				findings = append(findings, classifyMarkdownReferenceLinkSpoofing(variant, target.Relative, lineNum, referenceHosts)...)
+				if joined, ok := buildMarkdownReferenceUsageContinuationVariant(lines, i); ok {
+					findings = append(findings, classifyMarkdownReferenceLinkSpoofing(joined, target.Relative, lineNum, referenceHosts)...)
+				}
 			}
 			findings = append(findings, scanDecodedVariantThreatFindings(variant, target, lineNum, 0)...)
 		}
@@ -3496,6 +3499,24 @@ func classifyMarkdownReferenceLinkSpoofing(line string, relPath string, lineNum 
 		return nil
 	}
 	return out
+}
+
+func buildMarkdownReferenceUsageContinuationVariant(lines []string, idx int) (string, bool) {
+	if idx < 0 || idx >= len(lines)-1 {
+		return "", false
+	}
+	current := strings.TrimSpace(lines[idx])
+	if current == "" || !strings.Contains(current, "]") {
+		return "", false
+	}
+	next := strings.TrimSpace(lines[idx+1])
+	if next == "" || !strings.HasPrefix(next, "[") {
+		return "", false
+	}
+	if strings.Contains(next, "]:") {
+		return "", false
+	}
+	return current + " " + next, true
 }
 
 func nextNonWhitespaceIndex(value string, start int) int {

@@ -1192,6 +1192,37 @@ func TestNormalizeMarkdownReferenceID(t *testing.T) {
 	}
 }
 
+func TestBuildMarkdownReferenceUsageContinuationVariant(t *testing.T) {
+	t.Run("joins adjacent lines for full reference usage", func(t *testing.T) {
+		lines := []string{
+			"Use [https://trusted.example.com/login]",
+			"[auth] before setup",
+		}
+		got, ok := buildMarkdownReferenceUsageContinuationVariant(lines, 0)
+		if !ok {
+			t.Fatalf("expected continuation variant to be built")
+		}
+		if got != "Use [https://trusted.example.com/login] [auth] before setup" {
+			t.Fatalf("unexpected continuation variant: %q", got)
+		}
+	})
+
+	t.Run("skips empty, out-of-range, and definition-like next lines", func(t *testing.T) {
+		if _, ok := buildMarkdownReferenceUsageContinuationVariant([]string{"only one line"}, 0); ok {
+			t.Fatalf("expected no continuation variant for single-line input")
+		}
+		if _, ok := buildMarkdownReferenceUsageContinuationVariant([]string{"Use [x]", ""}, 0); ok {
+			t.Fatalf("expected no continuation variant for empty next line")
+		}
+		if _, ok := buildMarkdownReferenceUsageContinuationVariant([]string{"Use [x]", "[auth]: https://example.com"}, 0); ok {
+			t.Fatalf("expected no continuation variant for reference-definition next line")
+		}
+		if _, ok := buildMarkdownReferenceUsageContinuationVariant([]string{"plain text", "[auth]"}, 0); ok {
+			t.Fatalf("expected no continuation variant when current line lacks closing bracket")
+		}
+	})
+}
+
 func TestExtractMarkdownLinkTargetURL(t *testing.T) {
 	t.Run("extracts first token target URL", func(t *testing.T) {
 		got, ok := extractMarkdownLinkTargetURL(`https://evil.example.net/login "reference docs"`)
