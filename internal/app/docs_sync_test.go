@@ -360,6 +360,26 @@ func TestReleaseEvidenceModeNamingDocumentationSync(t *testing.T) {
 	}
 }
 
+func TestReleaseEvidenceScriptExecutionContractSync(t *testing.T) {
+	scriptBytes, err := os.ReadFile("../../scripts/collect-release-evidence.sh")
+	if err != nil {
+		t.Fatalf("failed to read collect-release-evidence.sh: %v", err)
+	}
+	script := string(scriptBytes)
+
+	required := []string{
+		`git status --short --untracked-files=no`,
+		`BUILD_OUT=$ROOT_DIR/.cache/gokui-release-evidence make release-check-offline`,
+		`cleanup evidence build artifact`,
+		`rm -f $ROOT_DIR/.cache/gokui-release-evidence`,
+	}
+	for _, line := range required {
+		if !strings.Contains(script, line) {
+			t.Fatalf("collect-release-evidence.sh missing execution contract line: %q", line)
+		}
+	}
+}
+
 func TestGitignoreReleaseEvidenceArtifactsSync(t *testing.T) {
 	gitignoreBytes, err := os.ReadFile("../../.gitignore")
 	if err != nil {
