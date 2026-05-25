@@ -60,9 +60,9 @@ while [ "$#" -gt 0 ]; do
   shift
 done
 
-mkdir -p "$OUT_DIR" "$LOG_DIR"
 assert_no_symlink_components "$OUT_DIR" "evidence directory"
 assert_no_symlink_components "$LOG_DIR" "evidence log directory"
+mkdir -p "$OUT_DIR" "$LOG_DIR"
 
 TS="$(date -u +%Y%m%dT%H%M%SZ)"
 COMMIT_SHA="$(git -C "$ROOT_DIR" rev-parse HEAD 2>/dev/null || echo unknown)"

@@ -553,6 +553,16 @@ func TestReleaseEvidenceScriptExecutionContractSync(t *testing.T) {
 			t.Fatalf("collect-release-evidence.sh missing execution contract line: %q", line)
 		}
 	}
+
+	outDirCheck := strings.Index(script, `assert_no_symlink_components "$OUT_DIR" "evidence directory"`)
+	logDirCheck := strings.Index(script, `assert_no_symlink_components "$LOG_DIR" "evidence log directory"`)
+	mkdirLine := strings.Index(script, `mkdir -p "$OUT_DIR" "$LOG_DIR"`)
+	if outDirCheck == -1 || logDirCheck == -1 || mkdirLine == -1 {
+		t.Fatal("collect-release-evidence.sh should include OUT_DIR/LOG_DIR symlink checks and mkdir")
+	}
+	if outDirCheck > mkdirLine || logDirCheck > mkdirLine {
+		t.Fatal("collect-release-evidence.sh should reject symlinked OUT_DIR/LOG_DIR before mkdir -p")
+	}
 }
 
 func TestReleaseEvidenceTemplateScriptHardeningSync(t *testing.T) {
