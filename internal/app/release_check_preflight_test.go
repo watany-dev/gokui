@@ -191,6 +191,33 @@ func TestReleaseCheckPreflightRejectsSymlinkPathComponent(t *testing.T) {
 	}
 }
 
+func TestReleaseCheckPreflightRejectsSARIFSymlinkPathComponent(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlink path-component check is exercised on POSIX in CI")
+	}
+
+	tmp := t.TempDir()
+	realDir := filepath.Join(tmp, "real")
+	if err := os.Mkdir(realDir, 0o755); err != nil {
+		t.Fatalf("mkdir real dir: %v", err)
+	}
+	linkedDir := filepath.Join(tmp, "linked")
+	if err := os.Symlink(realDir, linkedDir); err != nil {
+		t.Fatalf("create symlink dir: %v", err)
+	}
+
+	exitCode, out := runReleaseCheckPreflight(t, map[string]string{
+		"RELEASE_CHECK_BUILD_OUT": filepath.Join(tmp, "build.out"),
+		"RELEASE_CHECK_SARIF_OUT": filepath.Join(linkedDir, "inspect.sarif"),
+	})
+	if exitCode == 0 {
+		t.Fatalf("expected non-zero exit when SARIF path contains symlink component\noutput:\n%s", out)
+	}
+	if !strings.Contains(out, "release-check SARIF output path contains symlink path component") {
+		t.Fatalf("expected SARIF symlink-component rejection message, got:\n%s", out)
+	}
+}
+
 func TestReleaseCheckPreflightAcceptsDistinctNonExistingPaths(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("release-check preflight path contracts are exercised on POSIX in CI")
