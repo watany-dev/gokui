@@ -76,6 +76,12 @@ check: fmt-check lint typecheck deadcode coverage
 
 release-check-preflight:
 	@set -e; \
+	emit_preflight_error() { \
+		code="$$1"; \
+		message="$$2"; \
+		echo "[$$code] $$message" >&2; \
+		exit 1; \
+	}; \
 	assert_no_symlink_components() { \
 		path="$$1"; \
 		label="$$2"; \
@@ -83,8 +89,7 @@ release-check-preflight:
 		current="$$path"; \
 		while :; do \
 			if [ -L "$$current" ]; then \
-				echo "[$$code] $$label contains symlink path component: $$current" >&2; \
-				exit 1; \
+				emit_preflight_error "$$code" "$$label contains symlink path component: $$current"; \
 			fi; \
 			parent="$$(dirname "$$current")"; \
 			if [ "$$parent" = "$$current" ]; then \
@@ -94,26 +99,21 @@ release-check-preflight:
 		done; \
 	}; \
 	case "$(RELEASE_CHECK_BUILD_OUT)" in ""|"/"|"."|*/) \
-		echo "[RC_PREFLIGHT_BUILD_OUT_INVALID] release-check build output path must be a non-root file path" >&2; \
-		exit 1; \
+		emit_preflight_error "RC_PREFLIGHT_BUILD_OUT_INVALID" "release-check build output path must be a non-root file path"; \
 	;; esac; \
 	case "$(RELEASE_CHECK_SARIF_OUT)" in ""|"/"|"."|*/) \
-		echo "[RC_PREFLIGHT_SARIF_OUT_INVALID] release-check SARIF output path must be a non-root file path" >&2; \
-		exit 1; \
+		emit_preflight_error "RC_PREFLIGHT_SARIF_OUT_INVALID" "release-check SARIF output path must be a non-root file path"; \
 	;; esac; \
 	assert_no_symlink_components "$(RELEASE_CHECK_BUILD_OUT_ABS)" "release-check build output path" "RC_PREFLIGHT_BUILD_OUT_SYMLINK"; \
 	assert_no_symlink_components "$(RELEASE_CHECK_SARIF_OUT_ABS)" "release-check SARIF output path" "RC_PREFLIGHT_SARIF_OUT_SYMLINK"; \
 	if [ "$(RELEASE_CHECK_BUILD_OUT_ABS)" = "$(RELEASE_CHECK_SARIF_OUT_ABS)" ]; then \
-		echo "[RC_PREFLIGHT_OUTPUT_PATH_CONFLICT] release-check build and SARIF outputs must be different paths: build=$(RELEASE_CHECK_BUILD_OUT_ABS) sarif=$(RELEASE_CHECK_SARIF_OUT_ABS)" >&2; \
-		exit 1; \
+		emit_preflight_error "RC_PREFLIGHT_OUTPUT_PATH_CONFLICT" "release-check build and SARIF outputs must be different paths: build=$(RELEASE_CHECK_BUILD_OUT_ABS) sarif=$(RELEASE_CHECK_SARIF_OUT_ABS)"; \
 	fi; \
 	if [ -e "$(RELEASE_CHECK_BUILD_OUT_ABS)" ]; then \
-		echo "[RC_PREFLIGHT_BUILD_OUT_EXISTS] release-check build output already exists: $(RELEASE_CHECK_BUILD_OUT_ABS)" >&2; \
-		exit 1; \
+		emit_preflight_error "RC_PREFLIGHT_BUILD_OUT_EXISTS" "release-check build output already exists: $(RELEASE_CHECK_BUILD_OUT_ABS)"; \
 	fi; \
 	if [ -e "$(RELEASE_CHECK_SARIF_OUT_ABS)" ]; then \
-		echo "[RC_PREFLIGHT_SARIF_OUT_EXISTS] release-check SARIF output already exists: $(RELEASE_CHECK_SARIF_OUT_ABS)" >&2; \
-		exit 1; \
+		emit_preflight_error "RC_PREFLIGHT_SARIF_OUT_EXISTS" "release-check SARIF output already exists: $(RELEASE_CHECK_SARIF_OUT_ABS)"; \
 	fi
 release-check: release-check-preflight
 	@set -e; \
