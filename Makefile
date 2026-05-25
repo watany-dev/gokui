@@ -92,6 +92,10 @@ release-check: check test test-race
 	}; \
 	assert_no_symlink_components "$(RELEASE_CHECK_BUILD_OUT)" "release-check build output path"; \
 	assert_no_symlink_components "$(RELEASE_CHECK_SARIF_OUT)" "release-check SARIF output path"; \
+	if [ "$(RELEASE_CHECK_BUILD_OUT)" = "$(RELEASE_CHECK_SARIF_OUT)" ]; then \
+		echo "release-check build and SARIF outputs must be different paths" >&2; \
+		exit 1; \
+	fi; \
 	if [ -e "$(RELEASE_CHECK_BUILD_OUT)" ]; then \
 		echo "release-check build output already exists: $(RELEASE_CHECK_BUILD_OUT)" >&2; \
 		exit 1; \

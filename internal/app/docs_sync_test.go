@@ -457,6 +457,7 @@ func TestMakefileVulnToolchainBaselineSync(t *testing.T) {
 		"assert_no_symlink_components() {",
 		`assert_no_symlink_components "$(RELEASE_CHECK_BUILD_OUT)" "release-check build output path"; \`,
 		`assert_no_symlink_components "$(RELEASE_CHECK_SARIF_OUT)" "release-check SARIF output path"; \`,
+		`if [ "$(RELEASE_CHECK_BUILD_OUT)" = "$(RELEASE_CHECK_SARIF_OUT)" ]; then \`,
 		`if [ -e "$(RELEASE_CHECK_BUILD_OUT)" ]; then \`,
 		`if [ -e "$(RELEASE_CHECK_SARIF_OUT)" ]; then \`,
 		"$(GO) build -trimpath -buildvcs=true -ldflags='$(LDFLAGS)' -o $(BUILD_OUT) $(MAIN_PKG)",
@@ -711,7 +712,7 @@ func TestRoadmapReleaseEvidenceHardeningSync(t *testing.T) {
 		"inspect-sarif output path hardening (symlink path-component rejection, restrictive SARIF file permissions, fail-closed output-collision checks, and atomic file creation with descriptor-backed writes)",
 		"release script repository-root path hardening (reject symlinked repository-root execution paths)",
 		"release-evidence gate hardening with isolated build output (`BUILD_OUT`) and tracked-file clean-tree checks (`git status --short --untracked-files=no`)",
-		"release-check gate hardening with isolated build output (`RELEASE_CHECK_BUILD_OUT`), symlink/collision fail-closed build/SARIF output guards, and failure-safe cleanup for build/SARIF artifacts",
+		"release-check gate hardening with isolated build output (`RELEASE_CHECK_BUILD_OUT`), symlink/collision fail-closed build/SARIF output guards (including distinct-path enforcement), and failure-safe cleanup for build/SARIF artifacts",
 		"release-evidence metadata mode annotation (`offline|online`) and mode-specific evidence filename suffixes (`-offline-audit.md` / `-online-audit.md`)",
 	}
 	for _, line := range required {
