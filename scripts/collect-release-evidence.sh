@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+umask 077
+
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 OUT_DIR="$ROOT_DIR/releases/evidence"
 LOG_DIR="$OUT_DIR/logs"
@@ -15,6 +17,24 @@ Usage: $(basename "$0") [--with-vuln]
 Options:
   --with-vuln   Also run 'make vuln' and record the result.
 USAGE
+}
+
+assert_no_symlink_components() {
+  local path="$1"
+  local label="$2"
+  local current="$path"
+  while :; do
+    if [ -L "$current" ]; then
+      echo "${label} contains symlink path component: $current" >&2
+      exit 1
+    fi
+    local parent
+    parent="$(dirname "$current")"
+    if [ "$parent" = "$current" ]; then
+      break
+    fi
+    current="$parent"
+  done
 }
 
 while [ "$#" -gt 0 ]; do
@@ -38,11 +58,14 @@ while [ "$#" -gt 0 ]; do
 done
 
 mkdir -p "$OUT_DIR" "$LOG_DIR"
+assert_no_symlink_components "$OUT_DIR" "evidence directory"
+assert_no_symlink_components "$LOG_DIR" "evidence log directory"
 
 TS="$(date -u +%Y%m%dT%H%M%SZ)"
 COMMIT_SHA="$(git -C "$ROOT_DIR" rev-parse HEAD 2>/dev/null || echo unknown)"
 BASENAME="${TS}-${COMMIT_SHA}-${AUDIT_KIND}"
 OUT_PATH="$OUT_DIR/${BASENAME}.md"
+assert_no_symlink_components "$OUT_PATH" "evidence path"
 
 FAILED_STEPS=0
 
@@ -70,6 +93,8 @@ run_step() {
   local command_text="$2"
   local log_path="$3"
 
+  assert_no_symlink_components "$log_path" "log path"
+
   set +e
   bash -lc "cd \"$ROOT_DIR\" && ${command_text}" >"$log_path" 2>&1
   local rc=$?
@@ -82,6 +107,8 @@ run_git_clean_check() {
   local step_name="git status clean"
   local command_text="git status --short --untracked-files=no"
   local log_path="$LOG_DIR/${BASENAME}-git-status.log"
+
+  assert_no_symlink_components "$log_path" "log path"
 
   set +e
   bash -lc "cd \"$ROOT_DIR\" && git status --short --untracked-files=no" >"$log_path" 2>&1

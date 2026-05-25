@@ -70,6 +70,7 @@ tests/CI:
 - `make vuln` hardened with patched Go toolchain baseline (`go1.26.3+auto`)
 - automated offline release evidence collection with per-step logs
 - automated online release evidence collection mode (includes vuln step)
+- release-evidence output/log path hardening (symlink path-component rejection and restrictive evidence/log file permissions)
 - release-evidence gate hardening with isolated build output (`BUILD_OUT`) and tracked-file clean-tree checks (`git status --short --untracked-files=no`)
 - release-check gate hardening with isolated build output (`RELEASE_CHECK_BUILD_OUT`) and automatic artifact cleanup
 - release-evidence metadata mode annotation (`offline|online`) and mode-specific evidence filename suffixes (`-offline-audit.md` / `-online-audit.md`)
