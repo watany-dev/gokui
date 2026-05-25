@@ -1240,11 +1240,12 @@ func isNestedShellSubstringArgList(line string, start, outerEnd int) bool {
 	if firstEnd == outerEnd-1 {
 		return true
 	}
-	if firstEnd+2 >= outerEnd || line[firstEnd+1] != ':' {
+	firstDelim := skipShellSpace(line, firstEnd+1, outerEnd)
+	if firstDelim >= outerEnd || line[firstDelim] != ':' {
 		return false
 	}
 
-	secondStart := firstEnd + 2
+	secondStart := firstDelim + 1
 	secondStart = skipShellSpace(line, secondStart, outerEnd)
 	outerEnd = trimShellSpaceRight(line, secondStart, outerEnd)
 	if secondStart+1 < outerEnd && line[secondStart] == '$' && line[secondStart+1] == '{' {

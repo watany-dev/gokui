@@ -105,6 +105,7 @@ tests/CI:
 - nested-brace substring normalization also covers mixed nested/plain forms (for example `${PPID:${OFF}:1}` and `${2:${TOFF}:${TLEN:-1}}`) in `/proc/.../fd/...` and `/proc/.../task/.../fd/...` chains
 - nested-brace substring normalization also covers plain-first nested-second forms (for example `${PPID:1:${LEN:-1}}` and `${2:2:${TLEN:-${TALT}}}`) in `/proc/.../fd/...` and `/proc/.../task/.../fd/...` chains
 - nested-brace substring normalization also covers spaced plain-first nested-second forms (for example `${PPID:1: ${LEN:-1}}` and `${2: 2 : ${TLEN:-${TALT}}}`) in `/proc/.../fd/...` and `/proc/.../task/.../fd/...` chains
+- nested-brace substring normalization also covers spaced-delimiter nested-first forms (for example `${PPID:${OFF} : ${LEN}}` and `${2:${TOFF} : ${TLEN:-${TALT}}}`) in `/proc/.../fd/...` and `/proc/.../task/.../fd/...` chains
 - critical detection of chmod-then-execute local artifact chains
 - critical detection of secret-path reads combined with network exfiltration
 - medium-severity detection of NFKC normalization text drift with normalized rescanning
