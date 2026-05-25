@@ -9,6 +9,8 @@ BUILD_OUT ?= gokui
 CACHE_DIR ?= $(CURDIR)/.cache
 RELEASE_CHECK_BUILD_OUT ?= $(CACHE_DIR)/gokui-release-check
 RELEASE_CHECK_SARIF_OUT ?= $(CACHE_DIR)/inspect-results.sarif
+RELEASE_CHECK_BUILD_OUT_ABS := $(abspath $(RELEASE_CHECK_BUILD_OUT))
+RELEASE_CHECK_SARIF_OUT_ABS := $(abspath $(RELEASE_CHECK_SARIF_OUT))
 
 export GOCACHE ?= $(CACHE_DIR)/go-build
 export GOMODCACHE ?= $(CACHE_DIR)/gomod
@@ -90,31 +92,31 @@ release-check: check test test-race
 			current="$$parent"; \
 		done; \
 	}; \
-	assert_no_symlink_components "$(RELEASE_CHECK_BUILD_OUT)" "release-check build output path"; \
-	assert_no_symlink_components "$(RELEASE_CHECK_SARIF_OUT)" "release-check SARIF output path"; \
-	case "$(RELEASE_CHECK_BUILD_OUT)" in ""|"/"|"."|*/) \
+	assert_no_symlink_components "$(RELEASE_CHECK_BUILD_OUT_ABS)" "release-check build output path"; \
+	assert_no_symlink_components "$(RELEASE_CHECK_SARIF_OUT_ABS)" "release-check SARIF output path"; \
+	case "$(RELEASE_CHECK_BUILD_OUT_ABS)" in ""|"/"|"."|*/) \
 		echo "release-check build output path must be a non-root file path" >&2; \
 		exit 1; \
 	;; esac; \
-	case "$(RELEASE_CHECK_SARIF_OUT)" in ""|"/"|"."|*/) \
+	case "$(RELEASE_CHECK_SARIF_OUT_ABS)" in ""|"/"|"."|*/) \
 		echo "release-check SARIF output path must be a non-root file path" >&2; \
 		exit 1; \
 	;; esac; \
-	if [ "$(RELEASE_CHECK_BUILD_OUT)" = "$(RELEASE_CHECK_SARIF_OUT)" ]; then \
+	if [ "$(RELEASE_CHECK_BUILD_OUT_ABS)" = "$(RELEASE_CHECK_SARIF_OUT_ABS)" ]; then \
 		echo "release-check build and SARIF outputs must be different paths" >&2; \
 		exit 1; \
 	fi; \
-	if [ -e "$(RELEASE_CHECK_BUILD_OUT)" ]; then \
-		echo "release-check build output already exists: $(RELEASE_CHECK_BUILD_OUT)" >&2; \
+	if [ -e "$(RELEASE_CHECK_BUILD_OUT_ABS)" ]; then \
+		echo "release-check build output already exists: $(RELEASE_CHECK_BUILD_OUT_ABS)" >&2; \
 		exit 1; \
 	fi; \
-	if [ -e "$(RELEASE_CHECK_SARIF_OUT)" ]; then \
-		echo "release-check SARIF output already exists: $(RELEASE_CHECK_SARIF_OUT)" >&2; \
+	if [ -e "$(RELEASE_CHECK_SARIF_OUT_ABS)" ]; then \
+		echo "release-check SARIF output already exists: $(RELEASE_CHECK_SARIF_OUT_ABS)" >&2; \
 		exit 1; \
 	fi; \
-	trap 'rm -f -- "$(RELEASE_CHECK_BUILD_OUT)" "$(RELEASE_CHECK_SARIF_OUT)"' EXIT; \
-	$(MAKE) build BUILD_OUT=$(RELEASE_CHECK_BUILD_OUT); \
-	$(MAKE) inspect-sarif INSPECT_SARIF_OUT=$(RELEASE_CHECK_SARIF_OUT); \
+	trap 'rm -f -- "$(RELEASE_CHECK_BUILD_OUT_ABS)" "$(RELEASE_CHECK_SARIF_OUT_ABS)"' EXIT; \
+	$(MAKE) build BUILD_OUT=$(RELEASE_CHECK_BUILD_OUT_ABS); \
+	$(MAKE) inspect-sarif INSPECT_SARIF_OUT=$(RELEASE_CHECK_SARIF_OUT_ABS); \
 	if [ "$(RELEASE_CHECK_VULN)" = "1" ]; then \
 		$(MAKE) vuln; \
 	else \
