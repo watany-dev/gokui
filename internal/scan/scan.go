@@ -3178,7 +3178,7 @@ func classifyURLRisks(line string, relPath string, lineNum int, isMarkdown bool)
 		if err != nil {
 			continue
 		}
-		host := strings.ToLower(parsed.Hostname())
+		host := normalizeURLRiskHost(parsed.Hostname())
 		if host == "" {
 			continue
 		}
@@ -3230,6 +3230,16 @@ func classifyURLRisks(line string, relPath string, lineNum int, isMarkdown bool)
 		}
 	}
 	return out
+}
+
+func normalizeURLRiskHost(host string) string {
+	normalized := strings.ToLower(strings.TrimSpace(host))
+	normalized = strings.TrimSuffix(normalized, ".")
+	if ascii, err := idna.Lookup.ToASCII(normalized); err == nil && ascii != "" {
+		normalized = strings.ToLower(ascii)
+	}
+	normalized = strings.TrimSuffix(normalized, ".")
+	return normalized
 }
 
 func extractURLCandidates(line string) []string {

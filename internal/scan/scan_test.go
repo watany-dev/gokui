@@ -899,6 +899,14 @@ func TestClassifyURLRisksEdgeCases(t *testing.T) {
 		assertHasID(t, findings, "RAW_IP_URL")
 		assertHasID(t, findings, "REMOTE_IMAGE_URL")
 	})
+
+	t.Run("normalizes trailing-dot and idna-dot-variant hosts", func(t *testing.T) {
+		line := "open https://bit.ly./x and https://bit。ly/x and https://192.168.1.44./setup and https://github.com./org/repo/releases/download/v1.0.0/a.tgz"
+		findings := classifyURLRisks(line, "SKILL.md", 7, true)
+		assertHasID(t, findings, "URL_SHORTENER")
+		assertHasID(t, findings, "RAW_IP_URL")
+		assertHasID(t, findings, "RELEASE_ASSET_URL")
+	})
 }
 
 func TestExtractURLCandidates(t *testing.T) {
@@ -921,6 +929,23 @@ func TestExtractURLCandidates(t *testing.T) {
 	t.Run("returns nil when no url candidates exist", func(t *testing.T) {
 		if got := extractURLCandidates("plain text"); got != nil {
 			t.Fatalf("expected nil URL candidates, got %+v", got)
+		}
+	})
+}
+
+func TestNormalizeURLRiskHost(t *testing.T) {
+	t.Run("normalizes trailing-dot and idna dot-variant hosts", func(t *testing.T) {
+		if got := normalizeURLRiskHost("bit.ly."); got != "bit.ly" {
+			t.Fatalf("expected trailing-dot normalization, got %q", got)
+		}
+		if got := normalizeURLRiskHost("bit。ly"); got != "bit.ly" {
+			t.Fatalf("expected idna dot-variant normalization, got %q", got)
+		}
+	})
+
+	t.Run("returns empty for empty input", func(t *testing.T) {
+		if got := normalizeURLRiskHost(" \t "); got != "" {
+			t.Fatalf("expected empty normalized host, got %q", got)
 		}
 	})
 }
