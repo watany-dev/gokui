@@ -463,3 +463,24 @@ func TestRoadmapRuleIDsAreImplemented(t *testing.T) {
 		}
 	}
 }
+
+func TestRoadmapReleaseEvidenceHardeningSync(t *testing.T) {
+	roadmapBytes, err := os.ReadFile("../../ROADMAP.md")
+	if err != nil {
+		t.Fatalf("failed to read ROADMAP.md: %v", err)
+	}
+	roadmap := string(roadmapBytes)
+
+	required := []string{
+		"automated offline release evidence collection with per-step logs",
+		"automated online release evidence collection mode (includes vuln step)",
+		"release-evidence gate hardening with isolated build output (`BUILD_OUT`) and tracked-file clean-tree checks (`git status --short --untracked-files=no`)",
+		"release-check gate hardening with isolated build output (`RELEASE_CHECK_BUILD_OUT`) and automatic artifact cleanup",
+		"release-evidence metadata mode annotation (`offline|online`) and mode-specific evidence filename suffixes (`-offline-audit.md` / `-online-audit.md`)",
+	}
+	for _, line := range required {
+		if !strings.Contains(roadmap, line) {
+			t.Fatalf("ROADMAP.md missing release-evidence hardening line: %q", line)
+		}
+	}
+}
