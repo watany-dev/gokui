@@ -5,6 +5,9 @@ umask 077
 
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 out_path="${1:-inspect-results.sarif}"
+if [[ "$out_path" != /* ]]; then
+  out_path="$(pwd)/$out_path"
+fi
 
 assert_no_symlink_components() {
   local path="$1"

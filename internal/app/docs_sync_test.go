@@ -493,6 +493,8 @@ func TestInspectSARIFScriptHardeningSync(t *testing.T) {
 		"umask 077",
 		"assert_no_symlink_components()",
 		`assert_no_symlink_components "$ROOT_DIR" "repository root path"`,
+		`if [[ "$out_path" != /* ]]; then`,
+		`out_path="$(pwd)/$out_path"`,
 		`assert_no_symlink_components "$out_path" "inspect SARIF output path"`,
 		`mkdir -p "$(dirname "$out_path")"`,
 		`if [ -e "$out_path" ]; then`,
