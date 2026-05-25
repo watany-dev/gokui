@@ -372,6 +372,8 @@ func TestReleaseCheckDocumentationSync(t *testing.T) {
 		"clean that artifact automatically",
 		"fail closed when repository-root/output/log paths include",
 		"when expected output/log files already exist",
+		"keep failing build artifacts",
+		"for investigation and skip subsequent vuln/cleanup steps",
 		"git status --short --untracked-files=no",
 		"-offline-audit.md",
 		"-online-audit.md",

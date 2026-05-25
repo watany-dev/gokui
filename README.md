@@ -390,6 +390,8 @@ their clean-tree check evaluates tracked files only
 `.cache/gokui-release-check` and clean that artifact automatically.
 Release scripts fail closed when repository-root/output/log paths include
 symlink components, and when expected output/log files already exist.
+When offline gate steps fail, release-evidence scripts keep failing build artifacts
+for investigation and skip subsequent vuln/cleanup steps.
 Generated evidence filenames end with `-offline-audit.md` or
 `-online-audit.md` based on mode.
 
