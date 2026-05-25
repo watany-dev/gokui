@@ -1066,6 +1066,7 @@ func normalizeShellSpecialProcParams(line string) string {
 	}
 	out := shellIndirectNamedPattern.ReplaceAllString(line, `${$1}`)
 	out = shellIndirectPosPattern.ReplaceAllString(out, `${$1}`)
+	out = normalizeShellProcCommandSubstitutions(out)
 	out = shellArithmeticExpansionPattern.ReplaceAllString(out, "$$$$")
 	out = strings.ReplaceAll(out, "$!", "$$")
 	out = strings.ReplaceAll(out, "$?", "$$")
@@ -1080,6 +1081,36 @@ func normalizeShellSpecialProcParams(line string) string {
 	out = strings.ReplaceAll(out, "${@}", "$$")
 	out = strings.ReplaceAll(out, "${-}", "$$")
 	return out
+}
+
+func normalizeShellProcCommandSubstitutions(line string) string {
+	if !strings.Contains(line, "$(") {
+		return line
+	}
+
+	var b strings.Builder
+	b.Grow(len(line))
+	for i := 0; i < len(line); {
+		if i+1 < len(line) && line[i] == '$' && line[i+1] == '(' {
+			// Keep arithmetic expansion for dedicated normalization.
+			if i+2 < len(line) && line[i+2] == '(' {
+				b.WriteString("$(")
+				i += 2
+				continue
+			}
+			closeIdx := strings.IndexByte(line[i+2:], ')')
+			if closeIdx < 0 {
+				b.WriteString(line[i:])
+				break
+			}
+			b.WriteString("$$")
+			i += 2 + closeIdx + 1
+			continue
+		}
+		b.WriteByte(line[i])
+		i++
+	}
+	return b.String()
 }
 
 func scanDecodedVariantThreatFindings(line string, target scanTarget, lineNum int, depth int) []Finding {
