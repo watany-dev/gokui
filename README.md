@@ -123,7 +123,8 @@ subdomains.
 It also flags paste-site URLs, GitHub release asset URLs, and remote image
 URLs in markdown content for review.
 GitHub release asset URL detection also covers known GitHub CDN release-asset
-hosts, API release-asset forms, and object-path forms.
+hosts, API release-asset forms, object-path forms, and `latest` download
+paths.
 Markdown raw HTML markup is now flagged as a medium-severity finding.
 Markdown links with host-mismatched display URL/target URL are flagged as high
 severity link-spoofing findings, including inline and reference-style links

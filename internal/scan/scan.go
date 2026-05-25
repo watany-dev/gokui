@@ -3235,7 +3235,7 @@ func classifyURLRisks(line string, relPath string, lineNum int, isMarkdown bool)
 
 func isGitHubReleaseAssetURL(host string, path string) bool {
 	lowerPath := strings.ToLower(path)
-	if host == "github.com" && strings.Contains(lowerPath, "/releases/download/") {
+	if host == "github.com" && (strings.Contains(lowerPath, "/releases/download/") || strings.Contains(lowerPath, "/releases/latest/download/")) {
 		return true
 	}
 	if host == "api.github.com" && strings.Contains(lowerPath, "/repos/") && strings.Contains(lowerPath, "/releases/assets/") {

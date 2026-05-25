@@ -70,7 +70,7 @@ tests/CI:
 - automated online release evidence collection mode (includes vuln step)
 - URL risk classification for shortener hosts and raw-IP URLs (including scheme-relative `//host/...` forms, bracketed/zone-id IPv6 hosts, decimal/hex/octal and abbreviated/mixed-base dotted IPv4 hosts, and normalized trailing-dot/IDNA dot-variant hosts)
 - shortener/paste-site URL risk classification includes configured subdomain matches
-- URL risk classification for paste-site URLs and GitHub release asset URLs (including known GitHub CDN hosts, API release-asset forms, and object-path forms)
+- URL risk classification for paste-site URLs and GitHub release asset URLs (including known GitHub CDN hosts, API release-asset forms, object-path forms, and `releases/latest/download` paths)
 - URL risk classification for remote image URLs in markdown content
 - raw HTML markup detection in markdown scanning
 - markdown link-spoofing detection (display host vs target host mismatch), including inline and reference-style links (including spaced and one-line-break-separated reference forms), excluding image markdown forms
