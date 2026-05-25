@@ -38,9 +38,10 @@ assert_no_symlink_components() {
   done
 }
 
-create_fresh_file() {
+create_fresh_file_for_write() {
   local path="$1"
   local label="$2"
+  local fd_var="$3"
   assert_no_symlink_components "$path" "$label"
   if [ -e "$path" ]; then
     echo "${label} already exists: $path" >&2
@@ -53,11 +54,15 @@ create_fresh_file() {
   base="$(basename "$path")"
   local tmp_path
   tmp_path="$(mktemp "$dir/.${base}.tmp.XXXXXX")"
+  local fd
+  exec {fd}>>"$tmp_path"
   if ! mv -n "$tmp_path" "$path"; then
+    exec {fd}>&-
     rm -f "$tmp_path"
     echo "${label} already exists: $path" >&2
     exit 1
   fi
+  printf -v "$fd_var" '%s' "$fd"
 }
 
 assert_no_symlink_components "$ROOT_DIR" "repository root path"
@@ -90,8 +95,7 @@ TS="$(date -u +%Y%m%dT%H%M%SZ)"
 COMMIT_SHA="$(git -C "$ROOT_DIR" rev-parse HEAD 2>/dev/null || echo unknown)"
 BASENAME="${TS}-${COMMIT_SHA}-${AUDIT_KIND}"
 OUT_PATH="$OUT_DIR/${BASENAME}.md"
-create_fresh_file "$OUT_PATH" "evidence path"
-exec {EVIDENCE_FD}>>"$OUT_PATH"
+create_fresh_file_for_write "$OUT_PATH" "evidence path" EVIDENCE_FD
 
 FAILED_STEPS=0
 
@@ -119,9 +123,8 @@ run_step() {
   local command_text="$2"
   local log_path="$3"
 
-  create_fresh_file "$log_path" "log path"
   local log_fd
-  exec {log_fd}>>"$log_path"
+  create_fresh_file_for_write "$log_path" "log path" log_fd
 
   set +e
   bash -lc "cd \"$ROOT_DIR\" && ${command_text}" >&"$log_fd" 2>&1
@@ -137,9 +140,8 @@ run_git_clean_check() {
   local command_text="git status --short --untracked-files=no"
   local log_path="$LOG_DIR/${BASENAME}-git-status.log"
 
-  create_fresh_file "$log_path" "log path"
   local log_fd
-  exec {log_fd}>>"$log_path"
+  create_fresh_file_for_write "$log_path" "log path" log_fd
 
   set +e
   bash -lc "cd \"$ROOT_DIR\" && git status --short --untracked-files=no" >&"$log_fd" 2>&1
