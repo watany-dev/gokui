@@ -118,6 +118,8 @@ raw-IP hosts.
 It also treats hex- and octal-encoded integer IPv4 host forms as raw-IP hosts.
 It also treats abbreviated and mixed-base dotted IPv4 host forms as raw-IP
 hosts.
+Configured shortener and paste-site URL host checks include matching
+subdomains.
 It also flags paste-site URLs, GitHub release asset URLs, and remote image
 URLs in markdown content for review.
 GitHub release asset URL detection also covers known GitHub CDN release-asset

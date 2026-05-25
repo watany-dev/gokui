@@ -946,6 +946,21 @@ func TestClassifyURLRisksEdgeCases(t *testing.T) {
 		assertHasID(t, findings, "RELEASE_ASSET_URL")
 	})
 
+	t.Run("matches configured risk-host subdomains but not lookalikes", func(t *testing.T) {
+		line := "open https://x.bit.ly/a and https://raw.pastebin.com/b and https://evilbit.ly.com/c"
+		findings := classifyURLRisks(line, "SKILL.md", 14, true)
+		assertHasID(t, findings, "URL_SHORTENER")
+		assertHasID(t, findings, "PASTE_SITE_URL")
+	})
+
+	t.Run("does not flag lookalike domains outside configured set", func(t *testing.T) {
+		line := "open https://evilbit.ly.com/c and https://pastebin.com.evil.example/x"
+		findings := classifyURLRisks(line, "SKILL.md", 15, true)
+		if len(findings) != 0 {
+			t.Fatalf("expected no findings for lookalike domains, got %+v", findings)
+		}
+	})
+
 	t.Run("detects github release-asset cdn url forms", func(t *testing.T) {
 		line := "open https://github-releases.githubusercontent.com/owner/repo/releases/download/v1.0.0/a.tgz and https://objects.githubusercontent.com/github-production-release-asset-2e65be/123?x=y"
 		findings := classifyURLRisks(line, "SKILL.md", 14, true)

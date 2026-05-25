@@ -3193,7 +3193,7 @@ func classifyURLRisks(line string, relPath string, lineNum int, isMarkdown bool)
 				Summary:  "URL points to a raw IP host",
 			})
 		}
-		if _, ok := urlShortenerHosts[host]; ok {
+		if matchesDomainSet(host, urlShortenerHosts) {
 			out = append(out, Finding{
 				ID:       "URL_SHORTENER",
 				Severity: "medium",
@@ -3202,7 +3202,7 @@ func classifyURLRisks(line string, relPath string, lineNum int, isMarkdown bool)
 				Summary:  "URL shortener host detected",
 			})
 		}
-		if _, ok := pasteSiteHosts[host]; ok {
+		if matchesDomainSet(host, pasteSiteHosts) {
 			out = append(out, Finding{
 				ID:       "PASTE_SITE_URL",
 				Severity: "medium",
@@ -3260,6 +3260,21 @@ func normalizeURLRiskHost(host string) string {
 	normalized = strings.TrimPrefix(normalized, "www.")
 	normalized = strings.TrimSuffix(normalized, ".")
 	return normalized
+}
+
+func matchesDomainSet(host string, domains map[string]struct{}) bool {
+	if host == "" {
+		return false
+	}
+	if _, ok := domains[host]; ok {
+		return true
+	}
+	for domain := range domains {
+		if strings.HasSuffix(host, "."+domain) {
+			return true
+		}
+	}
+	return false
 }
 
 func parseRawIPHost(host string) net.IP {
