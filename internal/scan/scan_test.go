@@ -900,6 +900,9 @@ func TestClassifyPathRisks(t *testing.T) {
 
 		findings = classifyPathRisks("docs/readme．ｍｄ")
 		assertHasID(t, findings, "CONFUSABLE_FILENAME")
+
+		findings = classifyPathRisks("docs/ｐａｙｐａｌ．ｍｄ")
+		assertHasID(t, findings, "CONFUSABLE_FILENAME")
 	})
 
 	t.Run("detects confusable and mixed-script directory names", func(t *testing.T) {
@@ -1022,6 +1025,7 @@ func TestHasConfusableExtension(t *testing.T) {
 		{value: "readme.ｍｄ", want: true},
 		{value: ".ｍｄ", want: true},
 		{value: "readme.①②", want: false},
+		{value: "readme.", want: false},
 		{value: "readme.md", want: false},
 		{value: ".git", want: false},
 		{value: "readme", want: false},
@@ -1043,6 +1047,7 @@ func TestIsNFKCASCIIAlnumToken(t *testing.T) {
 		{value: "①②", want: true},
 		{value: "md", want: false},
 		{value: "тест", want: false},
+		{value: "㋐", want: false},
 		{value: "＋", want: false},
 		{value: "", want: false},
 	}
@@ -1067,6 +1072,27 @@ func TestIsNFKCASCIILetterToken(t *testing.T) {
 	for _, tc := range cases {
 		if got := isNFKCASCIILetterToken(tc.value); got != tc.want {
 			t.Fatalf("isNFKCASCIILetterToken(%q) = %v, want %v", tc.value, got, tc.want)
+		}
+	}
+}
+
+func TestIsNFKCNonASCIIFilenameLikeToken(t *testing.T) {
+	cases := []struct {
+		value string
+		want  bool
+	}{
+		{value: "ｐａｙｐａｌ．ｍｄ", want: true},
+		{value: "readme．ｍｄ", want: false},
+		{value: "тест", want: false},
+		{value: "ｐａｙ＊", want: false},
+		{value: "１２３", want: false},
+		{value: "①②", want: false},
+		{value: "ｍｄ", want: true},
+		{value: "", want: false},
+	}
+	for _, tc := range cases {
+		if got := isNFKCNonASCIIFilenameLikeToken(tc.value); got != tc.want {
+			t.Fatalf("isNFKCNonASCIIFilenameLikeToken(%q) = %v, want %v", tc.value, got, tc.want)
 		}
 	}
 }

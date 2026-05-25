@@ -407,7 +407,7 @@ func classifyPathRisks(relPath string) []Finding {
 		if !hasMixedScript && hasMixedScriptLetters(component) {
 			hasMixedScript = true
 		}
-		if !hasConfusable && (hasASCIIConfusableFilename(component) || hasConfusableExtension(rawComponent) || isNFKCASCIILetterToken(component)) {
+		if !hasConfusable && (hasASCIIConfusableFilename(component) || hasConfusableExtension(rawComponent) || isNFKCASCIILetterToken(component) || isNFKCNonASCIIFilenameLikeToken(rawComponent)) {
 			hasConfusable = true
 		}
 		if hasMixedScript && hasConfusable {
@@ -535,6 +535,40 @@ func isNFKCASCIILetterToken(value string) bool {
 	normalized := norm.NFKC.String(value)
 	for _, r := range normalized {
 		if r <= unicode.MaxASCII && unicode.IsLetter(r) {
+			return true
+		}
+	}
+	return false
+}
+
+func isNFKCNonASCIIFilenameLikeToken(value string) bool {
+	if value == "" || containsASCII(value) {
+		return false
+	}
+	normalized := norm.NFKC.String(value)
+	if normalized == "" || normalized == value {
+		return false
+	}
+	hasLetter := false
+	for _, r := range normalized {
+		if r > unicode.MaxASCII {
+			return false
+		}
+		switch {
+		case unicode.IsLetter(r):
+			hasLetter = true
+		case unicode.IsDigit(r):
+		case r == '.', r == '-', r == '_':
+		default:
+			return false
+		}
+	}
+	return hasLetter
+}
+
+func containsASCII(value string) bool {
+	for _, r := range value {
+		if r <= unicode.MaxASCII {
 			return true
 		}
 	}
