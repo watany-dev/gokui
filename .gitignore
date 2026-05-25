@@ -31,6 +31,7 @@ go.work.sum
 .cache/
 .agents/
 .codex/
+releases/evidence/
 
 # Editor/IDE
 # .idea/
