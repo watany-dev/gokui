@@ -110,7 +110,8 @@ configured via user policy (`policy.toml`) or repository policy
 (`.gokui-policy.toml`) for `local-dir` sources.
 It also supports `--format sarif` for CI/code-scanning ingestion.
 In SARIF mode, fatal update failures emit a single structured error result.
-URL risk classification now flags shortener hosts and raw-IP URLs during scan.
+URL risk classification now flags shortener hosts and raw-IP URLs during scan,
+including scheme-relative (`//host/...`) URL forms.
 It also flags paste-site URLs, GitHub release asset URLs, and remote image
 URLs in markdown content for review.
 Markdown raw HTML markup is now flagged as a medium-severity finding.

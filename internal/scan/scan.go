@@ -83,7 +83,7 @@ var (
 	promptOverridePattern = regexp.MustCompile(`(?i)\b(?:ignore|override|bypass)\b.{0,80}\b(?:previous|prior|system|higher|earlier)\b.{0,40}\b(?:instruction|instructions|prompt|prompts)\b`)
 
 	externalBinaryPattern              = regexp.MustCompile(`(?i)\bhttps?://\S+\.(?:zip|exe|msi|dmg|pkg|tar\.gz|tgz)\b`)
-	urlPattern                         = regexp.MustCompile(`(?i)\bhttps?://[^\s<>"')\]]+`)
+	urlPattern                         = regexp.MustCompile(`(?i)(?:https?://|//)[^\s<>"')\]]+`)
 	rawHTMLPattern                     = regexp.MustCompile(`(?i)<\s*(?:script|iframe|object|embed|form|link|meta|img|svg|video|audio)\b`)
 	markdownLinkPattern                = regexp.MustCompile(`\[(?P<label>[^\]]+)\]\((?P<target>[^)\n]+)\)`)
 	markdownReferenceLinkPattern       = regexp.MustCompile(`\[(?P<label>[^\]]+)\][ \t]*\[(?P<ref>[^\]]*)\]`)

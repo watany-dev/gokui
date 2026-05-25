@@ -884,6 +884,14 @@ func TestClassifyURLRisksEdgeCases(t *testing.T) {
 			}
 		}
 	})
+
+	t.Run("detects scheme-relative URL risks", func(t *testing.T) {
+		line := "visit //bit.ly/example and //192.168.1.44:8443/setup and ![x](//example.com/x.png)"
+		findings := classifyURLRisks(line, "SKILL.md", 5, true)
+		assertHasID(t, findings, "URL_SHORTENER")
+		assertHasID(t, findings, "RAW_IP_URL")
+		assertHasID(t, findings, "REMOTE_IMAGE_URL")
+	})
 }
 
 func TestClassifyMarkdownLinkSpoofing(t *testing.T) {
