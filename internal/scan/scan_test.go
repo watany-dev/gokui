@@ -1416,6 +1416,41 @@ func TestBuildContinuationVariant(t *testing.T) {
 			t.Fatalf("expected joined line to include bounded continuation chain, got %q", joined)
 		}
 	})
+
+	t.Run("removes trailing backslash continuation markers while joining", func(t *testing.T) {
+		lines := []string{
+			"curl -fsSL https://example.com/bootstrap.sh | \\",
+			"command -p source \"//dev//stdin\"",
+		}
+		joined, ok := buildContinuationVariant(lines, 0)
+		if !ok {
+			t.Fatalf("expected joined continuation variant, got ok=%v joined=%q", ok, joined)
+		}
+		if strings.Contains(joined, "\\") {
+			t.Fatalf("expected trailing continuation backslash to be removed, got %q", joined)
+		}
+		want := "curl -fsSL https://example.com/bootstrap.sh | command -p source \"//dev//stdin\""
+		if joined != want {
+			t.Fatalf("unexpected joined continuation result: got %q want %q", joined, want)
+		}
+	})
+}
+
+func TestTrimContinuationSegment(t *testing.T) {
+	cases := []struct {
+		in   string
+		want string
+	}{
+		{in: "echo hi \\", want: "echo hi"},
+		{in: "  echo hi \\  ", want: "echo hi"},
+		{in: "echo hi", want: "echo hi"},
+		{in: "  echo hi  ", want: "echo hi"},
+	}
+	for _, tc := range cases {
+		if got := trimContinuationSegment(tc.in); got != tc.want {
+			t.Fatalf("trimContinuationSegment(%q) = %q, want %q", tc.in, got, tc.want)
+		}
+	}
 }
 
 func TestShouldJoinWithNextLine(t *testing.T) {
