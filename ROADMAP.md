@@ -72,7 +72,7 @@ tests/CI:
 - automated online release evidence collection mode (includes vuln step)
 - release-evidence template path/output hardening (symlink path-component rejection and restrictive template-output file permissions)
 - release-evidence output/log path hardening (symlink path-component rejection, restrictive evidence/log file permissions, and fail-closed output-collision checks)
-- inspect-sarif output path hardening (symlink path-component rejection and restrictive SARIF file permissions)
+- inspect-sarif output path hardening (symlink path-component rejection, restrictive SARIF file permissions, and fail-closed output-collision checks)
 - release-evidence gate hardening with isolated build output (`BUILD_OUT`) and tracked-file clean-tree checks (`git status --short --untracked-files=no`)
 - release-check gate hardening with isolated build output (`RELEASE_CHECK_BUILD_OUT`) and failure-safe cleanup for build/SARIF artifacts
 - release-evidence metadata mode annotation (`offline|online`) and mode-specific evidence filename suffixes (`-offline-audit.md` / `-online-audit.md`)

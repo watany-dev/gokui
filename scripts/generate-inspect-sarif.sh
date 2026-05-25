@@ -25,6 +25,10 @@ assert_no_symlink_components() {
 
 assert_no_symlink_components "$out_path" "inspect SARIF output path"
 mkdir -p "$(dirname "$out_path")"
+if [ -e "$out_path" ]; then
+  echo "inspect SARIF output already exists: $out_path" >&2
+  exit 1
+fi
 
 tmp_bin="$(mktemp "${TMPDIR:-/tmp}/gokui-sarif-XXXXXX")"
 cleanup() {

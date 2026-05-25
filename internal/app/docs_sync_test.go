@@ -494,6 +494,7 @@ func TestInspectSARIFScriptHardeningSync(t *testing.T) {
 		"assert_no_symlink_components()",
 		`assert_no_symlink_components "$out_path" "inspect SARIF output path"`,
 		`mkdir -p "$(dirname "$out_path")"`,
+		`if [ -e "$out_path" ]; then`,
 	}
 	for _, line := range required {
 		if !strings.Contains(script, line) {
@@ -617,6 +618,7 @@ func TestRoadmapReleaseEvidenceHardeningSync(t *testing.T) {
 		"automated offline release evidence collection with per-step logs",
 		"automated online release evidence collection mode (includes vuln step)",
 		"release-evidence output/log path hardening (symlink path-component rejection, restrictive evidence/log file permissions, and fail-closed output-collision checks)",
+		"inspect-sarif output path hardening (symlink path-component rejection, restrictive SARIF file permissions, and fail-closed output-collision checks)",
 		"release-evidence gate hardening with isolated build output (`BUILD_OUT`) and tracked-file clean-tree checks (`git status --short --untracked-files=no`)",
 		"release-check gate hardening with isolated build output (`RELEASE_CHECK_BUILD_OUT`) and failure-safe cleanup for build/SARIF artifacts",
 		"release-evidence metadata mode annotation (`offline|online`) and mode-specific evidence filename suffixes (`-offline-audit.md` / `-online-audit.md`)",
