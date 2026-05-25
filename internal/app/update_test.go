@@ -1223,6 +1223,22 @@ func TestRunUpdateDryRunRejectedAndError(t *testing.T) {
 
 	t.Run("missing lockfile under target returns exit code 1", func(t *testing.T) {
 		targetRoot := filepath.Join(t.TempDir(), "skills")
+		if err := os.MkdirAll(targetRoot, 0o755); err != nil {
+			t.Fatalf("mkdir target root: %v", err)
+		}
+
+		src := createSkillSourceForInstallTest(t, "missing-lockfile-neighbor")
+		report := installReport{
+			SchemaVersion: "0.1.0-draft",
+			Source:        source{Input: src, Kind: "local-dir"},
+			PolicyProfile: "strict",
+			Decision:      "PASS",
+		}
+		installedPath, _, err := installSkillAtomic(src, targetRoot, "missing-lockfile-neighbor", report)
+		if err != nil {
+			t.Fatalf("installSkillAtomic() error = %v", err)
+		}
+
 		if err := os.MkdirAll(filepath.Join(targetRoot, "broken"), 0o755); err != nil {
 			t.Fatalf("mkdir broken skill dir: %v", err)
 		}
@@ -1238,6 +1254,18 @@ func TestRunUpdateDryRunRejectedAndError(t *testing.T) {
 		}
 		if !strings.Contains(stdout.String(), "code: "+updateCodeLockfileInvalid) {
 			t.Fatalf("stdout should include lockfile error_code line, got %q", stdout.String())
+		}
+
+		// Neighboring valid installed skill must remain lock-verified after error path.
+		lockState, err := verifyLock(installedPath)
+		if err != nil {
+			t.Fatalf("verifyLock() error = %v", err)
+		}
+		if lockState.Status != "VERIFIED" {
+			t.Fatalf("lock status after mixed-target error = %q, want VERIFIED", lockState.Status)
+		}
+		if len(lockState.Drift.MissingFiles) != 0 || len(lockState.Drift.ChangedFiles) != 0 || len(lockState.Drift.UnexpectedFiles) != 0 {
+			t.Fatalf("unexpected drift for neighboring skill after error: %+v", lockState.Drift)
 		}
 	})
 
