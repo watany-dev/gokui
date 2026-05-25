@@ -353,6 +353,9 @@ func TestReleaseChecklistDocumentationSync(t *testing.T) {
 	if !strings.Contains(releaseDoc, "non-root file paths") || !strings.Contains(releaseDoc, "directory-like paths ending with `/`") {
 		t.Fatal("RELEASE.md should document release-check non-root and non-directory output path guards")
 	}
+	if !strings.Contains(releaseDoc, "preflight checks run before format/test/race/vuln gate") {
+		t.Fatal("RELEASE.md should document release-check preflight-first execution ordering")
+	}
 	if !strings.Contains(releaseDoc, "mode (`offline` or `online`)") {
 		t.Fatal("RELEASE.md should require recording evidence mode in captured metadata")
 	}
@@ -391,6 +394,7 @@ func TestReleaseCheckDocumentationSync(t *testing.T) {
 		"BUILD_OUT=.cache/gokui-release-evidence",
 		".cache/gokui-release-check",
 		"clean that artifact automatically",
+		"validates output-path safety preflight checks before running",
 		"fails closed when build/SARIF output paths include symlink",
 		"build and SARIF outputs",
 		"resolve to the same path",

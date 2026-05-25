@@ -388,6 +388,8 @@ their clean-tree check evaluates tracked files only
 (`git status --short --untracked-files=no`).
 `make release-check`/`make release-check-offline` build to
 `.cache/gokui-release-check` and clean that artifact automatically.
+`release-check` validates output-path safety preflight checks before running
+format/test/race/vuln gate steps.
 `release-check` fails closed when build/SARIF output paths include symlink
 components, when either output already exists, or when build and SARIF outputs
 resolve to the same path.

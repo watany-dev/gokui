@@ -38,6 +38,8 @@ components, when either output already exists, or when build and SARIF outputs
 resolve to the same path.
 Release-check build/SARIF output paths must also be non-root file paths and
 must not be directory-like paths ending with `/`.
+Output-path safety preflight checks run before format/test/race/vuln gate
+steps.
 
 To override the isolated release-check build artifact path:
 
