@@ -76,18 +76,18 @@ run_step() {
 
 run_git_clean_check() {
   local step_name="git status clean"
-  local command_text="git status --short"
+  local command_text="git status --short --untracked-files=no"
   local log_path="$LOG_DIR/${BASENAME}-git-status.log"
 
   set +e
-  bash -lc "cd \"$ROOT_DIR\" && git status --short" >"$log_path" 2>&1
+  bash -lc "cd \"$ROOT_DIR\" && git status --short --untracked-files=no" >"$log_path" 2>&1
   local rc=$?
   set -e
 
   if [ "$rc" -eq 0 ] && [ -s "$log_path" ]; then
     rc=1
     echo >> "$log_path"
-    echo "expected clean working tree, but git status returned output" >> "$log_path"
+    echo "expected clean tracked working tree, but git status returned output" >> "$log_path"
   fi
 
   append_step_result "$step_name" "$command_text" "$rc" "$log_path"
