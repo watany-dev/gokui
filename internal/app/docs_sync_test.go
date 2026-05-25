@@ -266,6 +266,12 @@ func TestReleaseChecklistDocumentationSync(t *testing.T) {
 	if !strings.Contains(releaseDoc, "releases/evidence/<timestamp>-<commit>-online-audit.md") {
 		t.Fatal("RELEASE.md should describe online release evidence output path")
 	}
+	if !strings.Contains(releaseDoc, "git status --short --untracked-files=no") {
+		t.Fatal("RELEASE.md should document tracked-files clean-tree check for evidence scripts")
+	}
+	if !strings.Contains(releaseDoc, ".cache/gokui-release-evidence") {
+		t.Fatal("RELEASE.md should document isolated BUILD_OUT path for evidence scripts")
+	}
 }
 
 func TestReleaseCheckDocumentationSync(t *testing.T) {
