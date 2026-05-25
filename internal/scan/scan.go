@@ -85,7 +85,7 @@ var (
 	externalBinaryPattern     = regexp.MustCompile(`(?i)\bhttps?://\S+\.(?:zip|exe|msi|dmg|pkg|tar\.gz|tgz)\b`)
 	urlPattern                = regexp.MustCompile(`(?i)\bhttps?://[^\s<>"')\]]+`)
 	rawHTMLPattern            = regexp.MustCompile(`(?i)<\s*(?:script|iframe|object|embed|form|link|meta|img|svg|video|audio)\b`)
-	markdownLinkPattern       = regexp.MustCompile(`\[(?P<label>[^\]]+)\]\((?P<target>https?://[^)\s]+)\)`)
+	markdownLinkPattern       = regexp.MustCompile(`\[(?P<label>[^\]]+)\]\((?P<target>[^)\n]+)\)`)
 	passwordArchivePattern    = regexp.MustCompile(`(?i)(?:\b(?:password|passphrase|passwd|encrypted)\b.{0,80}\b(?:zip|7z|rar|archive|tar|tgz|tar\.gz)\b|\b(?:zip|7z|rar|archive|tar|tgz|tar\.gz)\b.{0,80}\b(?:password|passphrase|passwd|encrypted)\b)`)
 	goSemverExactPattern      = regexp.MustCompile(`^v?\d+\.\d+\.\d+(?:-[0-9a-z.-]+)?(?:\+[0-9a-z.-]+)?$`)
 	goPseudoVersionPattern    = regexp.MustCompile(`^v\d+\.\d+\.\d+-\d{14}-[0-9a-f]{12}$`)
@@ -3352,7 +3352,7 @@ func classifyMarkdownLinkSpoofing(line string, relPath string, lineNum int) []Fi
 		if !ok {
 			continue
 		}
-		targetHost, ok := parseURLHost(match[2])
+		targetHost, ok := parseMarkdownLinkTargetHost(match[2])
 		if !ok {
 			continue
 		}
@@ -3389,6 +3389,44 @@ func parseDisplayLinkHost(label string) (string, bool) {
 		return "", false
 	}
 	return parseURLHost("https://" + trimmed)
+}
+
+func parseMarkdownLinkTargetHost(target string) (string, bool) {
+	urlValue, ok := extractMarkdownLinkTargetURL(target)
+	if !ok {
+		return "", false
+	}
+	if strings.HasPrefix(urlValue, "//") {
+		return parseURLHost("https:" + urlValue)
+	}
+	lower := strings.ToLower(urlValue)
+	if !strings.HasPrefix(lower, "http://") && !strings.HasPrefix(lower, "https://") {
+		return "", false
+	}
+	return parseURLHost(urlValue)
+}
+
+func extractMarkdownLinkTargetURL(target string) (string, bool) {
+	trimmed := strings.TrimSpace(target)
+	if trimmed == "" {
+		return "", false
+	}
+	if strings.HasPrefix(trimmed, "<") {
+		end := strings.Index(trimmed, ">")
+		if end <= 1 {
+			return "", false
+		}
+		candidate := strings.TrimSpace(trimmed[1:end])
+		if candidate == "" {
+			return "", false
+		}
+		return candidate, true
+	}
+	fields := strings.Fields(trimmed)
+	if len(fields) == 0 {
+		return "", false
+	}
+	return fields[0], true
 }
 
 func unwrapMarkdownCodeSpan(value string) string {

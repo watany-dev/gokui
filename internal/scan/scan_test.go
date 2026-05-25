@@ -928,6 +928,22 @@ func TestClassifyMarkdownLinkSpoofing(t *testing.T) {
 		}
 	})
 
+	t.Run("handles markdown link targets with titles", func(t *testing.T) {
+		line := "[https://trusted.example.com/login](https://evil.example.net/login \"reference docs\")"
+		findings := classifyMarkdownLinkSpoofing(line, "SKILL.md", 13)
+		assertHasID(t, findings, "LINK_SPOOFING_URL_MISMATCH")
+
+		line = "[https://trusted.example.com/login](https://trusted.example.com/login \"reference docs\")"
+		findings = classifyMarkdownLinkSpoofing(line, "SKILL.md", 13)
+		if len(findings) != 0 {
+			t.Fatalf("expected no findings for equivalent markdown link target with title, got %+v", findings)
+		}
+
+		line = "[https://trusted.example.com/login](<https://evil.example.net/login> \"reference docs\")"
+		findings = classifyMarkdownLinkSpoofing(line, "SKILL.md", 13)
+		assertHasID(t, findings, "LINK_SPOOFING_URL_MISMATCH")
+	})
+
 	t.Run("ignores malformed display or target URLs", func(t *testing.T) {
 		line := "[https://trusted.example.com/%zz](https://evil.example.net/login)"
 		findings := classifyMarkdownLinkSpoofing(line, "SKILL.md", 14)
@@ -939,6 +955,102 @@ func TestClassifyMarkdownLinkSpoofing(t *testing.T) {
 		findings = classifyMarkdownLinkSpoofing(line, "SKILL.md", 15)
 		if len(findings) != 0 {
 			t.Fatalf("expected no findings for malformed target URL, got %+v", findings)
+		}
+	})
+}
+
+func TestExtractMarkdownLinkTargetURL(t *testing.T) {
+	t.Run("extracts first token target URL", func(t *testing.T) {
+		got, ok := extractMarkdownLinkTargetURL(`https://evil.example.net/login "reference docs"`)
+		if !ok {
+			t.Fatalf("expected URL extraction to succeed")
+		}
+		if got != "https://evil.example.net/login" {
+			t.Fatalf("expected first token URL, got %q", got)
+		}
+	})
+
+	t.Run("extracts angle-bracketed target URL", func(t *testing.T) {
+		got, ok := extractMarkdownLinkTargetURL(`<https://evil.example.net/login> 'reference docs'`)
+		if !ok {
+			t.Fatalf("expected angle-bracket URL extraction to succeed")
+		}
+		if got != "https://evil.example.net/login" {
+			t.Fatalf("expected bracket URL, got %q", got)
+		}
+	})
+
+	t.Run("rejects empty and malformed angle target URL", func(t *testing.T) {
+		if _, ok := extractMarkdownLinkTargetURL("   "); ok {
+			t.Fatalf("expected extraction failure for empty target")
+		}
+		if _, ok := extractMarkdownLinkTargetURL("<> \"title\""); ok {
+			t.Fatalf("expected extraction failure for empty angle target")
+		}
+	})
+}
+
+func TestParseMarkdownLinkTargetHost(t *testing.T) {
+	t.Run("parses scheme-relative target host", func(t *testing.T) {
+		got, ok := parseMarkdownLinkTargetHost("//evil.example.net/login")
+		if !ok {
+			t.Fatalf("expected scheme-relative host parse to succeed")
+		}
+		if got != "evil.example.net" {
+			t.Fatalf("expected host evil.example.net, got %q", got)
+		}
+	})
+
+	t.Run("ignores non-http target URL", func(t *testing.T) {
+		if _, ok := parseMarkdownLinkTargetHost("mailto:security@example.com"); ok {
+			t.Fatalf("expected non-http target to be ignored")
+		}
+	})
+
+	t.Run("parses angle-bracketed target host with title", func(t *testing.T) {
+		got, ok := parseMarkdownLinkTargetHost(`<evil.example.net> "reference docs"`)
+		if ok {
+			t.Fatalf("expected invalid angle target URL to be ignored, got host %q", got)
+		}
+
+		got, ok = parseMarkdownLinkTargetHost(`<https://evil.example.net/login> "reference docs"`)
+		if !ok {
+			t.Fatalf("expected angle-bracketed http target host parse to succeed")
+		}
+		if got != "evil.example.net" {
+			t.Fatalf("expected host evil.example.net, got %q", got)
+		}
+	})
+
+	t.Run("rejects empty or malformed target forms", func(t *testing.T) {
+		if _, ok := parseMarkdownLinkTargetHost("   "); ok {
+			t.Fatalf("expected empty target to be ignored")
+		}
+		if _, ok := parseMarkdownLinkTargetHost(`<https://evil.example.net/login "reference docs"`); ok {
+			t.Fatalf("expected malformed angle target to be ignored")
+		}
+	})
+}
+
+func TestUnwrapMarkdownCodeSpan(t *testing.T) {
+	t.Run("unwraps single and multiple backtick fences", func(t *testing.T) {
+		if got := unwrapMarkdownCodeSpan("`https://trusted.example.com/login`"); got != "https://trusted.example.com/login" {
+			t.Fatalf("expected single-backtick unwrap, got %q", got)
+		}
+		if got := unwrapMarkdownCodeSpan("```https://trusted.example.com/login```"); got != "https://trusted.example.com/login" {
+			t.Fatalf("expected triple-backtick unwrap, got %q", got)
+		}
+	})
+
+	t.Run("returns original for non-code or malformed fences", func(t *testing.T) {
+		if got := unwrapMarkdownCodeSpan("https://trusted.example.com/login"); got != "https://trusted.example.com/login" {
+			t.Fatalf("expected unchanged non-code span, got %q", got)
+		}
+		if got := unwrapMarkdownCodeSpan("``"); got != "``" {
+			t.Fatalf("expected unchanged short fence, got %q", got)
+		}
+		if got := unwrapMarkdownCodeSpan("``https://trusted.example.com/login`"); got != "``https://trusted.example.com/login`" {
+			t.Fatalf("expected unchanged mismatched fence, got %q", got)
 		}
 	})
 }
