@@ -86,7 +86,7 @@ var (
 	urlPattern                         = regexp.MustCompile(`(?i)\bhttps?://[^\s<>"')\]]+`)
 	rawHTMLPattern                     = regexp.MustCompile(`(?i)<\s*(?:script|iframe|object|embed|form|link|meta|img|svg|video|audio)\b`)
 	markdownLinkPattern                = regexp.MustCompile(`\[(?P<label>[^\]]+)\]\((?P<target>[^)\n]+)\)`)
-	markdownReferenceLinkPattern       = regexp.MustCompile(`\[(?P<label>[^\]]+)\]\[(?P<ref>[^\]]*)\]`)
+	markdownReferenceLinkPattern       = regexp.MustCompile(`\[(?P<label>[^\]]+)\][ \t]*\[(?P<ref>[^\]]*)\]`)
 	markdownShortcutReferencePattern   = regexp.MustCompile(`\[(?P<label>[^\]]+)\]`)
 	markdownReferenceDefinitionPattern = regexp.MustCompile(`^\s{0,3}\[(?P<ref>[^\]]+)\]:\s*(?P<target>.+?)\s*$`)
 	passwordArchivePattern             = regexp.MustCompile(`(?i)(?:\b(?:password|passphrase|passwd|encrypted)\b.{0,80}\b(?:zip|7z|rar|archive|tar|tgz|tar\.gz)\b|\b(?:zip|7z|rar|archive|tar|tgz|tar\.gz)\b.{0,80}\b(?:password|passphrase|passwd|encrypted)\b)`)
