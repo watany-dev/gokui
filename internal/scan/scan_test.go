@@ -990,6 +990,14 @@ func TestClassifyURLRisksEdgeCases(t *testing.T) {
 		findings := classifyURLRisks(line, "SKILL.md", 18, true)
 		assertHasID(t, findings, "RELEASE_ASSET_URL")
 	})
+
+	t.Run("does not detect malformed github api release-asset url forms", func(t *testing.T) {
+		line := "open https://api.github.com/repos/org/repo/releases/assets/not-a-number and https://uploads.github.com/repos/org/repo/releases/assets/12345"
+		findings := classifyURLRisks(line, "SKILL.md", 19, true)
+		if len(findings) != 0 {
+			t.Fatalf("expected no findings for malformed release-asset forms, got %+v", findings)
+		}
+	})
 }
 
 func TestExtractURLCandidates(t *testing.T) {
@@ -1087,6 +1095,15 @@ func TestIsGitHubReleaseAssetURL(t *testing.T) {
 		}
 		if isGitHubReleaseAssetURL("uploads.github.com", "/repos/org/repo/releases/not-a-number/assets") {
 			t.Fatal("did not expect non-numeric uploads releases/<id>/assets path to match")
+		}
+		if isGitHubReleaseAssetURL("api.github.com", "/repos/org/repo/releases/assets/not-a-number") {
+			t.Fatal("did not expect non-numeric releases/assets/<id> path to match")
+		}
+		if isGitHubReleaseAssetURL("api.github.com", "/repos/org/repo/releases/assets/12345/extra") {
+			t.Fatal("did not expect extra-path releases/assets/<id> path to match")
+		}
+		if isGitHubReleaseAssetURL("uploads.github.com", "/repos/org/repo/releases/assets/12345") {
+			t.Fatal("did not expect uploads releases/assets/<id> path to match")
 		}
 	})
 }

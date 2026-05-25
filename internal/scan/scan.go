@@ -3238,8 +3238,13 @@ func isGitHubReleaseAssetURL(host string, path string) bool {
 	if host == "github.com" && (strings.Contains(lowerPath, "/releases/download/") || strings.Contains(lowerPath, "/releases/latest/download/")) {
 		return true
 	}
-	if (host == "api.github.com" || host == "uploads.github.com") && strings.Contains(lowerPath, "/repos/") {
-		if strings.Contains(lowerPath, "/releases/assets/") || isGitHubAPIReleaseIDAssetsPath(lowerPath) {
+	if host == "api.github.com" {
+		if isGitHubAPIReleaseAssetIDPath(lowerPath) || isGitHubAPIReleaseIDAssetsPath(lowerPath) {
+			return true
+		}
+	}
+	if host == "uploads.github.com" {
+		if isGitHubAPIReleaseIDAssetsPath(lowerPath) {
 			return true
 		}
 	}
@@ -3250,6 +3255,26 @@ func isGitHubReleaseAssetURL(host string, path string) bool {
 		return true
 	}
 	return false
+}
+
+func isGitHubAPIReleaseAssetIDPath(path string) bool {
+	trimmed := strings.Trim(path, "/")
+	if trimmed == "" {
+		return false
+	}
+	parts := strings.Split(trimmed, "/")
+	if len(parts) != 6 {
+		return false
+	}
+	if parts[0] != "repos" || parts[1] == "" || parts[2] == "" || parts[3] != "releases" || parts[4] != "assets" {
+		return false
+	}
+	for _, ch := range parts[5] {
+		if ch < '0' || ch > '9' {
+			return false
+		}
+	}
+	return parts[5] != ""
 }
 
 func isGitHubAPIReleaseIDAssetsPath(path string) bool {
