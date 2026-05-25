@@ -71,8 +71,10 @@ toolchain baseline.
 
 ## 5) Build Artifact Hygiene
 
-If `gokui` binary is generated locally during checks, remove it after
-validation, or override the output path:
+`gokui` is ignored as a local build artifact, so tracked-file clean checks are
+not affected by local binary rebuilds.
+
+If you need an explicit cleanup or alternate path:
 
 ```sh
 rm -f gokui
