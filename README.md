@@ -608,6 +608,8 @@ guidance is stable.
 | `CONFUSABLE_FILENAME` | high | filename or directory name mixes ASCII with confusable non-ASCII characters (for example `payрal.md`, `payｐal.md`, `readme․md`, `pay𝐩al/`) | Rename files/directories to plain ASCII (or a single clear script) and avoid lookalike characters. |
 | `NFKC_CHANGES_TEXT` | medium | Unicode compatibility normalization changes instruction semantics | Rewrite with plain ASCII or unambiguous Unicode; remove compatibility confusables. |
 | `ARCHIVE_PATH_ESCAPE` | critical | archive entry resolves outside extraction root (`..`, absolute, canonical escape) | Rebuild archive with normalized relative paths and verify extraction root confinement. |
+| `ARCHIVE_SOURCE_SYMLINK_DETECTED` | critical source guard | input archive path or ancestor path component is a symlink | Materialize/archive-inspect only from canonical non-symlink filesystem paths. |
+| `ARCHIVE_SOURCE_SPECIAL_FILE` | critical source guard | input archive path is not a regular file (directory/device/FIFO/socket) | Provide a regular archive file from quarantine; reject special filesystem nodes. |
 | `SYMLINK_IN_ARCHIVE` | critical | archive contains symlink entries | Remove symlinks from distributed bundle; ship regular files only. |
 | `SYMLINK_IN_SCAN_SOURCE` | critical | scan source tree contains symlinked file/dir entry | Replace symlinked content with real files in the quarantined source before scanning. |
 | `LOCK_VERIFY_PATH_SYMLINK_DETECTED` | fatal verify guard | `lock verify` target path includes a symlink component | Verify/install from canonical non-symlink paths only; fix target path resolution in automation. |
