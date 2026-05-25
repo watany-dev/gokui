@@ -39,6 +39,32 @@ func TestCommandSetDocumentationSync(t *testing.T) {
 	}
 }
 
+func TestAgentsReleaseCheckErrorCodeDocumentationSync(t *testing.T) {
+	agentsBytes, err := os.ReadFile("../../AGENTS.md")
+	if err != nil {
+		t.Fatalf("failed to read AGENTS.md: %v", err)
+	}
+	agents := string(agentsBytes)
+
+	required := []string{
+		"Release-check machine-readable error codes are part of the current operational",
+		"RC_PREFLIGHT_BUILD_OUT_INVALID",
+		"RC_PREFLIGHT_SARIF_OUT_INVALID",
+		"RC_PREFLIGHT_BUILD_OUT_SYMLINK",
+		"RC_PREFLIGHT_SARIF_OUT_SYMLINK",
+		"RC_PREFLIGHT_OUTPUT_PATH_CONFLICT",
+		"RC_PREFLIGHT_BUILD_OUT_EXISTS",
+		"RC_PREFLIGHT_SARIF_OUT_EXISTS",
+		"RC_CLEANUP_REMOVE_FAILED",
+		"RC_CLEANUP_REMOVE_FAILED_SUMMARY",
+	}
+	for _, line := range required {
+		if !strings.Contains(agents, line) {
+			t.Fatalf("AGENTS.md missing release-check error code documentation line: %q", line)
+		}
+	}
+}
+
 func TestCLIUsageSyntaxDocumentationSync(t *testing.T) {
 	readmeBytes, err := os.ReadFile("../../README.md")
 	if err != nil {

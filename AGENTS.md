@@ -29,6 +29,19 @@ gokui update --dry-run
 gokui lock verify
 ```
 
+Release-check machine-readable error codes are part of the current operational
+contract. Keep `README.md`, `RELEASE.md`, and `ROADMAP.md` aligned with:
+
+- `RC_PREFLIGHT_BUILD_OUT_INVALID`
+- `RC_PREFLIGHT_SARIF_OUT_INVALID`
+- `RC_PREFLIGHT_BUILD_OUT_SYMLINK`
+- `RC_PREFLIGHT_SARIF_OUT_SYMLINK`
+- `RC_PREFLIGHT_OUTPUT_PATH_CONFLICT`
+- `RC_PREFLIGHT_BUILD_OUT_EXISTS`
+- `RC_PREFLIGHT_SARIF_OUT_EXISTS`
+- `RC_CLEANUP_REMOVE_FAILED`
+- `RC_CLEANUP_REMOVE_FAILED_SUMMARY`
+
 ## Current Source Of Truth
 
 Treat these as the primary project documents:
