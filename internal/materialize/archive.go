@@ -4,12 +4,14 @@ import (
 	"archive/tar"
 	"archive/zip"
 	"compress/gzip"
+	"errors"
 	"fmt"
 	"io"
 	"os"
 	"path"
 	"path/filepath"
 	"strings"
+	"syscall"
 
 	"github.com/watany-dev/gokui/internal/limitio"
 )
@@ -285,6 +287,10 @@ func extractTar(src, dest string, limits Limits) error {
 }
 
 func openArchiveSource(src string, kind string) (*os.File, os.FileInfo, error) {
+	if err := rejectArchiveSourceSymlinkPath(src); err != nil {
+		return nil, nil, err
+	}
+
 	info, err := os.Lstat(src)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to open %s archive: %w", kind, err)
@@ -305,6 +311,42 @@ func openArchiveSource(src string, kind string) (*os.File, os.FileInfo, error) {
 		return nil, nil, err
 	}
 	return file, info, nil
+}
+
+func rejectArchiveSourceSymlinkPath(src string) error {
+	for _, candidate := range symlinkCheckCandidates(src) {
+		info, err := os.Lstat(candidate)
+		if err != nil {
+			if os.IsNotExist(err) || errors.Is(err, syscall.ENOTDIR) {
+				return nil
+			}
+			return fmt.Errorf("failed to evaluate archive source path: %w", err)
+		}
+		if info.Mode()&os.ModeSymlink != 0 {
+			return fmt.Errorf("%s: archive source must not be a symlink: %s", ruleArchiveSourceSymlinkDetected, src)
+		}
+	}
+	return nil
+}
+
+func symlinkCheckCandidates(path string) []string {
+	cleanPath := filepath.Clean(path)
+	candidates := []string{cleanPath}
+
+	for current := cleanPath; ; {
+		parent := filepath.Dir(current)
+		if parent == current {
+			break
+		}
+		candidates = append(candidates, parent)
+		current = parent
+	}
+
+	for i, j := 0, len(candidates)-1; i < j; i, j = i+1, j-1 {
+		candidates[i], candidates[j] = candidates[j], candidates[i]
+	}
+
+	return candidates
 }
 
 func ensureArchiveSourceStableFromOpen(previous os.FileInfo, opened fileInfoStatter, src string) error {

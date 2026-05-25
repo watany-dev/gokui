@@ -214,6 +214,46 @@ func TestExtractArchiveOpenFailures(t *testing.T) {
 				t.Fatalf("expected source-symlink error, got %v", err)
 			}
 		})
+
+		t.Run("zip source ancestor symlink rejected", func(t *testing.T) {
+			base := t.TempDir()
+			realParent := filepath.Join(base, "real-parent")
+			if err := os.Mkdir(realParent, 0o755); err != nil {
+				t.Fatalf("mkdir real parent: %v", err)
+			}
+			target := filepath.Join(realParent, "skill.zip")
+			createZip(t, target, map[string]string{
+				"SKILL.md": "---\nname: x\ndescription: d\n---\n",
+			})
+			linkParent := filepath.Join(base, "link-parent")
+			if err := os.Symlink("real-parent", linkParent); err != nil {
+				t.Fatalf("create parent symlink: %v", err)
+			}
+			err := ExtractArchive(filepath.Join(linkParent, "skill.zip"), "zip", dest, Limits{})
+			if err == nil || !strings.Contains(err.Error(), ruleArchiveSourceSymlinkDetected) {
+				t.Fatalf("expected source-ancestor-symlink error, got %v", err)
+			}
+		})
+
+		t.Run("tar source ancestor symlink rejected", func(t *testing.T) {
+			base := t.TempDir()
+			realParent := filepath.Join(base, "real-parent")
+			if err := os.Mkdir(realParent, 0o755); err != nil {
+				t.Fatalf("mkdir real parent: %v", err)
+			}
+			target := filepath.Join(realParent, "skill.tar")
+			createTar(t, target, []tarEntry{
+				{name: "SKILL.md", body: "---\nname: x\ndescription: d\n---\n"},
+			})
+			linkParent := filepath.Join(base, "link-parent")
+			if err := os.Symlink("real-parent", linkParent); err != nil {
+				t.Fatalf("create parent symlink: %v", err)
+			}
+			err := ExtractArchive(filepath.Join(linkParent, "skill.tar"), "tar", dest, Limits{})
+			if err == nil || !strings.Contains(err.Error(), ruleArchiveSourceSymlinkDetected) {
+				t.Fatalf("expected source-ancestor-symlink error, got %v", err)
+			}
+		})
 	}
 }
 
@@ -796,6 +836,34 @@ func TestEnsureArchiveSourceStableFromOpen(t *testing.T) {
 	if err := ensureArchiveSourceStableFromOpen(firstInfo, secondOpened, secondPath); err == nil || !strings.Contains(err.Error(), ruleArchiveSourceChanged) {
 		t.Fatalf("expected source-changed archive error, got %v", err)
 	}
+}
+
+func TestRejectArchiveSourceSymlinkPathGuards(t *testing.T) {
+	t.Run("allows missing path", func(t *testing.T) {
+		src := filepath.Join(t.TempDir(), "missing.zip")
+		if err := rejectArchiveSourceSymlinkPath(src); err != nil {
+			t.Fatalf("missing path should not fail symlink guard, got %v", err)
+		}
+	})
+
+	t.Run("allows ENOTDIR segment", func(t *testing.T) {
+		base := t.TempDir()
+		nonDir := filepath.Join(base, "not-dir")
+		if err := os.WriteFile(nonDir, []byte("x"), 0o644); err != nil {
+			t.Fatalf("write non-dir segment: %v", err)
+		}
+		src := filepath.Join(nonDir, "nested.zip")
+		if err := rejectArchiveSourceSymlinkPath(src); err != nil {
+			t.Fatalf("ENOTDIR path should not fail symlink guard, got %v", err)
+		}
+	})
+
+	t.Run("invalid path reports evaluation failure", func(t *testing.T) {
+		err := rejectArchiveSourceSymlinkPath("\x00")
+		if err == nil || !strings.Contains(err.Error(), "failed to evaluate archive source path") {
+			t.Fatalf("expected archive-source path evaluation failure, got %v", err)
+		}
+	})
 }
 
 func TestWriteZipAndTarFileLimits(t *testing.T) {

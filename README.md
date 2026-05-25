@@ -326,8 +326,9 @@ It also validates strict YAML frontmatter rules (no duplicate keys, anchors,
 aliases, merge keys, or custom tags), requires a valid `name` that matches the
 directory name, and enforces safety-oriented `description` checks.
 For local zip/tar inputs, inspect now performs safe archive materialization
-checks (path escape, symlink/hardlink/special entry rejection, and size/count
-limits) before applying skill validation.
+checks (archive-source symlink path/component rejection, path escape,
+symlink/hardlink/special entry rejection, and size/count limits) before
+applying skill validation.
 
 The intended first release focuses on local inspection and strict Codex-targeted
 installation:

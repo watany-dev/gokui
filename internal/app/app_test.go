@@ -4093,6 +4093,52 @@ func TestPrepareArchiveInspectSource(t *testing.T) {
 			t.Fatalf("expected frontmatter validation error, got %v", err)
 		}
 	})
+
+	t.Run("rejects symlink archive source path", func(t *testing.T) {
+		if runtime.GOOS == "windows" {
+			t.Skip("symlink permissions differ on windows")
+		}
+
+		base := t.TempDir()
+		realArchive := filepath.Join(base, "clean.zip")
+		createZipArchive(t, realArchive, map[string]string{
+			"clean-skill/SKILL.md": "---\nname: clean-skill\ndescription: Use when testing archive symlink source rejection.\n---\n",
+		})
+		linkArchive := filepath.Join(base, "clean-link.zip")
+		if err := os.Symlink("clean.zip", linkArchive); err != nil {
+			t.Fatalf("create archive symlink: %v", err)
+		}
+
+		_, _, err := prepareArchiveInspectSource(linkArchive, "zip")
+		if err == nil || !strings.Contains(err.Error(), "ARCHIVE_SOURCE_SYMLINK_DETECTED") {
+			t.Fatalf("expected archive source symlink rejection, got %v", err)
+		}
+	})
+
+	t.Run("rejects archive source path when ancestor directory is symlink", func(t *testing.T) {
+		if runtime.GOOS == "windows" {
+			t.Skip("symlink permissions differ on windows")
+		}
+
+		base := t.TempDir()
+		realParent := filepath.Join(base, "real-parent")
+		if err := os.Mkdir(realParent, 0o755); err != nil {
+			t.Fatalf("mkdir real parent: %v", err)
+		}
+		archivePath := filepath.Join(realParent, "clean.zip")
+		createZipArchive(t, archivePath, map[string]string{
+			"clean-skill/SKILL.md": "---\nname: clean-skill\ndescription: Use when testing archive ancestor symlink source rejection.\n---\n",
+		})
+		linkParent := filepath.Join(base, "link-parent")
+		if err := os.Symlink("real-parent", linkParent); err != nil {
+			t.Fatalf("create parent symlink: %v", err)
+		}
+
+		_, _, err := prepareArchiveInspectSource(filepath.Join(linkParent, "clean.zip"), "zip")
+		if err == nil || !strings.Contains(err.Error(), "ARCHIVE_SOURCE_SYMLINK_DETECTED") {
+			t.Fatalf("expected archive source ancestor symlink rejection, got %v", err)
+		}
+	})
 }
 
 func TestParseFrontmatterYAML(t *testing.T) {
