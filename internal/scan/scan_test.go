@@ -907,6 +907,9 @@ func TestClassifyPathRisks(t *testing.T) {
 		findings := classifyPathRisks("docs/readme.mе")
 		assertHasID(t, findings, "CONFUSABLE_FILENAME")
 
+		findings = classifyPathRisks("docs/readme.mԁ")
+		assertHasID(t, findings, "CONFUSABLE_FILENAME")
+
 		findings = classifyPathRisks("docs/тест.mе")
 		assertHasID(t, findings, "CONFUSABLE_FILENAME")
 	})
