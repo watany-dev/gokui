@@ -8,6 +8,7 @@ MAIN_PKG := ./cmd/gokui
 BUILD_OUT ?= gokui
 CACHE_DIR ?= $(CURDIR)/.cache
 RELEASE_CHECK_BUILD_OUT ?= $(CACHE_DIR)/gokui-release-check
+RELEASE_CHECK_SARIF_OUT ?= $(CACHE_DIR)/inspect-results.sarif
 
 export GOCACHE ?= $(CACHE_DIR)/go-build
 export GOMODCACHE ?= $(CACHE_DIR)/gomod
@@ -90,13 +91,18 @@ release-check: check test test-race
 		done; \
 	}; \
 	assert_no_symlink_components "$(RELEASE_CHECK_BUILD_OUT)" "release-check build output path"; \
+	assert_no_symlink_components "$(RELEASE_CHECK_SARIF_OUT)" "release-check SARIF output path"; \
 	if [ -e "$(RELEASE_CHECK_BUILD_OUT)" ]; then \
 		echo "release-check build output already exists: $(RELEASE_CHECK_BUILD_OUT)" >&2; \
 		exit 1; \
 	fi; \
-	trap 'rm -f "$(RELEASE_CHECK_BUILD_OUT)" "$(CACHE_DIR)/inspect-results.sarif"' EXIT; \
+	if [ -e "$(RELEASE_CHECK_SARIF_OUT)" ]; then \
+		echo "release-check SARIF output already exists: $(RELEASE_CHECK_SARIF_OUT)" >&2; \
+		exit 1; \
+	fi; \
+	trap 'rm -f "$(RELEASE_CHECK_BUILD_OUT)" "$(RELEASE_CHECK_SARIF_OUT)"' EXIT; \
 	$(MAKE) build BUILD_OUT=$(RELEASE_CHECK_BUILD_OUT); \
-	$(MAKE) inspect-sarif INSPECT_SARIF_OUT=$(CACHE_DIR)/inspect-results.sarif; \
+	$(MAKE) inspect-sarif INSPECT_SARIF_OUT=$(RELEASE_CHECK_SARIF_OUT); \
 	if [ "$(RELEASE_CHECK_VULN)" = "1" ]; then \
 		$(MAKE) vuln; \
 	else \
