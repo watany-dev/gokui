@@ -328,6 +328,26 @@ func TestReleaseCheckDocumentationSync(t *testing.T) {
 	}
 }
 
+func TestLocalBuildArtifactIgnoreSync(t *testing.T) {
+	gitignoreBytes, err := os.ReadFile("../../.gitignore")
+	if err != nil {
+		t.Fatalf("failed to read .gitignore: %v", err)
+	}
+	gitignore := string(gitignoreBytes)
+	if !strings.Contains(gitignore, "gokui") {
+		t.Fatal(".gitignore should ignore local gokui build artifact")
+	}
+
+	releaseBytes, err := os.ReadFile("../../RELEASE.md")
+	if err != nil {
+		t.Fatalf("failed to read RELEASE.md: %v", err)
+	}
+	releaseDoc := string(releaseBytes)
+	if !strings.Contains(releaseDoc, "ignored as a local build artifact") {
+		t.Fatal("RELEASE.md should document gokui local-build ignore behavior")
+	}
+}
+
 func TestCISetupGoUsesLatestPatch(t *testing.T) {
 	ciBytes, err := os.ReadFile("../../.github/workflows/ci.yml")
 	if err != nil {
