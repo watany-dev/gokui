@@ -66,6 +66,10 @@ COMMIT_SHA="$(git -C "$ROOT_DIR" rev-parse HEAD 2>/dev/null || echo unknown)"
 BASENAME="${TS}-${COMMIT_SHA}-${AUDIT_KIND}"
 OUT_PATH="$OUT_DIR/${BASENAME}.md"
 assert_no_symlink_components "$OUT_PATH" "evidence path"
+if [ -e "$OUT_PATH" ]; then
+  echo "release evidence output already exists: $OUT_PATH" >&2
+  exit 1
+fi
 
 FAILED_STEPS=0
 

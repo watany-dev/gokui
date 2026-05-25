@@ -38,6 +38,10 @@ TS="$(date -u +%Y%m%dT%H%M%SZ)"
 COMMIT_SHA="$(git -C "$ROOT_DIR" rev-parse HEAD 2>/dev/null || echo unknown)"
 OUT_PATH="$OUT_DIR/${TS}-${COMMIT_SHA}.md"
 assert_no_symlink_components "$OUT_PATH" "release evidence output path"
+if [ -e "$OUT_PATH" ]; then
+  echo "release evidence output already exists: $OUT_PATH" >&2
+  exit 1
+fi
 
 {
   echo "# Release Evidence - $TS"

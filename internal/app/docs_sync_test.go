@@ -517,6 +517,7 @@ func TestReleaseEvidenceScriptExecutionContractSync(t *testing.T) {
 		`assert_no_symlink_components "$OUT_DIR" "evidence directory"`,
 		`assert_no_symlink_components "$LOG_DIR" "evidence log directory"`,
 		`assert_no_symlink_components "$OUT_PATH" "evidence path"`,
+		`if [ -e "$OUT_PATH" ]; then`,
 		`echo "- Mode: ${EVIDENCE_MODE}"`,
 		`git status --short --untracked-files=no`,
 		`BUILD_OUT=$ROOT_DIR/.cache/gokui-release-evidence make release-check-offline`,
@@ -543,6 +544,7 @@ func TestReleaseEvidenceTemplateScriptHardeningSync(t *testing.T) {
 		`assert_no_symlink_components "$TEMPLATE_PATH" "release evidence template path"`,
 		`assert_no_symlink_components "$OUT_DIR" "release evidence output directory"`,
 		`assert_no_symlink_components "$OUT_PATH" "release evidence output path"`,
+		`if [ -e "$OUT_PATH" ]; then`,
 	}
 	for _, line := range required {
 		if !strings.Contains(script, line) {
@@ -614,6 +616,7 @@ func TestRoadmapReleaseEvidenceHardeningSync(t *testing.T) {
 	required := []string{
 		"automated offline release evidence collection with per-step logs",
 		"automated online release evidence collection mode (includes vuln step)",
+		"release-evidence output/log path hardening (symlink path-component rejection, restrictive evidence/log file permissions, and fail-closed output-collision checks)",
 		"release-evidence gate hardening with isolated build output (`BUILD_OUT`) and tracked-file clean-tree checks (`git status --short --untracked-files=no`)",
 		"release-check gate hardening with isolated build output (`RELEASE_CHECK_BUILD_OUT`) and failure-safe cleanup for build/SARIF artifacts",
 		"release-evidence metadata mode annotation (`offline|online`) and mode-specific evidence filename suffixes (`-offline-audit.md` / `-online-audit.md`)",
