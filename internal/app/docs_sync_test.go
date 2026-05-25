@@ -206,6 +206,24 @@ func TestRuleRemediationDocumentationSync(t *testing.T) {
 	}
 }
 
+func TestReadmeCriticalPatternDocumentationSync(t *testing.T) {
+	readmeBytes, err := os.ReadFile("../../README.md")
+	if err != nil {
+		t.Fatalf("failed to read README.md: %v", err)
+	}
+	readme := string(readmeBytes)
+
+	required := []string{
+		"curl | source /dev/stdin",
+		"decode output piped to `source`/`.` via stdin",
+	}
+	for _, line := range required {
+		if !strings.Contains(readme, line) {
+			t.Fatalf("README missing critical pattern documentation line: %q", line)
+		}
+	}
+}
+
 func TestReleaseChecklistDocumentationSync(t *testing.T) {
 	readmeBytes, err := os.ReadFile("../../README.md")
 	if err != nil {

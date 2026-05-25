@@ -698,8 +698,8 @@ files, and common dependency manifests (including `deno.json` and
 
 Critical patterns include:
 
-- `curl | sh`, `wget | bash`, or equivalent network-to-interpreter flows
-- `base64 -d | sh`, `xxd -r -p | sh`, `eval`, `EncodedCommand`, and similar obfuscation
+- `curl | sh`, `wget | bash`, `curl | source /dev/stdin`, or equivalent network-to-interpreter flows
+- `base64 -d | sh`, `xxd -r -p | sh`, decode output piped to `source`/`.` via stdin, `eval`, `EncodedCommand`, and similar obfuscation
 - `chmod +x` followed by local execution of the same artifact
 - access to `.env`, `~/.ssh`, `~/.aws`, browser profiles, keychains, wallets,
   cookies, or API tokens combined with network send
