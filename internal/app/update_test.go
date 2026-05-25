@@ -2815,6 +2815,17 @@ func TestRunUpdateJSONFatalErrors(t *testing.T) {
 		if err := os.MkdirAll(targetRoot, 0o755); err != nil {
 			t.Fatalf("mkdir target root: %v", err)
 		}
+		src := createSkillSourceForInstallTest(t, "target-entry-symlink-neighbor")
+		report := installReport{
+			SchemaVersion: "0.1.0-draft",
+			Source:        source{Input: src, Kind: "local-dir"},
+			PolicyProfile: "strict",
+			Decision:      "PASS",
+		}
+		installedPath, _, err := installSkillAtomic(src, targetRoot, "target-entry-symlink-neighbor", report)
+		if err != nil {
+			t.Fatalf("installSkillAtomic() error = %v", err)
+		}
 		if err := os.Mkdir(filepath.Join(targetRoot, "real-entry"), 0o755); err != nil {
 			t.Fatalf("mkdir real entry: %v", err)
 		}
@@ -2836,6 +2847,18 @@ func TestRunUpdateJSONFatalErrors(t *testing.T) {
 		}
 		if !strings.Contains(stdout.String(), "\"rule_id\": \""+ruleUpdateTargetEntrySymlink+"\"") {
 			t.Fatalf("stdout should include target-entry symlink rule_id, got %q", stdout.String())
+		}
+
+		// Even when update fails on symlink entry, neighboring valid install must remain verified.
+		lockState, err := verifyLock(installedPath)
+		if err != nil {
+			t.Fatalf("verifyLock() error = %v", err)
+		}
+		if lockState.Status != "VERIFIED" {
+			t.Fatalf("lock status after target-entry symlink error = %q, want VERIFIED", lockState.Status)
+		}
+		if len(lockState.Drift.MissingFiles) != 0 || len(lockState.Drift.ChangedFiles) != 0 || len(lockState.Drift.UnexpectedFiles) != 0 {
+			t.Fatalf("unexpected drift after target-entry symlink error: %+v", lockState.Drift)
 		}
 	})
 }
