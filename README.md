@@ -113,7 +113,7 @@ In SARIF mode, fatal update failures emit a single structured error result.
 URL risk classification now flags shortener hosts and raw-IP URLs during scan,
 including scheme-relative (`//host/...`) URL forms and bracketed IPv6 hosts.
 It also normalizes trailing-dot and IDNA dot-variant URL hosts during
-classification.
+classification, and treats IPv6 zone-id forms as raw-IP hosts.
 It also flags paste-site URLs, GitHub release asset URLs, and remote image
 URLs in markdown content for review.
 Markdown raw HTML markup is now flagged as a medium-severity finding.

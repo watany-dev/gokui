@@ -900,9 +900,15 @@ func TestClassifyURLRisksEdgeCases(t *testing.T) {
 		assertHasID(t, findings, "REMOTE_IMAGE_URL")
 	})
 
+	t.Run("detects bracketed ipv6 zone-id URL risks", func(t *testing.T) {
+		line := "visit https://[fe80::1%25eth0]/setup and //[fe80::2%25eth0]/boot"
+		findings := classifyURLRisks(line, "SKILL.md", 7, true)
+		assertHasID(t, findings, "RAW_IP_URL")
+	})
+
 	t.Run("normalizes trailing-dot and idna-dot-variant hosts", func(t *testing.T) {
 		line := "open https://bit.ly./x and https://bit。ly/x and https://192.168.1.44./setup and https://github.com./org/repo/releases/download/v1.0.0/a.tgz"
-		findings := classifyURLRisks(line, "SKILL.md", 7, true)
+		findings := classifyURLRisks(line, "SKILL.md", 8, true)
 		assertHasID(t, findings, "URL_SHORTENER")
 		assertHasID(t, findings, "RAW_IP_URL")
 		assertHasID(t, findings, "RELEASE_ASSET_URL")
@@ -946,6 +952,23 @@ func TestNormalizeURLRiskHost(t *testing.T) {
 	t.Run("returns empty for empty input", func(t *testing.T) {
 		if got := normalizeURLRiskHost(" \t "); got != "" {
 			t.Fatalf("expected empty normalized host, got %q", got)
+		}
+	})
+}
+
+func TestParseRawIPHost(t *testing.T) {
+	t.Run("parses plain ip and bracketed-ipv6 zone-id host values", func(t *testing.T) {
+		if got := parseRawIPHost("192.168.1.44"); got == nil {
+			t.Fatalf("expected ipv4 host parse to succeed")
+		}
+		if got := parseRawIPHost("fe80::1%eth0"); got == nil {
+			t.Fatalf("expected ipv6 zone-id host parse to succeed")
+		}
+	})
+
+	t.Run("returns nil for non-ip hosts", func(t *testing.T) {
+		if got := parseRawIPHost("example.com"); got != nil {
+			t.Fatalf("expected non-ip host parse to fail, got %v", got)
 		}
 	})
 }

@@ -84,7 +84,7 @@ var (
 
 	externalBinaryPattern              = regexp.MustCompile(`(?i)\bhttps?://\S+\.(?:zip|exe|msi|dmg|pkg|tar\.gz|tgz)\b`)
 	urlPattern                         = regexp.MustCompile(`(?i)(?:https?://|//)[^\s<>"')\]]+`)
-	ipv6URLPattern                     = regexp.MustCompile(`(?i)(?:https?://|//)\[[0-9a-f:.%]+\](?::\d+)?[^\s<>"')]*`)
+	ipv6URLPattern                     = regexp.MustCompile(`(?i)(?:https?://|//)\[[0-9a-z:._%-]+\](?::\d+)?[^\s<>"')]*`)
 	rawHTMLPattern                     = regexp.MustCompile(`(?i)<\s*(?:script|iframe|object|embed|form|link|meta|img|svg|video|audio)\b`)
 	markdownLinkPattern                = regexp.MustCompile(`\[(?P<label>[^\]]+)\]\((?P<target>[^)\n]+)\)`)
 	markdownReferenceLinkPattern       = regexp.MustCompile(`\[(?P<label>[^\]]+)\][ \t]*\[(?P<ref>[^\]]*)\]`)
@@ -3183,7 +3183,7 @@ func classifyURLRisks(line string, relPath string, lineNum int, isMarkdown bool)
 			continue
 		}
 
-		if ip := net.ParseIP(host); ip != nil {
+		if ip := parseRawIPHost(host); ip != nil {
 			out = append(out, Finding{
 				ID:       "RAW_IP_URL",
 				Severity: "high",
@@ -3240,6 +3240,23 @@ func normalizeURLRiskHost(host string) string {
 	}
 	normalized = strings.TrimSuffix(normalized, ".")
 	return normalized
+}
+
+func parseRawIPHost(host string) net.IP {
+	if host == "" {
+		return nil
+	}
+	if ip := net.ParseIP(host); ip != nil {
+		return ip
+	}
+	// IPv6 zone identifiers (for example "fe80::1%eth0") are valid URL hosts
+	// but net.ParseIP does not accept them directly.
+	if strings.Contains(host, ":") {
+		if zoneIndex := strings.Index(host, "%"); zoneIndex > 0 {
+			return net.ParseIP(host[:zoneIndex])
+		}
+	}
+	return nil
 }
 
 func extractURLCandidates(line string) []string {
