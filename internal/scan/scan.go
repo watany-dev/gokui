@@ -489,7 +489,12 @@ func hasConfusableExtension(name string) bool {
 	if ext == "" {
 		return false
 	}
-	return hasASCIIConfusableFilename(ext)
+	if hasASCIIConfusableFilename(ext) {
+		return true
+	}
+	// Also treat all-compatibility extension tokens (for example fullwidth
+	// ".ｍｄ") as confusable even when the original token contains no ASCII.
+	return isNFKCASCIIAlnumToken(ext)
 }
 
 func hasASCIIConfusableFilename(name string) bool {
@@ -505,6 +510,25 @@ func hasASCIIConfusableFilename(name string) bool {
 		}
 	}
 	return hasASCIIAlnum && hasNonASCIIConfusable
+}
+
+func isNFKCASCIIAlnumToken(value string) bool {
+	if value == "" {
+		return false
+	}
+	normalized := norm.NFKC.String(value)
+	if normalized == "" || normalized == value {
+		return false
+	}
+	for _, r := range normalized {
+		if r > unicode.MaxASCII {
+			return false
+		}
+		if !unicode.IsLetter(r) && !unicode.IsDigit(r) {
+			return false
+		}
+	}
+	return true
 }
 
 func isFullwidthASCIIConfusable(r rune) bool {

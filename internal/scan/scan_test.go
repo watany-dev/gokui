@@ -910,6 +910,9 @@ func TestClassifyPathRisks(t *testing.T) {
 		findings = classifyPathRisks("docs/readme.mԁ")
 		assertHasID(t, findings, "CONFUSABLE_FILENAME")
 
+		findings = classifyPathRisks("docs/readme.ｍｄ")
+		assertHasID(t, findings, "CONFUSABLE_FILENAME")
+
 		findings = classifyPathRisks("docs/тест.mе")
 		assertHasID(t, findings, "CONFUSABLE_FILENAME")
 	})
@@ -1013,6 +1016,7 @@ func TestHasConfusableExtension(t *testing.T) {
 		want  bool
 	}{
 		{value: "readme.mе", want: true},
+		{value: "readme.ｍｄ", want: true},
 		{value: "readme.md", want: false},
 		{value: "readme", want: false},
 		{value: "тест.mе", want: true},
@@ -1020,6 +1024,25 @@ func TestHasConfusableExtension(t *testing.T) {
 	for _, tc := range cases {
 		if got := hasConfusableExtension(tc.value); got != tc.want {
 			t.Fatalf("hasConfusableExtension(%q) = %v, want %v", tc.value, got, tc.want)
+		}
+	}
+}
+
+func TestIsNFKCASCIIAlnumToken(t *testing.T) {
+	cases := []struct {
+		value string
+		want  bool
+	}{
+		{value: "ｍｄ", want: true},
+		{value: "①②", want: true},
+		{value: "md", want: false},
+		{value: "тест", want: false},
+		{value: "＋", want: false},
+		{value: "", want: false},
+	}
+	for _, tc := range cases {
+		if got := isNFKCASCIIAlnumToken(tc.value); got != tc.want {
+			t.Fatalf("isNFKCASCIIAlnumToken(%q) = %v, want %v", tc.value, got, tc.want)
 		}
 	}
 }
