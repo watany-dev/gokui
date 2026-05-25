@@ -453,6 +453,9 @@ func TestMakefileVulnToolchainBaselineSync(t *testing.T) {
 		"BUILD_OUT ?= gokui",
 		"RELEASE_CHECK_BUILD_OUT ?= $(CACHE_DIR)/gokui-release-check",
 		"release-check: check test test-race",
+		"assert_no_symlink_components() {",
+		`assert_no_symlink_components "$(RELEASE_CHECK_BUILD_OUT)" "release-check build output path"; \`,
+		`if [ -e "$(RELEASE_CHECK_BUILD_OUT)" ]; then \`,
 		"$(GO) build -trimpath -buildvcs=true -ldflags='$(LDFLAGS)' -o $(BUILD_OUT) $(MAIN_PKG)",
 		"$(MAKE) build BUILD_OUT=$(RELEASE_CHECK_BUILD_OUT)",
 		`trap 'rm -f "$(RELEASE_CHECK_BUILD_OUT)" "$(CACHE_DIR)/inspect-results.sarif"' EXIT; \`,
@@ -705,7 +708,7 @@ func TestRoadmapReleaseEvidenceHardeningSync(t *testing.T) {
 		"inspect-sarif output path hardening (symlink path-component rejection, restrictive SARIF file permissions, fail-closed output-collision checks, and atomic file creation with descriptor-backed writes)",
 		"release script repository-root path hardening (reject symlinked repository-root execution paths)",
 		"release-evidence gate hardening with isolated build output (`BUILD_OUT`) and tracked-file clean-tree checks (`git status --short --untracked-files=no`)",
-		"release-check gate hardening with isolated build output (`RELEASE_CHECK_BUILD_OUT`) and failure-safe cleanup for build/SARIF artifacts",
+		"release-check gate hardening with isolated build output (`RELEASE_CHECK_BUILD_OUT`), symlink/collision fail-closed build-output guards, and failure-safe cleanup for build/SARIF artifacts",
 		"release-evidence metadata mode annotation (`offline|online`) and mode-specific evidence filename suffixes (`-offline-audit.md` / `-online-audit.md`)",
 	}
 	for _, line := range required {

@@ -73,6 +73,27 @@ check: fmt-check lint typecheck deadcode coverage
 
 release-check: check test test-race
 	@set -e; \
+	assert_no_symlink_components() { \
+		path="$$1"; \
+		label="$$2"; \
+		current="$$path"; \
+		while :; do \
+			if [ -L "$$current" ]; then \
+				echo "$$label contains symlink path component: $$current" >&2; \
+				exit 1; \
+			fi; \
+			parent="$$(dirname "$$current")"; \
+			if [ "$$parent" = "$$current" ]; then \
+				break; \
+			fi; \
+			current="$$parent"; \
+		done; \
+	}; \
+	assert_no_symlink_components "$(RELEASE_CHECK_BUILD_OUT)" "release-check build output path"; \
+	if [ -e "$(RELEASE_CHECK_BUILD_OUT)" ]; then \
+		echo "release-check build output already exists: $(RELEASE_CHECK_BUILD_OUT)" >&2; \
+		exit 1; \
+	fi; \
 	trap 'rm -f "$(RELEASE_CHECK_BUILD_OUT)" "$(CACHE_DIR)/inspect-results.sarif"' EXIT; \
 	$(MAKE) build BUILD_OUT=$(RELEASE_CHECK_BUILD_OUT); \
 	$(MAKE) inspect-sarif INSPECT_SARIF_OUT=$(CACHE_DIR)/inspect-results.sarif; \
