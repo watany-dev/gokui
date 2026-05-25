@@ -227,6 +227,7 @@ func TestReadmeCriticalPatternDocumentationSync(t *testing.T) {
 		"/dev/fd/0",
 		"/proc/thread-self/fd/0",
 		"/proc/<pid>/fd/0",
+		"/proc/self/task/<tid>/fd/0",
 		"/proc/<pid>/task/<tid>/fd/0",
 		"/proc/thread-self/task/<tid>/fd/0",
 		"task-path `fd/00` variants",
@@ -258,6 +259,7 @@ func TestRoadmapCriticalPatternDocumentationSync(t *testing.T) {
 		"/dev/fd/0",
 		"/proc/thread-self/fd/0",
 		"/proc/<pid>/fd/0",
+		"/proc/self/task/<tid>/fd/0",
 		"/proc/<pid>/task/<tid>/fd/0",
 		"/proc/thread-self/task/<tid>/fd/0",
 	}
