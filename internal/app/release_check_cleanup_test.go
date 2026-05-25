@@ -184,6 +184,9 @@ func TestReleaseCheckFailsClosedWhenCleanupRemovalFails(t *testing.T) {
 	if !strings.Contains(out, "release-check cleanup failed for output path: "+buildOut) {
 		t.Fatalf("expected cleanup failure message for build output path, got:\n%s", out)
 	}
+	if !strings.Contains(out, "[RC_CLEANUP_REMOVE_FAILED]") {
+		t.Fatalf("expected cleanup failure code in output, got:\n%s", out)
+	}
 	if !strings.Contains(out, "release-check cleanup failed for output path: "+sarifOut) {
 		t.Fatalf("expected cleanup failure message for SARIF output path, got:\n%s", out)
 	}

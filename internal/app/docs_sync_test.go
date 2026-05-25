@@ -477,7 +477,7 @@ func TestMakefileVulnToolchainBaselineSync(t *testing.T) {
 		"$(MAKE) test-race; \\",
 		"cleanup_release_check_outputs() {",
 		`for output_path in "$(RELEASE_CHECK_BUILD_OUT_ABS)" "$(RELEASE_CHECK_SARIF_OUT_ABS)"; do \`,
-		`echo "release-check cleanup failed for output path: $$output_path" >&2; \`,
+		`echo "[RC_CLEANUP_REMOVE_FAILED] release-check cleanup failed for output path: $$output_path" >&2; \`,
 		"assert_no_symlink_components() {",
 		`assert_no_symlink_components "$(RELEASE_CHECK_BUILD_OUT_ABS)" "release-check build output path" "RC_PREFLIGHT_BUILD_OUT_SYMLINK"; \`,
 		`assert_no_symlink_components "$(RELEASE_CHECK_SARIF_OUT_ABS)" "release-check SARIF output path" "RC_PREFLIGHT_SARIF_OUT_SYMLINK"; \`,

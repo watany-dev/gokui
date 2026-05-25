@@ -121,7 +121,7 @@ release-check: release-check-preflight
 		failed=0; \
 		for output_path in "$(RELEASE_CHECK_BUILD_OUT_ABS)" "$(RELEASE_CHECK_SARIF_OUT_ABS)"; do \
 			if [ -e "$$output_path" ] && ! rm -f -- "$$output_path"; then \
-				echo "release-check cleanup failed for output path: $$output_path" >&2; \
+				echo "[RC_CLEANUP_REMOVE_FAILED] release-check cleanup failed for output path: $$output_path" >&2; \
 				failed=1; \
 			fi; \
 		done; \
