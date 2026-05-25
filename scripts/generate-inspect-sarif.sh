@@ -57,9 +57,9 @@ create_temp_file_for_write "$out_dir" "$out_base" TMP_SARIF_PATH SARIF_FD
 
 tmp_bin="$(mktemp "${TMPDIR:-/tmp}/gokui-sarif-XXXXXX")"
 cleanup() {
-  rm -f "$tmp_bin"
+  rm -f -- "$tmp_bin"
   if [ -n "${TMP_SARIF_PATH:-}" ]; then
-    rm -f "$TMP_SARIF_PATH"
+    rm -f -- "$TMP_SARIF_PATH"
   fi
 }
 trap cleanup EXIT
@@ -86,7 +86,7 @@ grep -q '"version": "2.1.0"' "$TMP_SARIF_PATH"
 grep -q '"FAKE_PREREQ_EXECUTION"' "$TMP_SARIF_PATH"
 
 if ! mv -n "$TMP_SARIF_PATH" "$out_path"; then
-  rm -f "$TMP_SARIF_PATH"
+  rm -f -- "$TMP_SARIF_PATH"
   echo "inspect SARIF output path already exists: $out_path" >&2
   exit 1
 fi

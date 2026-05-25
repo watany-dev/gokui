@@ -68,7 +68,7 @@ OUT_BASENAME="$(basename "$OUT_PATH")"
 create_temp_file_for_write "$OUT_DIR" "$OUT_BASENAME" TMP_EVIDENCE_PATH EVIDENCE_FD
 cleanup() {
   if [ -n "${TMP_EVIDENCE_PATH:-}" ]; then
-    rm -f "$TMP_EVIDENCE_PATH"
+    rm -f -- "$TMP_EVIDENCE_PATH"
   fi
 }
 trap cleanup EXIT
@@ -83,7 +83,7 @@ trap cleanup EXIT
 } >&${EVIDENCE_FD}
 exec {EVIDENCE_FD}>&-
 if ! mv -n "$TMP_EVIDENCE_PATH" "$OUT_PATH"; then
-  rm -f "$TMP_EVIDENCE_PATH"
+  rm -f -- "$TMP_EVIDENCE_PATH"
   echo "release evidence output path already exists: $OUT_PATH" >&2
   exit 1
 fi

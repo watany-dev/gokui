@@ -96,7 +96,7 @@ OUT_BASENAME="$(basename "$OUT_PATH")"
 create_temp_file_for_write "$OUT_DIR" "$OUT_BASENAME" TMP_EVIDENCE_PATH EVIDENCE_FD
 cleanup() {
   if [ -n "${TMP_EVIDENCE_PATH:-}" ]; then
-    rm -f "$TMP_EVIDENCE_PATH"
+    rm -f -- "$TMP_EVIDENCE_PATH"
   fi
 }
 trap cleanup EXIT
@@ -140,7 +140,7 @@ run_step() {
   set -e
   exec {log_fd}>&-
   if ! mv -n "$tmp_log_path" "$log_path"; then
-    rm -f "$tmp_log_path"
+    rm -f -- "$tmp_log_path"
     echo "log path already exists: $log_path" >&2
     exit 1
   fi
@@ -174,7 +174,7 @@ run_git_clean_check() {
   fi
   exec {log_fd}>&-
   if ! mv -n "$tmp_log_path" "$log_path"; then
-    rm -f "$tmp_log_path"
+    rm -f -- "$tmp_log_path"
     echo "log path already exists: $log_path" >&2
     exit 1
   fi
@@ -213,7 +213,7 @@ else
 fi
 
 if [ "$FAILED_STEPS" -eq 0 ]; then
-  run_step "cleanup evidence build artifact" "rm -f \"$ROOT_DIR/.cache/gokui-release-evidence\"" "$LOG_DIR/${BASENAME}-cleanup.log"
+  run_step "cleanup evidence build artifact" "rm -f -- \"$ROOT_DIR/.cache/gokui-release-evidence\"" "$LOG_DIR/${BASENAME}-cleanup.log"
 else
   {
     echo "- cleanup evidence build artifact: SKIPPED"
@@ -235,7 +235,7 @@ fi
 
 exec {EVIDENCE_FD}>&-
 if ! mv -n "$TMP_EVIDENCE_PATH" "$OUT_PATH"; then
-  rm -f "$TMP_EVIDENCE_PATH"
+  rm -f -- "$TMP_EVIDENCE_PATH"
   echo "evidence path already exists: $OUT_PATH" >&2
   exit 1
 fi
