@@ -116,6 +116,8 @@ It also normalizes trailing-dot and IDNA dot-variant URL hosts during
 classification, and treats IPv6 zone-id forms as raw-IP hosts.
 It also flags paste-site URLs, GitHub release asset URLs, and remote image
 URLs in markdown content for review.
+GitHub release asset URL detection also covers known GitHub CDN release-asset
+hosts and object-path forms.
 Markdown raw HTML markup is now flagged as a medium-severity finding.
 Markdown links with host-mismatched display URL/target URL are flagged as high
 severity link-spoofing findings, including inline and reference-style links

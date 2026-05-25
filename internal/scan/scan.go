@@ -3210,7 +3210,7 @@ func classifyURLRisks(line string, relPath string, lineNum int, isMarkdown bool)
 				Summary:  "paste site URL detected",
 			})
 		}
-		if host == "github.com" && strings.Contains(strings.ToLower(parsed.Path), "/releases/download/") {
+		if isGitHubReleaseAssetURL(host, parsed.Path) {
 			out = append(out, Finding{
 				ID:       "RELEASE_ASSET_URL",
 				Severity: "medium",
@@ -3230,6 +3230,20 @@ func classifyURLRisks(line string, relPath string, lineNum int, isMarkdown bool)
 		}
 	}
 	return out
+}
+
+func isGitHubReleaseAssetURL(host string, path string) bool {
+	lowerPath := strings.ToLower(path)
+	if host == "github.com" && strings.Contains(lowerPath, "/releases/download/") {
+		return true
+	}
+	if host == "github-releases.githubusercontent.com" {
+		return true
+	}
+	if host == "objects.githubusercontent.com" && strings.Contains(lowerPath, "github-production-release-asset-") {
+		return true
+	}
+	return false
 }
 
 func normalizeURLRiskHost(host string) string {

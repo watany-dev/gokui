@@ -921,6 +921,12 @@ func TestClassifyURLRisksEdgeCases(t *testing.T) {
 		assertHasID(t, findings, "PASTE_SITE_URL")
 		assertHasID(t, findings, "RELEASE_ASSET_URL")
 	})
+
+	t.Run("detects github release-asset cdn url forms", func(t *testing.T) {
+		line := "open https://github-releases.githubusercontent.com/owner/repo/releases/download/v1.0.0/a.tgz and https://objects.githubusercontent.com/github-production-release-asset-2e65be/123?x=y"
+		findings := classifyURLRisks(line, "SKILL.md", 10, true)
+		assertHasID(t, findings, "RELEASE_ASSET_URL")
+	})
 }
 
 func TestExtractURLCandidates(t *testing.T) {
@@ -977,6 +983,26 @@ func TestParseRawIPHost(t *testing.T) {
 	t.Run("returns nil for non-ip hosts", func(t *testing.T) {
 		if got := parseRawIPHost("example.com"); got != nil {
 			t.Fatalf("expected non-ip host parse to fail, got %v", got)
+		}
+	})
+}
+
+func TestIsGitHubReleaseAssetURL(t *testing.T) {
+	t.Run("matches github release download and known cdn forms", func(t *testing.T) {
+		if !isGitHubReleaseAssetURL("github.com", "/org/repo/releases/download/v1.0.0/a.tgz") {
+			t.Fatal("expected github.com release download path to match")
+		}
+		if !isGitHubReleaseAssetURL("github-releases.githubusercontent.com", "/asset/123") {
+			t.Fatal("expected github-releases CDN host to match")
+		}
+		if !isGitHubReleaseAssetURL("objects.githubusercontent.com", "/github-production-release-asset-2e65be/123") {
+			t.Fatal("expected objects CDN release asset path to match")
+		}
+	})
+
+	t.Run("does not match unrelated githubusercontent paths", func(t *testing.T) {
+		if isGitHubReleaseAssetURL("objects.githubusercontent.com", "/avatars/u/123?v=4") {
+			t.Fatal("did not expect non-release objects path to match")
 		}
 	})
 }
