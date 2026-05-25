@@ -54,6 +54,27 @@ func TestReleaseCheckPreflightRejectsSameOutputPath(t *testing.T) {
 	}
 }
 
+func TestReleaseCheckPreflightRejectsSameOutputPathAfterNormalization(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("release-check preflight path contracts are exercised on POSIX in CI")
+	}
+
+	tmp := t.TempDir()
+	buildOut := filepath.Join(tmp, "nested", "..", "shared.out")
+	sarifOut := filepath.Join(tmp, "shared.out")
+
+	exitCode, out := runReleaseCheckPreflight(t, map[string]string{
+		"RELEASE_CHECK_BUILD_OUT": buildOut,
+		"RELEASE_CHECK_SARIF_OUT": sarifOut,
+	})
+	if exitCode == 0 {
+		t.Fatalf("expected non-zero exit when normalized outputs share a path\noutput:\n%s", out)
+	}
+	if !strings.Contains(out, "build and SARIF outputs must be different paths") {
+		t.Fatalf("expected normalized distinct-path rejection message, got:\n%s", out)
+	}
+}
+
 func TestReleaseCheckPreflightRejectsExistingBuildOutput(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("release-check preflight path contracts are exercised on POSIX in CI")
