@@ -30,6 +30,7 @@ if [ ! -f "$TEMPLATE_PATH" ]; then
   exit 1
 fi
 
+assert_no_symlink_components "$TEMPLATE_PATH" "release evidence template path"
 assert_no_symlink_components "$OUT_DIR" "release evidence output directory"
 mkdir -p "$OUT_DIR"
 

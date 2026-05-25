@@ -535,6 +535,7 @@ func TestReleaseEvidenceTemplateScriptHardeningSync(t *testing.T) {
 	required := []string{
 		"umask 077",
 		"assert_no_symlink_components()",
+		`assert_no_symlink_components "$TEMPLATE_PATH" "release evidence template path"`,
 		`assert_no_symlink_components "$OUT_DIR" "release evidence output directory"`,
 		`assert_no_symlink_components "$OUT_PATH" "release evidence output path"`,
 	}
