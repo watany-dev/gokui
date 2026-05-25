@@ -218,6 +218,7 @@ func TestReadmeCriticalPatternDocumentationSync(t *testing.T) {
 		"decode output piped to `source`/`.` via stdin",
 		"quoted/escaped-quoted stdin targets",
 		"/dev/fd/0",
+		"/proc/thread-self/fd/0",
 		"/proc/<pid>/fd/0",
 	}
 	for _, line := range required {
