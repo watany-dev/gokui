@@ -154,6 +154,24 @@ Use [https://trusted.example.com/login][auth] before setup.
 	assertHasID(t, findings, "LINK_SPOOFING_URL_MISMATCH")
 }
 
+func TestScanSkillRootDetectsShortcutReferenceLinkSpoofing(t *testing.T) {
+	root := t.TempDir()
+	content := `# Skill
+Use [https://trusted.example.com/login] before setup.
+
+[https://trusted.example.com/login]: https://evil.example.net/login "auth docs"
+`
+	if err := os.WriteFile(filepath.Join(root, "SKILL.md"), []byte(content), 0o644); err != nil {
+		t.Fatalf("write SKILL.md: %v", err)
+	}
+
+	findings, err := ScanSkillRoot(root)
+	if err != nil {
+		t.Fatalf("ScanSkillRoot() error = %v", err)
+	}
+	assertHasID(t, findings, "LINK_SPOOFING_URL_MISMATCH")
+}
+
 func TestScanSkillRootScansShebangAndExecutableWithoutExtension(t *testing.T) {
 	root := t.TempDir()
 	shebangPath := filepath.Join(root, "bootstrap")
@@ -978,6 +996,14 @@ func TestClassifyMarkdownLinkSpoofing(t *testing.T) {
 }
 
 func TestClassifyMarkdownReferenceLinkSpoofing(t *testing.T) {
+	t.Run("returns no findings for empty reference index", func(t *testing.T) {
+		line := "[https://trusted.example.com/login][auth]"
+		findings := classifyMarkdownReferenceLinkSpoofing(line, "SKILL.md", 20, map[string]string{})
+		if len(findings) != 0 {
+			t.Fatalf("expected no findings for empty reference map, got %+v", findings)
+		}
+	})
+
 	t.Run("detects full reference link host mismatch", func(t *testing.T) {
 		references := map[string]string{
 			"auth": "evil.example.net",
@@ -1017,6 +1043,54 @@ func TestClassifyMarkdownReferenceLinkSpoofing(t *testing.T) {
 			t.Fatalf("expected no findings for reference-style images, got %+v", findings)
 		}
 	})
+
+	t.Run("detects shortcut reference link mismatch", func(t *testing.T) {
+		references := map[string]string{
+			"https://trusted.example.com/login": "evil.example.net",
+		}
+		line := "Use [https://trusted.example.com/login] before setup."
+		findings := classifyMarkdownReferenceLinkSpoofing(line, "SKILL.md", 20, references)
+		assertHasID(t, findings, "LINK_SPOOFING_URL_MISMATCH")
+	})
+
+	t.Run("does not flag equivalent shortcut reference link host", func(t *testing.T) {
+		references := map[string]string{
+			"https://trusted.example.com/login": "trusted.example.com",
+		}
+		line := "Use [https://trusted.example.com/login] before setup."
+		findings := classifyMarkdownReferenceLinkSpoofing(line, "SKILL.md", 20, references)
+		if len(findings) != 0 {
+			t.Fatalf("expected no findings for equivalent shortcut reference link host, got %+v", findings)
+		}
+	})
+
+	t.Run("ignores reference definition lines", func(t *testing.T) {
+		references := map[string]string{
+			"https://trusted.example.com/login": "evil.example.net",
+		}
+		line := "[https://trusted.example.com/login]: https://evil.example.net/login"
+		findings := classifyMarkdownReferenceLinkSpoofing(line, "SKILL.md", 20, references)
+		if len(findings) != 0 {
+			t.Fatalf("expected no findings for reference definition line, got %+v", findings)
+		}
+	})
+
+	t.Run("ignores inline and full-reference forms in shortcut matcher", func(t *testing.T) {
+		references := map[string]string{
+			"https://trusted.example.com/login": "evil.example.net",
+		}
+		line := "[https://trusted.example.com/login](https://evil.example.net/login)"
+		findings := classifyMarkdownReferenceLinkSpoofing(line, "SKILL.md", 20, references)
+		if len(findings) != 0 {
+			t.Fatalf("expected no findings for inline-style markdown links, got %+v", findings)
+		}
+
+		line = "[https://trusted.example.com/login][auth]"
+		findings = classifyMarkdownReferenceLinkSpoofing(line, "SKILL.md", 20, references)
+		if len(findings) != 0 {
+			t.Fatalf("expected no findings for full reference form without matching ref ID, got %+v", findings)
+		}
+	})
 }
 
 func TestBuildMarkdownReferenceHostIndex(t *testing.T) {
@@ -1024,6 +1098,7 @@ func TestBuildMarkdownReferenceHostIndex(t *testing.T) {
 		"[Auth Ref]: https://trusted.example.com/login",
 		"[auth ref]: https://evil.example.net/login",
 		"[ docs ]: <https://docs.example.net/guide> \"title\"",
+		"[   ]: https://ignored.example.net",
 		"[invalid]: mailto:security@example.com",
 	}
 
@@ -1036,6 +1111,15 @@ func TestBuildMarkdownReferenceHostIndex(t *testing.T) {
 	}
 	if _, ok := hosts["invalid"]; ok {
 		t.Fatalf("expected non-http reference target to be ignored")
+	}
+}
+
+func TestNormalizeMarkdownReferenceID(t *testing.T) {
+	if got := normalizeMarkdownReferenceID("  Auth\tRef  "); got != "auth ref" {
+		t.Fatalf("expected collapsed lowercase reference ID, got %q", got)
+	}
+	if got := normalizeMarkdownReferenceID(" \t "); got != "" {
+		t.Fatalf("expected empty reference ID for whitespace input, got %q", got)
 	}
 }
 

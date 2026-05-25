@@ -87,6 +87,7 @@ var (
 	rawHTMLPattern                     = regexp.MustCompile(`(?i)<\s*(?:script|iframe|object|embed|form|link|meta|img|svg|video|audio)\b`)
 	markdownLinkPattern                = regexp.MustCompile(`\[(?P<label>[^\]]+)\]\((?P<target>[^)\n]+)\)`)
 	markdownReferenceLinkPattern       = regexp.MustCompile(`\[(?P<label>[^\]]+)\]\[(?P<ref>[^\]]*)\]`)
+	markdownShortcutReferencePattern   = regexp.MustCompile(`\[(?P<label>[^\]]+)\]`)
 	markdownReferenceDefinitionPattern = regexp.MustCompile(`^\s{0,3}\[(?P<ref>[^\]]+)\]:\s*(?P<target>.+?)\s*$`)
 	passwordArchivePattern             = regexp.MustCompile(`(?i)(?:\b(?:password|passphrase|passwd|encrypted)\b.{0,80}\b(?:zip|7z|rar|archive|tar|tgz|tar\.gz)\b|\b(?:zip|7z|rar|archive|tar|tgz|tar\.gz)\b.{0,80}\b(?:password|passphrase|passwd|encrypted)\b)`)
 	goSemverExactPattern               = regexp.MustCompile(`^v?\d+\.\d+\.\d+(?:-[0-9a-z.-]+)?(?:\+[0-9a-z.-]+)?$`)
@@ -3410,11 +3411,7 @@ func classifyMarkdownReferenceLinkSpoofing(line string, relPath string, lineNum 
 	}
 
 	matches := markdownReferenceLinkPattern.FindAllStringSubmatchIndex(line, -1)
-	if len(matches) == 0 {
-		return nil
-	}
-
-	out := make([]Finding, 0, len(matches))
+	out := make([]Finding, 0, len(matches)+1)
 	for _, match := range matches {
 		if len(match) < 6 {
 			continue
@@ -3447,6 +3444,47 @@ func classifyMarkdownReferenceLinkSpoofing(line string, relPath string, lineNum 
 			Line:     lineNum,
 			Summary:  "markdown link label host differs from link target host",
 		})
+	}
+	shortcutMatches := markdownShortcutReferencePattern.FindAllStringSubmatchIndex(line, -1)
+	for _, match := range shortcutMatches {
+		if len(match) < 4 {
+			continue
+		}
+		start := match[0]
+		end := match[1]
+		if start > 0 && line[start-1] == '!' {
+			continue
+		}
+		if end < len(line) {
+			switch line[end] {
+			case '(', '[', ':':
+				continue
+			}
+		}
+		label := line[match[2]:match[3]]
+		refID := normalizeMarkdownReferenceID(label)
+		targetHost, ok := referenceHosts[refID]
+		if !ok {
+			continue
+		}
+		displayHost, ok := parseDisplayLinkHost(label)
+		if !ok {
+			continue
+		}
+		if normalizeHost(displayHost) == normalizeHost(targetHost) {
+			continue
+		}
+		out = append(out, Finding{
+			ID:       "LINK_SPOOFING_URL_MISMATCH",
+			Severity: "high",
+			File:     relPath,
+			Line:     lineNum,
+			Summary:  "markdown link label host differs from link target host",
+		})
+	}
+
+	if len(out) == 0 {
+		return nil
 	}
 	return out
 }
