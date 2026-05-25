@@ -88,7 +88,7 @@ var (
 	markdownLinkPattern                = regexp.MustCompile(`\[(?P<label>[^\]]+)\]\((?P<target>[^)\n]+)\)`)
 	markdownReferenceLinkPattern       = regexp.MustCompile(`\[(?P<label>[^\]]+)\][ \t]*\[(?P<ref>[^\]]*)\]`)
 	markdownShortcutReferencePattern   = regexp.MustCompile(`\[(?P<label>[^\]]+)\]`)
-	markdownReferenceDefinitionPattern = regexp.MustCompile(`^\s{0,3}\[(?P<ref>[^\]]+)\]:\s*(?P<target>.+?)\s*$`)
+	markdownReferenceDefinitionPattern = regexp.MustCompile(`^\s{0,3}\[(?P<ref>[^\]]+)\]:\s*(?P<target>.*?)\s*$`)
 	passwordArchivePattern             = regexp.MustCompile(`(?i)(?:\b(?:password|passphrase|passwd|encrypted)\b.{0,80}\b(?:zip|7z|rar|archive|tar|tgz|tar\.gz)\b|\b(?:zip|7z|rar|archive|tar|tgz|tar\.gz)\b.{0,80}\b(?:password|passphrase|passwd|encrypted)\b)`)
 	goSemverExactPattern               = regexp.MustCompile(`^v?\d+\.\d+\.\d+(?:-[0-9a-z.-]+)?(?:\+[0-9a-z.-]+)?$`)
 	goPseudoVersionPattern             = regexp.MustCompile(`^v\d+\.\d+\.\d+-\d{14}-[0-9a-f]{12}$`)
@@ -3382,7 +3382,8 @@ func classifyMarkdownLinkSpoofing(line string, relPath string, lineNum int) []Fi
 
 func buildMarkdownReferenceHostIndex(lines []string) map[string]string {
 	hosts := make(map[string]string)
-	for _, line := range lines {
+	for i := 0; i < len(lines); i++ {
+		line := lines[i]
 		match := markdownReferenceDefinitionPattern.FindStringSubmatch(line)
 		if len(match) < 3 {
 			continue
@@ -3396,7 +3397,15 @@ func buildMarkdownReferenceHostIndex(lines []string) map[string]string {
 		if _, exists := hosts[refID]; exists {
 			continue
 		}
-		targetHost, ok := parseMarkdownLinkTargetHost(match[2])
+		target := strings.TrimSpace(match[2])
+		targetHost, ok := parseMarkdownLinkTargetHost(target)
+		if !ok && target == "" && i+1 < len(lines) {
+			if nextHost, nextOK := parseMarkdownLinkTargetHost(lines[i+1]); nextOK {
+				targetHost = nextHost
+				ok = true
+				i++
+			}
+		}
 		if !ok {
 			continue
 		}

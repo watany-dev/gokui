@@ -172,6 +172,25 @@ Use [https://trusted.example.com/login] [auth] before setup.
 	assertHasID(t, findings, "LINK_SPOOFING_URL_MISMATCH")
 }
 
+func TestScanSkillRootDetectsMultilineReferenceDefinitionLinkSpoofing(t *testing.T) {
+	root := t.TempDir()
+	content := `# Skill
+Use [https://trusted.example.com/login][auth] before setup.
+
+[auth]:
+https://evil.example.net/login "auth docs"
+`
+	if err := os.WriteFile(filepath.Join(root, "SKILL.md"), []byte(content), 0o644); err != nil {
+		t.Fatalf("write SKILL.md: %v", err)
+	}
+
+	findings, err := ScanSkillRoot(root)
+	if err != nil {
+		t.Fatalf("ScanSkillRoot() error = %v", err)
+	}
+	assertHasID(t, findings, "LINK_SPOOFING_URL_MISMATCH")
+}
+
 func TestScanSkillRootDetectsShortcutReferenceLinkSpoofing(t *testing.T) {
 	root := t.TempDir()
 	content := `# Skill
@@ -1143,6 +1162,8 @@ func TestBuildMarkdownReferenceHostIndex(t *testing.T) {
 		"[Auth Ref]: https://trusted.example.com/login",
 		"[auth ref]: https://evil.example.net/login",
 		"[ docs ]: <https://docs.example.net/guide> \"title\"",
+		"[split]:",
+		"https://split.example.net/docs \"split title\"",
 		"[   ]: https://ignored.example.net",
 		"[invalid]: mailto:security@example.com",
 	}
@@ -1153,6 +1174,9 @@ func TestBuildMarkdownReferenceHostIndex(t *testing.T) {
 	}
 	if got := hosts["docs"]; got != "docs.example.net" {
 		t.Fatalf("expected angle-bracket reference host parse, got %q", got)
+	}
+	if got := hosts["split"]; got != "split.example.net" {
+		t.Fatalf("expected multiline reference host parse, got %q", got)
 	}
 	if _, ok := hosts["invalid"]; ok {
 		t.Fatalf("expected non-http reference target to be ignored")
