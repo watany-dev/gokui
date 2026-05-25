@@ -73,7 +73,7 @@ tests/CI:
 - URL risk classification for paste-site URLs and GitHub release asset URLs (including known GitHub CDN hosts, API release-asset forms, object-path forms, and `releases/latest/download` paths)
 - URL risk classification for remote image URLs in markdown content
 - raw HTML markup detection in markdown scanning
-- markdown link-spoofing detection (display host vs target host mismatch), including inline and reference-style links (including spaced and one-line-break-separated reference forms), excluding image markdown forms
+- markdown link-spoofing detection (display host vs target host mismatch), including inline and reference-style links (including spaced and one-line-break-separated reference forms), excluding unescaped image markdown forms
 - bounded fuzzy/typoglycemia detection for common prompt-override phrases
 - critical detection of Unicode Tags and bidi controls in scanned text
 - critical detection of zero-width and disallowed C0/C1 controls in scanned text

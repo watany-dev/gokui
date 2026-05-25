@@ -130,6 +130,8 @@ Markdown links with host-mismatched display URL/target URL are flagged as high
 severity link-spoofing findings, including inline and reference-style links
 (including spaced and one-line-break-separated reference forms).
 Image markdown forms (`![alt](...)`) are excluded from link-spoofing findings.
+Escaped exclamation forms (`\![...](...)`) are treated as normal links and are
+still evaluated for link-spoofing mismatch.
 Prompt-override language detection now includes bounded fuzzy/typoglycemia
 matching for common injection phrases.
 PowerShell `-EncodedCommand` / `-enc` execution flags are now flagged as

@@ -1298,6 +1298,12 @@ func TestClassifyMarkdownLinkSpoofing(t *testing.T) {
 		}
 	})
 
+	t.Run("does not treat escaped image marker as image markdown", func(t *testing.T) {
+		line := `\![https://trusted.example.com/login](https://evil.example.net/login)`
+		findings := classifyMarkdownLinkSpoofing(line, "SKILL.md", 13)
+		assertHasID(t, findings, "LINK_SPOOFING_URL_MISMATCH")
+	})
+
 	t.Run("handles angle-bracketed display URLs", func(t *testing.T) {
 		line := "[<https://trusted.example.com/login>](https://evil.example.net/login)"
 		findings := classifyMarkdownLinkSpoofing(line, "SKILL.md", 13)
@@ -1444,6 +1450,15 @@ func TestClassifyMarkdownReferenceLinkSpoofing(t *testing.T) {
 		if len(findings) != 0 {
 			t.Fatalf("expected no findings for reference-style images, got %+v", findings)
 		}
+	})
+
+	t.Run("does not treat escaped reference image marker as image markdown", func(t *testing.T) {
+		references := map[string]string{
+			"auth": "evil.example.net",
+		}
+		line := `\![https://trusted.example.com/login][auth]`
+		findings := classifyMarkdownReferenceLinkSpoofing(line, "SKILL.md", 20, references)
+		assertHasID(t, findings, "LINK_SPOOFING_URL_MISMATCH")
 	})
 
 	t.Run("detects shortcut reference link mismatch", func(t *testing.T) {

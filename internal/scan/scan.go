@@ -3649,7 +3649,7 @@ func classifyMarkdownLinkSpoofing(line string, relPath string, lineNum int) []Fi
 			continue
 		}
 		start := match[0]
-		if start > 0 && line[start-1] == '!' {
+		if isUnescapedImagePrefix(line, start) {
 			continue
 		}
 		label := line[match[2]:match[3]]
@@ -3722,7 +3722,7 @@ func classifyMarkdownReferenceLinkSpoofing(line string, relPath string, lineNum 
 			continue
 		}
 		start := match[0]
-		if start > 0 && line[start-1] == '!' {
+		if isUnescapedImagePrefix(line, start) {
 			continue
 		}
 		label := line[match[2]:match[3]]
@@ -3757,7 +3757,7 @@ func classifyMarkdownReferenceLinkSpoofing(line string, relPath string, lineNum 
 		}
 		start := match[0]
 		end := match[1]
-		if start > 0 && line[start-1] == '!' {
+		if isUnescapedImagePrefix(line, start) {
 			continue
 		}
 		if next := nextNonWhitespaceIndex(line, end); next >= 0 {
@@ -3792,6 +3792,20 @@ func classifyMarkdownReferenceLinkSpoofing(line string, relPath string, lineNum 
 		return nil
 	}
 	return out
+}
+
+func isUnescapedImagePrefix(line string, bracketStart int) bool {
+	if bracketStart <= 0 || bracketStart > len(line) {
+		return false
+	}
+	if line[bracketStart-1] != '!' {
+		return false
+	}
+	backslashes := 0
+	for i := bracketStart - 2; i >= 0 && line[i] == '\\'; i-- {
+		backslashes++
+	}
+	return backslashes%2 == 0
 }
 
 func buildMarkdownReferenceUsageContinuationVariant(lines []string, idx int) (string, bool) {
