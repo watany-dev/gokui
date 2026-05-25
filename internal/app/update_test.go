@@ -530,6 +530,65 @@ func TestRunUpdateDryRunDetectsUppercaseSchemeNewURLs(t *testing.T) {
 	}
 }
 
+func TestRunUpdateDryRunDetectsBracketedIPv6NewURLs(t *testing.T) {
+	targetRoot := filepath.Join(t.TempDir(), "skills")
+	if err := os.MkdirAll(targetRoot, 0o755); err != nil {
+		t.Fatalf("mkdir target root: %v", err)
+	}
+
+	src := createSkillSourceForInstallTest(t, "update-bracketed-ipv6-url-skill")
+	report := installReport{
+		SchemaVersion: "0.1.0-draft",
+		Source:        source{Input: src, Kind: "local-dir"},
+		PolicyProfile: "strict",
+		Decision:      "PASS",
+	}
+	if _, _, err := installSkillAtomic(src, targetRoot, "update-bracketed-ipv6-url-skill", report); err != nil {
+		t.Fatalf("installSkillAtomic() error = %v", err)
+	}
+
+	content := "see https://[2001:db8::1]/pkg and //[2001:db8::2]/boot"
+	if err := os.WriteFile(filepath.Join(src, "README.md"), []byte(content), 0o644); err != nil {
+		t.Fatalf("write bracketed ipv6 URL content: %v", err)
+	}
+
+	var stdout strings.Builder
+	var stderr strings.Builder
+	code := runUpdate([]string{"--dry-run", "--target", "custom:" + targetRoot, "--format", "json"}, &stdout, &stderr)
+	if code != 2 {
+		t.Fatalf("runUpdate(bracketed ipv6 url) code = %d, want 2\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("stderr should be empty, got %q", stderr.String())
+	}
+
+	var updateOut updateReport
+	if err := json.Unmarshal([]byte(stdout.String()), &updateOut); err != nil {
+		t.Fatalf("json unmarshal update output: %v", err)
+	}
+	if len(updateOut.Skills) != 1 {
+		t.Fatalf("skills length = %d, want 1", len(updateOut.Skills))
+	}
+	if updateOut.Skills[0].Status != "REJECTED" {
+		t.Fatalf("status = %q, want REJECTED", updateOut.Skills[0].Status)
+	}
+
+	want := map[string]bool{
+		"https://[2001:db8::1]/pkg": false,
+		"//[2001:db8::2]/boot":      false,
+	}
+	for _, u := range updateOut.Skills[0].NewURLs {
+		if _, ok := want[u]; ok {
+			want[u] = true
+		}
+	}
+	for u, found := range want {
+		if !found {
+			t.Fatalf("expected bracketed ipv6 URL %q in new_urls, got %+v", u, updateOut.Skills[0].NewURLs)
+		}
+	}
+}
+
 func TestRunUpdateDryRunDoesNotMutateInstalledLockState(t *testing.T) {
 	targetRoot := filepath.Join(t.TempDir(), "skills")
 	if err := os.MkdirAll(targetRoot, 0o755); err != nil {

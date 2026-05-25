@@ -55,7 +55,7 @@ tests/CI:
 - install `--override RULE_ID` support for explicit high-severity downgrade with audit trail recording
 - update dry-run reporting for severity override applicability drift (`severity_override_diff`)
 - update dry-run differential risk scoring (`risk_score`) with severity-and-signal model
-- update dry-run new URL signal detection includes scheme-relative URL forms (`//host/...`) and case-insensitive `http(s)://` schemes
+- update dry-run new URL signal detection includes scheme-relative URL forms (`//host/...`), bracketed IPv6 URL forms, and case-insensitive `http(s)://` schemes
 - update dry-run lock provenance consistency and canonical validation (`source.kind`/`source.input`/`source.type`, canonical `policy.profile`/`policy.decision`, lock skill snapshot digest/path sanity, and lock envelope integrity for `schema`/`name`/`installed_at`/`severity_overrides`/findings counters)
 - lock/source metadata canonical digest and ref validation (`root_sha256`/per-file `sha256`, metadata `resolved_ref`/`skill_root_sha256`)
 - canonical validation for severity override audit entries (`rule_id`, `previous_severity`, `effective_severity`, `source`, `applied_at`)
