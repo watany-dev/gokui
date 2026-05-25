@@ -33,6 +33,12 @@ This runs:
 - inspect SARIF smoke generation (`make inspect-sarif`)
 - `govulncheck`
 
+To override the isolated release-check build artifact path:
+
+```sh
+make release-check RELEASE_CHECK_BUILD_OUT=/tmp/gokui-release-check
+```
+
 ## 3) Offline Fallback
 
 If vulnerability DB/network access is temporarily unavailable:

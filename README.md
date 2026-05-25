@@ -359,6 +359,9 @@ Release readiness gate:
 # inspect-sarif smoke generation, and govulncheck
 make release-check
 
+# Optional: override isolated release-check build artifact path
+make release-check RELEASE_CHECK_BUILD_OUT=/tmp/gokui-release-check
+
 # Offline fallback when vulnerability DB access is unavailable
 make release-check RELEASE_CHECK_VULN=0
 

@@ -223,6 +223,7 @@ func TestReleaseChecklistDocumentationSync(t *testing.T) {
 	releaseDoc := string(releaseBytes)
 	required := []string{
 		"make release-check",
+		"RELEASE_CHECK_BUILD_OUT=/tmp/gokui-release-check",
 		"make release-check-offline",
 		"make inspect-sarif",
 		"make release-evidence",
