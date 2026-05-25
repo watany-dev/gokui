@@ -3378,6 +3378,9 @@ func parseDisplayLinkHost(label string) (string, bool) {
 	if strings.Contains(trimmed, "://") {
 		return parseURLHost(trimmed)
 	}
+	if strings.HasPrefix(trimmed, "//") {
+		return parseURLHost("https:" + trimmed)
+	}
 	if !containsIDNALabelSeparator(trimmed) {
 		return "", false
 	}

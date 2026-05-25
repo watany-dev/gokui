@@ -874,6 +874,20 @@ func TestClassifyMarkdownLinkSpoofing(t *testing.T) {
 		}
 	})
 
+	t.Run("detects mismatch for scheme-relative display host label", func(t *testing.T) {
+		line := "[//trusted.example.com/login](https://evil.example.net/login)"
+		findings := classifyMarkdownLinkSpoofing(line, "SKILL.md", 12)
+		assertHasID(t, findings, "LINK_SPOOFING_URL_MISMATCH")
+	})
+
+	t.Run("does not flag equivalence for scheme-relative display host label", func(t *testing.T) {
+		line := "[//trusted.example.com/login](https://trusted.example.com/login)"
+		findings := classifyMarkdownLinkSpoofing(line, "SKILL.md", 12)
+		if len(findings) != 0 {
+			t.Fatalf("expected no findings for equivalent scheme-relative display host, got %+v", findings)
+		}
+	})
+
 	t.Run("does not flag trailing idna dot-variant host equivalence", func(t *testing.T) {
 		line := "[https://trusted.example.com。/login](https://trusted.example.com/login)"
 		findings := classifyMarkdownLinkSpoofing(line, "SKILL.md", 12)
