@@ -65,10 +65,13 @@ toolchain baseline.
 
 ## 5) Build Artifact Hygiene
 
-If `gokui` binary is generated locally during checks, remove it after validation:
+If `gokui` binary is generated locally during checks, remove it after
+validation, or override the output path:
 
 ```sh
 rm -f gokui
+# or
+make build BUILD_OUT=.cache/gokui-local
 ```
 
 ## 6) Release Evidence Record
@@ -79,6 +82,10 @@ Record release evidence using:
 - `make release-evidence` (creates `releases/evidence/<timestamp>-<commit>.md`)
 - `make release-evidence-offline` (runs offline gate and creates evidence with step logs)
 - `make release-evidence-online` (runs offline gate + vuln check and creates evidence with step logs)
+
+For evidence scripts, clean-tree checks are tracked-files only
+(`git status --short --untracked-files=no`), and build output is isolated to
+`.cache/gokui-release-evidence`.
 
 At minimum, capture:
 - commit SHA

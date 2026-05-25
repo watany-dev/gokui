@@ -378,6 +378,11 @@ make release-evidence-offline
 make release-evidence-online
 ```
 
+`make release-evidence-offline` / `make release-evidence-online` run
+`release-check-offline` with `BUILD_OUT=.cache/gokui-release-evidence`, and
+their clean-tree check evaluates tracked files only
+(`git status --short --untracked-files=no`).
+
 CI is configured to resolve the latest available patch release for the selected
 Go minor version (`actions/setup-go` with `check-latest: true`).
 `make vuln` also defaults to a minimum patched toolchain via
