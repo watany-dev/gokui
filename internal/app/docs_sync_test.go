@@ -77,7 +77,7 @@ func TestAgentsReleaseCheckErrorCodeSetMatchesReadme(t *testing.T) {
 	}
 
 	agentsCodes := extractReleaseCheckErrorCodesFromAgents(t, string(agentsBytes))
-	readmeCodes := extractReleaseCheckErrorCodesFromTable(t, string(readmeBytes), "README.md")
+	readmeCodes := extractReleaseCheckErrorCodesFromReadmeAutomationSection(t, string(readmeBytes))
 
 	agentsJoined := strings.Join(agentsCodes, ",")
 	readmeJoined := strings.Join(readmeCodes, ",")
@@ -101,7 +101,7 @@ func TestReleaseCheckErrorCodeSetSyncAcrossPrimaryDocs(t *testing.T) {
 	}
 
 	agentsCodes := extractReleaseCheckErrorCodesFromAgents(t, string(agentsBytes))
-	readmeCodes := extractReleaseCheckErrorCodesFromTable(t, string(readmeBytes), "README.md")
+	readmeCodes := extractReleaseCheckErrorCodesFromReadmeAutomationSection(t, string(readmeBytes))
 	releaseCodes := extractReleaseCheckErrorCodesFromTable(t, string(releaseBytes), "RELEASE.md")
 
 	agentsJoined := strings.Join(agentsCodes, ",")
@@ -136,7 +136,7 @@ func TestReleaseCheckErrorCodeSetSyncAcrossSourceOfTruthDocs(t *testing.T) {
 	}
 
 	agentsCodes := extractReleaseCheckErrorCodesFromAgents(t, string(agentsBytes))
-	readmeCodes := extractReleaseCheckErrorCodesFromTable(t, string(readmeBytes), "README.md")
+	readmeCodes := extractReleaseCheckErrorCodesFromReadmeAutomationSection(t, string(readmeBytes))
 	releaseCodes := extractReleaseCheckErrorCodesFromTable(t, string(releaseBytes), "RELEASE.md")
 	roadmapCodes := extractReleaseCheckErrorCodesFromRoadmap(t, string(roadmapBytes))
 
@@ -573,7 +573,7 @@ func TestReleaseCheckDocumentationSync(t *testing.T) {
 		"for investigation and skip subsequent vuln/cleanup steps",
 		"RC_CLEANUP_REMOVE_FAILED",
 		"RC_CLEANUP_REMOVE_FAILED_SUMMARY",
-		"| Release-check code | Typical trigger |",
+		"`Automation Error Codes` -> `release-check`",
 		"git status --short --untracked-files=no",
 		"-offline-audit.md",
 		"-online-audit.md",
@@ -595,7 +595,7 @@ func TestReleaseCheckErrorCodeTableSyncBetweenReadmeAndReleaseDocs(t *testing.T)
 		t.Fatalf("failed to read RELEASE.md: %v", err)
 	}
 
-	readmeCodes := extractReleaseCheckErrorCodesFromTable(t, string(readmeBytes), "README.md")
+	readmeCodes := extractReleaseCheckErrorCodesFromReadmeAutomationSection(t, string(readmeBytes))
 	releaseCodes := extractReleaseCheckErrorCodesFromTable(t, string(releaseBytes), "RELEASE.md")
 
 	readmeJoined := strings.Join(readmeCodes, ",")
@@ -625,6 +625,22 @@ func extractReleaseCheckErrorCodesFromTable(t *testing.T, doc, label string) []s
 		builder.WriteByte('\n')
 	}
 	return extractReleaseCheckErrorCodesFromText(t, builder.String(), label+" release-check code table")
+}
+
+func extractReleaseCheckErrorCodesFromReadmeAutomationSection(t *testing.T, readme string) []string {
+	t.Helper()
+
+	const sectionStart = "### release-check (`make release-check`, stderr codes)"
+	start := strings.Index(readme, sectionStart)
+	if start < 0 {
+		t.Fatal("README.md missing release-check automation error code section")
+	}
+	section := readme[start:]
+	sectionEnd := strings.Index(section, "\n## ")
+	if sectionEnd > 0 {
+		section = section[:sectionEnd]
+	}
+	return extractReleaseCheckErrorCodesFromText(t, section, "README.md release-check automation error code section")
 }
 
 func extractReleaseCheckErrorCodesFromAgents(t *testing.T, agents string) []string {
