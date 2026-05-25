@@ -897,6 +897,9 @@ func TestClassifyPathRisks(t *testing.T) {
 	t.Run("detects compatibility-only filename token", func(t *testing.T) {
 		findings := classifyPathRisks("docs/ｐａｙｐａｌ.md")
 		assertHasID(t, findings, "CONFUSABLE_FILENAME")
+
+		findings = classifyPathRisks("docs/readme．ｍｄ")
+		assertHasID(t, findings, "CONFUSABLE_FILENAME")
 	})
 
 	t.Run("detects confusable and mixed-script directory names", func(t *testing.T) {
