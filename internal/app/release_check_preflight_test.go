@@ -186,8 +186,8 @@ func TestReleaseCheckPreflightRejectsSymlinkPathComponent(t *testing.T) {
 	if exitCode == 0 {
 		t.Fatalf("expected non-zero exit when output path contains symlink component\noutput:\n%s", out)
 	}
-	if !strings.Contains(out, "contains symlink path component") {
-		t.Fatalf("expected symlink-component rejection message, got:\n%s", out)
+	if !strings.Contains(out, "release-check build output path contains symlink path component") {
+		t.Fatalf("expected build symlink-component rejection message, got:\n%s", out)
 	}
 }
 
