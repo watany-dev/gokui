@@ -3372,6 +3372,9 @@ func classifyMarkdownLinkSpoofing(line string, relPath string, lineNum int) []Fi
 
 func parseDisplayLinkHost(label string) (string, bool) {
 	trimmed := strings.TrimSpace(label)
+	if strings.HasPrefix(trimmed, "<") && strings.HasSuffix(trimmed, ">") && len(trimmed) > 2 {
+		trimmed = strings.TrimSpace(trimmed[1 : len(trimmed)-1])
+	}
 	if trimmed == "" || strings.Contains(trimmed, " ") {
 		return "", false
 	}
