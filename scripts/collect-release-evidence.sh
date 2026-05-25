@@ -98,6 +98,10 @@ run_step() {
   local log_path="$3"
 
   assert_no_symlink_components "$log_path" "log path"
+  if [ -e "$log_path" ]; then
+    echo "release evidence log already exists: $log_path" >&2
+    exit 1
+  fi
 
   set +e
   bash -lc "cd \"$ROOT_DIR\" && ${command_text}" >"$log_path" 2>&1
@@ -113,6 +117,10 @@ run_git_clean_check() {
   local log_path="$LOG_DIR/${BASENAME}-git-status.log"
 
   assert_no_symlink_components "$log_path" "log path"
+  if [ -e "$log_path" ]; then
+    echo "release evidence log already exists: $log_path" >&2
+    exit 1
+  fi
 
   set +e
   bash -lc "cd \"$ROOT_DIR\" && git status --short --untracked-files=no" >"$log_path" 2>&1
