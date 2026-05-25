@@ -336,6 +336,7 @@ func TestMakefileVulnToolchainBaselineSync(t *testing.T) {
 		"VULN_GOTOOLCHAIN ?= go1.26.3+auto",
 		"BUILD_OUT ?= gokui",
 		"RELEASE_CHECK_BUILD_OUT ?= $(CACHE_DIR)/gokui-release-check",
+		"release-check: check test test-race",
 		"$(GO) build -trimpath -buildvcs=true -ldflags='$(LDFLAGS)' -o $(BUILD_OUT) $(MAIN_PKG)",
 		"$(MAKE) build BUILD_OUT=$(RELEASE_CHECK_BUILD_OUT)",
 		"@rm -f $(RELEASE_CHECK_BUILD_OUT)",
