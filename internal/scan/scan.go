@@ -451,7 +451,6 @@ func pathRiskRawComponents(relPath string) []string {
 	parts := strings.Split(filepath.ToSlash(relPath), "/")
 	components := make([]string, 0, len(parts))
 	for _, part := range parts {
-		part = strings.TrimSpace(part)
 		if part == "" || part == "." || part == ".." {
 			continue
 		}

@@ -973,6 +973,7 @@ func TestPathRiskRawComponents(t *testing.T) {
 		{path: "docs/paypal.md", want: []string{"docs", "paypal.md"}},
 		{path: "./docs//nested/readme.md", want: []string{"docs", "nested", "readme.md"}},
 		{path: "../docs/.hidden", want: []string{"docs", ".hidden"}},
+		{path: "docs/ payрal .md", want: []string{"docs", " payрal .md"}},
 		{path: "", want: nil},
 	}
 	for _, tc := range cases {
