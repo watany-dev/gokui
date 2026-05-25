@@ -370,6 +370,8 @@ func TestReleaseCheckDocumentationSync(t *testing.T) {
 		"BUILD_OUT=.cache/gokui-release-evidence",
 		".cache/gokui-release-check",
 		"clean that artifact automatically",
+		"fail closed when repository-root/output/log paths include",
+		"when expected output/log files already exist",
 		"git status --short --untracked-files=no",
 		"-offline-audit.md",
 		"-online-audit.md",

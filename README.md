@@ -388,6 +388,8 @@ their clean-tree check evaluates tracked files only
 (`git status --short --untracked-files=no`).
 `make release-check`/`make release-check-offline` build to
 `.cache/gokui-release-check` and clean that artifact automatically.
+Release scripts fail closed when repository-root/output/log paths include
+symlink components, and when expected output/log files already exist.
 Generated evidence filenames end with `-offline-audit.md` or
 `-online-audit.md` based on mode.
 
