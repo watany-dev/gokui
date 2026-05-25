@@ -36,6 +36,11 @@ This runs:
 `release-check` fails closed when build/SARIF output paths include symlink
 components, when either output already exists, or when build and SARIF outputs
 resolve to the same path.
+Preflight rejections include machine-readable error codes:
+`RC_PREFLIGHT_BUILD_OUT_INVALID`, `RC_PREFLIGHT_SARIF_OUT_INVALID`,
+`RC_PREFLIGHT_BUILD_OUT_SYMLINK`, `RC_PREFLIGHT_SARIF_OUT_SYMLINK`,
+`RC_PREFLIGHT_OUTPUT_PATH_CONFLICT`, `RC_PREFLIGHT_BUILD_OUT_EXISTS`, and
+`RC_PREFLIGHT_SARIF_OUT_EXISTS`.
 Release-check build/SARIF output paths must also be non-root file paths and
 must not be directory-like paths ending with `/`.
 Output-path safety preflight checks run before format/test/race/vuln gate
@@ -112,6 +117,8 @@ Staged temporary evidence/SARIF files are also removed when finalization
 collides with an existing destination path.
 When offline gate steps fail, evidence scripts keep failing build artifacts for
 investigation and skip subsequent vuln/cleanup steps.
+Cleanup-removal failures are tagged with machine-readable code
+`RC_CLEANUP_REMOVE_FAILED`.
 
 At minimum, capture:
 - mode (`offline` or `online`)

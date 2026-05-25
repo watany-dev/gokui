@@ -350,6 +350,15 @@ func TestReleaseChecklistDocumentationSync(t *testing.T) {
 	if !strings.Contains(releaseDoc, "fails closed when build/SARIF output paths include symlink") || !strings.Contains(releaseDoc, "build and SARIF outputs") || !strings.Contains(releaseDoc, "resolve to the same path") {
 		t.Fatal("RELEASE.md should document release-check build/SARIF output preflight fail-closed behavior")
 	}
+	if !strings.Contains(releaseDoc, "RC_PREFLIGHT_BUILD_OUT_INVALID") ||
+		!strings.Contains(releaseDoc, "RC_PREFLIGHT_SARIF_OUT_INVALID") ||
+		!strings.Contains(releaseDoc, "RC_PREFLIGHT_BUILD_OUT_SYMLINK") ||
+		!strings.Contains(releaseDoc, "RC_PREFLIGHT_SARIF_OUT_SYMLINK") ||
+		!strings.Contains(releaseDoc, "RC_PREFLIGHT_OUTPUT_PATH_CONFLICT") ||
+		!strings.Contains(releaseDoc, "RC_PREFLIGHT_BUILD_OUT_EXISTS") ||
+		!strings.Contains(releaseDoc, "RC_PREFLIGHT_SARIF_OUT_EXISTS") {
+		t.Fatal("RELEASE.md should document release-check preflight machine-readable error codes")
+	}
 	if !strings.Contains(releaseDoc, "non-root file paths") || !strings.Contains(releaseDoc, "directory-like paths ending with `/`") {
 		t.Fatal("RELEASE.md should document release-check non-root and non-directory output path guards")
 	}
@@ -373,6 +382,9 @@ func TestReleaseChecklistDocumentationSync(t *testing.T) {
 	}
 	if !strings.Contains(releaseDoc, "keep failing build artifacts for") || !strings.Contains(releaseDoc, "skip subsequent vuln/cleanup steps") {
 		t.Fatal("RELEASE.md should document failure-artifact retention and skip behavior")
+	}
+	if !strings.Contains(releaseDoc, "RC_CLEANUP_REMOVE_FAILED") {
+		t.Fatal("RELEASE.md should document cleanup failure machine-readable error code")
 	}
 }
 
@@ -398,6 +410,13 @@ func TestReleaseCheckDocumentationSync(t *testing.T) {
 		"fails closed when build/SARIF output paths include symlink",
 		"build and SARIF outputs",
 		"resolve to the same path",
+		"RC_PREFLIGHT_BUILD_OUT_INVALID",
+		"RC_PREFLIGHT_SARIF_OUT_INVALID",
+		"RC_PREFLIGHT_BUILD_OUT_SYMLINK",
+		"RC_PREFLIGHT_SARIF_OUT_SYMLINK",
+		"RC_PREFLIGHT_OUTPUT_PATH_CONFLICT",
+		"RC_PREFLIGHT_BUILD_OUT_EXISTS",
+		"RC_PREFLIGHT_SARIF_OUT_EXISTS",
 		"non-root file paths",
 		"directory-like paths ending with `/`",
 		"fail closed when repository-root/output/log paths include",
@@ -408,6 +427,7 @@ func TestReleaseCheckDocumentationSync(t *testing.T) {
 		"collides with an existing destination path",
 		"keep failing build artifacts",
 		"for investigation and skip subsequent vuln/cleanup steps",
+		"RC_CLEANUP_REMOVE_FAILED",
 		"git status --short --untracked-files=no",
 		"-offline-audit.md",
 		"-online-audit.md",
@@ -740,7 +760,7 @@ func TestRoadmapReleaseEvidenceHardeningSync(t *testing.T) {
 		"inspect-sarif output path hardening (symlink path-component rejection, restrictive SARIF file permissions, fail-closed output-collision checks, and atomic file creation with descriptor-backed writes)",
 		"release script repository-root path hardening (reject symlinked repository-root execution paths)",
 		"release-evidence gate hardening with isolated build output (`BUILD_OUT`) and tracked-file clean-tree checks (`git status --short --untracked-files=no`)",
-		"release-check gate hardening with isolated build output (`RELEASE_CHECK_BUILD_OUT`), preflight-first execution ordering, absolute-path preflight normalization, symlink/collision fail-closed build/SARIF output guards (including non-root-path and distinct-path enforcement), and failure-safe cleanup for build/SARIF artifacts",
+		"release-check gate hardening with isolated build output (`RELEASE_CHECK_BUILD_OUT`), preflight-first execution ordering, absolute-path preflight normalization, symlink/collision fail-closed build/SARIF output guards (including non-root-path and distinct-path enforcement), machine-readable preflight/cleanup error codes, and failure-safe cleanup for build/SARIF artifacts",
 		"release-evidence metadata mode annotation (`offline|online`) and mode-specific evidence filename suffixes (`-offline-audit.md` / `-online-audit.md`)",
 	}
 	for _, line := range required {
