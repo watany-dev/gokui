@@ -783,6 +783,47 @@ func TestRunInstallJSONOutput(t *testing.T) {
 			}
 		})
 
+		t.Run("source-prepare archive ancestor symlink errors include rule_id", func(t *testing.T) {
+			if runtime.GOOS == "windows" {
+				t.Skip("symlink permissions differ on windows")
+			}
+
+			base := t.TempDir()
+			realParent := filepath.Join(base, "real-parent")
+			if err := os.Mkdir(realParent, 0o755); err != nil {
+				t.Fatalf("mkdir real parent: %v", err)
+			}
+			archivePath := filepath.Join(realParent, "clean.zip")
+			createZipArchive(t, archivePath, map[string]string{
+				"json-install-symlink-skill/SKILL.md": "---\nname: json-install-symlink-skill\ndescription: Use when validating install archive symlink source rule propagation.\n---\n",
+			})
+			linkParent := filepath.Join(base, "link-parent")
+			if err := os.Symlink("real-parent", linkParent); err != nil {
+				t.Fatalf("create parent symlink: %v", err)
+			}
+
+			var stdout strings.Builder
+			var stderr strings.Builder
+			code := runInstall([]string{
+				filepath.Join(linkParent, "clean.zip"),
+				"--target", "custom:" + filepath.Join(t.TempDir(), "skills"),
+				"--profile", "strict",
+				"--format", "json",
+			}, &stdout, &stderr)
+			if code != 1 {
+				t.Fatalf("runInstall(json archive symlink ancestor) code = %d, want 1\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
+			}
+			if stderr.Len() != 0 {
+				t.Fatalf("stderr should be empty for json errors, got %q", stderr.String())
+			}
+			if !strings.Contains(stdout.String(), "\"error_code\": \""+installErrorCodeSourcePrepareFailed+"\"") {
+				t.Fatalf("stdout should include source-prepare error_code, got %q", stdout.String())
+			}
+			if !strings.Contains(stdout.String(), "\"rule_id\": \"ARCHIVE_SOURCE_SYMLINK_DETECTED\"") {
+				t.Fatalf("stdout should include archive source symlink rule_id, got %q", stdout.String())
+			}
+		})
+
 		t.Run("source metadata validation failure for github source", func(t *testing.T) {
 			metaSource := createSkillSourceForInstallTest(t, "json-meta-invalid")
 			if err := writeSourceMetadata(metaSource, sourceMetadata{
