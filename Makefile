@@ -5,6 +5,7 @@ INSPECT_SARIF_OUT ?= inspect-results.sarif
 VULN_GOTOOLCHAIN ?= go1.26.3+auto
 GOFMT_TARGETS := cmd internal
 MAIN_PKG := ./cmd/gokui
+BUILD_OUT ?= gokui
 CACHE_DIR ?= $(CURDIR)/.cache
 
 export GOCACHE ?= $(CACHE_DIR)/go-build
@@ -26,7 +27,7 @@ LDFLAGS := -s -w \
 .PHONY: build fmt fmt-check lint typecheck deadcode test test-race coverage vuln actionlint check release-check release-check-offline release-evidence release-evidence-offline release-evidence-online inspect-sarif
 
 build:
-	$(GO) build -trimpath -buildvcs=true -ldflags='$(LDFLAGS)' -o gokui $(MAIN_PKG)
+	$(GO) build -trimpath -buildvcs=true -ldflags='$(LDFLAGS)' -o $(BUILD_OUT) $(MAIN_PKG)
 
 fmt:
 	$(GO) fmt ./...

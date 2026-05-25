@@ -105,9 +105,8 @@ run_git_clean_check() {
   echo "## Automated Steps"
 } > "$OUT_PATH"
 
-run_step "cleanup binary (pre-check)" "rm -f gokui" "$LOG_DIR/${BASENAME}-pre-cleanup.log"
 run_git_clean_check
-run_step "release-check-offline" "GOCACHE=$ROOT_DIR/.cache/go-build GOMODCACHE=$ROOT_DIR/.cache/gomod GOPATH=$ROOT_DIR/.cache/gopath XDG_CACHE_HOME=$ROOT_DIR/.cache/xdg make release-check-offline" "$LOG_DIR/${BASENAME}-release-check-offline.log"
+run_step "release-check-offline" "GOCACHE=$ROOT_DIR/.cache/go-build GOMODCACHE=$ROOT_DIR/.cache/gomod GOPATH=$ROOT_DIR/.cache/gopath XDG_CACHE_HOME=$ROOT_DIR/.cache/xdg BUILD_OUT=$ROOT_DIR/.cache/gokui-release-evidence make release-check-offline" "$LOG_DIR/${BASENAME}-release-check-offline.log"
 
 if [ "$WITH_VULN" -eq 1 ]; then
   run_step "vuln" "GOCACHE=$ROOT_DIR/.cache/go-build GOMODCACHE=$ROOT_DIR/.cache/gomod GOPATH=$ROOT_DIR/.cache/gopath XDG_CACHE_HOME=$ROOT_DIR/.cache/xdg make vuln" "$LOG_DIR/${BASENAME}-vuln.log"
@@ -118,7 +117,7 @@ else
   } >> "$OUT_PATH"
 fi
 
-run_step "cleanup binary" "rm -f gokui" "$LOG_DIR/${BASENAME}-cleanup.log"
+run_step "cleanup evidence build artifact" "rm -f $ROOT_DIR/.cache/gokui-release-evidence" "$LOG_DIR/${BASENAME}-cleanup.log"
 
 {
   echo
