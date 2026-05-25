@@ -562,7 +562,7 @@ func runInspect(args []string, stdout io.Writer, stderr io.Writer) int {
 		}
 	}
 
-	findings := make([]inspectFinding, 0)
+	var findings []inspectFinding
 	decision := "PASS"
 	note := "pre-release inspect includes structural and markdown checks"
 	if sourceKind == "github-source" {

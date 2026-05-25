@@ -96,6 +96,7 @@ tests/CI:
 - medium-severity detection of NFKC normalization text drift with normalized rescanning
 - medium-severity detection of mixed-script filename patterns
 - high-severity detection of ASCII/non-ASCII homoglyph filename mixing
+  (including compatibility-style Unicode glyphs after normalization)
 - high-severity detection of password-protected archive instructions
 - high-severity detection of shell/ssh/cron/launch-agent config writes
 - high-severity detection of broad Bash wildcard tool permissions
@@ -516,7 +517,7 @@ High findings reject under `strict`:
 | `RAW_IP_URL` | URL host is an IP address |
 | `ALLOWED_TOOLS_BASH_WILDCARD` | broad `Bash` or wildcard tool permission |
 | `WRITES_HOME_CONFIG` | writes to shell rc, ssh, cron, launch agents, or similar |
-| `CONFUSABLE_FILENAME` | filename mixes ASCII with confusable Cyrillic/Greek homoglyphs |
+| `CONFUSABLE_FILENAME` | filename mixes ASCII with confusable non-ASCII homoglyphs (including compatibility-style normalized glyphs) |
 
 Medium findings warn under `strict`:
 

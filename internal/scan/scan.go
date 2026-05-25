@@ -442,7 +442,7 @@ func hasASCIIConfusableFilename(name string) bool {
 			hasASCIIAlnum = true
 			continue
 		}
-		if _, ok := confusableFilenameRunes[r]; ok || isFullwidthASCIIConfusable(r) {
+		if _, ok := confusableFilenameRunes[r]; ok || isFullwidthASCIIConfusable(r) || isNFKCASCIIAlnumConfusable(r) {
 			hasNonASCIIConfusable = true
 		}
 	}
@@ -460,6 +460,25 @@ func isFullwidthASCIIConfusable(r rune) bool {
 	default:
 		return false
 	}
+}
+
+func isNFKCASCIIAlnumConfusable(r rune) bool {
+	if r <= unicode.MaxASCII {
+		return false
+	}
+	normalized := norm.NFKC.String(string(r))
+	if normalized == "" || normalized == string(r) {
+		return false
+	}
+	for _, nr := range normalized {
+		if nr > unicode.MaxASCII {
+			return false
+		}
+		if !unicode.IsLetter(nr) && !unicode.IsDigit(nr) {
+			return false
+		}
+	}
+	return true
 }
 
 func runeScriptGroup(r rune) (string, bool) {

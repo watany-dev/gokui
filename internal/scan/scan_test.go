@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 	"testing/quick"
+	"unicode"
 )
 
 func TestScanSkillRootFindings(t *testing.T) {
@@ -874,6 +875,11 @@ func TestClassifyPathRisks(t *testing.T) {
 		assertHasID(t, findings, "CONFUSABLE_FILENAME")
 	})
 
+	t.Run("detects compatibility-style confusable filename", func(t *testing.T) {
+		findings := classifyPathRisks("docs/pay𝐩al.md")
+		assertHasID(t, findings, "CONFUSABLE_FILENAME")
+	})
+
 	t.Run("ignores single script or non-letter separators", func(t *testing.T) {
 		cases := []string{
 			"docs/paypal.md",
@@ -884,6 +890,26 @@ func TestClassifyPathRisks(t *testing.T) {
 		for _, path := range cases {
 			if findings := classifyPathRisks(path); len(findings) != 0 {
 				t.Fatalf("expected no findings for %q, got %+v", path, findings)
+			}
+		}
+	})
+}
+
+func TestIsNFKCASCIIAlnumConfusable(t *testing.T) {
+	t.Run("detects compatibility letters and digits", func(t *testing.T) {
+		cases := []rune{'𝐩', '𝟎', 'ⓐ'}
+		for _, r := range cases {
+			if !isNFKCASCIIAlnumConfusable(r) {
+				t.Fatalf("expected compatibility confusable for %q", string(r))
+			}
+		}
+	})
+
+	t.Run("ignores ascii and non-ascii non-alnum normalization", func(t *testing.T) {
+		cases := []rune{'a', 'あ', '・'}
+		for _, r := range cases {
+			if isNFKCASCIIAlnumConfusable(r) {
+				t.Fatalf("unexpected compatibility confusable for %q", string(r))
 			}
 		}
 	})
@@ -5548,7 +5574,20 @@ func TestNormalizeLauncherTokenProperty(t *testing.T) {
 	launchers := []string{"npx", "uvx", "bunx", "pnpm", "yarn", "npm"}
 	prop := func(idx uint8, suffix string) bool {
 		launcher := launchers[int(idx)%len(launchers)]
-		if strings.TrimSpace(suffix) == "" {
+		var b strings.Builder
+		for _, r := range suffix {
+			if r > unicode.MaxASCII {
+				continue
+			}
+			if unicode.IsLetter(r) || unicode.IsDigit(r) || r == '.' || r == '-' || r == '_' {
+				b.WriteRune(unicode.ToLower(r))
+			}
+			if b.Len() >= 32 {
+				break
+			}
+		}
+		suffix = b.String()
+		if suffix == "" {
 			suffix = "latest"
 		}
 		token := launcher + "@" + suffix
