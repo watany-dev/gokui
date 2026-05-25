@@ -28,13 +28,32 @@ assert_no_symlink_components() {
   done
 }
 
+create_fresh_file() {
+  local path="$1"
+  local label="$2"
+  assert_no_symlink_components "$path" "$label"
+  if [ -e "$path" ]; then
+    echo "${label} already exists: $path" >&2
+    exit 1
+  fi
+
+  local dir
+  dir="$(dirname "$path")"
+  local base
+  base="$(basename "$path")"
+  local tmp_path
+  tmp_path="$(mktemp "$dir/.${base}.tmp.XXXXXX")"
+  if ! mv -n "$tmp_path" "$path"; then
+    rm -f "$tmp_path"
+    echo "${label} already exists: $path" >&2
+    exit 1
+  fi
+}
+
 assert_no_symlink_components "$ROOT_DIR" "repository root path"
-assert_no_symlink_components "$out_path" "inspect SARIF output path"
 mkdir -p "$(dirname "$out_path")"
-if [ -e "$out_path" ]; then
-  echo "inspect SARIF output already exists: $out_path" >&2
-  exit 1
-fi
+create_fresh_file "$out_path" "inspect SARIF output path"
+exec {SARIF_FD}>>"$out_path"
 
 tmp_bin="$(mktemp "${TMPDIR:-/tmp}/gokui-sarif-XXXXXX")"
 cleanup() {
@@ -45,9 +64,10 @@ trap cleanup EXIT
 go -C "$ROOT_DIR" build -trimpath -buildvcs=true -o "$tmp_bin" ./cmd/gokui
 
 set +e
-"$tmp_bin" inspect "$ROOT_DIR/fixtures/fake-prereq-skill" --format sarif > "$out_path"
+"$tmp_bin" inspect "$ROOT_DIR/fixtures/fake-prereq-skill" --format sarif >&"$SARIF_FD"
 exit_code=$?
 set -e
+exec {SARIF_FD}>&-
 
 if [ "$exit_code" -ne 2 ]; then
   echo "expected inspect exit code 2 for rejected fixture, got $exit_code" >&2

@@ -26,6 +26,28 @@ assert_no_symlink_components() {
   done
 }
 
+create_fresh_file() {
+  local path="$1"
+  local label="$2"
+  assert_no_symlink_components "$path" "$label"
+  if [ -e "$path" ]; then
+    echo "${label} already exists: $path" >&2
+    exit 1
+  fi
+
+  local dir
+  dir="$(dirname "$path")"
+  local base
+  base="$(basename "$path")"
+  local tmp_path
+  tmp_path="$(mktemp "$dir/.${base}.tmp.XXXXXX")"
+  if ! mv -n "$tmp_path" "$path"; then
+    rm -f "$tmp_path"
+    echo "${label} already exists: $path" >&2
+    exit 1
+  fi
+}
+
 assert_no_symlink_components "$ROOT_DIR" "repository root path"
 
 if [ ! -f "$TEMPLATE_PATH" ]; then
@@ -40,11 +62,8 @@ mkdir -p "$OUT_DIR"
 TS="$(date -u +%Y%m%dT%H%M%SZ)"
 COMMIT_SHA="$(git -C "$ROOT_DIR" rev-parse HEAD 2>/dev/null || echo unknown)"
 OUT_PATH="$OUT_DIR/${TS}-${COMMIT_SHA}.md"
-assert_no_symlink_components "$OUT_PATH" "release evidence output path"
-if [ -e "$OUT_PATH" ]; then
-  echo "release evidence output already exists: $OUT_PATH" >&2
-  exit 1
-fi
+create_fresh_file "$OUT_PATH" "release evidence output path"
+exec {EVIDENCE_FD}>>"$OUT_PATH"
 
 {
   echo "# Release Evidence - $TS"
@@ -53,6 +72,7 @@ fi
   echo "- Candidate commit SHA: $COMMIT_SHA"
   echo
   cat "$TEMPLATE_PATH"
-} > "$OUT_PATH"
+} >&${EVIDENCE_FD}
+exec {EVIDENCE_FD}>&-
 
 echo "Created $OUT_PATH"

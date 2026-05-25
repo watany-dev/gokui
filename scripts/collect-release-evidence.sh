@@ -121,7 +121,7 @@ run_step() {
 
   create_fresh_file "$log_path" "log path"
   local log_fd
-  exec {log_fd}> "$log_path"
+  exec {log_fd}>>"$log_path"
 
   set +e
   bash -lc "cd \"$ROOT_DIR\" && ${command_text}" >&"$log_fd" 2>&1
@@ -139,7 +139,7 @@ run_git_clean_check() {
 
   create_fresh_file "$log_path" "log path"
   local log_fd
-  exec {log_fd}> "$log_path"
+  exec {log_fd}>>"$log_path"
 
   set +e
   bash -lc "cd \"$ROOT_DIR\" && git status --short --untracked-files=no" >&"$log_fd" 2>&1
