@@ -1100,13 +1100,13 @@ func normalizeShellProcCommandSubstitutions(line string) string {
 				i += 2
 				continue
 			}
-			closeIdx := strings.IndexByte(line[i+2:], ')')
-			if closeIdx < 0 {
+			end := findCommandSubstitutionEnd(line, i)
+			if end < 0 {
 				b.WriteString(line[i:])
 				break
 			}
 			b.WriteString("$$")
-			i += 2 + closeIdx + 1
+			i = end + 1
 			continue
 		}
 		if line[i] == '`' {
@@ -1124,6 +1124,29 @@ func normalizeShellProcCommandSubstitutions(line string) string {
 		i++
 	}
 	return b.String()
+}
+
+func findCommandSubstitutionEnd(line string, start int) int {
+	depth := 1
+	for i := start + 2; i < len(line); i++ {
+		if i+1 < len(line) && line[i] == '$' && line[i+1] == '(' {
+			// Skip arithmetic expansion opener "$(("; handled by separate normalization.
+			if i+2 < len(line) && line[i+2] == '(' {
+				i++
+				continue
+			}
+			depth++
+			i++
+			continue
+		}
+		if line[i] == ')' {
+			depth--
+			if depth == 0 {
+				return i
+			}
+		}
+	}
+	return -1
 }
 
 func scanDecodedVariantThreatFindings(line string, target scanTarget, lineNum int, depth int) []Finding {
