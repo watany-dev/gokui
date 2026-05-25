@@ -523,6 +523,9 @@ func TestReleaseEvidenceScriptExecutionContractSync(t *testing.T) {
 		`echo "- Mode: ${EVIDENCE_MODE}"`,
 		`git status --short --untracked-files=no`,
 		`BUILD_OUT=$ROOT_DIR/.cache/gokui-release-evidence make release-check-offline`,
+		`if [ "$WITH_VULN" -eq 1 ] && [ "$FAILED_STEPS" -eq 0 ]; then`,
+		`if [ "$FAILED_STEPS" -eq 0 ]; then`,
+		"preserve failing build artifact for investigation",
 		`cleanup evidence build artifact`,
 		`rm -f $ROOT_DIR/.cache/gokui-release-evidence`,
 	}
@@ -618,7 +621,7 @@ func TestRoadmapReleaseEvidenceHardeningSync(t *testing.T) {
 	required := []string{
 		"automated offline release evidence collection with per-step logs",
 		"automated online release evidence collection mode (includes vuln step)",
-		"release-evidence output/log path hardening (symlink path-component rejection, restrictive evidence/log file permissions, and fail-closed output/log collision checks)",
+		"release-evidence output/log path hardening (symlink path-component rejection, restrictive evidence/log file permissions, fail-closed output/log collision checks, and failure-artifact retention)",
 		"inspect-sarif output path hardening (symlink path-component rejection, restrictive SARIF file permissions, and fail-closed output-collision checks)",
 		"release-evidence gate hardening with isolated build output (`BUILD_OUT`) and tracked-file clean-tree checks (`git status --short --untracked-files=no`)",
 		"release-check gate hardening with isolated build output (`RELEASE_CHECK_BUILD_OUT`) and failure-safe cleanup for build/SARIF artifacts",
