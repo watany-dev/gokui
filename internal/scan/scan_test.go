@@ -940,6 +940,8 @@ func TestClassifyPathRisks(t *testing.T) {
 			"docs/sһell.md",
 			"docs/tooӏs.md",
 			"docs/neԝs.md",
+			"docs/doϲs.md",
+			"docs/DoϹs.md",
 		}
 		for _, path := range cases {
 			findings := classifyPathRisks(path)
