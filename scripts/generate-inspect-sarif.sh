@@ -28,42 +28,39 @@ assert_no_symlink_components() {
   done
 }
 
-create_fresh_file_for_write() {
-  local path="$1"
-  local label="$2"
-  local fd_var="$3"
-  assert_no_symlink_components "$path" "$label"
-  if [ -e "$path" ]; then
-    echo "${label} already exists: $path" >&2
-    exit 1
-  fi
-
+create_temp_file_for_write() {
   local dir
-  dir="$(dirname "$path")"
+  dir="$1"
   local base
-  base="$(basename "$path")"
+  base="$2"
+  local path_var="$3"
+  local fd_var="$4"
   local tmp_path
   tmp_path="$(mktemp "$dir/.${base}.tmp.XXXXXX")"
   local fd
   exec {fd}>>"$tmp_path"
-  if ! mv -n "$tmp_path" "$path"; then
-    exec {fd}>&-
-    rm -f "$tmp_path"
-    echo "${label} already exists: $path" >&2
-    exit 1
-  fi
+  printf -v "$path_var" '%s' "$tmp_path"
   printf -v "$fd_var" '%s' "$fd"
 }
 
 assert_no_symlink_components "$ROOT_DIR" "repository root path"
 out_dir="$(dirname "$out_path")"
 assert_no_symlink_components "$out_dir" "inspect SARIF output directory"
+assert_no_symlink_components "$out_path" "inspect SARIF output path"
+if [ -e "$out_path" ]; then
+  echo "inspect SARIF output path already exists: $out_path" >&2
+  exit 1
+fi
 mkdir -p "$out_dir"
-create_fresh_file_for_write "$out_path" "inspect SARIF output path" SARIF_FD
+out_base="$(basename "$out_path")"
+create_temp_file_for_write "$out_dir" "$out_base" TMP_SARIF_PATH SARIF_FD
 
 tmp_bin="$(mktemp "${TMPDIR:-/tmp}/gokui-sarif-XXXXXX")"
 cleanup() {
   rm -f "$tmp_bin"
+  if [ -n "${TMP_SARIF_PATH:-}" ]; then
+    rm -f "$TMP_SARIF_PATH"
+  fi
 }
 trap cleanup EXIT
 
@@ -80,12 +77,18 @@ if [ "$exit_code" -ne 2 ]; then
   exit 1
 fi
 
-if [ ! -s "$out_path" ]; then
-  echo "inspect SARIF output file is empty: $out_path" >&2
+if [ ! -s "$TMP_SARIF_PATH" ]; then
+  echo "inspect SARIF output file is empty: $TMP_SARIF_PATH" >&2
   exit 1
 fi
 
-grep -q '"version": "2.1.0"' "$out_path"
-grep -q '"FAKE_PREREQ_EXECUTION"' "$out_path"
+grep -q '"version": "2.1.0"' "$TMP_SARIF_PATH"
+grep -q '"FAKE_PREREQ_EXECUTION"' "$TMP_SARIF_PATH"
+
+if ! mv -n "$TMP_SARIF_PATH" "$out_path"; then
+  echo "inspect SARIF output path already exists: $out_path" >&2
+  exit 1
+fi
+TMP_SARIF_PATH=""
 
 echo "generated inspect SARIF: $out_path"
