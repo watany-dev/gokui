@@ -202,6 +202,24 @@ func TestUpdateStatusErrorCodeMatrixDocumentationSync(t *testing.T) {
 			t.Fatalf("README missing severity override audit documentation line: %q", line)
 		}
 	}
+
+	releaseCheckErrorCodeLines := []string{
+		"### release-check (`make release-check`, stderr codes)",
+		"| `RC_PREFLIGHT_BUILD_OUT_INVALID` |",
+		"| `RC_PREFLIGHT_SARIF_OUT_INVALID` |",
+		"| `RC_PREFLIGHT_BUILD_OUT_SYMLINK` |",
+		"| `RC_PREFLIGHT_SARIF_OUT_SYMLINK` |",
+		"| `RC_PREFLIGHT_OUTPUT_PATH_CONFLICT` |",
+		"| `RC_PREFLIGHT_BUILD_OUT_EXISTS` |",
+		"| `RC_PREFLIGHT_SARIF_OUT_EXISTS` |",
+		"| `RC_CLEANUP_REMOVE_FAILED` |",
+		"| `RC_CLEANUP_REMOVE_FAILED_SUMMARY` |",
+	}
+	for _, line := range releaseCheckErrorCodeLines {
+		if !strings.Contains(readme, line) {
+			t.Fatalf("README missing release-check error code reference line: %q", line)
+		}
+	}
 }
 
 func TestRuleRemediationDocumentationSync(t *testing.T) {

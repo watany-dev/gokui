@@ -608,6 +608,20 @@ Update skill items also include `risk_score` (`model`, `previous`, `current`,
 `delta`, `signals`) for differential risk scoring that combines severity-weighted
 finding changes with new URL/executable/file-delta/override-delta signals.
 
+### release-check (`make release-check`, stderr codes)
+
+| error_code | Meaning |
+| --- | --- |
+| `RC_PREFLIGHT_BUILD_OUT_INVALID` | `RELEASE_CHECK_BUILD_OUT` is root-like (`/`, `.`, empty) or ends with `/` |
+| `RC_PREFLIGHT_SARIF_OUT_INVALID` | `RELEASE_CHECK_SARIF_OUT` is root-like (`/`, `.`, empty) or ends with `/` |
+| `RC_PREFLIGHT_BUILD_OUT_SYMLINK` | Build output path or ancestor contains a symlink component |
+| `RC_PREFLIGHT_SARIF_OUT_SYMLINK` | SARIF output path or ancestor contains a symlink component |
+| `RC_PREFLIGHT_OUTPUT_PATH_CONFLICT` | Build and SARIF outputs resolve to the same absolute path |
+| `RC_PREFLIGHT_BUILD_OUT_EXISTS` | Build output path already exists before gate execution |
+| `RC_PREFLIGHT_SARIF_OUT_EXISTS` | SARIF output path already exists before gate execution |
+| `RC_CLEANUP_REMOVE_FAILED` | Cleanup failed to remove one output path |
+| `RC_CLEANUP_REMOVE_FAILED_SUMMARY` | Cleanup failed to remove one or more output paths (summary line with count) |
+
 ## Exit Code Contract
 
 CLI exit codes are stable for automation:
