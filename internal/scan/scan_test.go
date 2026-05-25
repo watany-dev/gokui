@@ -1090,6 +1090,24 @@ func TestClassifyMarkdownReferenceLinkSpoofing(t *testing.T) {
 		if len(findings) != 0 {
 			t.Fatalf("expected no findings for full reference form without matching ref ID, got %+v", findings)
 		}
+
+		line = "[https://trusted.example.com/login] (https://evil.example.net/login)"
+		findings = classifyMarkdownReferenceLinkSpoofing(line, "SKILL.md", 20, references)
+		if len(findings) != 0 {
+			t.Fatalf("expected no findings for spaced inline-style markdown links, got %+v", findings)
+		}
+
+		line = "[https://trusted.example.com/login] [auth]"
+		findings = classifyMarkdownReferenceLinkSpoofing(line, "SKILL.md", 20, references)
+		if len(findings) != 0 {
+			t.Fatalf("expected no findings for spaced full-reference markdown links, got %+v", findings)
+		}
+
+		line = "[https://trusted.example.com/login] : https://evil.example.net/login"
+		findings = classifyMarkdownReferenceLinkSpoofing(line, "SKILL.md", 20, references)
+		if len(findings) != 0 {
+			t.Fatalf("expected no findings for spaced reference-definition markdown lines, got %+v", findings)
+		}
 	})
 }
 

@@ -3455,8 +3455,8 @@ func classifyMarkdownReferenceLinkSpoofing(line string, relPath string, lineNum 
 		if start > 0 && line[start-1] == '!' {
 			continue
 		}
-		if end < len(line) {
-			switch line[end] {
+		if next := nextNonWhitespaceIndex(line, end); next >= 0 {
+			switch line[next] {
 			case '(', '[', ':':
 				continue
 			}
@@ -3487,6 +3487,15 @@ func classifyMarkdownReferenceLinkSpoofing(line string, relPath string, lineNum 
 		return nil
 	}
 	return out
+}
+
+func nextNonWhitespaceIndex(value string, start int) int {
+	for i := start; i < len(value); i++ {
+		if value[i] != ' ' && value[i] != '\t' {
+			return i
+		}
+	}
+	return -1
 }
 
 func normalizeMarkdownReferenceID(value string) string {
