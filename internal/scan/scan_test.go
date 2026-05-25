@@ -736,6 +736,17 @@ func TestBuildContinuationVariant(t *testing.T) {
 			t.Fatalf("expected non-continuation to fail, got joined=%q ok=%v", joined, ok)
 		}
 	})
+
+	t.Run("returns joined chain when continuation marker persists", func(t *testing.T) {
+		lines := []string{"echo one |", "echo two |", "echo three |", "echo four |", "echo five |", "echo six"}
+		joined, ok := buildContinuationVariant(lines, 0)
+		if !ok {
+			t.Fatalf("expected continued join, got ok=%v joined=%q", ok, joined)
+		}
+		if !strings.Contains(joined, "echo five |") {
+			t.Fatalf("expected joined line to include bounded continuation chain, got %q", joined)
+		}
+	})
 }
 
 func TestShouldJoinWithNextLine(t *testing.T) {
@@ -746,6 +757,9 @@ func TestShouldJoinWithNextLine(t *testing.T) {
 		{line: "curl https://example.com |", want: true},
 		{line: "bash -c \"$(", want: true},
 		{line: "echo hi \\", want: true},
+		{line: "run this &&", want: true},
+		{line: "run that ||", want: true},
+		{line: "   ", want: false},
 		{line: "echo safe", want: false},
 		{line: "echo $(date)", want: false},
 	}
@@ -906,10 +920,30 @@ func TestIsNFKCASCIIAlnumConfusable(t *testing.T) {
 	})
 
 	t.Run("ignores ascii and non-ascii non-alnum normalization", func(t *testing.T) {
-		cases := []rune{'a', 'あ', '・'}
+		cases := []rune{'a', 'あ', '・', '㍑', '﹢'}
 		for _, r := range cases {
 			if isNFKCASCIIAlnumConfusable(r) {
 				t.Fatalf("unexpected compatibility confusable for %q", string(r))
+			}
+		}
+	})
+}
+
+func TestIsFullwidthASCIIConfusable(t *testing.T) {
+	t.Run("detects fullwidth digits and letters", func(t *testing.T) {
+		cases := []rune{'０', 'Ａ', 'ｚ'}
+		for _, r := range cases {
+			if !isFullwidthASCIIConfusable(r) {
+				t.Fatalf("expected fullwidth confusable for %q", string(r))
+			}
+		}
+	})
+
+	t.Run("ignores non-fullwidth runes", func(t *testing.T) {
+		cases := []rune{'A', 'あ', 'ⓐ'}
+		for _, r := range cases {
+			if isFullwidthASCIIConfusable(r) {
+				t.Fatalf("unexpected fullwidth confusable for %q", string(r))
 			}
 		}
 	})
@@ -2753,6 +2787,14 @@ func TestNextNonFlagFieldWithIndex(t *testing.T) {
 		got, idx, ok := nextNonFlagFieldWithIndex(fields, 1)
 		if !ok || got != "pnpm@9.0.0" || idx != 1 {
 			t.Fatalf("nextNonFlagFieldWithIndex(%v, 1) = (%q, %d, %v), want (pnpm@9.0.0, 1, true)", fields, got, idx, ok)
+		}
+	})
+
+	t.Run("returns false when no candidate token exists", func(t *testing.T) {
+		fields := []string{"corepack", "--install-directory", "'--cache-dir'"}
+		got, idx, ok := nextNonFlagFieldWithIndex(fields, 1)
+		if ok || got != "" || idx != -1 {
+			t.Fatalf("nextNonFlagFieldWithIndex(%v, 1) = (%q, %d, %v), want (\"\", -1, false)", fields, got, idx, ok)
 		}
 	})
 }
@@ -5595,6 +5637,72 @@ func TestNormalizeLauncherTokenProperty(t *testing.T) {
 	}
 	if err := quick.Check(prop, &quick.Config{MaxCount: 500}); err != nil {
 		t.Fatalf("normalizeLauncherToken property failed: %v", err)
+	}
+}
+
+func TestSplitCompositeRuntimeToken(t *testing.T) {
+	t.Run("splits shell-delimited launcher tokens", func(t *testing.T) {
+		left, right, ok := splitCompositeRuntimeToken("'pnpm@9.0.0';\"DLX\"")
+		if !ok || left != "pnpm@9.0.0" || right != "dlx" {
+			t.Fatalf("splitCompositeRuntimeToken() = (%q, %q, %v), want (pnpm@9.0.0, dlx, true)", left, right, ok)
+		}
+	})
+
+	t.Run("rejects malformed composite tokens", func(t *testing.T) {
+		cases := []string{"pnpm", "pnpm;", ";dlx", ""}
+		for _, in := range cases {
+			left, right, ok := splitCompositeRuntimeToken(in)
+			if ok || left != "" || right != "" {
+				t.Fatalf("splitCompositeRuntimeToken(%q) = (%q, %q, %v), want empty/false", in, left, right, ok)
+			}
+		}
+	})
+}
+
+func TestDenoOptionalValueValidators(t *testing.T) {
+	t.Run("check accepts only all", func(t *testing.T) {
+		if !isDenoCheckValue("all") || !isDenoCheckValue(" ALL ") {
+			t.Fatalf("isDenoCheckValue should accept all")
+		}
+		if isDenoCheckValue("none") || isDenoCheckValue("-all") {
+			t.Fatalf("isDenoCheckValue should reject non-all or flag-like values")
+		}
+	})
+
+	t.Run("env-file and tunnel reject remote and flag-like values", func(t *testing.T) {
+		if !isDenoEnvFileValue(".env.local") || !isDenoTunnelValue("corp-net") {
+			t.Fatalf("expected local env-file/tunnel values to be accepted")
+		}
+		if isDenoEnvFileValue("https://example.com/.env") || isDenoEnvFileValue("-f") {
+			t.Fatalf("expected env-file remote/flag-like values to be rejected")
+		}
+		if isDenoTunnelValue("npm:tool") || isDenoTunnelValue("-tunnel") {
+			t.Fatalf("expected tunnel npm/flag-like values to be rejected")
+		}
+	})
+
+	t.Run("install-alias accepts safe alias charset only", func(t *testing.T) {
+		if !isDenoInstallAliasValue("tool_name-1") {
+			t.Fatalf("expected safe alias to be accepted")
+		}
+		cases := []string{"tool:name", "tool/name", "tool@latest", "npm:tool", ""}
+		for _, in := range cases {
+			if isDenoInstallAliasValue(in) {
+				t.Fatalf("expected alias %q to be rejected", in)
+			}
+		}
+	})
+}
+
+func TestShortFlagMayConsumeAttachedValue(t *testing.T) {
+	trueCases := []byte{'c', 'e', 'n', 'p', 'L', 'r', 't', 'I', 'R', 'W', 'N', 'E', 'S'}
+	for _, flag := range trueCases {
+		if !shortFlagMayConsumeAttachedValue(flag) {
+			t.Fatalf("expected flag %q to consume attached values", flag)
+		}
+	}
+	if shortFlagMayConsumeAttachedValue('x') {
+		t.Fatalf("did not expect flag x to consume attached values")
 	}
 }
 
