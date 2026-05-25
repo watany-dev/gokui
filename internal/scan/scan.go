@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"unicode"
 	"unicode/utf8"
@@ -3265,6 +3266,9 @@ func parseRawIPHost(host string) net.IP {
 	if ip := net.ParseIP(host); ip != nil {
 		return ip
 	}
+	if numericIPv4, ok := parseDecimalIPv4Host(host); ok {
+		return numericIPv4
+	}
 	// IPv6 zone identifiers (for example "fe80::1%eth0") are valid URL hosts
 	// but net.ParseIP does not accept them directly.
 	if strings.Contains(host, ":") {
@@ -3273,6 +3277,22 @@ func parseRawIPHost(host string) net.IP {
 		}
 	}
 	return nil
+}
+
+func parseDecimalIPv4Host(host string) (net.IP, bool) {
+	if host == "" {
+		return nil, false
+	}
+	for i := 0; i < len(host); i++ {
+		if host[i] < '0' || host[i] > '9' {
+			return nil, false
+		}
+	}
+	value, err := strconv.ParseUint(host, 10, 32)
+	if err != nil {
+		return nil, false
+	}
+	return net.IPv4(byte(value>>24), byte(value>>16), byte(value>>8), byte(value)), true
 }
 
 func extractURLCandidates(line string) []string {
