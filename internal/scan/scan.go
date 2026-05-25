@@ -486,6 +486,11 @@ func hasASCIIAlnum(name string) bool {
 
 func hasConfusableExtension(name string) bool {
 	ext := strings.TrimPrefix(filepath.Ext(name), ".")
+	if ext == "" && strings.HasPrefix(name, ".") && len(name) > 1 && !strings.Contains(name[1:], ".") {
+		// Dotfile-like tokens such as ".ｍｄ" are treated as extension-shaped
+		// names for confusable checks.
+		ext = name[1:]
+	}
 	if ext == "" {
 		return false
 	}

@@ -920,6 +920,9 @@ func TestClassifyPathRisks(t *testing.T) {
 
 		findings = classifyPathRisks("docs/тест.mе")
 		assertHasID(t, findings, "CONFUSABLE_FILENAME")
+
+		findings = classifyPathRisks("docs/.ｍｄ")
+		assertHasID(t, findings, "CONFUSABLE_FILENAME")
 	})
 
 	t.Run("detects additional cyrillic confusable glyphs", func(t *testing.T) {
@@ -1023,7 +1026,9 @@ func TestHasConfusableExtension(t *testing.T) {
 	}{
 		{value: "readme.mе", want: true},
 		{value: "readme.ｍｄ", want: true},
+		{value: ".ｍｄ", want: true},
 		{value: "readme.md", want: false},
+		{value: ".git", want: false},
 		{value: "readme", want: false},
 		{value: "тест.mе", want: true},
 	}
