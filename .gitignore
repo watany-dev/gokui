@@ -32,6 +32,7 @@ go.work.sum
 .agents/
 .codex/
 releases/evidence/
+gokui
 
 # Editor/IDE
 # .idea/
