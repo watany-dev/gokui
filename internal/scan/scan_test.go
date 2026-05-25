@@ -852,6 +852,14 @@ func TestClassifyMarkdownLinkSpoofing(t *testing.T) {
 		}
 	})
 
+	t.Run("does not flag idna dot-variant host equivalence", func(t *testing.T) {
+		line := "[https://trusted。example．com/login](https://trusted.example.com/login)"
+		findings := classifyMarkdownLinkSpoofing(line, "SKILL.md", 12)
+		if len(findings) != 0 {
+			t.Fatalf("expected no findings for equivalent IDNA dot-variant hosts, got %+v", findings)
+		}
+	})
+
 	t.Run("ignores non-host labels", func(t *testing.T) {
 		line := "[click here](https://trusted.example.com/login)"
 		findings := classifyMarkdownLinkSpoofing(line, "SKILL.md", 13)
