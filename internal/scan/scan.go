@@ -502,7 +502,7 @@ func hasASCIIConfusableFilename(name string) bool {
 			hasASCIIAlnum = true
 			continue
 		}
-		if _, ok := confusableFilenameRunes[r]; ok || isFullwidthASCIIConfusable(r) || isNFKCASCIIAlnumConfusable(r) {
+		if _, ok := confusableFilenameRunes[r]; ok || isFullwidthASCIIConfusable(r) || isNFKCASCIIAlnumConfusable(r) || isDotLikeConfusable(r) {
 			hasNonASCIIConfusable = true
 		}
 	}
@@ -582,6 +582,15 @@ func isFullwidthASCIIConfusable(r rune) bool {
 	case r >= 'Ａ' && r <= 'Ｚ':
 		return true
 	case r >= 'ａ' && r <= 'ｚ':
+		return true
+	default:
+		return false
+	}
+}
+
+func isDotLikeConfusable(r rune) bool {
+	switch r {
+	case '．', '｡', '。', '﹒', '․':
 		return true
 	default:
 		return false

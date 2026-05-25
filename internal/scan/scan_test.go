@@ -905,6 +905,17 @@ func TestClassifyPathRisks(t *testing.T) {
 		assertHasID(t, findings, "CONFUSABLE_FILENAME")
 	})
 
+	t.Run("detects dot-like confusable separators", func(t *testing.T) {
+		cases := []string{
+			"docs/readme․md",
+			"docs/readme。md",
+		}
+		for _, path := range cases {
+			findings := classifyPathRisks(path)
+			assertHasID(t, findings, "CONFUSABLE_FILENAME")
+		}
+	})
+
 	t.Run("detects confusable and mixed-script directory names", func(t *testing.T) {
 		findings := classifyPathRisks("docs/pay𝐩al/readme.md")
 		assertHasID(t, findings, "CONFUSABLE_FILENAME")
@@ -1135,6 +1146,22 @@ func TestIsFullwidthASCIIConfusable(t *testing.T) {
 			}
 		}
 	})
+}
+
+func TestIsDotLikeConfusable(t *testing.T) {
+	trueCases := []rune{'．', '｡', '。', '﹒', '․'}
+	for _, r := range trueCases {
+		if !isDotLikeConfusable(r) {
+			t.Fatalf("expected dot-like confusable for %q", string(r))
+		}
+	}
+
+	falseCases := []rune{'.', 'a', '1', '・'}
+	for _, r := range falseCases {
+		if isDotLikeConfusable(r) {
+			t.Fatalf("unexpected dot-like confusable for %q", string(r))
+		}
+	}
 }
 
 func TestNormalizeLineNFKC(t *testing.T) {
