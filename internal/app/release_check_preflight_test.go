@@ -132,6 +132,36 @@ func TestReleaseCheckPreflightRejectsRootOrDirectoryLikeBuildOutput(t *testing.T
 	}
 }
 
+func TestReleaseCheckPreflightRejectsRootOrDirectoryLikeSARIFOutput(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("release-check preflight path contracts are exercised on POSIX in CI")
+	}
+
+	testCases := []struct {
+		name     string
+		sarifOut string
+	}{
+		{name: "root path", sarifOut: "/"},
+		{name: "directory-like trailing slash", sarifOut: filepath.Join(t.TempDir(), "dir-like") + "/"},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			tmp := t.TempDir()
+			exitCode, out := runReleaseCheckPreflight(t, map[string]string{
+				"RELEASE_CHECK_BUILD_OUT": filepath.Join(tmp, "build.out"),
+				"RELEASE_CHECK_SARIF_OUT": tc.sarifOut,
+			})
+			if exitCode == 0 {
+				t.Fatalf("expected non-zero exit for invalid SARIF output path %q\noutput:\n%s", tc.sarifOut, out)
+			}
+			if !strings.Contains(out, "SARIF output path must be a non-root file path") {
+				t.Fatalf("expected non-root SARIF output rejection message, got:\n%s", out)
+			}
+		})
+	}
+}
+
 func TestReleaseCheckPreflightRejectsSymlinkPathComponent(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("symlink path-component check is exercised on POSIX in CI")
