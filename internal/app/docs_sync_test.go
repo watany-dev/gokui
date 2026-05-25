@@ -360,6 +360,17 @@ func TestReleaseEvidenceModeNamingDocumentationSync(t *testing.T) {
 	}
 }
 
+func TestGitignoreReleaseEvidenceArtifactsSync(t *testing.T) {
+	gitignoreBytes, err := os.ReadFile("../../.gitignore")
+	if err != nil {
+		t.Fatalf("failed to read .gitignore: %v", err)
+	}
+	gitignore := string(gitignoreBytes)
+	if !strings.Contains(gitignore, "releases/evidence/") {
+		t.Fatal(".gitignore should ignore generated release evidence artifacts")
+	}
+}
+
 func TestRoadmapRuleIDsAreImplemented(t *testing.T) {
 	roadmapBytes, err := os.ReadFile("../../ROADMAP.md")
 	if err != nil {
