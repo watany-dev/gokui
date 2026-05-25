@@ -1110,14 +1110,14 @@ func normalizeShellProcCommandSubstitutions(line string) string {
 			continue
 		}
 		if line[i] == '`' {
-			closeIdx := strings.IndexByte(line[i+1:], '`')
-			if closeIdx < 0 {
+			end := findBacktickSubstitutionEnd(line, i)
+			if end < 0 {
 				b.WriteByte(line[i])
 				i++
 				continue
 			}
 			b.WriteString("$$")
-			i += 1 + closeIdx + 1
+			i = end + 1
 			continue
 		}
 		b.WriteByte(line[i])
@@ -1144,6 +1144,24 @@ func findCommandSubstitutionEnd(line string, start int) int {
 			if depth == 0 {
 				return i
 			}
+		}
+	}
+	return -1
+}
+
+func findBacktickSubstitutionEnd(line string, start int) int {
+	escaped := false
+	for i := start + 1; i < len(line); i++ {
+		if escaped {
+			escaped = false
+			continue
+		}
+		if line[i] == '\\' {
+			escaped = true
+			continue
+		}
+		if line[i] == '`' {
+			return i
 		}
 	}
 	return -1
