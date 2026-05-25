@@ -91,7 +91,6 @@ var (
 	hexCommitRefPattern       = regexp.MustCompile(`^[0-9a-f]{12,40}$`)
 	remoteScriptImportPattern = regexp.MustCompile(`(?i)\b(?:source|bash|sh|zsh)\b\s*<\(\s*(?:curl|wget)\b`)
 	remoteScriptDotImport     = regexp.MustCompile(`(?i)(?:^|[;&|]\s*)\.\s*<\(\s*(?:curl|wget)\b`)
-	remoteDenoRunPattern      = regexp.MustCompile(`(?i)\bdeno\b\s+run\b[^\n]{0,300}\bhttps?://`)
 
 	fakePrereqPattern = regexp.MustCompile(`(?i)\b(?:required|required prerequisite|you must|before use)\b.{0,120}\b(?:download|install)\b.{0,200}\b(?:run|execute|bash|sh|powershell|chmod \+x)\b`)
 )
@@ -146,6 +145,7 @@ var manifestLikeFiles = map[string]struct{}{
 	"go.mod":           {},
 	"gemfile":          {},
 	"deno.json":        {},
+	"deno.jsonc":       {},
 }
 
 var urlShortenerHosts = map[string]struct{}{
@@ -221,6 +221,129 @@ var confusableFilenameRunes = map[rune]rune{
 	'а': 'a', 'е': 'e', 'о': 'o', 'р': 'p', 'с': 'c', 'х': 'x', 'у': 'y', 'і': 'i', 'ј': 'j',
 	'Α': 'A', 'Β': 'B', 'Ε': 'E', 'Ζ': 'Z', 'Η': 'H', 'Ι': 'I', 'Κ': 'K', 'Μ': 'M', 'Ν': 'N', 'Ο': 'O', 'Ρ': 'P', 'Τ': 'T', 'Υ': 'Y', 'Χ': 'X',
 	'α': 'a', 'β': 'b', 'ι': 'i', 'κ': 'k', 'ν': 'v', 'ο': 'o', 'ρ': 'p', 'τ': 't', 'υ': 'y', 'χ': 'x',
+}
+
+// Deno flags that require a following split value when provided without `=`.
+var denoRequiredValueFlags = map[string]struct{}{
+	"-c":                       {},
+	"--config":                 {},
+	"--import-map":             {},
+	"--conditions":             {},
+	"--host":                   {},
+	"--port":                   {},
+	"--location":               {},
+	"--cert":                   {},
+	"--preload":                {},
+	"--import":                 {},
+	"--require":                {},
+	"--seed":                   {},
+	"--package":                {},
+	"--strace-ops":             {},
+	"--strace-filter":          {},
+	"--ext":                    {},
+	"--log-level":              {},
+	"-L":                       {},
+	"--v8-flags":               {},
+	"--cpu-prof-dir":           {},
+	"--cpu-prof-interval":      {},
+	"--cpu-prof-name":          {},
+	"--node-modules-linker":    {},
+	"--minimum-dependency-age": {},
+	"--entrypoint":             {},
+	"-e":                       {},
+	"-n":                       {},
+	"--name":                   {},
+	"--root":                   {},
+	"-p":                       {},
+}
+
+// Deno flags that may optionally consume a split value token.
+var denoOptionalValueFlags = map[string]struct{}{
+	"--reload":           {},
+	"-r":                 {},
+	"--frozen":           {},
+	"--check":            {},
+	"--no-check":         {},
+	"--coverage":         {},
+	"--inspect":          {},
+	"--inspect-brk":      {},
+	"--inspect-wait":     {},
+	"--watch":            {},
+	"--watch-exclude":    {},
+	"--watch-hmr":        {},
+	"--tunnel":           {},
+	"-t":                 {},
+	"--vendor":           {},
+	"--lock":             {},
+	"--env-file":         {},
+	"--node-modules-dir": {},
+	"--install-alias":    {},
+	"--allow-scripts":    {},
+	"--allow-import":     {},
+	"-I":                 {},
+	"--allow-read":       {},
+	"-R":                 {},
+	"--allow-write":      {},
+	"-W":                 {},
+	"--allow-net":        {},
+	"-N":                 {},
+	"--allow-env":        {},
+	"-E":                 {},
+	"--allow-run":        {},
+	"--allow-ffi":        {},
+	"--allow-sys":        {},
+	"-S":                 {},
+	"--deny-read":        {},
+	"--deny-write":       {},
+	"--deny-net":         {},
+	"--deny-env":         {},
+	"--deny-run":         {},
+	"--deny-ffi":         {},
+	"--deny-import":      {},
+	"--deny-sys":         {},
+}
+
+var denoOptionalValueValidatorsRequiringCandidate = map[string]func(string) bool{
+	"--reload":        isDenoReloadValue,
+	"-r":              isDenoReloadValue,
+	"--coverage":      isDenoCoverageValue,
+	"--frozen":        isDenoFrozenValue,
+	"--check":         isDenoCheckValue,
+	"--no-check":      isDenoNoCheckValue,
+	"--inspect":       isDenoInspectValue,
+	"--inspect-brk":   isDenoInspectValue,
+	"--inspect-wait":  isDenoInspectValue,
+	"--watch":         isDenoWatchValue,
+	"--watch-exclude": isDenoWatchValue,
+	"--watch-hmr":     isDenoWatchValue,
+	"--tunnel":        isDenoTunnelValue,
+	"-t":              isDenoTunnelValue,
+	"--lock":          isDenoLockValue,
+	"--env-file":      isDenoEnvFileValue,
+	"--install-alias": isDenoInstallAliasValue,
+	"--allow-scripts": isDenoAllowScriptsValue,
+	"--allow-import":  isDenoAllowImportValue,
+	"-I":              isDenoAllowImportValue,
+	"--allow-read":    isDenoAllowReadValue,
+	"-R":              isDenoAllowReadValue,
+	"--allow-net":     isDenoAllowNetValue,
+	"-N":              isDenoAllowNetValue,
+	"--allow-write":   isDenoAllowWriteValue,
+	"-W":              isDenoAllowWriteValue,
+	"--allow-env":     isDenoAllowEnvValue,
+	"-E":              isDenoAllowEnvValue,
+	"--allow-run":     isDenoAllowRunValue,
+	"--allow-ffi":     isDenoAllowFFIValue,
+	"--allow-sys":     isDenoAllowSysValue,
+	"-S":              isDenoAllowSysValue,
+	"--deny-read":     isDenoAllowReadValue,
+	"--deny-write":    isDenoAllowWriteValue,
+	"--deny-net":      isDenoAllowNetValue,
+	"--deny-env":      isDenoAllowEnvValue,
+	"--deny-run":      isDenoAllowRunValue,
+	"--deny-ffi":      isDenoAllowFFIValue,
+	"--deny-import":   isDenoAllowImportValue,
+	"--deny-sys":      isDenoAllowSysValue,
 }
 
 // ScanSkillRoot scans markdown instruction files under skillRoot.
@@ -482,6 +605,7 @@ func hasScriptShebang(path string) (bool, error) {
 	}
 
 	content := string(buf[:n])
+	content = strings.TrimPrefix(content, "\ufeff")
 	content = strings.TrimLeft(content, " \t")
 	return strings.HasPrefix(content, "#!"), nil
 }
@@ -1328,19 +1452,47 @@ func isUnpinnedRuntimeToolLine(line string) bool {
 
 	for i := 0; i < len(fields); i++ {
 		token := normalizeLauncherToken(fields[i])
+		if token == "" {
+			continue
+		}
+		suffixFields := normalizedRuntimeSuffixFields(fields, i, token)
+		if token == "deno" {
+			if isUnpinnedDenoNpmRuntimeLine(strings.Join(suffixFields, " ")) {
+				return true
+			}
+			if isRemoteDenoRuntimeLine(strings.Join(suffixFields, " ")) {
+				return true
+			}
+			continue
+		}
 		if token == "corepack" {
-			launcher, launcherIndex, ok := nextNonFlagFieldWithIndex(fields, i+1)
+			launcher, launcherIndex, ok := nextNonFlagFieldWithIndex(suffixFields, 1)
 			if !ok {
 				continue
 			}
 			launcher = normalizeLauncherToken(launcher)
-			if isUnpinnedLauncherCommand(fields, launcher, launcherIndex) {
+			if (launcher == "dlx" || launcher == "exec") && launcherIndex >= 0 && launcherIndex < len(suffixFields) {
+				// Handle compact shell-separated forms like `corepack pnpm;dlx ...`
+				// where package manager and subcommand are glued in the same field.
+				if pm, subcommand, hasComposite := splitCompositeRuntimeToken(suffixFields[launcherIndex]); hasComposite {
+					pm = normalizeLauncherToken(pm)
+					if (pm == "pnpm" || pm == "yarn" || pm == "npm") && subcommand == launcher {
+						normalized := make([]string, 0, len(suffixFields)+1)
+						normalized = append(normalized, suffixFields[:launcherIndex]...)
+						normalized = append(normalized, pm, launcher)
+						normalized = append(normalized, suffixFields[launcherIndex+1:]...)
+						suffixFields = normalized
+						launcher = pm
+					}
+				}
+			}
+			if isUnpinnedLauncherCommand(suffixFields, launcher, launcherIndex) {
 				return true
 			}
 			continue
 		}
 
-		if isUnpinnedLauncherCommand(fields, token, i) {
+		if isUnpinnedLauncherCommand(suffixFields, token, 0) {
 			return true
 		}
 	}
@@ -1353,6 +1505,12 @@ func normalizeLauncherToken(token string) string {
 	if token == "" {
 		return token
 	}
+	if idx := strings.LastIndexAny(token, ";|&!"); idx >= 0 && idx+1 < len(token) {
+		tail := strings.TrimSpace(token[idx+1:])
+		if tail != "" {
+			token = strings.ToLower(sanitizeRuntimeToken(tail))
+		}
+	}
 	for _, launcher := range []string{"npx", "uvx", "bunx", "pnpm", "yarn", "npm"} {
 		prefix := launcher + "@"
 		if strings.HasPrefix(token, prefix) && len(token) > len(prefix) {
@@ -1362,9 +1520,61 @@ func normalizeLauncherToken(token string) string {
 	return token
 }
 
+func normalizedRuntimeSuffixFields(fields []string, start int, first string) []string {
+	if start < 0 || start >= len(fields) {
+		return nil
+	}
+	out := make([]string, 0, len(fields)-start)
+	out = append(out, first)
+	if start+1 < len(fields) {
+		out = append(out, fields[start+1:]...)
+	}
+	return out
+}
+
+func splitCompositeRuntimeToken(raw string) (string, string, bool) {
+	token := strings.TrimSpace(sanitizeRuntimeToken(raw))
+	if token == "" {
+		return "", "", false
+	}
+	idx := strings.LastIndexAny(token, ";|&!")
+	if idx <= 0 || idx+1 >= len(token) {
+		return "", "", false
+	}
+	left := strings.TrimSpace(sanitizeRuntimeToken(token[:idx]))
+	right := normalizeLauncherToken(token[idx+1:])
+	if left == "" || right == "" {
+		return "", "", false
+	}
+	return left, right, true
+}
+
 func sanitizeRuntimeToken(token string) string {
-	token = strings.TrimSpace(token)
-	return strings.Trim(token, "\"'`,;:()[]{}")
+	for {
+		prev := token
+		token = strings.TrimSpace(token)
+		if strings.HasPrefix(token, "$(") && len(token) > 2 {
+			token = strings.TrimSpace(token[2:])
+		}
+
+		// Normalize backslash-escaped quote wrappers used in markdown/json
+		// snippets, e.g. \"deno\" -> deno.
+		if len(token) >= 4 {
+			switch {
+			case strings.HasPrefix(token, "\\\"") && strings.HasSuffix(token, "\\\""):
+				token = token[2 : len(token)-2]
+			case strings.HasPrefix(token, "\\'") && strings.HasSuffix(token, "\\'"):
+				token = token[2 : len(token)-2]
+			case strings.HasPrefix(token, "\\`") && strings.HasSuffix(token, "\\`"):
+				token = token[2 : len(token)-2]
+			}
+		}
+		token = strings.Trim(token, "\"'`,;:()[]{}&|!")
+		if token == prev {
+			break
+		}
+	}
+	return token
 }
 
 func isUnpinnedLauncherCommand(fields []string, token string, tokenIndex int) bool {
@@ -1387,7 +1597,7 @@ func isUnpinnedLauncherCommand(fields []string, token string, tokenIndex int) bo
 		return isUnpinnedPackageRef(packageRef)
 	case "pnpm", "yarn":
 		subcommand, subcommandIndex, ok := nextNonFlagFieldWithIndex(fields, tokenIndex+1)
-		if !ok || subcommand != "dlx" {
+		if !ok || !strings.EqualFold(subcommand, "dlx") {
 			return false
 		}
 
@@ -1412,7 +1622,7 @@ func isUnpinnedLauncherCommand(fields []string, token string, tokenIndex int) bo
 		return isUnpinnedPackageRef(packageRef)
 	case "npm":
 		subcommand, subcommandIndex, ok := nextNonFlagFieldWithIndex(fields, tokenIndex+1)
-		if !ok || subcommand != "exec" {
+		if !ok || !strings.EqualFold(subcommand, "exec") {
 			return false
 		}
 
@@ -1508,7 +1718,34 @@ func isRemoteScriptImportLine(lowerLine string) bool {
 	if remoteScriptDotImport.MatchString(lowerLine) {
 		return true
 	}
-	return remoteDenoRunPattern.MatchString(lowerLine)
+	return isRemoteDenoRuntimeLine(lowerLine)
+}
+
+func isRemoteDenoRuntimeLine(runtimeLine string) bool {
+	fields := strings.Fields(runtimeLine)
+	if len(fields) < 2 || !strings.EqualFold(sanitizeRuntimeToken(fields[0]), "deno") {
+		return false
+	}
+
+	subcommand := strings.ToLower(sanitizeRuntimeToken(fields[1]))
+	start := 1
+	switch subcommand {
+	case "run", "x", "serve":
+		start = 2
+	case "install":
+		if !isDenoInstallGlobalMode(fields, 2, len(fields)) {
+			return false
+		}
+		start = 2
+	}
+
+	target, ok := nextDenoRuntimeTarget(fields, start, len(fields))
+	if !ok {
+		return false
+	}
+
+	lowerTarget := strings.ToLower(strings.TrimSpace(sanitizeRuntimeToken(target)))
+	return strings.HasPrefix(lowerTarget, "https://") || strings.HasPrefix(lowerTarget, "http://")
 }
 
 func isUnpinnedPackageRef(ref string) bool {
@@ -1546,12 +1783,39 @@ func isPinnedPackageVersion(version string) bool {
 
 func isUnpinnedDenoNpmRuntimeLine(runtimeLine string) bool {
 	fields := strings.Fields(runtimeLine)
-	if len(fields) < 2 || !strings.EqualFold(fields[0], "deno") {
+	if len(fields) < 2 || !strings.EqualFold(sanitizeRuntimeToken(fields[0]), "deno") {
 		return false
 	}
 
+	subcommand := strings.ToLower(sanitizeRuntimeToken(fields[1]))
+	if subcommand == "create" {
+		return isUnpinnedDenoCreateRuntimeLine(fields, 2, len(fields))
+	}
+	if subcommand == "init" {
+		return isUnpinnedDenoInitRuntimeLine(fields, 2, len(fields))
+	}
+	if subcommand == "serve" {
+		start := 2
+		target, ok := nextDenoRuntimeTarget(fields, start, len(fields))
+		if !ok {
+			return false
+		}
+		return isUnpinnedDenoRuntimeSpecifier(target)
+	}
+	if subcommand == "install" {
+		if !isDenoInstallGlobalMode(fields, 2, len(fields)) {
+			return false
+		}
+		start := 2
+		target, ok := nextDenoRuntimeTarget(fields, start, len(fields))
+		if !ok {
+			return false
+		}
+		return isUnpinnedDenoRuntimeSpecifier(target)
+	}
+
 	start := 1
-	switch strings.ToLower(fields[1]) {
+	switch subcommand {
 	case "run", "x":
 		start = 2
 	}
@@ -1578,6 +1842,86 @@ func isUnpinnedDenoNpmRuntimeLine(runtimeLine string) bool {
 	return isUnpinnedDenoRuntimeSpecifier(target)
 }
 
+func isUnpinnedDenoCreateRuntimeLine(fields []string, start int, end int) bool {
+	packageRef, packageMode, ok := nextDenoCreatePackage(fields, start, end)
+	if !ok {
+		return false
+	}
+	return isUnpinnedDenoCreatePackageRef(packageRef, packageMode)
+}
+
+func isUnpinnedDenoInitRuntimeLine(fields []string, start int, end int) bool {
+	packageRef, packageMode, ok := nextDenoCreatePackage(fields, start, end)
+	if !ok {
+		return false
+	}
+	if packageMode == "auto" &&
+		!strings.HasPrefix(packageRef, "npm:") &&
+		!strings.HasPrefix(packageRef, "jsr:") {
+		// In auto mode, unprefixed `deno init` args are typically directories.
+		return false
+	}
+	return isUnpinnedDenoCreatePackageRef(packageRef, packageMode)
+}
+
+func nextDenoCreatePackage(fields []string, start int, end int) (string, string, bool) {
+	if start < 0 {
+		start = 0
+	}
+	if end > len(fields) {
+		end = len(fields)
+	}
+	if start >= end {
+		return "", "auto", false
+	}
+
+	packageMode := "auto"
+	for i := start; i < end; i++ {
+		token := sanitizeRuntimeToken(fields[i])
+		if token == "" {
+			continue
+		}
+		if token == "--" {
+			return "", packageMode, false
+		}
+		if strings.HasPrefix(token, "-") {
+			switch canonicalDenoFlagToken(token) {
+			case "--npm":
+				packageMode = "npm"
+			case "--jsr":
+				packageMode = "jsr"
+			}
+			continue
+		}
+		return sanitizeRuntimeToken(token), packageMode, true
+	}
+	return "", packageMode, false
+}
+
+func isUnpinnedDenoCreatePackageRef(packageRef string, packageMode string) bool {
+	packageRef = sanitizeRuntimeToken(strings.TrimSpace(packageRef))
+	if packageRef == "" {
+		return false
+	}
+
+	if strings.HasPrefix(packageRef, "npm:") || strings.HasPrefix(packageRef, "jsr:") {
+		return isUnpinnedDenoRuntimeSpecifier(packageRef)
+	}
+
+	switch packageMode {
+	case "npm":
+		return isUnpinnedPackageRef(packageRef)
+	case "jsr":
+		if strings.HasPrefix(packageRef, "@") {
+			return isUnpinnedDenoJSRSpecifier("jsr:" + packageRef)
+		}
+		// For --jsr mode, keep unprefixed package identifiers conservative.
+		return true
+	default:
+		return false
+	}
+}
+
 func extractDenoNpmPackageRefs(fields []string, start int, end int) []string {
 	if start < 0 {
 		start = 0
@@ -1591,7 +1935,8 @@ func extractDenoNpmPackageRefs(fields []string, start int, end int) []string {
 
 	out := make([]string, 0, 2)
 	for i := start; i < end; i++ {
-		token := strings.ToLower(strings.TrimSpace(fields[i]))
+		rawToken := sanitizeRuntimeToken(fields[i])
+		token := strings.ToLower(rawToken)
 		switch {
 		case token == "--package" || token == "-p":
 			if i+1 >= end {
@@ -1604,13 +1949,20 @@ func extractDenoNpmPackageRefs(fields []string, start int, end int) []string {
 			out = append(out, next)
 			i++
 		case strings.HasPrefix(token, "--package="):
-			ref := sanitizeRuntimeToken(strings.TrimPrefix(fields[i], "--package="))
+			ref := sanitizeRuntimeToken(strings.TrimPrefix(rawToken, "--package="))
 			if ref == "" {
 				continue
 			}
 			out = append(out, ref)
 		case strings.HasPrefix(token, "-p="):
-			ref := sanitizeRuntimeToken(strings.TrimPrefix(fields[i], "-p="))
+			ref := sanitizeRuntimeToken(strings.TrimPrefix(rawToken, "-p="))
+			if ref == "" {
+				continue
+			}
+			out = append(out, ref)
+		case strings.HasPrefix(token, "-p"):
+			// Support attached short-form package refs like `-pnpm:create-vite`.
+			ref := sanitizeRuntimeToken(strings.TrimPrefix(rawToken, "-p"))
 			if ref == "" {
 				continue
 			}
@@ -1631,65 +1983,8 @@ func nextDenoRuntimeTarget(fields []string, start int, end int) (string, bool) {
 		return "", false
 	}
 
-	flagNeedsValue := map[string]struct{}{
-		"-c":              {},
-		"--config":        {},
-		"--import-map":    {},
-		"--conditions":    {},
-		"--location":      {},
-		"--cert":          {},
-		"--lock":          {},
-		"--env-file":      {},
-		"--preload":       {},
-		"--seed":          {},
-		"--package":       {},
-		"--strace-ops":    {},
-		"--strace-filter": {},
-		"--ext":           {},
-		"--log-level":     {},
-		"--v8-flags":      {},
-		"-p":              {},
-	}
-	flagOptionalKnownValue := map[string]struct{}{
-		"--reload":           {},
-		"-r":                 {},
-		"--check":            {},
-		"--no-check":         {},
-		"--coverage":         {},
-		"--inspect":          {},
-		"--inspect-brk":      {},
-		"--inspect-wait":     {},
-		"--watch":            {},
-		"--watch-exclude":    {},
-		"--watch-hmr":        {},
-		"--vendor":           {},
-		"--node-modules-dir": {},
-		"--allow-scripts":    {},
-		"--allow-import":     {},
-		"--allow-read":       {},
-		"-R":                 {},
-		"--allow-write":      {},
-		"-W":                 {},
-		"--allow-net":        {},
-		"-N":                 {},
-		"--allow-env":        {},
-		"-E":                 {},
-		"--allow-run":        {},
-		"--allow-ffi":        {},
-		"--allow-sys":        {},
-		"-S":                 {},
-		"--deny-read":        {},
-		"--deny-write":       {},
-		"--deny-net":         {},
-		"--deny-env":         {},
-		"--deny-run":         {},
-		"--deny-ffi":         {},
-		"--deny-import":      {},
-		"--deny-sys":         {},
-	}
-
 	for i := start; i < end; i++ {
-		token := strings.TrimSpace(fields[i])
+		token := sanitizeRuntimeToken(fields[i])
 		if token == "" {
 			continue
 		}
@@ -1708,11 +2003,11 @@ func nextDenoRuntimeTarget(fields []string, start int, end int) (string, bool) {
 				continue
 			}
 			flagKey := canonicalDenoFlagToken(token)
-			if _, needsValue := flagNeedsValue[flagKey]; needsValue {
+			if isDenoRequiredValueFlag(flagKey) {
 				i++
 				continue
 			}
-			if _, hasOptionalValue := flagOptionalKnownValue[flagKey]; hasOptionalValue && i+1 < end {
+			if isDenoOptionalValueFlag(flagKey) && i+1 < end {
 				next := strings.ToLower(sanitizeRuntimeToken(fields[i+1]))
 				if isKnownDenoOptionalFlagValue(flagKey, next, fields, i+2, end) {
 					i++
@@ -1720,7 +2015,7 @@ func nextDenoRuntimeTarget(fields []string, start int, end int) (string, bool) {
 			}
 			continue
 		}
-		return sanitizeRuntimeToken(token), true
+		return token, true
 	}
 	return "", false
 }
@@ -1736,54 +2031,16 @@ func isKnownDenoOptionalFlagValue(
 		return false
 	}
 
+	if validator, ok := denoOptionalValueValidatorsRequiringCandidate[flag]; ok {
+		// Consume split optional values only when another runtime candidate
+		// follows, so omitted-value forms cannot hide specifier targets.
+		if !hasDenoRuntimeCandidateAfter(fields, nextStart, end) {
+			return false
+		}
+		return validator(value)
+	}
+
 	switch flag {
-	case "--reload", "-r":
-		// Avoid mistaking reload blocklist values for the runtime target only when
-		// another candidate target exists later in the command.
-		if !hasDenoRuntimeCandidateAfter(fields, nextStart, end) {
-			return false
-		}
-		for _, part := range strings.Split(value, ",") {
-			if !isDenoReloadBlocklistValue(strings.TrimSpace(part)) {
-				return false
-			}
-		}
-		return true
-	case "--coverage":
-		if !hasDenoRuntimeCandidateAfter(fields, nextStart, end) {
-			return false
-		}
-		return isDenoCoverageValue(value)
-	case "--check":
-		if !hasDenoRuntimeCandidateAfter(fields, nextStart, end) {
-			return false
-		}
-		return isDenoCheckValue(value)
-	case "--no-check":
-		if !hasDenoRuntimeCandidateAfter(fields, nextStart, end) {
-			return false
-		}
-		return isDenoNoCheckValue(value)
-	case "--inspect", "--inspect-brk", "--inspect-wait":
-		if !hasDenoRuntimeCandidateAfter(fields, nextStart, end) {
-			return false
-		}
-		return isDenoInspectValue(value)
-	case "--watch":
-		if !hasDenoRuntimeCandidateAfter(fields, nextStart, end) {
-			return false
-		}
-		return isDenoWatchValue(value)
-	case "--watch-exclude":
-		if !hasDenoRuntimeCandidateAfter(fields, nextStart, end) {
-			return false
-		}
-		return isDenoWatchValue(value)
-	case "--watch-hmr":
-		if !hasDenoRuntimeCandidateAfter(fields, nextStart, end) {
-			return false
-		}
-		return isDenoWatchValue(value)
 	case "--vendor":
 		return value == "true" || value == "false"
 	case "--node-modules-dir":
@@ -1791,97 +2048,21 @@ func isKnownDenoOptionalFlagValue(
 		case "auto", "manual", "none", "true", "false":
 			return true
 		}
-	case "--allow-scripts":
-		// Consume split allow-scripts values only when they are package-like
-		// tokens and another runtime candidate follows.
-		if !hasDenoRuntimeCandidateAfter(fields, nextStart, end) {
-			return false
-		}
-		return isDenoAllowScriptsValue(value)
-	case "--allow-import":
-		// Consume split allow-import values only when they look like import
-		// host/url allowlist entries and another runtime candidate follows.
-		if !hasDenoRuntimeCandidateAfter(fields, nextStart, end) {
-			return false
-		}
-		return isDenoAllowImportValue(value)
-	case "--allow-read", "-R":
-		if !hasDenoRuntimeCandidateAfter(fields, nextStart, end) {
-			return false
-		}
-		return isDenoAllowReadValue(value)
-	case "--allow-net", "-N":
-		if !hasDenoRuntimeCandidateAfter(fields, nextStart, end) {
-			return false
-		}
-		return isDenoAllowNetValue(value)
-	case "--allow-write", "-W":
-		if !hasDenoRuntimeCandidateAfter(fields, nextStart, end) {
-			return false
-		}
-		return isDenoAllowWriteValue(value)
-	case "--allow-env", "-E":
-		if !hasDenoRuntimeCandidateAfter(fields, nextStart, end) {
-			return false
-		}
-		return isDenoAllowEnvValue(value)
-	case "--allow-run":
-		if !hasDenoRuntimeCandidateAfter(fields, nextStart, end) {
-			return false
-		}
-		return isDenoAllowRunValue(value)
-	case "--allow-ffi":
-		if !hasDenoRuntimeCandidateAfter(fields, nextStart, end) {
-			return false
-		}
-		return isDenoAllowFFIValue(value)
-	case "--allow-sys", "-S":
-		if !hasDenoRuntimeCandidateAfter(fields, nextStart, end) {
-			return false
-		}
-		return isDenoAllowSysValue(value)
-	case "--deny-read":
-		if !hasDenoRuntimeCandidateAfter(fields, nextStart, end) {
-			return false
-		}
-		return isDenoAllowReadValue(value)
-	case "--deny-write":
-		if !hasDenoRuntimeCandidateAfter(fields, nextStart, end) {
-			return false
-		}
-		return isDenoAllowWriteValue(value)
-	case "--deny-net":
-		if !hasDenoRuntimeCandidateAfter(fields, nextStart, end) {
-			return false
-		}
-		return isDenoAllowNetValue(value)
-	case "--deny-env":
-		if !hasDenoRuntimeCandidateAfter(fields, nextStart, end) {
-			return false
-		}
-		return isDenoAllowEnvValue(value)
-	case "--deny-run":
-		if !hasDenoRuntimeCandidateAfter(fields, nextStart, end) {
-			return false
-		}
-		return isDenoAllowRunValue(value)
-	case "--deny-ffi":
-		if !hasDenoRuntimeCandidateAfter(fields, nextStart, end) {
-			return false
-		}
-		return isDenoAllowFFIValue(value)
-	case "--deny-import":
-		if !hasDenoRuntimeCandidateAfter(fields, nextStart, end) {
-			return false
-		}
-		return isDenoAllowImportValue(value)
-	case "--deny-sys":
-		if !hasDenoRuntimeCandidateAfter(fields, nextStart, end) {
-			return false
-		}
-		return isDenoAllowSysValue(value)
 	}
 	return false
+}
+
+func isDenoReloadValue(value string) bool {
+	for _, part := range strings.Split(value, ",") {
+		if !isDenoReloadBlocklistValue(strings.TrimSpace(part)) {
+			return false
+		}
+	}
+	return true
+}
+
+func isDenoFrozenValue(value string) bool {
+	return value == "true" || value == "false"
 }
 
 func isDenoReloadBlocklistValue(value string) bool {
@@ -1964,6 +2145,69 @@ func isDenoNoCheckValue(value string) bool {
 		if token == "" || strings.HasPrefix(token, "-") {
 			return false
 		}
+	}
+	return true
+}
+
+func isDenoEnvFileValue(value string) bool {
+	if value == "" || strings.HasPrefix(value, "-") {
+		return false
+	}
+	lower := strings.ToLower(value)
+	if strings.HasPrefix(lower, "npm:") || strings.HasPrefix(lower, "jsr:") ||
+		strings.HasPrefix(lower, "http://") || strings.HasPrefix(lower, "https://") {
+		return false
+	}
+	return true
+}
+
+func isDenoInstallAliasValue(value string) bool {
+	if value == "" || strings.HasPrefix(value, "-") {
+		return false
+	}
+	lower := strings.ToLower(value)
+	if strings.HasPrefix(lower, "npm:") || strings.HasPrefix(lower, "jsr:") ||
+		strings.HasPrefix(lower, "http://") || strings.HasPrefix(lower, "https://") {
+		return false
+	}
+	if strings.Contains(value, "/") || strings.Contains(value, "\\") ||
+		strings.Contains(value, ":") || strings.Contains(value, "@") {
+		return false
+	}
+	for i := 0; i < len(value); i++ {
+		ch := value[i]
+		switch {
+		case ch >= 'a' && ch <= 'z':
+		case ch >= 'A' && ch <= 'Z':
+		case ch >= '0' && ch <= '9':
+		case ch == '-', ch == '_':
+		default:
+			return false
+		}
+	}
+	return true
+}
+
+func isDenoTunnelValue(value string) bool {
+	if value == "" || strings.HasPrefix(value, "-") {
+		return false
+	}
+	lower := strings.ToLower(value)
+	if strings.HasPrefix(lower, "npm:") || strings.HasPrefix(lower, "jsr:") ||
+		strings.HasPrefix(lower, "http://") || strings.HasPrefix(lower, "https://") {
+		return false
+	}
+	return true
+}
+
+func isDenoLockValue(value string) bool {
+	if value == "" || strings.HasPrefix(value, "-") {
+		return false
+	}
+	lower := strings.ToLower(value)
+	if strings.HasPrefix(lower, "npm:") || strings.HasPrefix(lower, "jsr:") ||
+		strings.HasPrefix(lower, "http://") || strings.HasPrefix(lower, "https://") {
+		return false
 	}
 	return true
 }
@@ -2289,28 +2533,8 @@ func hasDenoRuntimeCandidateAfter(fields []string, start int, end int) bool {
 		return false
 	}
 
-	flagNeedsValue := map[string]struct{}{
-		"-c":              {},
-		"--config":        {},
-		"--import-map":    {},
-		"--conditions":    {},
-		"--location":      {},
-		"--cert":          {},
-		"--lock":          {},
-		"--env-file":      {},
-		"--preload":       {},
-		"--seed":          {},
-		"--package":       {},
-		"--strace-ops":    {},
-		"--strace-filter": {},
-		"--ext":           {},
-		"--log-level":     {},
-		"--v8-flags":      {},
-		"-p":              {},
-	}
-
 	for i := start; i < end; i++ {
-		token := strings.TrimSpace(fields[i])
+		token := sanitizeRuntimeToken(fields[i])
 		if token == "" {
 			continue
 		}
@@ -2329,7 +2553,7 @@ func hasDenoRuntimeCandidateAfter(fields []string, start int, end int) bool {
 				continue
 			}
 			flagKey := canonicalDenoFlagToken(token)
-			if _, needsValue := flagNeedsValue[flagKey]; needsValue {
+			if isDenoRequiredValueFlag(flagKey) {
 				i++
 			}
 			continue
@@ -2344,6 +2568,16 @@ func canonicalDenoFlagToken(token string) string {
 		return strings.ToLower(token)
 	}
 	return token
+}
+
+func isDenoRequiredValueFlag(flagToken string) bool {
+	_, ok := denoRequiredValueFlags[flagToken]
+	return ok
+}
+
+func isDenoOptionalValueFlag(flagToken string) bool {
+	_, ok := denoOptionalValueFlags[flagToken]
+	return ok
 }
 
 func isUnpinnedDenoNpmSpecifier(ref string) bool {
@@ -2435,12 +2669,99 @@ func isUnpinnedDenoJSRSpecifier(ref string) bool {
 	return !isPinnedPackageVersion(version)
 }
 
-func nextNonFlagFieldWithIndex(fields []string, start int) (string, int, bool) {
-	for i := start; i < len(fields); i++ {
-		if strings.HasPrefix(fields[i], "-") {
+func isDenoInstallGlobalMode(fields []string, start int, end int) bool {
+	if start < 0 {
+		start = 0
+	}
+	if end > len(fields) {
+		end = len(fields)
+	}
+	for i := start; i < end; i++ {
+		token := sanitizeRuntimeToken(fields[i])
+		if token == "" {
 			continue
 		}
-		return fields[i], i, true
+		if token == "--" {
+			return false
+		}
+		if strings.EqualFold(token, "-g") || strings.EqualFold(token, "--global") {
+			return true
+		}
+		if hasShortFlagInCluster(token, 'g') {
+			return true
+		}
+		if strings.HasPrefix(strings.ToLower(token), "--global=") {
+			value := token[len("--global="):]
+			if parsed, ok := parseBoolLikeToken(value); ok {
+				if parsed {
+					return true
+				}
+				continue
+			}
+			continue
+		}
+	}
+	return false
+}
+
+func hasShortFlagInCluster(token string, shortFlag byte) bool {
+	if len(token) < 2 || token[0] != '-' || token[1] == '-' {
+		return false
+	}
+	end := len(token)
+	if eq := strings.IndexByte(token, '='); eq >= 0 {
+		end = eq
+	}
+	if end <= 1 {
+		return false
+	}
+	for i := 1; i < end; i++ {
+		current := token[i]
+		if current == shortFlag {
+			return true
+		}
+		// For short flags that may consume attached values (for example `-Nhost`),
+		// treat the remaining token bytes as that flag's value, not as a flag cluster.
+		if shortFlagMayConsumeAttachedValue(current) && i < end-1 {
+			break
+		}
+	}
+	return false
+}
+
+func shortFlagMayConsumeAttachedValue(flag byte) bool {
+	switch flag {
+	case 'c', 'e', 'n', 'p', 'L':
+		return true
+	case 'r', 't', 'I', 'R', 'W', 'N', 'E', 'S':
+		return true
+	default:
+		return false
+	}
+}
+
+func parseBoolLikeToken(value string) (bool, bool) {
+	lower := strings.ToLower(strings.TrimSpace(value))
+	switch lower {
+	case "1", "true", "on", "yes":
+		return true, true
+	case "0", "false", "off", "no":
+		return false, true
+	default:
+		return false, false
+	}
+}
+
+func nextNonFlagFieldWithIndex(fields []string, start int) (string, int, bool) {
+	for i := start; i < len(fields); i++ {
+		token := sanitizeRuntimeToken(fields[i])
+		if token == "" {
+			continue
+		}
+		if strings.HasPrefix(token, "-") {
+			continue
+		}
+		return token, i, true
 	}
 	return "", -1, false
 }
@@ -2458,7 +2779,8 @@ func extractPackageRefsFromFlags(fields []string, start int, end int) []string {
 
 	out := make([]string, 0, 2)
 	for i := start; i < end; i++ {
-		token := strings.ToLower(strings.TrimSpace(fields[i]))
+		rawToken := sanitizeRuntimeToken(fields[i])
+		token := strings.ToLower(rawToken)
 		switch {
 		case token == "--package" || token == "-p":
 			if i+1 >= end {
@@ -2471,13 +2793,20 @@ func extractPackageRefsFromFlags(fields []string, start int, end int) []string {
 			out = append(out, next)
 			i++
 		case strings.HasPrefix(token, "--package="):
-			ref := sanitizeRuntimeToken(strings.TrimPrefix(fields[i], "--package="))
+			ref := sanitizeRuntimeToken(strings.TrimPrefix(rawToken, "--package="))
 			if ref == "" {
 				continue
 			}
 			out = append(out, ref)
 		case strings.HasPrefix(token, "-p="):
-			ref := sanitizeRuntimeToken(strings.TrimPrefix(fields[i], "-p="))
+			ref := sanitizeRuntimeToken(strings.TrimPrefix(rawToken, "-p="))
+			if ref == "" {
+				continue
+			}
+			out = append(out, ref)
+		case strings.HasPrefix(token, "-p"):
+			// Support attached short-form package refs like `-p@scope/tool`.
+			ref := sanitizeRuntimeToken(strings.TrimPrefix(rawToken, "-p"))
 			if ref == "" {
 				continue
 			}
@@ -2499,7 +2828,7 @@ func nextRuntimePackageCandidate(fields []string, start int, end int) (string, b
 	}
 
 	for i := start; i < end; i++ {
-		token := strings.ToLower(strings.TrimSpace(fields[i]))
+		token := strings.ToLower(sanitizeRuntimeToken(fields[i]))
 		if token == "" {
 			continue
 		}
@@ -2521,6 +2850,9 @@ func nextRuntimePackageCandidate(fields []string, start int, end int) (string, b
 			continue
 		}
 		if strings.HasPrefix(token, "-c=") || strings.HasPrefix(token, "--call=") {
+			return "", false
+		}
+		if strings.HasPrefix(token, "-c") && len(token) > 2 {
 			return "", false
 		}
 		if strings.HasPrefix(token, "-p=") || strings.HasPrefix(token, "--package=") {
@@ -2586,7 +2918,7 @@ func findGoRunArgsStart(fields []string, tokenIndex int) (int, bool) {
 		return -1, false
 	}
 	for i := tokenIndex + 1; i < len(fields); i++ {
-		token := strings.TrimSpace(fields[i])
+		token := strings.ToLower(strings.TrimSpace(sanitizeRuntimeToken(fields[i])))
 		if token == "" {
 			continue
 		}
@@ -2597,11 +2929,11 @@ func findGoRunArgsStart(fields []string, tokenIndex int) (int, bool) {
 			return i + 1, true
 		}
 		// `go -C <dir> run ...` is a common pre-subcommand form.
-		if token == "-c" || token == "-C" {
+		if token == "-c" {
 			i++
 			continue
 		}
-		if strings.HasPrefix(token, "-c=") || strings.HasPrefix(token, "-C=") {
+		if strings.HasPrefix(token, "-c=") {
 			continue
 		}
 		if strings.HasPrefix(token, "-") {
@@ -2636,10 +2968,11 @@ func nextGoRunTarget(fields []string, start int, end int) (string, bool) {
 	}
 
 	for i := start; i < end; i++ {
-		token := strings.TrimSpace(fields[i])
+		token := strings.TrimSpace(sanitizeRuntimeToken(fields[i]))
 		if token == "" {
 			continue
 		}
+		lowerToken := strings.ToLower(token)
 		if token == "--" {
 			for j := i + 1; j < end; j++ {
 				candidate := sanitizeRuntimeToken(fields[j])
@@ -2650,16 +2983,16 @@ func nextGoRunTarget(fields []string, start int, end int) (string, bool) {
 			}
 			return "", false
 		}
-		if strings.HasPrefix(token, "-") {
-			if strings.Contains(token, "=") {
+		if strings.HasPrefix(lowerToken, "-") {
+			if strings.Contains(lowerToken, "=") {
 				continue
 			}
-			if _, needsValue := flagNeedsValue[token]; needsValue {
+			if _, needsValue := flagNeedsValue[lowerToken]; needsValue {
 				i++
 			}
 			continue
 		}
-		return sanitizeRuntimeToken(token), true
+		return token, true
 	}
 	return "", false
 }

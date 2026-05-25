@@ -26,7 +26,9 @@ tests/CI:
 - Scan/update walker hardening for symlink/non-directory root rejection and
   non-regular file rejection before reads
 - extensionless script coverage for shebang files and executable-bit files in scan target classification
+- UTF-8 BOM-prefixed extensionless shebang script coverage in scan target classification
 - Commit-pinned GitHub source fetch and install/update/verify provenance checks
+- Commit-pinned GitHub source enforcement for `inspect` (floating refs rejected)
 - GitHub archive network hardening (strict redirect cap/constraints + response content-type/encoding validation)
 - GitHub archive strict stream-size enforcement with overflow-write prevention and cleanup
 - GitHub source parser length bounds (input and owner/repo/path/ref segments)
@@ -101,21 +103,83 @@ tests/CI:
 - high-severity detection of remote script import patterns under unpinned runtime tooling
 - unpinned-runtime pin checks that resolve npm/npx package-flag forms and
   ignore call-flag command values as package refs
+- call-flag exclusion also covers attached short forms (for example
+  `npx -cecho ...`)
+- unpinned-runtime pin checks also resolve attached short package forms
+  (for example `npx -p@scope/tool@...`)
+- quoted runtime flag tokens are normalized before package/call interpretation
+  for launcher pin checks
 - aligned pnpm/yarn dlx checks with the same package-flag and call-flag handling model
 - hardened go-run target extraction for split-value flags and separator forms
 - hardened go-run detection for pre-subcommand `go -C <dir> run ...` form
+- quoted go-run subcommand/flag token normalization for go-run target
+  extraction (for example `go "run" ...` and `go "-C" <dir> "run" ...`)
 - unpinned-runtime detection for `deno run/x` npm specifier execution paths
 - unpinned-runtime detection for `deno run/x` jsr specifier execution paths
+- unpinned-runtime detection for `deno create` template package execution paths
+  (including `--npm`/`--jsr` unprefixed package modes)
+- unpinned-runtime detection for `deno init` package-generation execution paths
+  (including `--npm`/`--jsr` package modes)
+- unpinned-runtime detection for `deno serve` runtime specifier execution paths
+- unpinned-runtime detection for `deno install -g/--global` runtime specifier execution paths
+- unpinned-runtime detection for remote `http(s)` Deno target execution in
+  `deno run/x/serve`, `deno install -g/--global`, and run-omitted
+  `deno <url>` forms
 - deno `--package` runtime checks also evaluate target specifiers for unpinned refs
+- deno `-p<specifier>` attached short package forms are extracted for pin checks
 - deno runtime target extraction handles optional-value flags (`--reload`/`-r`,
-  `--vendor`, and `--node-modules-dir`) without skipping unpinned specifier targets
+  `--frozen`, `--vendor`, and `--node-modules-dir`) without skipping unpinned
+  specifier targets
+- for `deno x`, split `--install-alias` forms are interpreted before target
+  extraction so later runtime specifier targets remain pin-checked
+- quoted Deno launcher/subcommand/flag tokens are normalized before target
+  extraction so quoted `deno`/`run`/`install` forms remain pin-checked
+- backslash-escaped quoted Deno launcher/subcommand/flag tokens (for example
+  `\"deno\"` / `\"run\"`) are normalized before target extraction so escaped
+  quote forms remain pin-checked
+- deno runtime checks also evaluate `deno` tokens that appear later in a line
+  (for example prefixed command strings like `echo && deno run ...`) so
+  embedded forms remain pin-checked
+- control-operator-adjacent launcher/runtime tokens (for example `&&deno`,
+  `||npx`, and `!deno`) are normalized before runtime/launcher evaluation so
+  glued forms remain pin-checked
+- separator-adjacent launcher/runtime tokens embedded in the same field (for
+  example `echo;deno`, `echo;!deno`, and `echo;npx`) are normalized before
+  runtime/launcher evaluation so non-whitespace separator forms remain
+  pin-checked
+- corepack-wrapped compact package-manager/subcommand forms in the same field
+  (for example `corepack pnpm;dlx ...` and `corepack npm;exec ...`) are
+  decomposed before runtime/launcher evaluation so those forms remain
+  pin-checked
+- command-substitution-prefixed launcher/runtime tokens (for example `$(deno`
+  / `$(npx` / `$(corepack`) are normalized before runtime/launcher evaluation
+  so substitution forms remain pin-checked
+- deno split `--node-modules-linker` forms are interpreted before target
+  extraction so later runtime specifier targets remain pin-checked
+- deno split `--minimum-dependency-age` forms are interpreted before target
+  extraction so later runtime specifier targets remain pin-checked
+- deno split `--tunnel`/`-t` forms are interpreted before target extraction so
+  later runtime specifier targets remain pin-checked
+- deno `serve` split `--host`/`--port` forms are interpreted before target
+  extraction so later runtime specifier targets remain pin-checked
+- deno `install -g/--global` split `--name`/`-n`, `--root`, and
+  `--entrypoint`/`-e` forms are interpreted before target extraction so later
+  runtime specifier targets remain pin-checked
+- deno split `--lock` forms are interpreted before target extraction so later
+  runtime specifier targets remain pin-checked
+- deno split `--cpu-prof-dir`/`--cpu-prof-interval`/`--cpu-prof-name` forms
+  are interpreted before target extraction so later runtime specifier targets
+  remain pin-checked
 - deno `--reload`/`-r` split blocklist values are interpreted before target
   extraction so later unpinned runtime targets are still detected
+- deno split `--frozen` boolean forms are interpreted before target extraction
+  so later runtime specifier targets remain pin-checked
 - deno split `--allow-scripts` package-value forms are interpreted
   conservatively before target extraction so later runtime specifier targets are
   still evaluated for pinning
-- deno split `--allow-import` host/url allowlist forms are interpreted before
-  target extraction so later runtime specifier targets remain pin-checked
+- deno split `--allow-import` host/url allowlist forms (including `-I`) are
+  interpreted before target extraction so later runtime specifier targets
+  remain pin-checked
 - deno split permission forms for `--allow-read`/`--allow-net`/`--allow-env`
   (and `-R`/`-N`/`-E`) are interpreted before target extraction so later
   runtime specifier targets remain pin-checked
@@ -132,20 +196,21 @@ tests/CI:
   `--inspect-wait`) and split `--ext` forms are interpreted before target
   extraction so later runtime specifier targets remain pin-checked
 - deno split `--watch`/`--watch-exclude`/`--watch-hmr` forms and split
-  `--env-file`/`--preload` forms are interpreted before target extraction so
-  later runtime specifier targets remain pin-checked
+  `--env-file`/`--preload`/`--require` forms (including the `--import` preload
+  alias) are interpreted before target extraction so later runtime specifier
+  targets remain pin-checked
 - deno split `--conditions` forms are interpreted before target extraction so
   later runtime specifier targets remain pin-checked
 - deno split `--strace-ops`/`--strace-filter` forms are interpreted before
   target extraction so later runtime specifier targets remain pin-checked
 - deno split `--coverage` forms and split `--v8-flags` forms are interpreted
   before target extraction so later runtime specifier targets remain pin-checked
-- deno split `--check`/`--no-check` forms and split `--log-level` forms are
-  interpreted before target extraction so later runtime specifier targets
-  remain pin-checked
+- deno split `--check`/`--no-check` forms and split `--log-level` forms
+  (including `-L`) are interpreted before target extraction so later runtime
+  specifier targets remain pin-checked
 - dependency manifest scanning coverage for `package.json`, `pyproject.toml`,
-  `requirements.txt`, `uv.lock`, `go.mod`, `Gemfile`, and `deno.json` as
-  first-class scan inputs
+  `requirements.txt`, `uv.lock`, `go.mod`, `Gemfile`, `deno.json`, and
+  `deno.jsonc` as first-class scan inputs
 
 This roadmap section below remains forward-looking for gaps and future phases.
 
@@ -295,6 +360,7 @@ code.
   - `go.mod`
   - `Gemfile`
   - `deno.json`
+  - `deno.jsonc`
 - Flag unpinned runtime tools:
   - `npx foo`
   - `uvx foo`

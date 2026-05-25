@@ -23,9 +23,9 @@ basic markdown threat scanning, emits draft human/JSON reports, and supports
 `--format sarif` for CI/code-scanning pipelines. Decisions remain
 `PASS`/`REJECTED`. In JSON mode, fatal inspect failures emit
 machine-readable top-level `error_code` for automation. In SARIF mode, fatal
-inspect and `vet` failures emit a single structured error result. For GitHub sources, floating refs remain
-inspect-only pre-release stubs, while commit-pinned refs are fetched and
-scanned.
+inspect and `vet` failures emit a single structured error result. For GitHub
+sources, inspect requires commit-pinned refs; floating refs are rejected before
+source preparation.
 `fetch`, `inspect`, `vet`, `install`, `update`, and `lock verify` also support `--format compact` for single-line CI summaries.
 `inspect` and `vet` also support `--format review-json`, a neutralized structured
 export for optional human/AI-assisted review pipelines.
@@ -146,32 +146,90 @@ Broad Bash wildcard tool permissions are now flagged as high severity.
 Unknown/unclassified file types are now flagged as medium severity for manual
 review.
 Remote script import patterns (for example `source <(curl ...)`, `. <(curl ...)`, and
-`deno run https://...`) plus floating runtime launchers (for example `bunx`,
+`deno run/x/serve https://...` (plus `deno install -g/--global https://...`, and run-omitted `deno https://...`) plus floating runtime launchers (for example `bunx`,
 `pnpm dlx`, `yarn dlx`, and `npm exec`, including `corepack`-wrapped forms)
 are now flagged under
 `UNPINNED_RUNTIME_TOOL`.
 Package-flag forms (for example `npm exec --package ...` and `npx -p ...`) are
 also resolved for pinning checks to reduce false positives on exact versions.
+Attached short package forms (for example `npx -p@scope/tool@...`) are also
+resolved for pinning checks.
 `npm exec --call ...` / `npx -c ...` command forms are ignored as package refs,
+including attached short forms such as `npx -cecho ...`,
+and quoted flag tokens are normalized before package/call interpretation.
 while explicit package-like tokens after `--` remain checked.
 The same call-flag exclusion and separator handling are applied to `pnpm/yarn`
 `dlx` evaluation paths.
 `go run` pin checks also handle split-value flags (for example `-mod mod`,
 `-exec env`) and `--` separator forms when extracting module targets.
 Pre-subcommand forms such as `go -C <dir> run ...` are also parsed for pin checks.
+Quoted go-run subcommand/flag tokens (for example `go "run" ...` and
+`go "-C" <dir> "run" ...`) are normalized before go-run target extraction.
 `deno run`/`deno x` npm-specifier execution (including `--package` forms) is
 also checked for unpinned package/version refs.
 `deno run`/`deno x` jsr-specifier execution is also checked for unpinned refs.
+`deno create` template package execution paths are also checked for unpinned
+npm/jsr refs (including `--npm`/`--jsr` unprefixed package modes).
+`deno init` package-generation execution paths are also checked for unpinned
+npm/jsr refs (including `--npm`/`--jsr` package modes).
+`deno serve` runtime specifier execution paths are also checked for unpinned
+npm/jsr refs.
+`deno install -g/--global` runtime specifier execution paths are also checked
+for unpinned npm/jsr refs.
 When `--package` is present for `deno x`, target specifiers are also evaluated.
+Attached short package forms such as `-pnpm:create-vite@...` and
+`-pjsr:@scope/name@...` are also extracted for pin checks.
 `deno run` target extraction also handles optional-value flag forms such as
-`--reload`/`-r`, `--vendor`, and `--node-modules-dir` without skipping unpinned
-runtime specifier targets.
+`--reload`/`-r`, `--frozen`, `--vendor`, and `--node-modules-dir` without
+skipping unpinned runtime specifier targets.
+For `deno serve`, split `--host` and `--port` forms are interpreted before
+runtime target resolution so later runtime specifier targets remain pin-checked.
+For `deno install -g/--global`, split `--name`/`-n`, `--root`, and
+`--entrypoint`/`-e` forms are interpreted before runtime target resolution so
+later runtime specifier targets remain pin-checked.
+For `deno x`, split `--install-alias` forms are interpreted before runtime
+target resolution so later runtime specifier targets remain pin-checked.
+Quoted Deno launcher/subcommand/flag tokens are normalized before runtime
+target resolution so quoted `deno`/`run`/`install` forms cannot bypass checks.
+Backslash-escaped quoted Deno launcher/subcommand/flag tokens (for example
+`\"deno\"` and `\"run\"`) are also normalized before runtime target
+resolution so escaped-quote forms cannot bypass checks.
+Deno runtime checks also evaluate `deno` tokens that appear later in a line
+(for example prefixed command strings like `echo prep && deno run ...`) so
+embedded forms remain pin-checked.
+Control-operator-adjacent launcher tokens (for example `&&deno`, `||npx`, and
+`!deno`) are normalized before runtime/launcher evaluation so glued forms
+remain pin-checked.
+Separator-adjacent launcher tokens embedded in the same field (for example
+`echo;deno`, `echo;!deno`, and `echo;npx`) are normalized before
+runtime/launcher evaluation
+so non-whitespace separator forms remain pin-checked.
+For corepack-wrapped flows, compact package-manager/subcommand forms in the
+same field (for example `corepack pnpm;dlx ...` and `corepack npm;exec ...`)
+are decomposed before evaluation so those forms remain pin-checked.
+Command-substitution-prefixed launcher/runtime tokens (for example `$(deno`
+`$(npx`, and `$(corepack`) are normalized before runtime/launcher evaluation
+so substitution forms remain pin-checked.
+Split `--node-modules-linker` forms are interpreted before runtime target
+resolution so later runtime specifier targets remain pin-checked.
+Split `--minimum-dependency-age` forms are interpreted before runtime target
+resolution so later runtime specifier targets remain pin-checked.
+Split `--tunnel`/`-t` forms are interpreted before runtime target resolution so
+later runtime specifier targets remain pin-checked.
+Split `--lock` forms are interpreted before runtime target resolution so later
+runtime specifier targets remain pin-checked.
+Split `--cpu-prof-dir`/`--cpu-prof-interval`/`--cpu-prof-name` forms are
+interpreted before runtime target resolution so later runtime specifier targets
+remain pin-checked.
 For `--reload`/`-r`, split cache-blocklist values are interpreted before target
 resolution so a pinned blocklist value cannot mask a later unpinned runtime target.
+For split `--frozen` forms, boolean values are interpreted before target
+resolution so later runtime specifier targets remain pin-checked.
 For split `--allow-scripts` forms, package-like values are interpreted
 conservatively so later runtime specifier targets are still evaluated for pinning.
-For split `--allow-import` forms, host/URL allowlist-like values are interpreted
-before target resolution so later runtime specifier targets remain pin-checked.
+For split `--allow-import` forms (including `-I`), host/URL allowlist-like
+values are interpreted before target resolution so later runtime specifier
+targets remain pin-checked.
 For split `--allow-read`, `--allow-net`, and `--allow-env` forms (including
 `-R`/`-N`/`-E`), permission value tokens are interpreted before runtime target
 resolution so later runtime specifier targets remain pin-checked.
@@ -188,8 +246,9 @@ Split inspector-address forms (`--inspect`, `--inspect-brk`, `--inspect-wait`)
 and split `--ext` forms are also interpreted before runtime target resolution
 so later runtime specifier targets remain pin-checked.
 Split `--watch`/`--watch-exclude`/`--watch-hmr` forms and split
-`--env-file`/`--preload` forms are interpreted before runtime target
-resolution so later runtime specifier targets remain pin-checked.
+`--env-file`/`--preload`/`--require` forms (including the `--import` preload
+alias) are interpreted before runtime target resolution so later runtime
+specifier targets remain pin-checked.
 Split `--conditions` forms are also interpreted before runtime target
 resolution so later runtime specifier targets remain pin-checked.
 Split `--strace-ops`/`--strace-filter` forms are also interpreted before
@@ -197,7 +256,8 @@ runtime target resolution so later runtime specifier targets remain pin-checked.
 Split `--coverage` forms and split `--v8-flags` forms are also interpreted
 before runtime target resolution so later runtime specifier targets remain
 pin-checked.
-Split `--check`/`--no-check` forms and split `--log-level` forms are also
+Split `--check`/`--no-check` forms and split `--log-level` forms (including
+`-L`) are also
 interpreted before runtime target resolution so later runtime specifier targets
 remain pin-checked.
 Bounded base64/base64url/hex payload deobfuscation now rescans decoded text artifacts
@@ -230,9 +290,10 @@ for expected archive content types and content encoding. Streamed size limits
 are enforced without writing overflow bytes, and partial archive files are
 removed on failure. Redirect following is also capped to a strict maximum.
 GitHub source syntax is now strictly validated as
-`github:owner/repo//path/to/skill@ref`; `install` requires commit-pinned refs
-for GitHub sources and rejects floating refs. `install` and `update` validate
-fetched source metadata for GitHub-origin skills.
+`github:owner/repo//path/to/skill@ref`; `inspect`, `install`, and `update`
+require commit-pinned refs for GitHub sources and reject floating refs.
+`install` and `update` validate fetched source metadata for GitHub-origin
+skills.
 Parser bounds are also enforced for overall source length and owner/repo/path/ref
 segment lengths.
 Local directory inspect already enforces that `SKILL.md` exists at the skill
@@ -360,6 +421,7 @@ rule-prefixed validation error is available.
 | `INSPECT_ARGS_INVALID` | CLI argument parse/validation failed |
 | `INSPECT_SOURCE_NOT_FOUND` | source path does not exist |
 | `INSPECT_SOURCE_INVALID` | GitHub source syntax is invalid |
+| `INSPECT_GITHUB_REF_NOT_PINNED` | GitHub source ref is floating (not commit-pinned) |
 | `INSPECT_SOURCE_PREPARE_FAILED` | source materialization/structure validation failed |
 | `INSPECT_SCAN_FAILED` | scan phase failed |
 | `INSPECT_POLICY_LOAD_FAILED` | policy file load/parse/validation failed |
@@ -482,7 +544,7 @@ CLI exit codes are stable for automation:
 | Command | `0` | `1` | `2` |
 | --- | --- | --- | --- |
 | `gokui fetch` | fetched successfully | fatal error | n/a |
-| `gokui inspect` | pass or inspect-only pre-release result | fatal error | policy rejected (`decision=REJECTED`) |
+| `gokui inspect` | pass | fatal error | policy rejected (`decision=REJECTED`) |
 | `gokui install` | installed / already installed (matching provenance) | fatal error | policy rejected (`decision=REJECTED`) |
 | `gokui update --dry-run` | no rejected or error skill items | at least one `ERROR` item | at least one `REJECTED` item and no `ERROR` items |
 | `gokui lock verify` | verified | fatal error | drift detected |
@@ -597,7 +659,9 @@ malware file itself.
 gokui does not execute bundled scripts during inspection.
 
 It statically scans shell, Python, JavaScript, TypeScript, PowerShell, batch,
-Ruby, Go, shebang files, executable files, and common dependency manifests.
+Ruby, Go, shebang files (including UTF-8 BOM-prefixed shebangs), executable
+files, and common dependency manifests (including `deno.json` and
+`deno.jsonc`).
 
 Critical patterns include:
 
@@ -676,9 +740,8 @@ materialization.
 ```text
 Source
   repo: github.com/evil/example
-  ref: main
-  resolved: 91af3c...
-  warning: floating ref was resolved to commit; install requires pinning
+  ref: 8f3c2d1a4b5c6d7e8f901234567890abcdef1234
+  resolved: 8f3c2d1a4b5c6d7e8f901234567890abcdef1234
 
 Skill
   name: google

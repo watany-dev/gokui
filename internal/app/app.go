@@ -206,6 +206,7 @@ const (
 	inspectErrorCodeArgsInvalid         = "INSPECT_ARGS_INVALID"
 	inspectErrorCodeSourceNotFound      = "INSPECT_SOURCE_NOT_FOUND"
 	inspectErrorCodeSourceInvalid       = "INSPECT_SOURCE_INVALID"
+	inspectErrorCodeGitHubRefNotPinned  = "INSPECT_GITHUB_REF_NOT_PINNED"
 	inspectErrorCodeSourcePrepareFailed = "INSPECT_SOURCE_PREPARE_FAILED"
 	inspectErrorCodeScanFailed          = "INSPECT_SCAN_FAILED"
 	inspectErrorCodePolicyLoadFailed    = "INSPECT_POLICY_LOAD_FAILED"
@@ -584,51 +585,64 @@ func runInspect(args []string, stdout io.Writer, stderr io.Writer) int {
 			return 1
 		}
 		if !srcpkg.IsCommitPinnedRef(spec.Ref) {
-			decision = "PRE_RELEASE_STUB"
-			note = "github source inspect is not implemented yet (floating ref accepted for inspect-only pre-release)"
-		} else {
-			skillRoot, cleanup, prepErr := preparePolicyEvaluationSource(input, sourceKind)
-			if cleanup != nil {
-				defer cleanup()
+			msg := "inspect github source requires a commit-pinned ref (e.g. @8f3c2d1a4b5c6d7e8f901234567890abcdef1234)"
+			if structuredOutput {
+				return emitInspectStructuredErrorCode(format, stdout, stderr, inspectErrorReport{
+					SchemaVersion: reportSchemaVersion,
+					Status:        "ERROR",
+					ErrorCode:     inspectErrorCodeGitHubRefNotPinned,
+					Message:       msg,
+					Source: source{
+						Input: input,
+						Kind:  sourceKind,
+					},
+					Note: "inspect github source ref must be commit-pinned",
+				})
 			}
-			if prepErr != nil {
-				if structuredOutput {
-					return emitInspectStructuredErrorCode(format, stdout, stderr, inspectErrorReport{
-						SchemaVersion: reportSchemaVersion,
-						Status:        "ERROR",
-						ErrorCode:     inspectErrorCodeSourcePrepareFailed,
-						Message:       prepErr.Error(),
-						Source: source{
-							Input: input,
-							Kind:  sourceKind,
-						},
-						Note: "inspect source preparation failed",
-					})
-				}
-				_, _ = fmt.Fprintln(stderr, prepErr.Error())
-				return 1
-			}
-			scanFindings, scanErr := scan.ScanSkillRoot(skillRoot)
-			if scanErr != nil {
-				if structuredOutput {
-					return emitInspectStructuredErrorCode(format, stdout, stderr, inspectErrorReport{
-						SchemaVersion: reportSchemaVersion,
-						Status:        "ERROR",
-						ErrorCode:     inspectErrorCodeScanFailed,
-						Message:       scanErr.Error(),
-						Source: source{
-							Input: input,
-							Kind:  sourceKind,
-						},
-						Note: "inspect scanning failed",
-					})
-				}
-				_, _ = fmt.Fprintln(stderr, scanErr.Error())
-				return 1
-			}
-			findings, decision = toInspectFindings(scanFindings)
-			note = "pre-release inspect includes structural and markdown checks (github commit-pinned source)"
+			_, _ = fmt.Fprintln(stderr, msg)
+			return 1
 		}
+		skillRoot, cleanup, prepErr := preparePolicyEvaluationSource(input, sourceKind)
+		if cleanup != nil {
+			defer cleanup()
+		}
+		if prepErr != nil {
+			if structuredOutput {
+				return emitInspectStructuredErrorCode(format, stdout, stderr, inspectErrorReport{
+					SchemaVersion: reportSchemaVersion,
+					Status:        "ERROR",
+					ErrorCode:     inspectErrorCodeSourcePrepareFailed,
+					Message:       prepErr.Error(),
+					Source: source{
+						Input: input,
+						Kind:  sourceKind,
+					},
+					Note: "inspect source preparation failed",
+				})
+			}
+			_, _ = fmt.Fprintln(stderr, prepErr.Error())
+			return 1
+		}
+		scanFindings, scanErr := scan.ScanSkillRoot(skillRoot)
+		if scanErr != nil {
+			if structuredOutput {
+				return emitInspectStructuredErrorCode(format, stdout, stderr, inspectErrorReport{
+					SchemaVersion: reportSchemaVersion,
+					Status:        "ERROR",
+					ErrorCode:     inspectErrorCodeScanFailed,
+					Message:       scanErr.Error(),
+					Source: source{
+						Input: input,
+						Kind:  sourceKind,
+					},
+					Note: "inspect scanning failed",
+				})
+			}
+			_, _ = fmt.Fprintln(stderr, scanErr.Error())
+			return 1
+		}
+		findings, decision = toInspectFindings(scanFindings)
+		note = "pre-release inspect includes structural and markdown checks (github commit-pinned source)"
 	} else {
 		skillRoot, cleanup, validateErr := prepareInspectSource(input, sourceKind)
 		if cleanup != nil {

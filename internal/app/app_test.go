@@ -2665,7 +2665,7 @@ func TestValidateLocalDirInspectSource(t *testing.T) {
 	})
 }
 
-func TestRunInspectGitHubSourceDoesNotRequireLocalPath(t *testing.T) {
+func TestRunInspectGitHubSourceRejectsFloatingRef(t *testing.T) {
 	cfg := Config{
 		Version: "v0.1.0",
 		Commit:  "abc123",
@@ -2676,25 +2676,17 @@ func TestRunInspectGitHubSourceDoesNotRequireLocalPath(t *testing.T) {
 	var stderr bytes.Buffer
 
 	code := Run([]string{"inspect", "github:org/repo//skills/x@main", "--format", "json"}, &stdout, &stderr, cfg)
-	if code != 0 {
-		t.Fatalf("Run() code = %d, want 0", code)
+	if code != 1 {
+		t.Fatalf("Run() code = %d, want 1", code)
 	}
 	if stderr.Len() != 0 {
 		t.Fatalf("stderr should be empty, got %q", stderr.String())
 	}
-
-	var got inspectReport
-	if err := json.Unmarshal(stdout.Bytes(), &got); err != nil {
-		t.Fatalf("inspect json should be valid: %v", err)
+	if !strings.Contains(stdout.String(), "\"error_code\": \""+inspectErrorCodeGitHubRefNotPinned+"\"") {
+		t.Fatalf("stdout should include github-ref-not-pinned error code, got %q", stdout.String())
 	}
-	if got.Source.Kind != "github-source" {
-		t.Fatalf("source.kind = %q, want %q", got.Source.Kind, "github-source")
-	}
-	if got.Decision != "PRE_RELEASE_STUB" {
-		t.Fatalf("decision = %q, want %q", got.Decision, "PRE_RELEASE_STUB")
-	}
-	if !strings.Contains(got.Note, "floating ref accepted for inspect-only") {
-		t.Fatalf("note should mention floating ref handling, got %q", got.Note)
+	if !strings.Contains(stdout.String(), "requires a commit-pinned ref") {
+		t.Fatalf("stdout should include commit-pinned guidance, got %q", stdout.String())
 	}
 }
 
@@ -3092,6 +3084,21 @@ func TestRunInspectJSONErrorCodes(t *testing.T) {
 		}
 		if !strings.Contains(stderr.String(), "invalid github source") {
 			t.Fatalf("stderr should include github source error, got %q", stderr.String())
+		}
+	})
+
+	t.Run("github floating ref in human mode writes stderr", func(t *testing.T) {
+		var stdout bytes.Buffer
+		var stderr bytes.Buffer
+		code := Run([]string{"inspect", "github:org/repo//skills/clean-skill@main"}, &stdout, &stderr, cfg)
+		if code != 1 {
+			t.Fatalf("Run() code = %d, want 1", code)
+		}
+		if stdout.Len() != 0 {
+			t.Fatalf("stdout should be empty, got %q", stdout.String())
+		}
+		if !strings.Contains(stderr.String(), "requires a commit-pinned ref") {
+			t.Fatalf("stderr should include commit pin requirement, got %q", stderr.String())
 		}
 	})
 

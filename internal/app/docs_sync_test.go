@@ -133,7 +133,7 @@ func TestExitCodeContractDocumentationSync(t *testing.T) {
 
 	rows := []string{
 		"| `gokui fetch` | fetched successfully | fatal error | n/a |",
-		"| `gokui inspect` | pass or inspect-only pre-release result | fatal error | policy rejected (`decision=REJECTED`) |",
+		"| `gokui inspect` | pass | fatal error | policy rejected (`decision=REJECTED`) |",
 		"| `gokui install` | installed / already installed (matching provenance) | fatal error | policy rejected (`decision=REJECTED`) |",
 		"| `gokui update --dry-run` | no rejected or error skill items | at least one `ERROR` item | at least one `REJECTED` item and no `ERROR` items |",
 		"| `gokui lock verify` | verified | fatal error | drift detected |",
