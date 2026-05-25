@@ -422,6 +422,76 @@ func TestRunUpdateDryRunStatuses(t *testing.T) {
 	}
 }
 
+func TestRunUpdateDryRunDoesNotMutateInstalledLockState(t *testing.T) {
+	targetRoot := filepath.Join(t.TempDir(), "skills")
+	if err := os.MkdirAll(targetRoot, 0o755); err != nil {
+		t.Fatalf("mkdir target root: %v", err)
+	}
+
+	src := createSkillSourceForInstallTest(t, "update-dry-run-lock-stability")
+	report := installReport{
+		SchemaVersion: "0.1.0-draft",
+		Source:        source{Input: src, Kind: "local-dir"},
+		PolicyProfile: "strict",
+		Decision:      "PASS",
+	}
+	installedPath, _, err := installSkillAtomic(src, targetRoot, "update-dry-run-lock-stability", report)
+	if err != nil {
+		t.Fatalf("installSkillAtomic() error = %v", err)
+	}
+
+	// Mutate source to ensure dry-run evaluates a CHANGED candidate.
+	if err := os.WriteFile(filepath.Join(src, "README.md"), []byte("changed content"), 0o644); err != nil {
+		t.Fatalf("mutate source README: %v", err)
+	}
+
+	var stdout strings.Builder
+	var stderr strings.Builder
+	code := runUpdate([]string{"--dry-run", "--target", "custom:" + targetRoot, "--format", "json"}, &stdout, &stderr)
+	if code != 0 {
+		t.Fatalf("runUpdate(dry-run changed) code = %d, want 0\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("stderr should be empty, got %q", stderr.String())
+	}
+
+	var updateOut updateReport
+	if err := json.Unmarshal([]byte(stdout.String()), &updateOut); err != nil {
+		t.Fatalf("json unmarshal update output: %v", err)
+	}
+	if updateOut.Summary.Changed != 1 {
+		t.Fatalf("changed summary = %+v, want one changed skill", updateOut.Summary)
+	}
+	if len(updateOut.Skills) != 1 || updateOut.Skills[0].Status != "CHANGED" {
+		t.Fatalf("unexpected update skill status: %+v", updateOut.Skills)
+	}
+
+	// Dry-run must not mutate installed files/lock baseline.
+	lockState, err := verifyLock(installedPath)
+	if err != nil {
+		t.Fatalf("verifyLock() error = %v", err)
+	}
+	if lockState.Status != "VERIFIED" {
+		t.Fatalf("lock status after dry-run = %q, want VERIFIED", lockState.Status)
+	}
+	if len(lockState.Drift.MissingFiles) != 0 || len(lockState.Drift.ChangedFiles) != 0 || len(lockState.Drift.UnexpectedFiles) != 0 {
+		t.Fatalf("unexpected drift after dry-run: %+v", lockState.Drift)
+	}
+
+	stdout.Reset()
+	stderr.Reset()
+	code = runLockVerify([]string{installedPath, "--format", "json"}, &stdout, &stderr)
+	if code != 0 {
+		t.Fatalf("runLockVerify(after dry-run) code = %d, want 0\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("stderr should be empty for lock verify, got %q", stderr.String())
+	}
+	if !strings.Contains(stdout.String(), "\"status\": \"VERIFIED\"") {
+		t.Fatalf("lock verify output should remain VERIFIED, got %q", stdout.String())
+	}
+}
+
 func TestRunUpdateSARIFOutput(t *testing.T) {
 	t.Run("sarif up-to-date returns pass decision", func(t *testing.T) {
 		targetRoot := filepath.Join(t.TempDir(), "skills")
