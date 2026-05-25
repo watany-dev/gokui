@@ -526,12 +526,12 @@ func TestReleaseEvidenceScriptExecutionContractSync(t *testing.T) {
 		`if [ -e "$log_path" ]; then`,
 		`echo "- Mode: ${EVIDENCE_MODE}"`,
 		`git status --short --untracked-files=no`,
-		`BUILD_OUT=$ROOT_DIR/.cache/gokui-release-evidence make release-check-offline`,
+		`BUILD_OUT=\"$ROOT_DIR/.cache/gokui-release-evidence\" make release-check-offline`,
 		`if [ "$WITH_VULN" -eq 1 ] && [ "$FAILED_STEPS" -eq 0 ]; then`,
 		`if [ "$FAILED_STEPS" -eq 0 ]; then`,
 		"preserve failing build artifact for investigation",
 		`cleanup evidence build artifact`,
-		`rm -f $ROOT_DIR/.cache/gokui-release-evidence`,
+		`rm -f \"$ROOT_DIR/.cache/gokui-release-evidence\"`,
 	}
 	for _, line := range required {
 		if !strings.Contains(script, line) {

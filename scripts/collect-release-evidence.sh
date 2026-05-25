@@ -152,10 +152,10 @@ run_git_clean_check() {
 } > "$OUT_PATH"
 
 run_git_clean_check
-run_step "release-check-offline" "GOCACHE=$ROOT_DIR/.cache/go-build GOMODCACHE=$ROOT_DIR/.cache/gomod GOPATH=$ROOT_DIR/.cache/gopath XDG_CACHE_HOME=$ROOT_DIR/.cache/xdg BUILD_OUT=$ROOT_DIR/.cache/gokui-release-evidence make release-check-offline" "$LOG_DIR/${BASENAME}-release-check-offline.log"
+run_step "release-check-offline" "GOCACHE=\"$ROOT_DIR/.cache/go-build\" GOMODCACHE=\"$ROOT_DIR/.cache/gomod\" GOPATH=\"$ROOT_DIR/.cache/gopath\" XDG_CACHE_HOME=\"$ROOT_DIR/.cache/xdg\" BUILD_OUT=\"$ROOT_DIR/.cache/gokui-release-evidence\" make release-check-offline" "$LOG_DIR/${BASENAME}-release-check-offline.log"
 
 if [ "$WITH_VULN" -eq 1 ] && [ "$FAILED_STEPS" -eq 0 ]; then
-  run_step "vuln" "GOCACHE=$ROOT_DIR/.cache/go-build GOMODCACHE=$ROOT_DIR/.cache/gomod GOPATH=$ROOT_DIR/.cache/gopath XDG_CACHE_HOME=$ROOT_DIR/.cache/xdg make vuln" "$LOG_DIR/${BASENAME}-vuln.log"
+  run_step "vuln" "GOCACHE=\"$ROOT_DIR/.cache/go-build\" GOMODCACHE=\"$ROOT_DIR/.cache/gomod\" GOPATH=\"$ROOT_DIR/.cache/gopath\" XDG_CACHE_HOME=\"$ROOT_DIR/.cache/xdg\" make vuln" "$LOG_DIR/${BASENAME}-vuln.log"
 elif [ "$WITH_VULN" -eq 1 ]; then
   {
     echo "- vuln: SKIPPED"
@@ -169,7 +169,7 @@ else
 fi
 
 if [ "$FAILED_STEPS" -eq 0 ]; then
-  run_step "cleanup evidence build artifact" "rm -f $ROOT_DIR/.cache/gokui-release-evidence" "$LOG_DIR/${BASENAME}-cleanup.log"
+  run_step "cleanup evidence build artifact" "rm -f \"$ROOT_DIR/.cache/gokui-release-evidence\"" "$LOG_DIR/${BASENAME}-cleanup.log"
 else
   {
     echo "- cleanup evidence build artifact: SKIPPED"
