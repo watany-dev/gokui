@@ -143,6 +143,8 @@ var (
 	shellCaseLowerFirstPos          = regexp.MustCompile(`\$\{([0-9]{1,10}),\}`)
 	shellLengthNamedPattern         = regexp.MustCompile(`\$\{#([A-Za-z_][A-Za-z0-9_]*)\}`)
 	shellLengthPosPattern           = regexp.MustCompile(`\$\{#([0-9]{1,10})\}`)
+	shellProcDollarSubstringNamed   = regexp.MustCompile(`\$\{([A-Za-z_][A-Za-z0-9_]*):\$\$(?:\s*:\s*\$\$)?\}`)
+	shellProcDollarSubstringPos     = regexp.MustCompile(`\$\{([0-9]{1,10}):\$\$(?:\s*:\s*\$\$)?\}`)
 	shellArithmeticExpansionPattern = regexp.MustCompile(`\$\(\([^\n]{1,120}?\)\)`)
 	shellLegacyArithmeticPattern    = regexp.MustCompile(`\$\[[^\]\n]{1,120}\]`)
 	shellAnsiCQuotePattern          = regexp.MustCompile(`\$'[^'\n]{1,120}'`)
@@ -1144,6 +1146,8 @@ func normalizeShellSpecialProcParams(line string) string {
 	out = strings.ReplaceAll(out, "${*}", "$$")
 	out = strings.ReplaceAll(out, "${@}", "$$")
 	out = strings.ReplaceAll(out, "${-}", "$$")
+	out = shellProcDollarSubstringNamed.ReplaceAllString(out, `${$1}`)
+	out = shellProcDollarSubstringPos.ReplaceAllString(out, `${$1}`)
 	return out
 }
 
