@@ -238,6 +238,36 @@ func TestReadmeCriticalPatternDocumentationSync(t *testing.T) {
 	}
 }
 
+func TestRoadmapCriticalPatternDocumentationSync(t *testing.T) {
+	roadmapBytes, err := os.ReadFile("../../ROADMAP.md")
+	if err != nil {
+		t.Fatalf("failed to read ROADMAP.md: %v", err)
+	}
+	roadmap := string(roadmapBytes)
+
+	required := []string{
+		"critical detection of pipe-to-stdin source/dot execution chains",
+		"quoted and escaped-quoted stdin targets",
+		"optional or stacked `builtin`/`command` prefixes",
+		"`command --` / `builtin --` forms",
+		"attached `command--` / `builtin--` forms",
+		"equivalent stdin path spellings",
+		"/dev//stdin",
+		"`fd/00...` forms",
+		"task-path `fd/00` variants",
+		"/dev/fd/0",
+		"/proc/thread-self/fd/0",
+		"/proc/<pid>/fd/0",
+		"/proc/<pid>/task/<tid>/fd/0",
+		"/proc/thread-self/task/<tid>/fd/0",
+	}
+	for _, line := range required {
+		if !strings.Contains(roadmap, line) {
+			t.Fatalf("ROADMAP missing critical pattern documentation line: %q", line)
+		}
+	}
+}
+
 func TestReleaseChecklistDocumentationSync(t *testing.T) {
 	readmeBytes, err := os.ReadFile("../../README.md")
 	if err != nil {
