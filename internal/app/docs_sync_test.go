@@ -432,7 +432,7 @@ func TestMakefileVulnToolchainBaselineSync(t *testing.T) {
 		"release-check: check test test-race",
 		"$(GO) build -trimpath -buildvcs=true -ldflags='$(LDFLAGS)' -o $(BUILD_OUT) $(MAIN_PKG)",
 		"$(MAKE) build BUILD_OUT=$(RELEASE_CHECK_BUILD_OUT)",
-		`trap 'rm -f "$(RELEASE_CHECK_BUILD_OUT)"' EXIT; \`,
+		`trap 'rm -f "$(RELEASE_CHECK_BUILD_OUT)" "$(CACHE_DIR)/inspect-results.sarif"' EXIT; \`,
 		"GOTOOLCHAIN=$(VULN_GOTOOLCHAIN) $(GO) tool govulncheck ./...",
 		"release-evidence-offline:",
 		"./scripts/collect-release-evidence.sh",
@@ -609,7 +609,7 @@ func TestRoadmapReleaseEvidenceHardeningSync(t *testing.T) {
 		"automated offline release evidence collection with per-step logs",
 		"automated online release evidence collection mode (includes vuln step)",
 		"release-evidence gate hardening with isolated build output (`BUILD_OUT`) and tracked-file clean-tree checks (`git status --short --untracked-files=no`)",
-		"release-check gate hardening with isolated build output (`RELEASE_CHECK_BUILD_OUT`) and failure-safe artifact cleanup",
+		"release-check gate hardening with isolated build output (`RELEASE_CHECK_BUILD_OUT`) and failure-safe cleanup for build/SARIF artifacts",
 		"release-evidence metadata mode annotation (`offline|online`) and mode-specific evidence filename suffixes (`-offline-audit.md` / `-online-audit.md`)",
 	}
 	for _, line := range required {

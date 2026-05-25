@@ -73,7 +73,7 @@ check: fmt-check lint typecheck deadcode coverage
 
 release-check: check test test-race
 	@set -e; \
-	trap 'rm -f "$(RELEASE_CHECK_BUILD_OUT)"' EXIT; \
+	trap 'rm -f "$(RELEASE_CHECK_BUILD_OUT)" "$(CACHE_DIR)/inspect-results.sarif"' EXIT; \
 	$(MAKE) build BUILD_OUT=$(RELEASE_CHECK_BUILD_OUT); \
 	$(MAKE) inspect-sarif INSPECT_SARIF_OUT=$(CACHE_DIR)/inspect-results.sarif; \
 	if [ "$(RELEASE_CHECK_VULN)" = "1" ]; then \
