@@ -82,16 +82,18 @@ var (
 
 	promptOverridePattern = regexp.MustCompile(`(?i)\b(?:ignore|override|bypass)\b.{0,80}\b(?:previous|prior|system|higher|earlier)\b.{0,40}\b(?:instruction|instructions|prompt|prompts)\b`)
 
-	externalBinaryPattern     = regexp.MustCompile(`(?i)\bhttps?://\S+\.(?:zip|exe|msi|dmg|pkg|tar\.gz|tgz)\b`)
-	urlPattern                = regexp.MustCompile(`(?i)\bhttps?://[^\s<>"')\]]+`)
-	rawHTMLPattern            = regexp.MustCompile(`(?i)<\s*(?:script|iframe|object|embed|form|link|meta|img|svg|video|audio)\b`)
-	markdownLinkPattern       = regexp.MustCompile(`\[(?P<label>[^\]]+)\]\((?P<target>[^)\n]+)\)`)
-	passwordArchivePattern    = regexp.MustCompile(`(?i)(?:\b(?:password|passphrase|passwd|encrypted)\b.{0,80}\b(?:zip|7z|rar|archive|tar|tgz|tar\.gz)\b|\b(?:zip|7z|rar|archive|tar|tgz|tar\.gz)\b.{0,80}\b(?:password|passphrase|passwd|encrypted)\b)`)
-	goSemverExactPattern      = regexp.MustCompile(`^v?\d+\.\d+\.\d+(?:-[0-9a-z.-]+)?(?:\+[0-9a-z.-]+)?$`)
-	goPseudoVersionPattern    = regexp.MustCompile(`^v\d+\.\d+\.\d+-\d{14}-[0-9a-f]{12}$`)
-	hexCommitRefPattern       = regexp.MustCompile(`^[0-9a-f]{12,40}$`)
-	remoteScriptImportPattern = regexp.MustCompile(`(?i)\b(?:source|bash|sh|zsh)\b\s*<\(\s*(?:curl|wget)\b`)
-	remoteScriptDotImport     = regexp.MustCompile(`(?i)(?:^|[;&|]\s*)\.\s*<\(\s*(?:curl|wget)\b`)
+	externalBinaryPattern              = regexp.MustCompile(`(?i)\bhttps?://\S+\.(?:zip|exe|msi|dmg|pkg|tar\.gz|tgz)\b`)
+	urlPattern                         = regexp.MustCompile(`(?i)\bhttps?://[^\s<>"')\]]+`)
+	rawHTMLPattern                     = regexp.MustCompile(`(?i)<\s*(?:script|iframe|object|embed|form|link|meta|img|svg|video|audio)\b`)
+	markdownLinkPattern                = regexp.MustCompile(`\[(?P<label>[^\]]+)\]\((?P<target>[^)\n]+)\)`)
+	markdownReferenceLinkPattern       = regexp.MustCompile(`\[(?P<label>[^\]]+)\]\[(?P<ref>[^\]]*)\]`)
+	markdownReferenceDefinitionPattern = regexp.MustCompile(`^\s{0,3}\[(?P<ref>[^\]]+)\]:\s*(?P<target>.+?)\s*$`)
+	passwordArchivePattern             = regexp.MustCompile(`(?i)(?:\b(?:password|passphrase|passwd|encrypted)\b.{0,80}\b(?:zip|7z|rar|archive|tar|tgz|tar\.gz)\b|\b(?:zip|7z|rar|archive|tar|tgz|tar\.gz)\b.{0,80}\b(?:password|passphrase|passwd|encrypted)\b)`)
+	goSemverExactPattern               = regexp.MustCompile(`^v?\d+\.\d+\.\d+(?:-[0-9a-z.-]+)?(?:\+[0-9a-z.-]+)?$`)
+	goPseudoVersionPattern             = regexp.MustCompile(`^v\d+\.\d+\.\d+-\d{14}-[0-9a-f]{12}$`)
+	hexCommitRefPattern                = regexp.MustCompile(`^[0-9a-f]{12,40}$`)
+	remoteScriptImportPattern          = regexp.MustCompile(`(?i)\b(?:source|bash|sh|zsh)\b\s*<\(\s*(?:curl|wget)\b`)
+	remoteScriptDotImport              = regexp.MustCompile(`(?i)(?:^|[;&|]\s*)\.\s*<\(\s*(?:curl|wget)\b`)
 
 	fakePrereqPattern = regexp.MustCompile(`(?i)\b(?:required|required prerequisite|you must|before use)\b.{0,120}\b(?:download|install)\b.{0,200}\b(?:run|execute|bash|sh|powershell|chmod \+x)\b`)
 )
@@ -798,6 +800,10 @@ func scanTextFile(target scanTarget) ([]Finding, error) {
 	content := contentBuf.Bytes()
 
 	lines := strings.Split(strings.ReplaceAll(string(content), "\r\n", "\n"), "\n")
+	referenceHosts := map[string]string{}
+	if target.Kind == "markdown" {
+		referenceHosts = buildMarkdownReferenceHostIndex(lines)
+	}
 	findings := make([]Finding, 0)
 	for i, line := range lines {
 		lineNum := i + 1
@@ -817,6 +823,9 @@ func scanTextFile(target scanTarget) ([]Finding, error) {
 		}
 		for _, variant := range scanLineVariants(lines, i, line, normalized, changed) {
 			findings = append(findings, scanVariantThreatFindings(variant, target, lineNum)...)
+			if target.Kind == "markdown" {
+				findings = append(findings, classifyMarkdownReferenceLinkSpoofing(variant, target.Relative, lineNum, referenceHosts)...)
+			}
 			findings = append(findings, scanDecodedVariantThreatFindings(variant, target, lineNum, 0)...)
 		}
 		findings = append(findings, classifyUnicodeThreats(line, target.Relative, lineNum)...)
@@ -3368,6 +3377,86 @@ func classifyMarkdownLinkSpoofing(line string, relPath string, lineNum int) []Fi
 		})
 	}
 	return out
+}
+
+func buildMarkdownReferenceHostIndex(lines []string) map[string]string {
+	hosts := make(map[string]string)
+	for _, line := range lines {
+		match := markdownReferenceDefinitionPattern.FindStringSubmatch(line)
+		if len(match) < 3 {
+			continue
+		}
+		refID := normalizeMarkdownReferenceID(match[1])
+		if refID == "" {
+			continue
+		}
+		// CommonMark resolves duplicate reference definitions using the first
+		// definition in document order.
+		if _, exists := hosts[refID]; exists {
+			continue
+		}
+		targetHost, ok := parseMarkdownLinkTargetHost(match[2])
+		if !ok {
+			continue
+		}
+		hosts[refID] = targetHost
+	}
+	return hosts
+}
+
+func classifyMarkdownReferenceLinkSpoofing(line string, relPath string, lineNum int, referenceHosts map[string]string) []Finding {
+	if len(referenceHosts) == 0 {
+		return nil
+	}
+
+	matches := markdownReferenceLinkPattern.FindAllStringSubmatchIndex(line, -1)
+	if len(matches) == 0 {
+		return nil
+	}
+
+	out := make([]Finding, 0, len(matches))
+	for _, match := range matches {
+		if len(match) < 6 {
+			continue
+		}
+		start := match[0]
+		if start > 0 && line[start-1] == '!' {
+			continue
+		}
+		label := line[match[2]:match[3]]
+		refIDToken := line[match[4]:match[5]]
+		if strings.TrimSpace(refIDToken) == "" {
+			refIDToken = label
+		}
+		refID := normalizeMarkdownReferenceID(refIDToken)
+		targetHost, ok := referenceHosts[refID]
+		if !ok {
+			continue
+		}
+		displayHost, ok := parseDisplayLinkHost(label)
+		if !ok {
+			continue
+		}
+		if normalizeHost(displayHost) == normalizeHost(targetHost) {
+			continue
+		}
+		out = append(out, Finding{
+			ID:       "LINK_SPOOFING_URL_MISMATCH",
+			Severity: "high",
+			File:     relPath,
+			Line:     lineNum,
+			Summary:  "markdown link label host differs from link target host",
+		})
+	}
+	return out
+}
+
+func normalizeMarkdownReferenceID(value string) string {
+	trimmed := strings.TrimSpace(strings.ToLower(value))
+	if trimmed == "" {
+		return ""
+	}
+	return strings.Join(strings.Fields(trimmed), " ")
 }
 
 func parseDisplayLinkHost(label string) (string, bool) {

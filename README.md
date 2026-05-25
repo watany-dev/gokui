@@ -115,7 +115,7 @@ It also flags paste-site URLs, GitHub release asset URLs, and remote image
 URLs in markdown content for review.
 Markdown raw HTML markup is now flagged as a medium-severity finding.
 Markdown links with host-mismatched display URL/target URL are flagged as high
-severity link-spoofing findings.
+severity link-spoofing findings, including inline and reference-style links.
 Prompt-override language detection now includes bounded fuzzy/typoglycemia
 matching for common injection phrases.
 PowerShell `-EncodedCommand` / `-enc` execution flags are now flagged as
