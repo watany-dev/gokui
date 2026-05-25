@@ -3238,7 +3238,7 @@ func isGitHubReleaseAssetURL(host string, path string) bool {
 	if host == "github.com" && (strings.Contains(lowerPath, "/releases/download/") || strings.Contains(lowerPath, "/releases/latest/download/")) {
 		return true
 	}
-	if host == "api.github.com" && strings.Contains(lowerPath, "/repos/") {
+	if (host == "api.github.com" || host == "uploads.github.com") && strings.Contains(lowerPath, "/repos/") {
 		if strings.Contains(lowerPath, "/releases/assets/") || isGitHubAPIReleaseIDAssetsPath(lowerPath) {
 			return true
 		}

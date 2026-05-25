@@ -979,9 +979,15 @@ func TestClassifyURLRisksEdgeCases(t *testing.T) {
 		assertHasID(t, findings, "RELEASE_ASSET_URL")
 	})
 
+	t.Run("detects github uploads release-id asset url forms", func(t *testing.T) {
+		line := "open https://uploads.github.com/repos/org/repo/releases/123456/assets?name=tool.tgz"
+		findings := classifyURLRisks(line, "SKILL.md", 17, true)
+		assertHasID(t, findings, "RELEASE_ASSET_URL")
+	})
+
 	t.Run("detects github latest release download url forms", func(t *testing.T) {
 		line := "open https://github.com/org/repo/releases/latest/download/tool.tgz"
-		findings := classifyURLRisks(line, "SKILL.md", 17, true)
+		findings := classifyURLRisks(line, "SKILL.md", 18, true)
 		assertHasID(t, findings, "RELEASE_ASSET_URL")
 	})
 }
@@ -1058,6 +1064,9 @@ func TestIsGitHubReleaseAssetURL(t *testing.T) {
 		if !isGitHubReleaseAssetURL("api.github.com", "/repos/org/repo/releases/123456/assets") {
 			t.Fatal("expected api.github.com releases/<id>/assets path to match")
 		}
+		if !isGitHubReleaseAssetURL("uploads.github.com", "/repos/org/repo/releases/123456/assets") {
+			t.Fatal("expected uploads.github.com releases/<id>/assets path to match")
+		}
 		if !isGitHubReleaseAssetURL("github-releases.githubusercontent.com", "/asset/123") {
 			t.Fatal("expected github-releases CDN host to match")
 		}
@@ -1075,6 +1084,9 @@ func TestIsGitHubReleaseAssetURL(t *testing.T) {
 	t.Run("does not match non-numeric github api release-id asset paths", func(t *testing.T) {
 		if isGitHubReleaseAssetURL("api.github.com", "/repos/org/repo/releases/not-a-number/assets") {
 			t.Fatal("did not expect non-numeric releases/<id>/assets path to match")
+		}
+		if isGitHubReleaseAssetURL("uploads.github.com", "/repos/org/repo/releases/not-a-number/assets") {
+			t.Fatal("did not expect non-numeric uploads releases/<id>/assets path to match")
 		}
 	})
 }
