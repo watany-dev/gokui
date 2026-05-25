@@ -359,6 +359,9 @@ func TestReleaseChecklistDocumentationSync(t *testing.T) {
 	if !strings.Contains(releaseDoc, "created atomically and written via open file") || !strings.Contains(releaseDoc, "descriptors to reduce path-swap race windows") {
 		t.Fatal("RELEASE.md should document atomic descriptor-backed release script outputs")
 	}
+	if !strings.Contains(releaseDoc, "Staged temporary evidence/SARIF files are also removed") || !strings.Contains(releaseDoc, "collides with an existing destination path") {
+		t.Fatal("RELEASE.md should document staged-temp collision cleanup behavior")
+	}
 	if !strings.Contains(releaseDoc, "keep failing build artifacts for") || !strings.Contains(releaseDoc, "skip subsequent vuln/cleanup steps") {
 		t.Fatal("RELEASE.md should document failure-artifact retention and skip behavior")
 	}
@@ -386,6 +389,8 @@ func TestReleaseCheckDocumentationSync(t *testing.T) {
 		"when expected output/log files already exist",
 		"created atomically and written via open file",
 		"descriptors to reduce path-swap race windows",
+		"Staged temporary evidence/SARIF files are also removed",
+		"collides with an existing destination path",
 		"keep failing build artifacts",
 		"for investigation and skip subsequent vuln/cleanup steps",
 		"git status --short --untracked-files=no",

@@ -138,6 +138,18 @@ func TestLoadUserPolicy(t *testing.T) {
 			t.Fatalf("expected symlink component error, got %v", err)
 		}
 	})
+
+	t.Run("returns resolve path error when home is unavailable", func(t *testing.T) {
+		if runtime.GOOS == "windows" {
+			t.Skip("home resolution semantics differ on windows")
+		}
+		t.Setenv(envPolicyPath, "")
+		t.Setenv("HOME", "")
+		_, _, err := LoadUserPolicy()
+		if err == nil || !strings.Contains(err.Error(), "failed to resolve home directory") {
+			t.Fatalf("expected home resolution error, got %v", err)
+		}
+	})
 }
 
 func TestResolvePolicyPath(t *testing.T) {

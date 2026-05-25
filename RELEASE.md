@@ -100,6 +100,8 @@ Release scripts fail closed when repository-root/output/log paths include
 symlink components or expected output/log files already exist.
 Evidence and SARIF outputs are created atomically and written via open file
 descriptors to reduce path-swap race windows during script execution.
+Staged temporary evidence/SARIF files are also removed when finalization
+collides with an existing destination path.
 When offline gate steps fail, evidence scripts keep failing build artifacts for
 investigation and skip subsequent vuln/cleanup steps.
 
