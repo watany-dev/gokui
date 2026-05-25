@@ -5,6 +5,7 @@ ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 OUT_DIR="$ROOT_DIR/releases/evidence"
 LOG_DIR="$OUT_DIR/logs"
 WITH_VULN=0
+AUDIT_KIND="offline-audit"
 
 usage() {
   cat <<USAGE
@@ -19,6 +20,7 @@ while [ "$#" -gt 0 ]; do
   case "$1" in
     --with-vuln)
       WITH_VULN=1
+      AUDIT_KIND="online-audit"
       ;;
     -h|--help)
       usage
@@ -37,7 +39,7 @@ mkdir -p "$OUT_DIR" "$LOG_DIR"
 
 TS="$(date -u +%Y%m%dT%H%M%SZ)"
 COMMIT_SHA="$(git -C "$ROOT_DIR" rev-parse HEAD 2>/dev/null || echo unknown)"
-BASENAME="${TS}-${COMMIT_SHA}-offline-audit"
+BASENAME="${TS}-${COMMIT_SHA}-${AUDIT_KIND}"
 OUT_PATH="$OUT_DIR/${BASENAME}.md"
 
 FAILED_STEPS=0

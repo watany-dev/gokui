@@ -382,6 +382,8 @@ make release-evidence-online
 `release-check-offline` with `BUILD_OUT=.cache/gokui-release-evidence`, and
 their clean-tree check evaluates tracked files only
 (`git status --short --untracked-files=no`).
+Generated evidence filenames end with `-offline-audit.md` or
+`-online-audit.md` based on mode.
 
 CI is configured to resolve the latest available patch release for the selected
 Go minor version (`actions/setup-go` with `check-latest: true`).

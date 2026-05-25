@@ -86,6 +86,8 @@ Record release evidence using:
 For evidence scripts, clean-tree checks are tracked-files only
 (`git status --short --untracked-files=no`), and build output is isolated to
 `.cache/gokui-release-evidence`.
+Evidence file names end with `-offline-audit.md` or `-online-audit.md`
+depending on whether `--with-vuln` is enabled.
 
 At minimum, capture:
 - commit SHA
