@@ -219,6 +219,7 @@ func TestReadmeCriticalPatternDocumentationSync(t *testing.T) {
 		"quoted/escaped-quoted stdin targets",
 		"embedded in quoted command strings",
 		"optional or stacked `builtin`/`command` prefixes",
+		"`command --` / `builtin --` forms",
 		"equivalent stdin path spellings",
 		"/dev//stdin",
 		"`fd/00...` forms",
