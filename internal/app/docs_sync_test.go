@@ -258,7 +258,13 @@ func TestReleaseChecklistDocumentationSync(t *testing.T) {
 		}
 	}
 	if !strings.Contains(releaseDoc, "releases/evidence/<timestamp>-<commit>.md") {
-		t.Fatal("RELEASE.md should describe release evidence output path")
+		t.Fatal("RELEASE.md should describe release evidence template output path")
+	}
+	if !strings.Contains(releaseDoc, "releases/evidence/<timestamp>-<commit>-offline-audit.md") {
+		t.Fatal("RELEASE.md should describe offline release evidence output path")
+	}
+	if !strings.Contains(releaseDoc, "releases/evidence/<timestamp>-<commit>-online-audit.md") {
+		t.Fatal("RELEASE.md should describe online release evidence output path")
 	}
 }
 
