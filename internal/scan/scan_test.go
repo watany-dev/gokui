@@ -951,6 +951,12 @@ func TestClassifyURLRisksEdgeCases(t *testing.T) {
 		findings := classifyURLRisks(line, "SKILL.md", 14, true)
 		assertHasID(t, findings, "RELEASE_ASSET_URL")
 	})
+
+	t.Run("detects github api release-asset url forms", func(t *testing.T) {
+		line := "open https://api.github.com/repos/org/repo/releases/assets/12345"
+		findings := classifyURLRisks(line, "SKILL.md", 15, true)
+		assertHasID(t, findings, "RELEASE_ASSET_URL")
+	})
 }
 
 func TestExtractURLCandidates(t *testing.T) {
@@ -1015,6 +1021,9 @@ func TestIsGitHubReleaseAssetURL(t *testing.T) {
 	t.Run("matches github release download and known cdn forms", func(t *testing.T) {
 		if !isGitHubReleaseAssetURL("github.com", "/org/repo/releases/download/v1.0.0/a.tgz") {
 			t.Fatal("expected github.com release download path to match")
+		}
+		if !isGitHubReleaseAssetURL("api.github.com", "/repos/org/repo/releases/assets/12345") {
+			t.Fatal("expected api.github.com releases/assets path to match")
 		}
 		if !isGitHubReleaseAssetURL("github-releases.githubusercontent.com", "/asset/123") {
 			t.Fatal("expected github-releases CDN host to match")
