@@ -92,16 +92,16 @@ release-check-preflight:
 			current="$$parent"; \
 		done; \
 	}; \
-	assert_no_symlink_components "$(RELEASE_CHECK_BUILD_OUT_ABS)" "release-check build output path"; \
-	assert_no_symlink_components "$(RELEASE_CHECK_SARIF_OUT_ABS)" "release-check SARIF output path"; \
-	case "$(RELEASE_CHECK_BUILD_OUT_ABS)" in ""|"/"|"."|*/) \
+	case "$(RELEASE_CHECK_BUILD_OUT)" in ""|"/"|"."|*/) \
 		echo "release-check build output path must be a non-root file path" >&2; \
 		exit 1; \
 	;; esac; \
-	case "$(RELEASE_CHECK_SARIF_OUT_ABS)" in ""|"/"|"."|*/) \
+	case "$(RELEASE_CHECK_SARIF_OUT)" in ""|"/"|"."|*/) \
 		echo "release-check SARIF output path must be a non-root file path" >&2; \
 		exit 1; \
 	;; esac; \
+	assert_no_symlink_components "$(RELEASE_CHECK_BUILD_OUT_ABS)" "release-check build output path"; \
+	assert_no_symlink_components "$(RELEASE_CHECK_SARIF_OUT_ABS)" "release-check SARIF output path"; \
 	if [ "$(RELEASE_CHECK_BUILD_OUT_ABS)" = "$(RELEASE_CHECK_SARIF_OUT_ABS)" ]; then \
 		echo "release-check build and SARIF outputs must be different paths" >&2; \
 		exit 1; \

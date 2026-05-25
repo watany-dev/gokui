@@ -1,6 +1,7 @@
 package app
 
 import (
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -27,22 +28,10 @@ func runReleaseCheckPreflight(t *testing.T, env map[string]string) (int, string)
 	if !strings.Contains(err.Error(), "exit status") {
 		t.Fatalf("release-check-preflight execution error: %v\noutput:\n%s", err, out)
 	}
-	if ok := errorAs(err, &exitErr); !ok {
+	if ok := errors.As(err, &exitErr); !ok {
 		t.Fatalf("release-check-preflight returned non-exit error: %v\noutput:\n%s", err, out)
 	}
 	return exitErr.ExitCode(), string(out)
-}
-
-func errorAs(err error, target interface{}) bool {
-	switch v := target.(type) {
-	case **exec.ExitError:
-		exitErr, ok := err.(*exec.ExitError)
-		if ok {
-			*v = exitErr
-			return true
-		}
-	}
-	return false
 }
 
 func TestReleaseCheckPreflightRejectsSameOutputPath(t *testing.T) {
@@ -86,6 +75,60 @@ func TestReleaseCheckPreflightRejectsExistingBuildOutput(t *testing.T) {
 	}
 	if !strings.Contains(out, "build output already exists") {
 		t.Fatalf("expected existing build output rejection message, got:\n%s", out)
+	}
+}
+
+func TestReleaseCheckPreflightRejectsExistingSARIFOutput(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("release-check preflight path contracts are exercised on POSIX in CI")
+	}
+
+	tmp := t.TempDir()
+	buildOut := filepath.Join(tmp, "build.out")
+	sarifOut := filepath.Join(tmp, "existing-inspect.sarif")
+	if err := os.WriteFile(sarifOut, []byte("existing"), 0o600); err != nil {
+		t.Fatalf("write existing SARIF output: %v", err)
+	}
+
+	exitCode, out := runReleaseCheckPreflight(t, map[string]string{
+		"RELEASE_CHECK_BUILD_OUT": buildOut,
+		"RELEASE_CHECK_SARIF_OUT": sarifOut,
+	})
+	if exitCode == 0 {
+		t.Fatalf("expected non-zero exit when SARIF output already exists\noutput:\n%s", out)
+	}
+	if !strings.Contains(out, "SARIF output already exists") {
+		t.Fatalf("expected existing SARIF output rejection message, got:\n%s", out)
+	}
+}
+
+func TestReleaseCheckPreflightRejectsRootOrDirectoryLikeBuildOutput(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("release-check preflight path contracts are exercised on POSIX in CI")
+	}
+
+	testCases := []struct {
+		name     string
+		buildOut string
+	}{
+		{name: "root path", buildOut: "/"},
+		{name: "directory-like trailing slash", buildOut: filepath.Join(t.TempDir(), "dir-like") + "/"},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			tmp := t.TempDir()
+			exitCode, out := runReleaseCheckPreflight(t, map[string]string{
+				"RELEASE_CHECK_BUILD_OUT": tc.buildOut,
+				"RELEASE_CHECK_SARIF_OUT": filepath.Join(tmp, "inspect.sarif"),
+			})
+			if exitCode == 0 {
+				t.Fatalf("expected non-zero exit for invalid build output path %q\noutput:\n%s", tc.buildOut, out)
+			}
+			if !strings.Contains(out, "build output path must be a non-root file path") {
+				t.Fatalf("expected non-root build output rejection message, got:\n%s", out)
+			}
+		})
 	}
 }
 
