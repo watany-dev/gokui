@@ -111,6 +111,7 @@ func TestReleaseCheckPreflightRejectsRootOrDirectoryLikeBuildOutput(t *testing.T
 		name     string
 		buildOut string
 	}{
+		{name: "dot path", buildOut: "."},
 		{name: "root path", buildOut: "/"},
 		{name: "directory-like trailing slash", buildOut: filepath.Join(t.TempDir(), "dir-like") + "/"},
 	}
@@ -141,6 +142,7 @@ func TestReleaseCheckPreflightRejectsRootOrDirectoryLikeSARIFOutput(t *testing.T
 		name     string
 		sarifOut string
 	}{
+		{name: "dot path", sarifOut: "."},
 		{name: "root path", sarifOut: "/"},
 		{name: "directory-like trailing slash", sarifOut: filepath.Join(t.TempDir(), "dir-like") + "/"},
 	}
