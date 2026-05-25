@@ -743,34 +743,23 @@ The default profile is `strict`.
 Example policy shape:
 
 ```toml
-[profile.strict]
-allow_scripts = false
-allow_network_in_instructions = false
-allow_external_binaries = false
-allow_unpinned_tools = false
-allow_unicode_invisibles = false
-max_files = 100
-max_total_bytes = 5_000_000
-max_text_file_bytes = 500_000
-on_high = "reject"
-on_medium = "warn"
+default_profile = "strict"
 
-[profile.team]
-allow_scripts = true
-script_executable_default = false
-allow_network_in_instructions = false
-allow_external_binaries = false
-allow_unpinned_tools = false
-trusted_domains = ["github.com", "raw.githubusercontent.com", "docs.python.org"]
-on_high = "reject"
-on_medium = "warn"
+[overrides]
+enabled = true
+allowed_rule_ids = [
+  "UNPINNED_RUNTIME_TOOL",
+  "EXTERNAL_BINARY_DOWNLOAD",
+]
 
-[profile.research]
-allow_scripts = true
-allow_network_in_instructions = true
-allow_external_binaries = false
-on_critical = "reject"
-on_high = "warn"
+[profiles.strict]
+reject_severities = ["critical", "high"]
+
+[profiles.team]
+reject_severities = ["critical", "high"]
+
+[profiles.research]
+reject_severities = ["critical"]
 ```
 
 Profiles change policy decisions; they do not skip provenance recording or safe

@@ -575,3 +575,41 @@ func TestRoadmapReleaseEvidenceHardeningSync(t *testing.T) {
 		}
 	}
 }
+
+func TestReadmePolicyExampleSchemaSync(t *testing.T) {
+	readmeBytes, err := os.ReadFile("../../README.md")
+	if err != nil {
+		t.Fatalf("failed to read README.md: %v", err)
+	}
+	readme := string(readmeBytes)
+
+	required := []string{
+		"## Policy Profiles",
+		"[profiles.strict]",
+		"[profiles.team]",
+		"[profiles.research]",
+		"reject_severities = [\"critical\", \"high\"]",
+		"[overrides]",
+		"allowed_rule_ids = [",
+	}
+	for _, line := range required {
+		if !strings.Contains(readme, line) {
+			t.Fatalf("README missing policy example line: %q", line)
+		}
+	}
+
+	disallowed := []string{
+		"[profile.strict]",
+		"[profile.team]",
+		"[profile.research]",
+		"allow_scripts = ",
+		"on_high = ",
+		"on_medium = ",
+		"on_critical = ",
+	}
+	for _, line := range disallowed {
+		if strings.Contains(readme, line) {
+			t.Fatalf("README policy example should not include deprecated/unsupported line: %q", line)
+		}
+	}
+}
