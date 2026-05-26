@@ -9,7 +9,8 @@ import (
 
 var (
 	githubRepoPartPattern = regexp.MustCompile(`^[A-Za-z0-9_.-]+$`)
-	commitRefPattern      = regexp.MustCompile(`^[0-9a-fA-F]{40}$`)
+	commitRefPattern      = regexp.MustCompile(`^[0-9a-f]{40}$`)
+	commitRefHexPattern   = regexp.MustCompile(`^[0-9a-fA-F]{40}$`)
 )
 
 const (
@@ -48,6 +49,9 @@ func ParseGitHubSource(input string) (GitHubSpec, error) {
 	ref := rest[at+1:]
 	if strings.TrimSpace(ref) != ref {
 		return GitHubSpec{}, fmt.Errorf("github source ref must not contain surrounding spaces")
+	}
+	if commitRefHexPattern.MatchString(ref) && !commitRefPattern.MatchString(ref) {
+		return GitHubSpec{}, fmt.Errorf("github source commit ref must be canonical lowercase 40-hex")
 	}
 	if len(ref) > maxGitHubRefChars {
 		return GitHubSpec{}, fmt.Errorf("github source ref exceeds max length: %d", maxGitHubRefChars)

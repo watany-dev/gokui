@@ -313,6 +313,7 @@ removed on failure. Redirect following is also capped to a strict maximum.
 GitHub source syntax is now strictly validated as
 `github:owner/repo//path/to/skill@ref`; `inspect`, `install`, and `update`
 require commit-pinned refs for GitHub sources and reject floating refs.
+Commit-pinned refs must use canonical lowercase 40-hex SHA form.
 `install` and `update` validate fetched source metadata for GitHub-origin
 skills.
 Parser bounds are also enforced for overall source length and owner/repo/path/ref

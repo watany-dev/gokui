@@ -42,6 +42,7 @@ func TestParseGitHubSource(t *testing.T) {
 			`github:owner/repo//skills\demo@ref`,
 			"github:owner/repo//path@ 8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
 			"github:owner/repo//path@8f3c2d1a4b5c6d7e8f901234567890abcdef1234 ",
+			"github:owner/repo//path@8F3C2D1A4B5C6D7E8F901234567890ABCDEF1234",
 		}
 		for _, in := range cases {
 			if _, err := ParseGitHubSource(in); err == nil {
@@ -145,6 +146,9 @@ func TestIsCommitPinnedRef(t *testing.T) {
 	if !IsCommitPinnedRef("8f3c2d1a4b5c6d7e8f901234567890abcdef1234") {
 		t.Fatal("full SHA should be pinned")
 	}
+	if IsCommitPinnedRef("8F3C2D1A4B5C6D7E8F901234567890ABCDEF1234") {
+		t.Fatal("uppercase full SHA should not be pinned")
+	}
 	if IsCommitPinnedRef("main") {
 		t.Fatal("branch should not be pinned")
 	}
@@ -157,7 +161,7 @@ func TestIsCommitPinnedRef(t *testing.T) {
 }
 
 func TestIsCommitPinnedRefProperty(t *testing.T) {
-	hex40 := regexp.MustCompile(`^[0-9a-fA-F]{40}$`)
+	hex40 := regexp.MustCompile(`^[0-9a-f]{40}$`)
 	prop := func(raw string) bool {
 		got := IsCommitPinnedRef(raw)
 		trimmed := strings.TrimSpace(raw)
