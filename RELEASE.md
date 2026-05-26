@@ -82,6 +82,7 @@ make beta-check
 ```
 
 This runs:
+- `make release-check-preflight` (using beta output paths)
 - `make check`
 - `make test`
 - `make build`
@@ -89,6 +90,7 @@ This runs:
 
 `beta-check` uses isolated `.cache` outputs by default:
 `.cache/gokui-beta-check` and `.cache/inspect-results-beta-check.sarif`.
+It applies the same output-path safety preflight checks as `release-check`.
 
 This is the minimum gate for beta publication. Before GA promotion, run the full
 `make release-check`.

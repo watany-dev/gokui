@@ -33,7 +33,7 @@ LDFLAGS := -s -w \
 	-X main.commit=$(COMMIT) \
 	-X main.date=$(DATE)
 
-.PHONY: build fmt fmt-check lint typecheck deadcode test test-race coverage vuln actionlint check beta-check release-check-preflight release-check release-check-offline release-evidence release-evidence-offline release-evidence-online release-evidence-beta inspect-sarif
+.PHONY: build fmt fmt-check lint typecheck deadcode test test-race coverage vuln actionlint check beta-check beta-check-preflight release-check-preflight release-check release-check-offline release-evidence release-evidence-offline release-evidence-online release-evidence-beta inspect-sarif
 
 build:
 	$(GO) build -trimpath -buildvcs=true -ldflags='$(LDFLAGS)' -o $(BUILD_OUT) $(MAIN_PKG)
@@ -79,7 +79,10 @@ actionlint:
 
 check: fmt-check lint typecheck deadcode coverage
 
-beta-check:
+beta-check-preflight:
+	$(MAKE) release-check-preflight RELEASE_CHECK_BUILD_OUT=$(BETA_CHECK_BUILD_OUT) RELEASE_CHECK_SARIF_OUT=$(BETA_CHECK_SARIF_OUT)
+
+beta-check: beta-check-preflight
 	$(MAKE) check
 	$(MAKE) test
 	$(MAKE) build BUILD_OUT=$(BETA_CHECK_BUILD_OUT)

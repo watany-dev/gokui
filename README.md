@@ -41,6 +41,7 @@ make beta-check
 ```
 
 `beta-check` runs the fast release gate:
+- `make release-check-preflight` (with beta build/SARIF output paths)
 - `make check`
 - `make test`
 - `make build`
@@ -49,6 +50,9 @@ make beta-check
 `beta-check` writes build/SARIF outputs under `.cache/` by default
 (`.cache/gokui-beta-check` and `.cache/inspect-results-beta-check.sarif`) to
 avoid repository-root artifact drift during repeated beta validation.
+It fail-closes on the same output-path preflight guards used by
+`release-check` (for example symlink path components, path collisions, invalid
+segments, and `.git` path usage).
 
 For beta audit evidence generation:
 

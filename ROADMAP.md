@@ -18,6 +18,8 @@ stable contracts, and clear operational boundaries. Work is now split into:
 - Preserve quarantine-first behavior and commit-pinned GitHub source handling.
 - Preserve machine-readable output and error contracts (`json`/`sarif`/`compact`).
 - Require a fast beta release gate via `make beta-check`:
+  - beta-check preflight reuses release-check output-path hardening for beta
+    build/SARIF paths.
   - `make check`
   - `make test`
   - `make build`
