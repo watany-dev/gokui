@@ -181,6 +181,41 @@ func TestBetaCheckPreflightRejectsInvalidSARIFExtensionFromBetaOutputVars(t *tes
 	}
 }
 
+func TestBetaCheckPreflightRejectsRootOrDirectoryLikeSARIFOutput(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("preflight path contracts are exercised on POSIX in CI")
+	}
+
+	testCases := []struct {
+		name     string
+		sarifOut string
+	}{
+		{name: "dot path", sarifOut: "."},
+		{name: "root path", sarifOut: "/"},
+		{name: "directory-like trailing slash", sarifOut: filepath.Join(t.TempDir(), "dir-like") + "/"},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			exitCode, out := runBetaCheckPreflight(t, map[string]string{
+				"BETA_CHECK_BUILD_OUT":    releaseCheckRepoLocalPath(t, "beta-build.out"),
+				"BETA_CHECK_SARIF_OUT":    tc.sarifOut,
+				"RELEASE_CHECK_BUILD_OUT": releaseCheckRepoLocalPath(t, "release-build.out"),
+				"RELEASE_CHECK_SARIF_OUT": releaseCheckRepoLocalPath(t, "release-inspect.sarif"),
+			})
+			if exitCode == 0 {
+				t.Fatalf("expected non-zero exit for invalid beta SARIF output path %q\noutput:\n%s", tc.sarifOut, out)
+			}
+			if !strings.Contains(out, "[RC_PREFLIGHT_SARIF_OUT_INVALID]") {
+				t.Fatalf("expected non-root beta SARIF output rejection code, got:\n%s", out)
+			}
+			if !strings.Contains(out, "SARIF output path must be a non-root file path") {
+				t.Fatalf("expected non-root beta SARIF output rejection message, got:\n%s", out)
+			}
+		})
+	}
+}
+
 func TestBetaCheckPreflightRejectsGitPathFromBetaOutputVars(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("preflight path contracts are exercised on POSIX in CI")
