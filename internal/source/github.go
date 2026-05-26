@@ -140,6 +140,9 @@ func normalizeGitHubPath(p string) (string, error) {
 	if strings.Contains(raw, ":") {
 		return "", fmt.Errorf("github source path must not contain colon character")
 	}
+	if containsUnicodeBidiControl(raw) {
+		return "", fmt.Errorf("github source path must not contain Unicode bidi control characters")
+	}
 	if strings.HasPrefix(raw, "/") {
 		return "", fmt.Errorf("github source path must be relative")
 	}
@@ -201,6 +204,16 @@ func containsASCIIControlCharacters(s string) bool {
 	for i := 0; i < len(s); i++ {
 		b := s[i]
 		if b < 0x20 || b == 0x7f {
+			return true
+		}
+	}
+	return false
+}
+
+func containsUnicodeBidiControl(s string) bool {
+	for _, r := range s {
+		switch r {
+		case '\u200e', '\u200f', '\u202a', '\u202b', '\u202c', '\u202d', '\u202e', '\u2066', '\u2067', '\u2068', '\u2069':
 			return true
 		}
 	}

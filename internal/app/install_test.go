@@ -417,6 +417,16 @@ func TestRunInstallErrorPaths(t *testing.T) {
 
 	stdout.Reset()
 	stderr.Reset()
+	code = runInstall([]string{"github:org/repo//skill/\u202edemo@8f3c2d1a4b5c6d7e8f901234567890abcdef1234", "--target", "codex", "--profile", "strict"}, &stdout, &stderr)
+	if code != 1 {
+		t.Fatalf("runInstall(path-bidi-control source) code = %d, want 1", code)
+	}
+	if !strings.Contains(stderr.String(), "invalid github source") {
+		t.Fatalf("stderr should include invalid github source for path-bidi-control source, got %q", stderr.String())
+	}
+
+	stdout.Reset()
+	stderr.Reset()
 	code = runInstall([]string{"github:org/repo//skill/ demo@8f3c2d1a4b5c6d7e8f901234567890abcdef1234", "--target", "codex", "--profile", "strict"}, &stdout, &stderr)
 	if code != 1 {
 		t.Fatalf("runInstall(path-segment-space source) code = %d, want 1", code)

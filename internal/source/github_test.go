@@ -61,6 +61,7 @@ func TestParseGitHubSource(t *testing.T) {
 			"github:owner/repo//skills/com¹.txt@ref",
 			"github:owner/repo//skills/ demo@ref",
 			"github:owner/repo//skills/demo.@ref",
+			"github:owner/repo//skills/\u202edemo@ref",
 			`github:owner/repo//skills\demo@ref`,
 			"github:owner/repo//path@ 8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
 			"github:owner/repo//path@8f3c2d1a4b5c6d7e8f901234567890abcdef1234 ",
@@ -197,6 +198,15 @@ func TestNormalizeGitHubPath(t *testing.T) {
 		for _, in := range cases {
 			if _, err := normalizeGitHubPath(in); err == nil {
 				t.Fatalf("expected path error for segment form %q", in)
+			}
+		}
+	})
+
+	t.Run("rejects Unicode bidi control characters in path", func(t *testing.T) {
+		cases := []string{"skills/\u202edemo", "skills/\u2066demo"}
+		for _, in := range cases {
+			if _, err := normalizeGitHubPath(in); err == nil {
+				t.Fatalf("expected path error for bidi-control path %q", in)
 			}
 		}
 	})
