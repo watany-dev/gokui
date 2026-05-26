@@ -779,14 +779,14 @@ func verifyLockStructure(lock installLock) (bool, string) {
 	}
 
 	trimmedProfile := strings.TrimSpace(lock.Policy.Profile)
-	if trimmedProfile == "" {
-		return false, "lock policy profile is empty"
-	}
 	if strings.IndexFunc(lock.Policy.Profile, isC0OrC1ControlRune) >= 0 {
 		return false, "lock policy profile must not contain C0/C1 control characters"
 	}
 	if containsSeverityOverrideDisallowedUnicode(lock.Policy.Profile) {
 		return false, "lock policy profile must not contain Unicode bidi, zero-width, tag, or variation-selector characters"
+	}
+	if trimmedProfile == "" {
+		return false, "lock policy profile is empty"
 	}
 	normalizedProfile := normalizePolicyProfile(trimmedProfile)
 	if lock.Policy.Profile != normalizedProfile {
