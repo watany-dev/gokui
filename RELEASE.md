@@ -44,7 +44,8 @@ Preflight rejections include machine-readable error codes:
 Release-check build/SARIF output paths must also be non-root file paths and must resolve
 under the repository root, and must not be directory-like paths ending with `/` or
 located under `.git/`.
-`make inspect-sarif` output paths must resolve under the repository root.
+`make inspect-sarif` output paths must resolve under the repository root and
+must resolve outside `.git/`.
 Output-path safety preflight checks run before format/test/race/vuln gate
 steps.
 

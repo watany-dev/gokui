@@ -55,9 +55,21 @@ assert_under_repo_root() {
   esac
 }
 
+assert_not_git_path() {
+  local path="$1"
+  local label="$2"
+  case "$path" in
+    "$ROOT_DIR/.git"|"$ROOT_DIR/.git"/*)
+      echo "${label} must resolve outside .git: $path" >&2
+      exit 1
+      ;;
+  esac
+}
+
 assert_no_symlink_components "$ROOT_DIR" "repository root path"
 out_dir="$(dirname "$out_path")"
 assert_under_repo_root "$out_path" "inspect SARIF output path"
+assert_not_git_path "$out_path" "inspect SARIF output path"
 assert_no_symlink_components "$out_dir" "inspect SARIF output directory"
 assert_no_symlink_components "$out_path" "inspect SARIF output path"
 if [ -e "$out_path" ]; then

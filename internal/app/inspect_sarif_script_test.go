@@ -25,3 +25,25 @@ func TestInspectSARIFScriptRejectsOutputOutsideRepoRoot(t *testing.T) {
 		t.Fatalf("expected repository-root-only rejection message, got:\n%s", text)
 	}
 }
+
+func TestInspectSARIFScriptRejectsOutputInsideGitDir(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("shell-script execution contract is exercised on POSIX in CI")
+	}
+
+	repoRoot, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatalf("resolve repository root: %v", err)
+	}
+	outPath := filepath.Join(repoRoot, ".git", "hooks", "inspect-results.sarif")
+	cmd := exec.Command("bash", "../../scripts/generate-inspect-sarif.sh", outPath)
+
+	out, err := cmd.CombinedOutput()
+	if err == nil {
+		t.Fatalf("expected non-zero exit for inspect-sarif output inside .git\noutput:\n%s", out)
+	}
+	text := string(out)
+	if !strings.Contains(text, "must resolve outside .git") {
+		t.Fatalf("expected .git-path rejection message, got:\n%s", text)
+	}
+}
