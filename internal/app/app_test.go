@@ -1851,6 +1851,29 @@ func TestRun(t *testing.T) {
 		if !strings.Contains(stdout.String(), "vet does not accept github sources") {
 			t.Fatalf("stdout should include vet github rejection message, got %q", stdout.String())
 		}
+		if strings.Contains(stdout.String(), "\"rule_id\":") {
+			t.Fatalf("stdout should omit rule_id for non-rule github-source rejection, got %q", stdout.String())
+		}
+	})
+
+	t.Run("vet rejects github unicode-threat source in json format", func(t *testing.T) {
+		var stdout bytes.Buffer
+		var stderr bytes.Buffer
+
+		source := "github:org/re\u200bpo//skills/skill-a@8f3c2d1a4b5c6d7e8f901234567890abcdef1234"
+		code := Run([]string{"vet", source, "--format", "json"}, &stdout, &stderr, cfg)
+		if code != 1 {
+			t.Fatalf("Run() code = %d, want 1\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
+		}
+		if stderr.Len() != 0 {
+			t.Fatalf("stderr should be empty, got %q", stderr.String())
+		}
+		if !strings.Contains(stdout.String(), "\"error_code\": \""+inspectErrorCodeSourceInvalid+"\"") {
+			t.Fatalf("stdout should include source-invalid error code, got %q", stdout.String())
+		}
+		if strings.Contains(stdout.String(), "\"rule_id\":") {
+			t.Fatalf("stdout should omit rule_id for non-rule github-source rejection, got %q", stdout.String())
+		}
 	})
 
 	t.Run("vet rejects github source in sarif format", func(t *testing.T) {
@@ -1874,6 +1897,51 @@ func TestRun(t *testing.T) {
 		}
 		if sarif.Runs[0].Results[0].RuleID != inspectErrorCodeSourceInvalid {
 			t.Fatalf("rule id = %q, want %q", sarif.Runs[0].Results[0].RuleID, inspectErrorCodeSourceInvalid)
+		}
+	})
+
+	t.Run("vet rejects github unicode-threat source in sarif format", func(t *testing.T) {
+		var stdout bytes.Buffer
+		var stderr bytes.Buffer
+
+		source := "github:org/re\u200bpo//skills/skill-a@8f3c2d1a4b5c6d7e8f901234567890abcdef1234"
+		code := Run([]string{"vet", source, "--format", "sarif"}, &stdout, &stderr, cfg)
+		if code != 1 {
+			t.Fatalf("Run() code = %d, want 1\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
+		}
+		if stderr.Len() != 0 {
+			t.Fatalf("stderr should be empty, got %q", stderr.String())
+		}
+		var sarif inspectSARIFReport
+		if err := json.Unmarshal(stdout.Bytes(), &sarif); err != nil {
+			t.Fatalf("sarif parse failed: %v", err)
+		}
+		if len(sarif.Runs) != 1 || len(sarif.Runs[0].Results) != 1 {
+			t.Fatalf("unexpected sarif structure: %+v", sarif)
+		}
+		if sarif.Runs[0].Results[0].RuleID != inspectErrorCodeSourceInvalid {
+			t.Fatalf("rule id = %q, want %q", sarif.Runs[0].Results[0].RuleID, inspectErrorCodeSourceInvalid)
+		}
+	})
+
+	t.Run("vet rejects github unicode-threat source in review-json format", func(t *testing.T) {
+		var stdout bytes.Buffer
+		var stderr bytes.Buffer
+
+		source := "github:org/re\u200bpo//skills/skill-a@8f3c2d1a4b5c6d7e8f901234567890abcdef1234"
+		code := Run([]string{"vet", source, "--format", "review-json"}, &stdout, &stderr, cfg)
+		if code != 1 {
+			t.Fatalf("Run() code = %d, want 1\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
+		}
+		if stderr.Len() != 0 {
+			t.Fatalf("stderr should be empty, got %q", stderr.String())
+		}
+		var report inspectErrorReport
+		if err := json.Unmarshal(stdout.Bytes(), &report); err != nil {
+			t.Fatalf("review-json parse failed: %v", err)
+		}
+		if report.ErrorCode != inspectErrorCodeSourceInvalid {
+			t.Fatalf("error_code = %q, want %q", report.ErrorCode, inspectErrorCodeSourceInvalid)
 		}
 	})
 
