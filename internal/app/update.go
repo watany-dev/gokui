@@ -745,17 +745,6 @@ func evaluateUpdateSkill(item updateSkillItem, lock installLock, policyLoaded bo
 	}
 	sourceInputRaw := lock.Source.Input
 	sourceInput := strings.TrimSpace(sourceInputRaw)
-	if sourceInput == "" {
-		item.Status = "ERROR"
-		item.ErrorCode = updateCodeLockfileInvalid
-		item.Message = "lock source input is empty"
-		item.RuleID = inferRuleIDForJSONError(item.Message)
-		item.Risk = updateRisk{
-			Previous: lock.Findings,
-			Current:  lock.Findings,
-		}
-		return item, nil
-	}
 	if strings.IndexFunc(sourceInputRaw, isC0OrC1ControlRune) >= 0 {
 		item.Status = "ERROR"
 		item.ErrorCode = updateCodeLockfileInvalid
@@ -778,6 +767,17 @@ func evaluateUpdateSkill(item updateSkillItem, lock installLock, policyLoaded bo
 		}
 		return item, nil
 	}
+	if sourceInput == "" {
+		item.Status = "ERROR"
+		item.ErrorCode = updateCodeLockfileInvalid
+		item.Message = "lock source input is empty"
+		item.RuleID = inferRuleIDForJSONError(item.Message)
+		item.Risk = updateRisk{
+			Previous: lock.Findings,
+			Current:  lock.Findings,
+		}
+		return item, nil
+	}
 	if sourceInputRaw != sourceInput {
 		item.Status = "ERROR"
 		item.ErrorCode = updateCodeLockfileInvalid
@@ -792,17 +792,6 @@ func evaluateUpdateSkill(item updateSkillItem, lock installLock, policyLoaded bo
 	kindRaw := lock.Source.Kind
 	kind := strings.TrimSpace(kindRaw)
 	detectedKind := detectSourceKind(sourceInput)
-	if kind == "" {
-		item.Status = "ERROR"
-		item.ErrorCode = updateCodeLockfileInvalid
-		item.Message = "lock source kind is empty"
-		item.RuleID = inferRuleIDForJSONError(item.Message)
-		item.Risk = updateRisk{
-			Previous: lock.Findings,
-			Current:  lock.Findings,
-		}
-		return item, nil
-	}
 	if strings.IndexFunc(kindRaw, isC0OrC1ControlRune) >= 0 {
 		item.Status = "ERROR"
 		item.ErrorCode = updateCodeLockfileInvalid
@@ -818,6 +807,17 @@ func evaluateUpdateSkill(item updateSkillItem, lock installLock, policyLoaded bo
 		item.Status = "ERROR"
 		item.ErrorCode = updateCodeLockfileInvalid
 		item.Message = "lock source kind must not contain Unicode bidi, zero-width, tag, or variation-selector characters"
+		item.RuleID = inferRuleIDForJSONError(item.Message)
+		item.Risk = updateRisk{
+			Previous: lock.Findings,
+			Current:  lock.Findings,
+		}
+		return item, nil
+	}
+	if kind == "" {
+		item.Status = "ERROR"
+		item.ErrorCode = updateCodeLockfileInvalid
+		item.Message = "lock source kind is empty"
 		item.RuleID = inferRuleIDForJSONError(item.Message)
 		item.Risk = updateRisk{
 			Previous: lock.Findings,
