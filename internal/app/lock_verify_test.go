@@ -1015,6 +1015,10 @@ func TestVerifyLockSourceChecks(t *testing.T) {
 	if ok, _ := verifyLockSource(lock); ok {
 		t.Fatal("kind with surrounding whitespace should fail")
 	}
+	lock.Source.Kind = "local\u008fdir"
+	if ok, _ := verifyLockSource(lock); ok {
+		t.Fatal("kind with C0/C1 control characters should fail")
+	}
 	lock.Source.Kind = "LOCAL-DIR"
 	if ok, _ := verifyLockSource(lock); ok {
 		t.Fatal("kind with uppercase letters should fail")
@@ -1023,6 +1027,10 @@ func TestVerifyLockSourceChecks(t *testing.T) {
 	lock.Source.Type = " local "
 	if ok, _ := verifyLockSource(lock); ok {
 		t.Fatal("type with surrounding whitespace should fail")
+	}
+	lock.Source.Type = "loca\u008fl"
+	if ok, _ := verifyLockSource(lock); ok {
+		t.Fatal("type with C0/C1 control characters should fail")
 	}
 	lock.Source.Type = "LOCAL"
 	if ok, _ := verifyLockSource(lock); ok {

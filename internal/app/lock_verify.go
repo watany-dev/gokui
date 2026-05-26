@@ -653,6 +653,9 @@ func verifyLockSource(lock installLock) (bool, string) {
 	if trimmedKind != lock.Source.Kind {
 		return false, "lock source kind must not contain leading or trailing whitespace"
 	}
+	if strings.IndexFunc(trimmedKind, isC0OrC1ControlRune) >= 0 {
+		return false, "lock source kind must not contain C0/C1 control characters"
+	}
 	if trimmedKind != strings.ToLower(trimmedKind) {
 		return false, "lock source kind must be canonical lowercase"
 	}
@@ -684,6 +687,9 @@ func verifyLockSource(lock installLock) (bool, string) {
 	trimmedType := strings.TrimSpace(lock.Source.Type)
 	if trimmedType != lock.Source.Type {
 		return false, "lock source type must not contain leading or trailing whitespace"
+	}
+	if strings.IndexFunc(trimmedType, isC0OrC1ControlRune) >= 0 {
+		return false, "lock source type must not contain C0/C1 control characters"
 	}
 	if trimmedType != strings.ToLower(trimmedType) {
 		return false, "lock source type must be canonical lowercase"

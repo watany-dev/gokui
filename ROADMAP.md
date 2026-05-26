@@ -20,6 +20,7 @@ tests/CI:
 - Lock skill file-path validation hardening with invalid UTF-8 and C0/C1 control-character rejection for install/update/lock-verify provenance checks
 - Lock source-input validation hardening with C0/C1 control-character rejection for install/update/lock-verify provenance checks
 - Lock name validation hardening with C0/C1 control-character rejection for install/update/lock-verify provenance checks
+- Lock source kind/type validation hardening with C0/C1 control-character rejection for install/update/lock-verify provenance checks
 - Source metadata write-path hardening with symlink component rejection and non-regular target rejection
 - Install atomic finalize hardening for symlinked target entries
 - Install idempotent-reuse hardening via strict existing-lock structural validation before provenance match
