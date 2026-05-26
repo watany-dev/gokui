@@ -887,14 +887,14 @@ func verifyInstallReport(skillPath string, lock installLock) (bool, string) {
 		return false, "invalid install report JSON"
 	}
 	trimmedSchemaVersion := strings.TrimSpace(report.SchemaVersion)
-	if trimmedSchemaVersion == "" {
-		return false, "install report schema_version is empty"
-	}
 	if strings.IndexFunc(report.SchemaVersion, isC0OrC1ControlRune) >= 0 {
 		return false, "install report schema_version must not contain C0/C1 control characters"
 	}
 	if containsSeverityOverrideDisallowedUnicode(report.SchemaVersion) {
 		return false, "install report schema_version must not contain Unicode bidi, zero-width, tag, or variation-selector characters"
+	}
+	if trimmedSchemaVersion == "" {
+		return false, "install report schema_version is empty"
 	}
 	if trimmedSchemaVersion != report.SchemaVersion {
 		return false, "install report schema_version must not contain leading or trailing whitespace"
