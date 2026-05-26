@@ -3583,6 +3583,13 @@ func TestReadInstallLockAndProvenanceMatches(t *testing.T) {
 				detailPart: "policy decision must not contain C0/C1 control characters",
 			},
 			{
+				name: "policy decision has C0/C1 control character at edge",
+				mutate: func(l *installLock) {
+					l.Policy.Decision = "\u0085pass"
+				},
+				detailPart: "policy decision must not contain C0/C1 control characters",
+			},
+			{
 				name: "policy decision has unicode obfuscation character",
 				mutate: func(l *installLock) {
 					l.Policy.Decision = "pass\u200d"
