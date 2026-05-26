@@ -99,6 +99,8 @@ Install report `source.input` / `source.kind` fields must not contain C0/C1
 control characters during lock verify and reuse/baseline integrity checks.
 Install report `installed_path` must not contain C0/C1 control characters
 during lock verify and reuse/baseline integrity checks.
+Install report `schema_version` must not contain C0/C1 control characters
+during lock verify and reuse/baseline integrity checks.
 Install target entries also reject symlink path components.
 `lock verify` now validates installed files against `gokui.lock`, checks source
 field consistency (including strict GitHub source syntax and commit pinning),

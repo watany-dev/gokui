@@ -573,6 +573,30 @@ func TestInstallReportInstalledPathControlCharHardeningDocumentationSync(t *test
 	}
 }
 
+func TestInstallReportSchemaVersionControlCharHardeningDocumentationSync(t *testing.T) {
+	readmeBytes, err := os.ReadFile("../../README.md")
+	if err != nil {
+		t.Fatalf("failed to read README.md: %v", err)
+	}
+	readme := string(readmeBytes)
+	roadmapBytes, err := os.ReadFile("../../ROADMAP.md")
+	if err != nil {
+		t.Fatalf("failed to read ROADMAP.md: %v", err)
+	}
+	roadmap := string(roadmapBytes)
+
+	requiredReadme := "Install report `schema_version` must not contain C0/C1 control characters"
+	requiredReadmeContinuation := "during lock verify and reuse/baseline integrity checks."
+	if !strings.Contains(readme, requiredReadme) || !strings.Contains(readme, requiredReadmeContinuation) {
+		t.Fatalf("README missing install report schema_version control-char hardening line: %q ... %q", requiredReadme, requiredReadmeContinuation)
+	}
+
+	requiredRoadmap := "Install report `schema_version` validation hardening with C0/C1 control-character rejection for lock-verify and install/update integrity checks"
+	if !strings.Contains(roadmap, requiredRoadmap) {
+		t.Fatalf("ROADMAP missing install report schema_version control-char hardening line: %q", requiredRoadmap)
+	}
+}
+
 func TestLockfileExampleSchemaSync(t *testing.T) {
 	readmeBytes, err := os.ReadFile("../../README.md")
 	if err != nil {

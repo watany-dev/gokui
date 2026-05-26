@@ -855,6 +855,9 @@ func verifyInstallReport(skillPath string, lock installLock) (bool, string) {
 	if strings.TrimSpace(report.SchemaVersion) == "" {
 		return false, "install report schema_version is empty"
 	}
+	if strings.IndexFunc(report.SchemaVersion, isC0OrC1ControlRune) >= 0 {
+		return false, "install report schema_version must not contain C0/C1 control characters"
+	}
 	if report.SchemaVersion != reportSchemaVersion {
 		return false, fmt.Sprintf("install report schema_version is unsupported: %s", report.SchemaVersion)
 	}
