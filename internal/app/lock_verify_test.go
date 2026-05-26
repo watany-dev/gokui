@@ -2175,6 +2175,19 @@ func TestSeverityOverrideAuditHelpers(t *testing.T) {
 				detailPart: "rule_id must not contain leading or trailing whitespace",
 			},
 			{
+				name: "rule_id has C0/C1 control character",
+				override: severityOverrideAudit{
+					RuleID:            "PROMPT_OVERRIDE_LANGUAGE\u008f",
+					PreviousSeverity:  "high",
+					EffectiveSeverity: "medium",
+					Justification:     "x",
+					ApprovedBy:        "y",
+					Source:            "policy-file",
+					AppliedAt:         "2026-05-24T00:00:00Z",
+				},
+				detailPart: "rule_id must not contain C0/C1 control characters",
+			},
+			{
 				name: "rule_id must be uppercase snake case",
 				override: severityOverrideAudit{
 					RuleID:            "prompt_override_language",
@@ -2199,6 +2212,19 @@ func TestSeverityOverrideAuditHelpers(t *testing.T) {
 					AppliedAt:         "2026-05-24T00:00:00Z",
 				},
 				detailPart: "previous_severity must be canonical severity",
+			},
+			{
+				name: "previous severity has C0/C1 control character",
+				override: severityOverrideAudit{
+					RuleID:            "PROMPT_OVERRIDE_LANGUAGE",
+					PreviousSeverity:  "high\u008f",
+					EffectiveSeverity: "medium",
+					Justification:     "x",
+					ApprovedBy:        "y",
+					Source:            "policy-file",
+					AppliedAt:         "2026-05-24T00:00:00Z",
+				},
+				detailPart: "previous_severity must not contain C0/C1 control characters",
 			},
 			{
 				name: "empty effective severity",
@@ -2238,6 +2264,19 @@ func TestSeverityOverrideAuditHelpers(t *testing.T) {
 				detailPart: "justification is empty",
 			},
 			{
+				name: "justification has C0/C1 control character",
+				override: severityOverrideAudit{
+					RuleID:            "PROMPT_OVERRIDE_LANGUAGE",
+					PreviousSeverity:  "high",
+					EffectiveSeverity: "medium",
+					Justification:     "approved\u008f",
+					ApprovedBy:        "y",
+					Source:            "policy-file",
+					AppliedAt:         "2026-05-24T00:00:00Z",
+				},
+				detailPart: "justification must not contain C0/C1 control characters",
+			},
+			{
 				name: "empty approved_by",
 				override: severityOverrideAudit{
 					RuleID:            "PROMPT_OVERRIDE_LANGUAGE",
@@ -2248,6 +2287,19 @@ func TestSeverityOverrideAuditHelpers(t *testing.T) {
 					AppliedAt:         "2026-05-24T00:00:00Z",
 				},
 				detailPart: "approved_by is empty",
+			},
+			{
+				name: "approved_by has C0/C1 control character",
+				override: severityOverrideAudit{
+					RuleID:            "PROMPT_OVERRIDE_LANGUAGE",
+					PreviousSeverity:  "high",
+					EffectiveSeverity: "medium",
+					Justification:     "x",
+					ApprovedBy:        "reviewer\u008f",
+					Source:            "policy-file",
+					AppliedAt:         "2026-05-24T00:00:00Z",
+				},
+				detailPart: "approved_by must not contain C0/C1 control characters",
 			},
 			{
 				name: "empty source",
@@ -2273,6 +2325,19 @@ func TestSeverityOverrideAuditHelpers(t *testing.T) {
 					AppliedAt:         "2026-05-24T00:00:00Z",
 				},
 				detailPart: "source must not contain leading or trailing whitespace",
+			},
+			{
+				name: "source has C0/C1 control character",
+				override: severityOverrideAudit{
+					RuleID:            "PROMPT_OVERRIDE_LANGUAGE",
+					PreviousSeverity:  "high",
+					EffectiveSeverity: "medium",
+					Justification:     "x",
+					ApprovedBy:        "y",
+					Source:            "policy-file\u008f",
+					AppliedAt:         "2026-05-24T00:00:00Z",
+				},
+				detailPart: "source must not contain C0/C1 control characters",
 			},
 			{
 				name: "source must be canonical lowercase",
@@ -2324,6 +2389,19 @@ func TestSeverityOverrideAuditHelpers(t *testing.T) {
 					AppliedAt:         "not-rfc3339",
 				},
 				detailPart: "applied_at must be RFC3339",
+			},
+			{
+				name: "applied_at has C0/C1 control character",
+				override: severityOverrideAudit{
+					RuleID:            "PROMPT_OVERRIDE_LANGUAGE",
+					PreviousSeverity:  "high",
+					EffectiveSeverity: "medium",
+					Justification:     "x",
+					ApprovedBy:        "y",
+					Source:            "policy-file",
+					AppliedAt:         "2026-05-24T00:00:00Z\u008f",
+				},
+				detailPart: "applied_at must not contain C0/C1 control characters",
 			},
 			{
 				name: "applied_at has surrounding whitespace",

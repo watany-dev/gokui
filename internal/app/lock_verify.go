@@ -1017,6 +1017,9 @@ func isC0OrC1ControlRune(r rune) bool {
 
 func validateSeverityOverrideAudit(overrides []severityOverrideAudit) error {
 	for idx, override := range overrides {
+		if strings.IndexFunc(override.RuleID, isC0OrC1ControlRune) >= 0 {
+			return fmt.Errorf("entry %d: rule_id must not contain C0/C1 control characters", idx)
+		}
 		ruleID := strings.TrimSpace(override.RuleID)
 		if ruleID == "" {
 			return fmt.Errorf("entry %d: rule_id is empty", idx)
@@ -1026,6 +1029,9 @@ func validateSeverityOverrideAudit(overrides []severityOverrideAudit) error {
 		}
 		if !severityOverrideRuleIDPattern.MatchString(ruleID) {
 			return fmt.Errorf("entry %d: rule_id must be canonical uppercase snake case", idx)
+		}
+		if strings.IndexFunc(override.PreviousSeverity, isC0OrC1ControlRune) >= 0 {
+			return fmt.Errorf("entry %d: previous_severity must not contain C0/C1 control characters", idx)
 		}
 		previousSeverity := strings.TrimSpace(override.PreviousSeverity)
 		if previousSeverity == "" {
@@ -1037,6 +1043,9 @@ func validateSeverityOverrideAudit(overrides []severityOverrideAudit) error {
 		if !isCanonicalSeverity(previousSeverity) {
 			return fmt.Errorf("entry %d: previous_severity must be canonical severity (critical|high|medium|low)", idx)
 		}
+		if strings.IndexFunc(override.EffectiveSeverity, isC0OrC1ControlRune) >= 0 {
+			return fmt.Errorf("entry %d: effective_severity must not contain C0/C1 control characters", idx)
+		}
 		effectiveSeverity := strings.TrimSpace(override.EffectiveSeverity)
 		if effectiveSeverity == "" {
 			return fmt.Errorf("entry %d: effective_severity is empty", idx)
@@ -1047,11 +1056,20 @@ func validateSeverityOverrideAudit(overrides []severityOverrideAudit) error {
 		if !isCanonicalSeverity(effectiveSeverity) {
 			return fmt.Errorf("entry %d: effective_severity must be canonical severity (critical|high|medium|low)", idx)
 		}
+		if strings.IndexFunc(override.Justification, isC0OrC1ControlRune) >= 0 {
+			return fmt.Errorf("entry %d: justification must not contain C0/C1 control characters", idx)
+		}
 		if strings.TrimSpace(override.Justification) == "" {
 			return fmt.Errorf("entry %d: justification is empty", idx)
 		}
+		if strings.IndexFunc(override.ApprovedBy, isC0OrC1ControlRune) >= 0 {
+			return fmt.Errorf("entry %d: approved_by must not contain C0/C1 control characters", idx)
+		}
 		if strings.TrimSpace(override.ApprovedBy) == "" {
 			return fmt.Errorf("entry %d: approved_by is empty", idx)
+		}
+		if strings.IndexFunc(override.Source, isC0OrC1ControlRune) >= 0 {
+			return fmt.Errorf("entry %d: source must not contain C0/C1 control characters", idx)
 		}
 		source := strings.TrimSpace(override.Source)
 		if source == "" {
@@ -1065,6 +1083,9 @@ func validateSeverityOverrideAudit(overrides []severityOverrideAudit) error {
 		}
 		if !isAllowedSeverityOverrideSource(source) {
 			return fmt.Errorf("entry %d: source must be an allowed origin (cli-override|policy-file)", idx)
+		}
+		if strings.IndexFunc(override.AppliedAt, isC0OrC1ControlRune) >= 0 {
+			return fmt.Errorf("entry %d: applied_at must not contain C0/C1 control characters", idx)
 		}
 		if strings.TrimSpace(override.AppliedAt) == "" {
 			return fmt.Errorf("entry %d: applied_at is empty", idx)
