@@ -3695,6 +3695,13 @@ func TestReadInstallLockAndProvenanceMatches(t *testing.T) {
 				detailPart: "source input must not contain C0/C1 control characters",
 			},
 			{
+				name: "source input has C1 control character only",
+				mutate: func(l *installLock) {
+					l.Source.Input = "\u0085"
+				},
+				detailPart: "source input must not contain C0/C1 control characters",
+			},
+			{
 				name: "source input has unicode obfuscation character",
 				mutate: func(l *installLock) {
 					l.Source.Input = "/tmp/skill\u200dpayload"
