@@ -67,7 +67,7 @@ func TestReleaseCheckPreflightRejectsSameOutputPath(t *testing.T) {
 		t.Skip("release-check preflight path contracts are exercised on POSIX in CI")
 	}
 
-	shared := releaseCheckRepoLocalPath(t, "shared.out")
+	shared := releaseCheckRepoLocalPath(t, "shared.sarif")
 
 	exitCode, out := runReleaseCheckPreflight(t, map[string]string{
 		"RELEASE_CHECK_BUILD_OUT": shared,
@@ -105,8 +105,8 @@ func TestReleaseCheckPreflightRejectsSameOutputPathAfterNormalization(t *testing
 	t.Cleanup(func() {
 		_ = os.RemoveAll(tempDir)
 	})
-	buildOut := filepath.Join(tempDir, "nested", "..", "shared.out")
-	sarifOut := filepath.Join(tempDir, "shared.out")
+	buildOut := filepath.Join(tempDir, "nested", "..", "shared.sarif")
+	sarifOut := filepath.Join(tempDir, "shared.sarif")
 
 	exitCode, out := runReleaseCheckPreflight(t, map[string]string{
 		"RELEASE_CHECK_BUILD_OUT": buildOut,
@@ -320,6 +320,26 @@ func TestReleaseCheckPreflightRejectsSARIFOutputDotOrDotDotPathSegments(t *testi
 	}
 }
 
+func TestReleaseCheckPreflightRejectsNonSarifSARIFOutputExtension(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("release-check preflight path contracts are exercised on POSIX in CI")
+	}
+
+	exitCode, out := runReleaseCheckPreflight(t, map[string]string{
+		"RELEASE_CHECK_BUILD_OUT": releaseCheckRepoLocalPath(t, "build.out"),
+		"RELEASE_CHECK_SARIF_OUT": releaseCheckRepoLocalPath(t, "inspect.json"),
+	})
+	if exitCode == 0 {
+		t.Fatalf("expected non-zero exit for non-sarif RELEASE_CHECK_SARIF_OUT\noutput:\n%s", out)
+	}
+	if !strings.Contains(out, "SARIF output path must end with .sarif") {
+		t.Fatalf("expected SARIF extension rejection message, got:\n%s", out)
+	}
+	if !strings.Contains(out, "[RC_PREFLIGHT_SARIF_OUT_INVALID]") {
+		t.Fatalf("expected SARIF extension rejection code, got:\n%s", out)
+	}
+}
+
 func TestReleaseCheckPreflightRejectsBuildOutputInsideGitDir(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("release-check preflight path contracts are exercised on POSIX in CI")
@@ -349,7 +369,7 @@ func TestReleaseCheckPreflightRejectsSARIFOutputInsideGitDir(t *testing.T) {
 	repoRoot := releaseCheckRepoRootPath(t)
 	exitCode, out := runReleaseCheckPreflight(t, map[string]string{
 		"RELEASE_CHECK_BUILD_OUT": releaseCheckRepoLocalPath(t, "build.out"),
-		"RELEASE_CHECK_SARIF_OUT": filepath.Join(repoRoot, ".git", "logs", "HEAD"),
+		"RELEASE_CHECK_SARIF_OUT": filepath.Join(repoRoot, ".git", "logs", "inspect.sarif"),
 	})
 	if exitCode == 0 {
 		t.Fatalf("expected non-zero exit for SARIF output inside .git\noutput:\n%s", out)
