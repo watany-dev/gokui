@@ -816,6 +816,18 @@ func TestRunFetch(t *testing.T) {
 		stdout.Reset()
 		stderr.Reset()
 
+		// invalid UTF-8 in source
+		invalidUTF8Source := string([]byte("github:org/repo//skills/x@8f3c2d1a4b5c6d7e8f901234567890abcdef1234\xff"))
+		code = runFetch([]string{invalidUTF8Source, "--out", t.TempDir(), "--format", "json"}, &stdout, &stderr)
+		if code != 1 || !strings.Contains(stdout.String(), fetchErrorCodeSourceInvalid) {
+			t.Fatalf("expected source invalid code for invalid UTF-8 source, got code=%d stdout=%q stderr=%q", code, stdout.String(), stderr.String())
+		}
+		if !strings.Contains(stdout.String(), "must be valid UTF-8") {
+			t.Fatalf("expected UTF-8 validation detail in json error, got stdout=%q stderr=%q", stdout.String(), stderr.String())
+		}
+		stdout.Reset()
+		stderr.Reset()
+
 		// surrounding whitespace in path
 		code = runFetch([]string{"github:org/repo// skills/x@8f3c2d1a4b5c6d7e8f901234567890abcdef1234", "--out", t.TempDir(), "--format", "json"}, &stdout, &stderr)
 		if code != 1 || !strings.Contains(stdout.String(), fetchErrorCodeSourceInvalid) {

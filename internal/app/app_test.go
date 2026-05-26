@@ -2217,6 +2217,26 @@ func TestRun(t *testing.T) {
 		}
 	})
 
+	t.Run("inspect invalid github non-UTF-8 source in json keeps UTF-8 detail", func(t *testing.T) {
+		var stdout bytes.Buffer
+		var stderr bytes.Buffer
+
+		source := string([]byte("github:org/repo//skills/x@8f3c2d1a4b5c6d7e8f901234567890abcdef1234\xff"))
+		code := Run([]string{"inspect", source, "--format", "json"}, &stdout, &stderr, cfg)
+		if code != 1 {
+			t.Fatalf("Run() code = %d, want 1\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
+		}
+		if stderr.Len() != 0 {
+			t.Fatalf("stderr should be empty, got %q", stderr.String())
+		}
+		if !strings.Contains(stdout.String(), "\"error_code\": \""+inspectErrorCodeSourceInvalid+"\"") {
+			t.Fatalf("stdout should include source-invalid error code, got %q", stdout.String())
+		}
+		if !strings.Contains(stdout.String(), "must be valid UTF-8") {
+			t.Fatalf("stdout should include UTF-8 validation detail, got %q", stdout.String())
+		}
+	})
+
 	t.Run("inspect requires source with sarif error envelope", func(t *testing.T) {
 		var stdout bytes.Buffer
 		var stderr bytes.Buffer

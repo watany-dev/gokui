@@ -1005,6 +1005,30 @@ func TestRunInstallJSONOutput(t *testing.T) {
 		}
 	})
 
+	t.Run("json invalid github non-UTF-8 source keeps UTF-8 detail", func(t *testing.T) {
+		var stdout strings.Builder
+		var stderr strings.Builder
+		source := string([]byte("github:org/repo//skills/x@8f3c2d1a4b5c6d7e8f901234567890abcdef1234\xff"))
+		code := runInstall([]string{
+			source,
+			"--target", "codex",
+			"--profile", "strict",
+			"--format", "json",
+		}, &stdout, &stderr)
+		if code != 1 {
+			t.Fatalf("runInstall(json invalid github non-UTF-8 source) code = %d, want 1\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
+		}
+		if stderr.Len() != 0 {
+			t.Fatalf("stderr should be empty for json errors, got %q", stderr.String())
+		}
+		if !strings.Contains(stdout.String(), "\"error_code\": \""+installErrorCodeSourcePrepareFailed+"\"") {
+			t.Fatalf("stdout should include source-prepare-failed error code, got %q", stdout.String())
+		}
+		if !strings.Contains(stdout.String(), "must be valid UTF-8") {
+			t.Fatalf("stdout should include UTF-8 validation detail, got %q", stdout.String())
+		}
+	})
+
 	t.Run("json source stat access error uses source-prepare-failed code", func(t *testing.T) {
 		if runtime.GOOS == "windows" {
 			t.Skip("permission behavior differs on windows")
