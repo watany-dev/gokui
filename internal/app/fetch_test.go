@@ -276,6 +276,46 @@ func TestRunFetch(t *testing.T) {
 
 		stdout.Reset()
 		stderr.Reset()
+		code = runFetch([]string{"github:or\u00a0g/repo//skills/demo@8f3c2d1a4b5c6d7e8f901234567890abcdef1234", "--out", t.TempDir()}, &stdout, &stderr)
+		if code != 1 {
+			t.Fatalf("runFetch(owner-unicode-whitespace source) code = %d, want 1", code)
+		}
+		if !strings.Contains(stderr.String(), "invalid github source") {
+			t.Fatalf("stderr should include invalid source message for owner-unicode-whitespace source, got %q", stderr.String())
+		}
+
+		stdout.Reset()
+		stderr.Reset()
+		code = runFetch([]string{"github:org/re\u200bpo//skills/demo@8f3c2d1a4b5c6d7e8f901234567890abcdef1234", "--out", t.TempDir()}, &stdout, &stderr)
+		if code != 1 {
+			t.Fatalf("runFetch(repo-zero-width source) code = %d, want 1", code)
+		}
+		if !strings.Contains(stderr.String(), "invalid github source") {
+			t.Fatalf("stderr should include invalid source message for repo-zero-width source, got %q", stderr.String())
+		}
+
+		stdout.Reset()
+		stderr.Reset()
+		code = runFetch([]string{"github:or\U000E0001g/repo//skills/demo@8f3c2d1a4b5c6d7e8f901234567890abcdef1234", "--out", t.TempDir()}, &stdout, &stderr)
+		if code != 1 {
+			t.Fatalf("runFetch(owner-unicode-tag source) code = %d, want 1", code)
+		}
+		if !strings.Contains(stderr.String(), "invalid github source") {
+			t.Fatalf("stderr should include invalid source message for owner-unicode-tag source, got %q", stderr.String())
+		}
+
+		stdout.Reset()
+		stderr.Reset()
+		code = runFetch([]string{"github:org/re\ufe0fpo//skills/demo@8f3c2d1a4b5c6d7e8f901234567890abcdef1234", "--out", t.TempDir()}, &stdout, &stderr)
+		if code != 1 {
+			t.Fatalf("runFetch(repo-variation-selector source) code = %d, want 1", code)
+		}
+		if !strings.Contains(stderr.String(), "invalid github source") {
+			t.Fatalf("stderr should include invalid source message for repo-variation-selector source, got %q", stderr.String())
+		}
+
+		stdout.Reset()
+		stderr.Reset()
 		code = runFetch([]string{"github:org/repo//skills/demo@shadow@8f3c2d1a4b5c6d7e8f901234567890abcdef1234", "--out", t.TempDir()}, &stdout, &stderr)
 		if code != 1 {
 			t.Fatalf("runFetch(path-at source) code = %d, want 1", code)

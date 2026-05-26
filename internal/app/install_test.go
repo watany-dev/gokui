@@ -407,6 +407,46 @@ func TestRunInstallErrorPaths(t *testing.T) {
 
 	stdout.Reset()
 	stderr.Reset()
+	code = runInstall([]string{"github:or\u00a0g/repo//skill@8f3c2d1a4b5c6d7e8f901234567890abcdef1234", "--target", "codex", "--profile", "strict"}, &stdout, &stderr)
+	if code != 1 {
+		t.Fatalf("runInstall(owner-unicode-whitespace source) code = %d, want 1", code)
+	}
+	if !strings.Contains(stderr.String(), "invalid github source") {
+		t.Fatalf("stderr should include invalid github source for owner-unicode-whitespace source, got %q", stderr.String())
+	}
+
+	stdout.Reset()
+	stderr.Reset()
+	code = runInstall([]string{"github:org/re\u200bpo//skill@8f3c2d1a4b5c6d7e8f901234567890abcdef1234", "--target", "codex", "--profile", "strict"}, &stdout, &stderr)
+	if code != 1 {
+		t.Fatalf("runInstall(repo-zero-width source) code = %d, want 1", code)
+	}
+	if !strings.Contains(stderr.String(), "invalid github source") {
+		t.Fatalf("stderr should include invalid github source for repo-zero-width source, got %q", stderr.String())
+	}
+
+	stdout.Reset()
+	stderr.Reset()
+	code = runInstall([]string{"github:or\U000E0001g/repo//skill@8f3c2d1a4b5c6d7e8f901234567890abcdef1234", "--target", "codex", "--profile", "strict"}, &stdout, &stderr)
+	if code != 1 {
+		t.Fatalf("runInstall(owner-unicode-tag source) code = %d, want 1", code)
+	}
+	if !strings.Contains(stderr.String(), "invalid github source") {
+		t.Fatalf("stderr should include invalid github source for owner-unicode-tag source, got %q", stderr.String())
+	}
+
+	stdout.Reset()
+	stderr.Reset()
+	code = runInstall([]string{"github:org/re\ufe0fpo//skill@8f3c2d1a4b5c6d7e8f901234567890abcdef1234", "--target", "codex", "--profile", "strict"}, &stdout, &stderr)
+	if code != 1 {
+		t.Fatalf("runInstall(repo-variation-selector source) code = %d, want 1", code)
+	}
+	if !strings.Contains(stderr.String(), "invalid github source") {
+		t.Fatalf("stderr should include invalid github source for repo-variation-selector source, got %q", stderr.String())
+	}
+
+	stdout.Reset()
+	stderr.Reset()
 	code = runInstall([]string{"github:org/repo//skill@shadow@8f3c2d1a4b5c6d7e8f901234567890abcdef1234", "--target", "codex", "--profile", "strict"}, &stdout, &stderr)
 	if code != 1 {
 		t.Fatalf("runInstall(path-at source) code = %d, want 1", code)

@@ -4824,6 +4824,66 @@ func TestRunInspectJSONErrorCodes(t *testing.T) {
 		}
 	})
 
+	t.Run("github source with unicode whitespace in owner in human mode writes stderr", func(t *testing.T) {
+		var stdout bytes.Buffer
+		var stderr bytes.Buffer
+		code := Run([]string{"inspect", "github:or\u00a0g/repo//skills/clean-skill@8f3c2d1a4b5c6d7e8f901234567890abcdef1234"}, &stdout, &stderr, cfg)
+		if code != 1 {
+			t.Fatalf("Run() code = %d, want 1", code)
+		}
+		if stdout.Len() != 0 {
+			t.Fatalf("stdout should be empty, got %q", stdout.String())
+		}
+		if !strings.Contains(stderr.String(), "invalid github source") {
+			t.Fatalf("stderr should include github source error for owner-unicode-whitespace input, got %q", stderr.String())
+		}
+	})
+
+	t.Run("github source with zero-width char in repo in human mode writes stderr", func(t *testing.T) {
+		var stdout bytes.Buffer
+		var stderr bytes.Buffer
+		code := Run([]string{"inspect", "github:org/re\u200bpo//skills/clean-skill@8f3c2d1a4b5c6d7e8f901234567890abcdef1234"}, &stdout, &stderr, cfg)
+		if code != 1 {
+			t.Fatalf("Run() code = %d, want 1", code)
+		}
+		if stdout.Len() != 0 {
+			t.Fatalf("stdout should be empty, got %q", stdout.String())
+		}
+		if !strings.Contains(stderr.String(), "invalid github source") {
+			t.Fatalf("stderr should include github source error for repo-zero-width input, got %q", stderr.String())
+		}
+	})
+
+	t.Run("github source with unicode tag in owner in human mode writes stderr", func(t *testing.T) {
+		var stdout bytes.Buffer
+		var stderr bytes.Buffer
+		code := Run([]string{"inspect", "github:or\U000E0001g/repo//skills/clean-skill@8f3c2d1a4b5c6d7e8f901234567890abcdef1234"}, &stdout, &stderr, cfg)
+		if code != 1 {
+			t.Fatalf("Run() code = %d, want 1", code)
+		}
+		if stdout.Len() != 0 {
+			t.Fatalf("stdout should be empty, got %q", stdout.String())
+		}
+		if !strings.Contains(stderr.String(), "invalid github source") {
+			t.Fatalf("stderr should include github source error for owner-unicode-tag input, got %q", stderr.String())
+		}
+	})
+
+	t.Run("github source with variation selector in repo in human mode writes stderr", func(t *testing.T) {
+		var stdout bytes.Buffer
+		var stderr bytes.Buffer
+		code := Run([]string{"inspect", "github:org/re\ufe0fpo//skills/clean-skill@8f3c2d1a4b5c6d7e8f901234567890abcdef1234"}, &stdout, &stderr, cfg)
+		if code != 1 {
+			t.Fatalf("Run() code = %d, want 1", code)
+		}
+		if stdout.Len() != 0 {
+			t.Fatalf("stdout should be empty, got %q", stdout.String())
+		}
+		if !strings.Contains(stderr.String(), "invalid github source") {
+			t.Fatalf("stderr should include github source error for repo-variation-selector input, got %q", stderr.String())
+		}
+	})
+
 	t.Run("github source with @ in path in human mode writes stderr", func(t *testing.T) {
 		var stdout bytes.Buffer
 		var stderr bytes.Buffer
