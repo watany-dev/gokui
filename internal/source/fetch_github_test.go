@@ -238,6 +238,35 @@ func TestFetchGitHubSkillErrors(t *testing.T) {
 		}
 	})
 
+	t.Run("downloadGitHubArchive rejects truncated gzip payload and cleans up partial file", func(t *testing.T) {
+		goodArchive := buildTarGz(t, map[string]string{
+			"repo-8f3c2d1a4b5c6d7e8f901234567890abcdef1234/skills/x/SKILL.md": "---\nname: x\ndescription: d\n---\n",
+		})
+		if len(goodArchive) < 12 {
+			t.Fatalf("expected fixture archive large enough, got %d bytes", len(goodArchive))
+		}
+		truncated := goodArchive[:len(goodArchive)-8]
+
+		githubCodeloadBaseURL = "https://mock.codeload.local"
+		githubHTTPClient = &http.Client{
+			Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+				resp := httpResponse(http.StatusOK, truncated)
+				resp.Header.Set("Content-Type", "application/x-gzip")
+				return resp, nil
+			}),
+		}
+
+		spec := GitHubSpec{Owner: "o", Repo: "r", Path: "skills/x", Ref: "8f3c2d1a4b5c6d7e8f901234567890abcdef1234"}
+		outPath := filepath.Join(t.TempDir(), "archive.tar.gz")
+		err := downloadGitHubArchive(spec, outPath)
+		if err == nil || !strings.Contains(err.Error(), "payload must be valid gzip stream") {
+			t.Fatalf("expected truncated-gzip validation error, got %v", err)
+		}
+		if _, statErr := os.Stat(outPath); !errors.Is(statErr, os.ErrNotExist) {
+			t.Fatalf("expected truncated payload archive file to be removed, statErr=%v", statErr)
+		}
+	})
+
 	t.Run("downloadGitHubArchive rejects non-https base URL", func(t *testing.T) {
 		spec := GitHubSpec{Owner: "o", Repo: "r", Path: "skills/x", Ref: "8f3c2d1a4b5c6d7e8f901234567890abcdef1234"}
 		githubCodeloadBaseURL = "http://mock.codeload.local"
@@ -630,6 +659,39 @@ func TestValidateGitHubArchiveResponseHeaders(t *testing.T) {
 		resp.Header.Set("Content-Encoding", "identity")
 		if err := validateGitHubArchiveResponseHeaders(resp); err != nil {
 			t.Fatalf("expected identity content-encoding to pass, got %v", err)
+		}
+	})
+}
+
+func TestValidateGzipArchiveFile(t *testing.T) {
+	t.Run("valid gzip stream passes", func(t *testing.T) {
+		archive := buildTarGz(t, map[string]string{
+			"repo-8f3c2d1a4b5c6d7e8f901234567890abcdef1234/skills/x/SKILL.md": "---\nname: x\ndescription: d\n---\n",
+		})
+		path := filepath.Join(t.TempDir(), "archive.tar.gz")
+		if err := os.WriteFile(path, archive, 0o644); err != nil {
+			t.Fatalf("write archive: %v", err)
+		}
+		if err := validateGzipArchiveFile(path); err != nil {
+			t.Fatalf("expected valid gzip stream, got %v", err)
+		}
+	})
+
+	t.Run("missing archive file returns reopen error", func(t *testing.T) {
+		err := validateGzipArchiveFile(filepath.Join(t.TempDir(), "missing.tar.gz"))
+		if err == nil || !strings.Contains(err.Error(), "failed to reopen github archive for validation") {
+			t.Fatalf("expected reopen error, got %v", err)
+		}
+	})
+
+	t.Run("short payload is rejected as non-gzip", func(t *testing.T) {
+		path := filepath.Join(t.TempDir(), "short.tar.gz")
+		if err := os.WriteFile(path, []byte{0x1f, 0x8b}, 0o644); err != nil {
+			t.Fatalf("write short payload: %v", err)
+		}
+		err := validateGzipArchiveFile(path)
+		if err == nil || !strings.Contains(err.Error(), "github archive payload must be gzip") {
+			t.Fatalf("expected short payload error, got %v", err)
 		}
 	})
 }

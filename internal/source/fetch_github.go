@@ -1,6 +1,8 @@
 package source
 
 import (
+	"bytes"
+	"compress/gzip"
 	"fmt"
 	"io"
 	"mime"
@@ -237,6 +239,17 @@ func validateGzipArchiveFile(path string) error {
 	}
 	if header[0] != 0x1f || header[1] != 0x8b || header[2] != 0x08 {
 		return fmt.Errorf("github archive payload must be gzip")
+	}
+	gz, err := gzip.NewReader(io.MultiReader(bytes.NewReader(header), f))
+	if err != nil {
+		return fmt.Errorf("github archive payload must be gzip: %w", err)
+	}
+	if _, err := io.Copy(io.Discard, gz); err != nil {
+		_ = gz.Close()
+		return fmt.Errorf("github archive payload must be valid gzip stream: %w", err)
+	}
+	if err := gz.Close(); err != nil {
+		return fmt.Errorf("github archive payload must be valid gzip stream: %w", err)
 	}
 	return nil
 }
