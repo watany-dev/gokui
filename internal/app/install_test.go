@@ -3695,6 +3695,13 @@ func TestReadInstallLockAndProvenanceMatches(t *testing.T) {
 				detailPart: "source kind must not contain C0/C1 control characters",
 			},
 			{
+				name: "source kind has DEL control character only",
+				mutate: func(l *installLock) {
+					l.Source.Kind = "\u007f"
+				},
+				detailPart: "source kind must not contain C0/C1 control characters",
+			},
+			{
 				name: "source kind has unicode obfuscation character",
 				mutate: func(l *installLock) {
 					l.Source.Kind = "local-dir\u200d"

@@ -1207,6 +1207,12 @@ func TestVerifyLockSourceChecks(t *testing.T) {
 	} else if !strings.Contains(detail, "must not contain C0/C1 control characters") {
 		t.Fatalf("kind with C0/C1 control characters only should surface control detail, got %q", detail)
 	}
+	lock.Source.Kind = "\u007f"
+	if ok, detail := verifyLockSource(lock); ok {
+		t.Fatal("kind with DEL control character only should fail")
+	} else if !strings.Contains(detail, "must not contain C0/C1 control characters") {
+		t.Fatalf("kind with DEL control character only should surface control detail, got %q", detail)
+	}
 	lock.Source.Kind = "local-dir\u200d"
 	if ok, _ := verifyLockSource(lock); ok {
 		t.Fatal("kind with unicode obfuscation characters should fail")
