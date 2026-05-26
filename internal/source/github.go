@@ -12,6 +12,7 @@ var (
 	githubRepoPartPattern  = regexp.MustCompile(`^[A-Za-z0-9_.-]+$`)
 	commitRefPattern       = regexp.MustCompile(`^[0-9a-f]{40}$`)
 	commitRefHexPattern    = regexp.MustCompile(`^[0-9a-fA-F]{40}$`)
+	comLptSuffixPattern    = regexp.MustCompile(`^(com|lpt)[1-9]$`)
 )
 
 const (
@@ -153,10 +154,31 @@ func normalizeGitHubPath(p string) (string, error) {
 	if strings.HasPrefix(clean, "../") || clean == ".." {
 		return "", fmt.Errorf("github source path must not escape repository root")
 	}
+	for _, segment := range strings.Split(clean, "/") {
+		if isWindowsReservedPathSegment(segment) {
+			return "", fmt.Errorf("github source path must not contain Windows reserved device-name segments")
+		}
+	}
 	if len(clean) > maxGitHubPathChars {
 		return "", fmt.Errorf("github source path exceeds max length: %d", maxGitHubPathChars)
 	}
 	return clean, nil
+}
+
+func isWindowsReservedPathSegment(segment string) bool {
+	trimmed := strings.TrimRight(strings.ToLower(segment), " .")
+	if trimmed == "" {
+		return false
+	}
+	base := trimmed
+	if dot := strings.IndexByte(base, '.'); dot >= 0 {
+		base = base[:dot]
+	}
+	switch base {
+	case "con", "prn", "aux", "nul", "conin$", "conout$":
+		return true
+	}
+	return comLptSuffixPattern.MatchString(base)
 }
 
 // IsCommitPinnedRef returns true when ref looks like a commit SHA.
