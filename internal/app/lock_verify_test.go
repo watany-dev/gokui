@@ -1890,6 +1890,13 @@ func TestVerifyInstallReportValidationBranches(t *testing.T) {
 			detailHas: "schema_version must not contain C0/C1 control characters",
 		},
 		{
+			name: "schema has DEL control character only",
+			mutate: func(r *installReport) {
+				r.SchemaVersion = "\u007f"
+			},
+			detailHas: "schema_version must not contain C0/C1 control characters",
+		},
+		{
 			name: "schema has surrounding whitespace",
 			mutate: func(r *installReport) {
 				r.SchemaVersion = " 0.1.0-draft "
@@ -1939,6 +1946,13 @@ func TestVerifyInstallReportValidationBranches(t *testing.T) {
 			detailHas: "source input must not contain C0/C1 control characters",
 		},
 		{
+			name: "source input has DEL control character only",
+			mutate: func(r *installReport) {
+				r.Source.Input = "\u007f"
+			},
+			detailHas: "source input must not contain C0/C1 control characters",
+		},
+		{
 			name: "source input has unicode obfuscation character",
 			mutate: func(r *installReport) {
 				r.Source.Input = "/tmp/src\u200d"
@@ -1977,6 +1991,13 @@ func TestVerifyInstallReportValidationBranches(t *testing.T) {
 			name: "source kind has C0/C1 control character only",
 			mutate: func(r *installReport) {
 				r.Source.Kind = "\u0085"
+			},
+			detailHas: "source kind must not contain C0/C1 control characters",
+		},
+		{
+			name: "source kind has DEL control character only",
+			mutate: func(r *installReport) {
+				r.Source.Kind = "\u007f"
 			},
 			detailHas: "source kind must not contain C0/C1 control characters",
 		},
