@@ -623,6 +623,19 @@ func TestRunLockVerifyErrorPathsAndDriftKinds(t *testing.T) {
 
 	stdout.Reset()
 	stderr.Reset()
+	code = runLockVerify([]string{filepath.Join(t.TempDir(), "missing-skill-compact"), "--format", "compact"}, &stdout, &stderr)
+	if code != 1 {
+		t.Fatalf("runLockVerify(missing lock compact) code = %d, want 1\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
+	}
+	if stdout.Len() != 0 {
+		t.Fatalf("stdout should be empty for compact error output, got %q", stdout.String())
+	}
+	if !strings.Contains(stderr.String(), "failed to read lockfile") {
+		t.Fatalf("stderr should include missing lockfile error for compact output, got %q", stderr.String())
+	}
+
+	stdout.Reset()
+	stderr.Reset()
 	code = runLockVerify([]string{filepath.Join(t.TempDir(), "missing-skill-json"), "--format", "json"}, &stdout, &stderr)
 	if code != 1 {
 		t.Fatalf("runLockVerify(missing lock json) code = %d, want 1", code)

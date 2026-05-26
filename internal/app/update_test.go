@@ -1088,6 +1088,57 @@ func TestRunUpdateCompactOutputRejectedAndError(t *testing.T) {
 			}
 		}
 	})
+
+	t.Run("compact invalid github source in lock returns exit code 1 with error summary", func(t *testing.T) {
+		targetRoot := filepath.Join(t.TempDir(), "skills")
+		if err := os.MkdirAll(filepath.Join(targetRoot, "compact-github-invalid"), 0o755); err != nil {
+			t.Fatalf("mkdir compact-github-invalid skill dir: %v", err)
+		}
+		lock := installLock{
+			Schema:      "gokui.lock/v1",
+			Name:        "compact-github-invalid",
+			InstalledAt: "2026-05-24T00:00:00Z",
+			Source: lockSource{
+				Type:  "github",
+				Input: "github:org/repo/path@main",
+				Kind:  "github-source",
+			},
+			Policy: lockPolicy{Profile: "strict", Decision: "pass"},
+		}
+		raw, err := json.MarshalIndent(lock, "", "  ")
+		if err != nil {
+			t.Fatalf("marshal lock: %v", err)
+		}
+		if err := os.WriteFile(filepath.Join(targetRoot, "compact-github-invalid", installLockFile), raw, 0o644); err != nil {
+			t.Fatalf("write lock: %v", err)
+		}
+
+		var stdout strings.Builder
+		var stderr strings.Builder
+		code := runUpdate([]string{"--dry-run", "--target", "custom:" + targetRoot, "--format", "compact"}, &stdout, &stderr)
+		if code != 1 {
+			t.Fatalf("runUpdate(compact github-invalid) code = %d, want 1\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
+		}
+		if stderr.Len() != 0 {
+			t.Fatalf("stderr should be empty for compact github-invalid output, got %q", stderr.String())
+		}
+		line := strings.TrimSpace(stdout.String())
+		if strings.Contains(line, "\n") {
+			t.Fatalf("compact github-invalid output should be single-line, got %q", line)
+		}
+		for _, marker := range []string{
+			"update total=1",
+			"up_to_date=0",
+			"changed=0",
+			"rejected=0",
+			"errors=1",
+			"target=\"" + targetRoot + "\"",
+		} {
+			if !strings.Contains(line, marker) {
+				t.Fatalf("compact github-invalid output missing marker %q: %q", marker, line)
+			}
+		}
+	})
 }
 
 func TestBuildUpdateCompactSummary(t *testing.T) {
