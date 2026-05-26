@@ -46,6 +46,10 @@ make beta-check
 - `make build`
 - `make inspect-sarif`
 
+`beta-check` writes build/SARIF outputs under `.cache/` by default
+(`.cache/gokui-beta-check` and `.cache/inspect-results-beta-check.sarif`) to
+avoid repository-root artifact drift during repeated beta validation.
+
 For beta audit evidence generation:
 
 ```sh

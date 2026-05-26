@@ -9,6 +9,8 @@ BUILD_OUT ?= gokui
 CACHE_DIR ?= $(CURDIR)/.cache
 RELEASE_CHECK_BUILD_OUT ?= $(CACHE_DIR)/gokui-release-check
 RELEASE_CHECK_SARIF_OUT ?= $(CACHE_DIR)/inspect-results.sarif
+BETA_CHECK_BUILD_OUT ?= $(CACHE_DIR)/gokui-beta-check
+BETA_CHECK_SARIF_OUT ?= $(CACHE_DIR)/inspect-results-beta-check.sarif
 RELEASE_CHECK_BUILD_OUT_ABS := $(abspath $(RELEASE_CHECK_BUILD_OUT))
 RELEASE_CHECK_SARIF_OUT_ABS := $(abspath $(RELEASE_CHECK_SARIF_OUT))
 MAKEFILE_DIR_ABS := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
@@ -80,8 +82,8 @@ check: fmt-check lint typecheck deadcode coverage
 beta-check:
 	$(MAKE) check
 	$(MAKE) test
-	$(MAKE) build
-	$(MAKE) inspect-sarif
+	$(MAKE) build BUILD_OUT=$(BETA_CHECK_BUILD_OUT)
+	$(MAKE) inspect-sarif INSPECT_SARIF_OUT=$(BETA_CHECK_SARIF_OUT)
 
 release-check-preflight:
 	@set -e; \

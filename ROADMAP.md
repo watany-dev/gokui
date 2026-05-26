@@ -22,6 +22,7 @@ stable contracts, and clear operational boundaries. Work is now split into:
   - `make test`
   - `make build`
   - `make inspect-sarif`
+  - beta-check build/SARIF outputs are isolated under `.cache/` by default.
 - Generate beta audit evidence via `make release-evidence-beta` to capture
   gate logs and release-candidate metadata.
 
