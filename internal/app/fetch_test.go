@@ -777,6 +777,20 @@ func TestRunFetch(t *testing.T) {
 		if code != 1 || !strings.Contains(stdout.String(), fetchErrorCodeSourceInvalid) {
 			t.Fatalf("expected source invalid code for control-char source, got code=%d stdout=%q stderr=%q", code, stdout.String(), stderr.String())
 		}
+		if !strings.Contains(stdout.String(), "must not contain C0/C1 control characters") {
+			t.Fatalf("expected control-character detail in json error, got stdout=%q stderr=%q", stdout.String(), stderr.String())
+		}
+		stdout.Reset()
+		stderr.Reset()
+
+		// C1 control character in source
+		code = runFetch([]string{"github:org/repo//skills/x@\u00858f3c2d1a4b5c6d7e8f901234567890abcdef1234", "--out", t.TempDir(), "--format", "json"}, &stdout, &stderr)
+		if code != 1 || !strings.Contains(stdout.String(), fetchErrorCodeSourceInvalid) {
+			t.Fatalf("expected source invalid code for C1 control source, got code=%d stdout=%q stderr=%q", code, stdout.String(), stderr.String())
+		}
+		if !strings.Contains(stdout.String(), "must not contain C0/C1 control characters") {
+			t.Fatalf("expected C1 control-character detail in json error, got stdout=%q stderr=%q", stdout.String(), stderr.String())
+		}
 		stdout.Reset()
 		stderr.Reset()
 
