@@ -3770,6 +3770,13 @@ func TestReadInstallLockAndProvenanceMatches(t *testing.T) {
 				detailPart: "file path is invalid",
 			},
 			{
+				name: "lock file path has surrounding whitespace",
+				mutate: func(l *installLock) {
+					l.Skill.Files[0].Path = " SKILL.md "
+				},
+				detailPart: "file path is invalid",
+			},
+			{
 				name: "duplicate lock file path",
 				mutate: func(l *installLock) {
 					l.Skill.Files = append(l.Skill.Files, l.Skill.Files[0])

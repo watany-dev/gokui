@@ -1039,6 +1039,7 @@ func isCanonicalSHA256Hex(in string) bool {
 }
 
 func isValidLockRelativePath(in string) bool {
+	trimmed := strings.TrimSpace(in)
 	if !utf8.ValidString(in) {
 		return false
 	}
@@ -1048,7 +1049,10 @@ func isValidLockRelativePath(in string) bool {
 	if containsSeverityOverrideDisallowedUnicode(in) {
 		return false
 	}
-	if strings.TrimSpace(in) == "" {
+	if trimmed == "" {
+		return false
+	}
+	if trimmed != in {
 		return false
 	}
 	if strings.Contains(in, "\\") {

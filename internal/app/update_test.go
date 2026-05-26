@@ -6765,6 +6765,12 @@ func TestValidateUpdateLockEnvelopeAndSkillSnapshotBranches(t *testing.T) {
 		}
 
 		mut = clone(valid)
+		mut.Skill.Files[0].Path = " SKILL.md "
+		if err := validateUpdateLockSkillSnapshot(mut); err == nil || !strings.Contains(err.Error(), "file path is invalid") {
+			t.Fatalf("expected invalid whitespace-path error, got %v", err)
+		}
+
+		mut = clone(valid)
 		mut.Skill.Files = append(mut.Skill.Files, mut.Skill.Files[0])
 		if err := validateUpdateLockSkillSnapshot(mut); err == nil || !strings.Contains(err.Error(), "duplicate lock file path") {
 			t.Fatalf("expected duplicate-path error, got %v", err)
