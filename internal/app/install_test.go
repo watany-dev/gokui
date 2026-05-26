@@ -4008,9 +4008,30 @@ func TestReadInstallLockAndProvenanceMatches(t *testing.T) {
 				detailPart: "severity_overrides is invalid",
 			},
 			{
+				name: "severity override approved_by has C0 NUL control character",
+				mutate: func(l *installLock) {
+					l.Policy.SeverityOverrides[0].ApprovedBy = "\u0000"
+				},
+				detailPart: "severity_overrides is invalid",
+			},
+			{
 				name: "severity override justification has bidi control",
 				mutate: func(l *installLock) {
 					l.Policy.SeverityOverrides[0].Justification = "approved\u202E"
+				},
+				detailPart: "severity_overrides is invalid",
+			},
+			{
+				name: "severity override source has C0 NUL control character",
+				mutate: func(l *installLock) {
+					l.Policy.SeverityOverrides[0].Source = "\u0000"
+				},
+				detailPart: "severity_overrides is invalid",
+			},
+			{
+				name: "severity override applied_at has C0 NUL control character",
+				mutate: func(l *installLock) {
+					l.Policy.SeverityOverrides[0].AppliedAt = "\u0000"
 				},
 				detailPart: "severity_overrides is invalid",
 			},
