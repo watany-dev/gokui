@@ -858,6 +858,12 @@ func verifyInstallReport(skillPath string, lock installLock) (bool, string) {
 	if report.SchemaVersion != reportSchemaVersion {
 		return false, fmt.Sprintf("install report schema_version is unsupported: %s", report.SchemaVersion)
 	}
+	if strings.IndexFunc(report.Source.Input, isC0OrC1ControlRune) >= 0 {
+		return false, "install report source input must not contain C0/C1 control characters"
+	}
+	if strings.IndexFunc(report.Source.Kind, isC0OrC1ControlRune) >= 0 {
+		return false, "install report source kind must not contain C0/C1 control characters"
+	}
 	if report.Source.Input != lock.Source.Input || report.Source.Kind != lock.Source.Kind {
 		return false, "install report source does not match lock source"
 	}

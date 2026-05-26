@@ -1650,6 +1650,20 @@ func TestVerifyInstallReportValidationBranches(t *testing.T) {
 			detailHas: "schema_version is unsupported",
 		},
 		{
+			name: "source input has C0/C1 control character",
+			mutate: func(r *installReport) {
+				r.Source.Input = "/tmp/\u008fsrc"
+			},
+			detailHas: "source input must not contain C0/C1 control characters",
+		},
+		{
+			name: "source kind has C0/C1 control character",
+			mutate: func(r *installReport) {
+				r.Source.Kind = "local-\u008fdir"
+			},
+			detailHas: "source kind must not contain C0/C1 control characters",
+		},
+		{
 			name: "empty profile",
 			mutate: func(r *installReport) {
 				r.PolicyProfile = ""
