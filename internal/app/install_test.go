@@ -3499,6 +3499,13 @@ func TestReadInstallLockAndProvenanceMatches(t *testing.T) {
 				detailPart: "installed_at must not contain C0/C1 control characters",
 			},
 			{
+				name: "installed_at has DEL control character only",
+				mutate: func(l *installLock) {
+					l.InstalledAt = "\u007f"
+				},
+				detailPart: "installed_at must not contain C0/C1 control characters",
+			},
+			{
 				name: "installed_at has unicode obfuscation character",
 				mutate: func(l *installLock) {
 					l.InstalledAt = "2026-05-24T00:00:00Z\u200d"
