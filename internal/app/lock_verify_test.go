@@ -2292,6 +2292,13 @@ func TestVerifyLockStructureValidationBranches(t *testing.T) {
 			detailIn: "installed_at must not contain C0/C1 control characters",
 		},
 		{
+			name: "installed_at has C0/C1 control character only",
+			mutate: func(l *installLock) {
+				l.InstalledAt = "\u0085"
+			},
+			detailIn: "installed_at must not contain C0/C1 control characters",
+		},
+		{
 			name: "installed_at has unicode obfuscation character",
 			mutate: func(l *installLock) {
 				l.InstalledAt = "2026-05-23T00:00:00Z\u200d"

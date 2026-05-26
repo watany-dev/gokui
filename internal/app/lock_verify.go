@@ -765,14 +765,14 @@ func verifyLockStructure(lock installLock) (bool, string) {
 	}
 
 	trimmedInstalledAt := strings.TrimSpace(lock.InstalledAt)
-	if trimmedInstalledAt == "" {
-		return false, "lock installed_at is empty"
-	}
 	if strings.IndexFunc(lock.InstalledAt, isC0OrC1ControlRune) >= 0 {
 		return false, "lock installed_at must not contain C0/C1 control characters"
 	}
 	if containsSeverityOverrideDisallowedUnicode(lock.InstalledAt) {
 		return false, "lock installed_at must not contain Unicode bidi, zero-width, tag, or variation-selector characters"
+	}
+	if trimmedInstalledAt == "" {
+		return false, "lock installed_at is empty"
 	}
 	if trimmedInstalledAt != lock.InstalledAt {
 		return false, "lock installed_at must not contain leading or trailing whitespace"
