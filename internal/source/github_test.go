@@ -77,7 +77,9 @@ func TestParseGitHubSource(t *testing.T) {
 			"github:owner/repo//path@8f3c2d1a4b5c6d7e8f90\ufe0f1234567890abcdef1234",
 			"github:owner/repo//path@\n8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
 			"github:owner/repo//skills/\x1fhelper@8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
+			"github:owner/repo//skills/\u0085helper@8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
 			"github:owner\x7f/repo//path@8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
+			"github:owner/repo//path@8f3c2d1a4b5c6d7e8f901234567890abcdef12\u009f34",
 			"github:owner/repo// skills/path@8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
 			"github:owner/repo//skills/path @8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
 		}
@@ -85,6 +87,16 @@ func TestParseGitHubSource(t *testing.T) {
 			if _, err := ParseGitHubSource(in); err == nil {
 				t.Fatalf("expected parse error for %q", in)
 			}
+		}
+	})
+
+	t.Run("rejects C1 controls with explicit error", func(t *testing.T) {
+		_, err := ParseGitHubSource("github:owner/repo//skills/demo@8f3c2d1a4b5c6d7e8f901234567890abcdef12\u009f34")
+		if err == nil {
+			t.Fatal("expected parse error for C1 control in github source")
+		}
+		if !strings.Contains(err.Error(), "must not contain C0/C1 control characters") {
+			t.Fatalf("error = %q, want C0/C1 control message", err.Error())
 		}
 	})
 

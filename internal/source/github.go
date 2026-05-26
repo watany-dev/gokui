@@ -39,8 +39,8 @@ func ParseGitHubSource(input string) (GitHubSpec, error) {
 	if !strings.HasPrefix(input, prefix) {
 		return GitHubSpec{}, fmt.Errorf("github source must start with %q", prefix)
 	}
-	if containsASCIIControlCharacters(input) {
-		return GitHubSpec{}, fmt.Errorf("github source must not contain ASCII control characters")
+	if containsDisallowedControlCharacters(input) {
+		return GitHubSpec{}, fmt.Errorf("github source must not contain C0/C1 control characters")
 	}
 	if len(input) > maxGitHubSourceInputChars {
 		return GitHubSpec{}, fmt.Errorf("github source exceeds max length: %d", maxGitHubSourceInputChars)
@@ -266,6 +266,19 @@ func containsASCIIControlCharacters(s string) bool {
 		}
 	}
 	return false
+}
+
+func containsC1ControlCharacters(s string) bool {
+	for _, r := range s {
+		if r >= 0x80 && r <= 0x9f {
+			return true
+		}
+	}
+	return false
+}
+
+func containsDisallowedControlCharacters(s string) bool {
+	return containsASCIIControlCharacters(s) || containsC1ControlCharacters(s)
 }
 
 func containsUnicodeBidiControl(s string) bool {
