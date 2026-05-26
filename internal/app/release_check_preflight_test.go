@@ -84,6 +84,47 @@ func TestBetaCheckPreflightRejectsSameOutputPath(t *testing.T) {
 	}
 }
 
+func TestBetaCheckPreflightRejectsSameOutputPathAfterNormalization(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("preflight path contracts are exercised on POSIX in CI")
+	}
+
+	root := releaseCheckRepoRootPath(t)
+	safeName := strings.NewReplacer("/", "-", "\\", "-", " ", "-").Replace(strings.ToLower(t.Name()))
+	baseDir := filepath.Join(root, ".cache", "release-check-preflight-tests")
+	if err := os.MkdirAll(baseDir, 0o755); err != nil {
+		t.Fatalf("mkdir preflight test base dir: %v", err)
+	}
+	tempDir, err := os.MkdirTemp(baseDir, safeName+"-")
+	if err != nil {
+		t.Fatalf("create preflight test temp dir: %v", err)
+	}
+	t.Cleanup(func() {
+		_ = os.RemoveAll(tempDir)
+	})
+
+	betaBuildOut := filepath.Join(tempDir, "nested", "..", "shared.sarif")
+	betaSarifOut := filepath.Join(tempDir, "shared.sarif")
+	releaseBuildOut := releaseCheckRepoLocalPath(t, "release-build.out")
+	releaseSarifOut := releaseCheckRepoLocalPath(t, "release-inspect.sarif")
+
+	exitCode, out := runBetaCheckPreflight(t, map[string]string{
+		"BETA_CHECK_BUILD_OUT":    betaBuildOut,
+		"BETA_CHECK_SARIF_OUT":    betaSarifOut,
+		"RELEASE_CHECK_BUILD_OUT": releaseBuildOut,
+		"RELEASE_CHECK_SARIF_OUT": releaseSarifOut,
+	})
+	if exitCode == 0 {
+		t.Fatalf("expected non-zero exit when normalized beta outputs share a path\noutput:\n%s", out)
+	}
+	if !strings.Contains(out, "[RC_PREFLIGHT_OUTPUT_PATH_CONFLICT]") {
+		t.Fatalf("expected normalized distinct-path rejection code, got:\n%s", out)
+	}
+	if !strings.Contains(out, "build and SARIF outputs must be different paths") {
+		t.Fatalf("expected normalized distinct-path rejection message, got:\n%s", out)
+	}
+}
+
 func TestBetaCheckPreflightAllowsExistingOutputs(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("preflight path contracts are exercised on POSIX in CI")
