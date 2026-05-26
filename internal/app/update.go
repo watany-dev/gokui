@@ -1095,6 +1095,9 @@ func validateUpdateLockEnvelope(lock installLock, expectedSkillName string) erro
 	if trimmedName != lock.Name {
 		return fmt.Errorf("lock name must not contain leading or trailing whitespace")
 	}
+	if strings.IndexFunc(lock.Name, isC0OrC1ControlRune) >= 0 {
+		return fmt.Errorf("lock name must not contain C0/C1 control characters")
+	}
 	if expectedSkillName != "" && lock.Name != expectedSkillName {
 		return fmt.Errorf("lock name does not match installed skill directory: lock=%s dir=%s", lock.Name, expectedSkillName)
 	}

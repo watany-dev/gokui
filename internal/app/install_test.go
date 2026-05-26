@@ -3436,6 +3436,13 @@ func TestReadInstallLockAndProvenanceMatches(t *testing.T) {
 				detailPart: "name does not match target skill directory",
 			},
 			{
+				name: "name has C0/C1 control character",
+				mutate: func(l *installLock) {
+					l.Name = "skill\u008f"
+				},
+				detailPart: "name must not contain C0/C1 control characters",
+			},
+			{
 				name: "non-canonical profile",
 				mutate: func(l *installLock) {
 					l.Policy.Profile = " Strict "

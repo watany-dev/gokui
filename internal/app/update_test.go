@@ -5968,6 +5968,13 @@ func TestValidateUpdateLockEnvelope(t *testing.T) {
 			detailPart: "lock name does not match installed skill directory",
 		},
 		{
+			name: "name has C0/C1 control character",
+			mutate: func(l *installLock) {
+				l.Name = "update-lock\u008f"
+			},
+			detailPart: "lock name must not contain C0/C1 control characters",
+		},
+		{
 			name: "invalid installed_at",
 			mutate: func(l *installLock) {
 				l.InstalledAt = "not-rfc3339"
