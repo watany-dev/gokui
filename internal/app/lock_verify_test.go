@@ -1671,6 +1671,13 @@ func TestVerifyInstallReportValidationBranches(t *testing.T) {
 			detailHas: "policy profile must not contain leading or trailing whitespace",
 		},
 		{
+			name: "profile has C0/C1 control character",
+			mutate: func(r *installReport) {
+				r.PolicyProfile = "stric\u008ft"
+			},
+			detailHas: "policy profile must not contain C0/C1 control characters",
+		},
+		{
 			name: "profile not canonical lowercase",
 			mutate: func(r *installReport) {
 				r.PolicyProfile = "Strict"
@@ -1690,6 +1697,13 @@ func TestVerifyInstallReportValidationBranches(t *testing.T) {
 				r.Decision = " PASS "
 			},
 			detailHas: "decision must not contain leading or trailing whitespace",
+		},
+		{
+			name: "decision has C0/C1 control character",
+			mutate: func(r *installReport) {
+				r.Decision = "PAS\u008fS"
+			},
+			detailHas: "decision must not contain C0/C1 control characters",
 		},
 		{
 			name: "installed false",
