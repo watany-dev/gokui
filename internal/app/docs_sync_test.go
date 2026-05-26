@@ -453,6 +453,30 @@ func TestLockNameControlCharHardeningDocumentationSync(t *testing.T) {
 	}
 }
 
+func TestLockNameUnicodeHardeningDocumentationSync(t *testing.T) {
+	readmeBytes, err := os.ReadFile("../../README.md")
+	if err != nil {
+		t.Fatalf("failed to read README.md: %v", err)
+	}
+	readme := string(readmeBytes)
+	roadmapBytes, err := os.ReadFile("../../ROADMAP.md")
+	if err != nil {
+		t.Fatalf("failed to read ROADMAP.md: %v", err)
+	}
+	roadmap := string(roadmapBytes)
+
+	requiredReadme := "Lock names in `gokui.lock` must not contain Unicode"
+	requiredReadmeContinuation := "bidi/zero-width/tag/variation-selector characters."
+	if !strings.Contains(readme, requiredReadme) || !strings.Contains(readme, requiredReadmeContinuation) {
+		t.Fatalf("README missing lock name unicode hardening line: %q ... %q", requiredReadme, requiredReadmeContinuation)
+	}
+
+	requiredRoadmap := "Lock name validation hardening with Unicode bidi/zero-width/tag/variation-selector rejection for install/update/lock-verify provenance checks"
+	if !strings.Contains(roadmap, requiredRoadmap) {
+		t.Fatalf("ROADMAP missing lock name unicode hardening line: %q", requiredRoadmap)
+	}
+}
+
 func TestLockSourceKindTypeControlCharHardeningDocumentationSync(t *testing.T) {
 	readmeBytes, err := os.ReadFile("../../README.md")
 	if err != nil {
@@ -570,6 +594,30 @@ func TestLockInstalledAtControlCharHardeningDocumentationSync(t *testing.T) {
 	requiredRoadmap := "Lock `installed_at` validation hardening with C0/C1 control-character rejection for install/update/lock-verify provenance checks"
 	if !strings.Contains(roadmap, requiredRoadmap) {
 		t.Fatalf("ROADMAP missing lock installed_at control-char hardening line: %q", requiredRoadmap)
+	}
+}
+
+func TestLockInstalledAtUnicodeHardeningDocumentationSync(t *testing.T) {
+	readmeBytes, err := os.ReadFile("../../README.md")
+	if err != nil {
+		t.Fatalf("failed to read README.md: %v", err)
+	}
+	readme := string(readmeBytes)
+	roadmapBytes, err := os.ReadFile("../../ROADMAP.md")
+	if err != nil {
+		t.Fatalf("failed to read ROADMAP.md: %v", err)
+	}
+	roadmap := string(roadmapBytes)
+
+	requiredReadme := "Lock `installed_at` in `gokui.lock` must not contain Unicode"
+	requiredReadmeContinuation := "bidi/zero-width/tag/variation-selector characters."
+	if !strings.Contains(readme, requiredReadme) || !strings.Contains(readme, requiredReadmeContinuation) {
+		t.Fatalf("README missing lock installed_at unicode hardening line: %q ... %q", requiredReadme, requiredReadmeContinuation)
+	}
+
+	requiredRoadmap := "Lock `installed_at` validation hardening with Unicode bidi/zero-width/tag/variation-selector rejection for install/update/lock-verify provenance checks"
+	if !strings.Contains(roadmap, requiredRoadmap) {
+		t.Fatalf("ROADMAP missing lock installed_at unicode hardening line: %q", requiredRoadmap)
 	}
 }
 

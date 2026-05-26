@@ -2012,6 +2012,13 @@ func TestVerifyLockStructureValidationBranches(t *testing.T) {
 			detailIn: "name must not contain C0/C1 control characters",
 		},
 		{
+			name: "name has unicode obfuscation character",
+			mutate: func(l *installLock) {
+				l.Name = "x\u200d"
+			},
+			detailIn: "name must not contain Unicode bidi, zero-width, tag, or variation-selector characters",
+		},
+		{
 			name: "empty installed_at",
 			mutate: func(l *installLock) {
 				l.InstalledAt = ""
@@ -2024,6 +2031,13 @@ func TestVerifyLockStructureValidationBranches(t *testing.T) {
 				l.InstalledAt = "2026-05-23T00:00:00\u008fZ"
 			},
 			detailIn: "installed_at must not contain C0/C1 control characters",
+		},
+		{
+			name: "installed_at has unicode obfuscation character",
+			mutate: func(l *installLock) {
+				l.InstalledAt = "2026-05-23T00:00:00Z\u200d"
+			},
+			detailIn: "installed_at must not contain Unicode bidi, zero-width, tag, or variation-selector characters",
 		},
 		{
 			name: "invalid installed_at",

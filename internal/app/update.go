@@ -1200,6 +1200,9 @@ func validateUpdateLockEnvelope(lock installLock, expectedSkillName string) erro
 	if strings.IndexFunc(lock.Name, isC0OrC1ControlRune) >= 0 {
 		return fmt.Errorf("lock name must not contain C0/C1 control characters")
 	}
+	if containsSeverityOverrideDisallowedUnicode(lock.Name) {
+		return fmt.Errorf("lock name must not contain Unicode bidi, zero-width, tag, or variation-selector characters")
+	}
 	if expectedSkillName != "" && lock.Name != expectedSkillName {
 		return fmt.Errorf("lock name does not match installed skill directory: lock=%s dir=%s", lock.Name, expectedSkillName)
 	}
@@ -1213,6 +1216,9 @@ func validateUpdateLockEnvelope(lock installLock, expectedSkillName string) erro
 	}
 	if strings.IndexFunc(lock.InstalledAt, isC0OrC1ControlRune) >= 0 {
 		return fmt.Errorf("lock installed_at must not contain C0/C1 control characters")
+	}
+	if containsSeverityOverrideDisallowedUnicode(lock.InstalledAt) {
+		return fmt.Errorf("lock installed_at must not contain Unicode bidi, zero-width, tag, or variation-selector characters")
 	}
 	if _, err := time.Parse(time.RFC3339, lock.InstalledAt); err != nil {
 		return fmt.Errorf("lock installed_at must be RFC3339")

@@ -753,6 +753,9 @@ func verifyLockStructure(lock installLock) (bool, string) {
 	if strings.IndexFunc(lock.Name, isC0OrC1ControlRune) >= 0 {
 		return false, "lock name must not contain C0/C1 control characters"
 	}
+	if containsSeverityOverrideDisallowedUnicode(lock.Name) {
+		return false, "lock name must not contain Unicode bidi, zero-width, tag, or variation-selector characters"
+	}
 
 	trimmedInstalledAt := strings.TrimSpace(lock.InstalledAt)
 	if trimmedInstalledAt == "" {
@@ -763,6 +766,9 @@ func verifyLockStructure(lock installLock) (bool, string) {
 	}
 	if strings.IndexFunc(lock.InstalledAt, isC0OrC1ControlRune) >= 0 {
 		return false, "lock installed_at must not contain C0/C1 control characters"
+	}
+	if containsSeverityOverrideDisallowedUnicode(lock.InstalledAt) {
+		return false, "lock installed_at must not contain Unicode bidi, zero-width, tag, or variation-selector characters"
 	}
 	if _, err := time.Parse(time.RFC3339, lock.InstalledAt); err != nil {
 		return false, "lock installed_at must be RFC3339"

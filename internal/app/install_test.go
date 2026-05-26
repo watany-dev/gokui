@@ -3436,6 +3436,13 @@ func TestReadInstallLockAndProvenanceMatches(t *testing.T) {
 				detailPart: "installed_at must not contain C0/C1 control characters",
 			},
 			{
+				name: "installed_at has unicode obfuscation character",
+				mutate: func(l *installLock) {
+					l.InstalledAt = "2026-05-24T00:00:00Z\u200d"
+				},
+				detailPart: "installed_at must not contain Unicode bidi, zero-width, tag, or variation-selector characters",
+			},
+			{
 				name: "installed_at invalid rfc3339",
 				mutate: func(l *installLock) {
 					l.InstalledAt = "not-rfc3339"
@@ -3455,6 +3462,13 @@ func TestReadInstallLockAndProvenanceMatches(t *testing.T) {
 					l.Name = "skill\u008f"
 				},
 				detailPart: "name must not contain C0/C1 control characters",
+			},
+			{
+				name: "name has unicode obfuscation character",
+				mutate: func(l *installLock) {
+					l.Name = "skill\u200d"
+				},
+				detailPart: "name must not contain Unicode bidi, zero-width, tag, or variation-selector characters",
 			},
 			{
 				name: "non-canonical profile",
