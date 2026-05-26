@@ -105,6 +105,8 @@ Lock `schema` in `gokui.lock` must not contain C0/C1 control characters for
 install/update validation and lock verify schema checks.
 Lock/install report `severity_overrides` entries must not contain C0/C1
 control characters in audit string fields.
+Lock/install report `severity_overrides` entries must not contain duplicate
+`rule_id` values.
 Install target entries also reject symlink path components.
 `lock verify` now validates installed files against `gokui.lock`, checks source
 field consistency (including strict GitHub source syntax and commit pinning),

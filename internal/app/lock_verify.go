@@ -1016,6 +1016,7 @@ func isC0OrC1ControlRune(r rune) bool {
 }
 
 func validateSeverityOverrideAudit(overrides []severityOverrideAudit) error {
+	seenRuleIDs := make(map[string]struct{}, len(overrides))
 	for idx, override := range overrides {
 		if strings.IndexFunc(override.RuleID, isC0OrC1ControlRune) >= 0 {
 			return fmt.Errorf("entry %d: rule_id must not contain C0/C1 control characters", idx)
@@ -1030,6 +1031,10 @@ func validateSeverityOverrideAudit(overrides []severityOverrideAudit) error {
 		if !severityOverrideRuleIDPattern.MatchString(ruleID) {
 			return fmt.Errorf("entry %d: rule_id must be canonical uppercase snake case", idx)
 		}
+		if _, exists := seenRuleIDs[ruleID]; exists {
+			return fmt.Errorf("entry %d: duplicate rule_id is not allowed: %s", idx, ruleID)
+		}
+		seenRuleIDs[ruleID] = struct{}{}
 		if strings.IndexFunc(override.PreviousSeverity, isC0OrC1ControlRune) >= 0 {
 			return fmt.Errorf("entry %d: previous_severity must not contain C0/C1 control characters", idx)
 		}

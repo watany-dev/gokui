@@ -2059,6 +2059,32 @@ func TestVerifyLockStructureValidationBranches(t *testing.T) {
 			detailIn: "severity_overrides is invalid",
 		},
 		{
+			name: "duplicate severity override rule_id",
+			mutate: func(l *installLock) {
+				l.Policy.SeverityOverrides = []severityOverrideAudit{
+					{
+						RuleID:            "PROMPT_OVERRIDE_LANGUAGE",
+						PreviousSeverity:  "high",
+						EffectiveSeverity: "medium",
+						Justification:     "first",
+						ApprovedBy:        "tester",
+						Source:            "policy-file",
+						AppliedAt:         "2026-05-24T00:00:00Z",
+					},
+					{
+						RuleID:            "PROMPT_OVERRIDE_LANGUAGE",
+						PreviousSeverity:  "high",
+						EffectiveSeverity: "low",
+						Justification:     "second",
+						ApprovedBy:        "tester",
+						Source:            "policy-file",
+						AppliedAt:         "2026-05-24T01:00:00Z",
+					},
+				}
+			},
+			detailIn: "severity_overrides is invalid",
+		},
+		{
 			name: "negative findings summary",
 			mutate: func(l *installLock) {
 				l.Findings.High = -1
@@ -2425,6 +2451,33 @@ func TestSeverityOverrideAuditHelpers(t *testing.T) {
 					t.Fatalf("expected validation detail %q, got err=%v", tc.detailPart, err)
 				}
 			})
+		}
+	})
+
+	t.Run("rejects duplicate rule_id entries", func(t *testing.T) {
+		dup := []severityOverrideAudit{
+			{
+				RuleID:            "PROMPT_OVERRIDE_LANGUAGE",
+				PreviousSeverity:  "high",
+				EffectiveSeverity: "medium",
+				Justification:     "approved first",
+				ApprovedBy:        "security-reviewer",
+				Source:            "policy-file",
+				AppliedAt:         "2026-05-24T00:00:00Z",
+			},
+			{
+				RuleID:            "PROMPT_OVERRIDE_LANGUAGE",
+				PreviousSeverity:  "high",
+				EffectiveSeverity: "low",
+				Justification:     "approved duplicate",
+				ApprovedBy:        "security-reviewer",
+				Source:            "policy-file",
+				AppliedAt:         "2026-05-24T01:00:00Z",
+			},
+		}
+		err := validateSeverityOverrideAudit(dup)
+		if err == nil || !strings.Contains(err.Error(), "duplicate rule_id is not allowed") {
+			t.Fatalf("expected duplicate rule_id validation error, got %v", err)
 		}
 	})
 }

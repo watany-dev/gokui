@@ -645,6 +645,30 @@ func TestSeverityOverridesControlCharHardeningDocumentationSync(t *testing.T) {
 	}
 }
 
+func TestSeverityOverridesDuplicateRuleIDHardeningDocumentationSync(t *testing.T) {
+	readmeBytes, err := os.ReadFile("../../README.md")
+	if err != nil {
+		t.Fatalf("failed to read README.md: %v", err)
+	}
+	readme := string(readmeBytes)
+	roadmapBytes, err := os.ReadFile("../../ROADMAP.md")
+	if err != nil {
+		t.Fatalf("failed to read ROADMAP.md: %v", err)
+	}
+	roadmap := string(roadmapBytes)
+
+	requiredReadme := "Lock/install report `severity_overrides` entries must not contain duplicate"
+	requiredReadmeContinuation := "`rule_id` values."
+	if !strings.Contains(readme, requiredReadme) || !strings.Contains(readme, requiredReadmeContinuation) {
+		t.Fatalf("README missing severity_overrides duplicate-rule_id hardening line: %q ... %q", requiredReadme, requiredReadmeContinuation)
+	}
+
+	requiredRoadmap := "Lock/install-report `severity_overrides` validation hardening with duplicate `rule_id` rejection"
+	if !strings.Contains(roadmap, requiredRoadmap) {
+		t.Fatalf("ROADMAP missing severity_overrides duplicate-rule_id hardening line: %q", requiredRoadmap)
+	}
+}
+
 func TestLockfileExampleSchemaSync(t *testing.T) {
 	readmeBytes, err := os.ReadFile("../../README.md")
 	if err != nil {

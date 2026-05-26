@@ -3590,6 +3590,32 @@ func TestReadInstallLockAndProvenanceMatches(t *testing.T) {
 				detailPart: "severity_overrides is invalid",
 			},
 			{
+				name: "duplicate severity override rule_id",
+				mutate: func(l *installLock) {
+					l.Policy.SeverityOverrides = []severityOverrideAudit{
+						{
+							RuleID:            "PROMPT_OVERRIDE_LANGUAGE",
+							PreviousSeverity:  "high",
+							EffectiveSeverity: "medium",
+							Justification:     "first",
+							ApprovedBy:        "security-reviewer",
+							Source:            "policy-file",
+							AppliedAt:         "2026-05-24T00:00:00Z",
+						},
+						{
+							RuleID:            "PROMPT_OVERRIDE_LANGUAGE",
+							PreviousSeverity:  "high",
+							EffectiveSeverity: "low",
+							Justification:     "second",
+							ApprovedBy:        "security-reviewer",
+							Source:            "policy-file",
+							AppliedAt:         "2026-05-24T01:00:00Z",
+						},
+					}
+				},
+				detailPart: "severity_overrides is invalid",
+			},
+			{
 				name: "negative findings summary",
 				mutate: func(l *installLock) {
 					l.Findings.High = -1
