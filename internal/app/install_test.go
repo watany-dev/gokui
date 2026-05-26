@@ -3450,6 +3450,13 @@ func TestReadInstallLockAndProvenanceMatches(t *testing.T) {
 				detailPart: "schema must not contain C0/C1 control characters",
 			},
 			{
+				name: "schema has C0 NUL control character only",
+				mutate: func(l *installLock) {
+					l.Schema = "\u0000"
+				},
+				detailPart: "schema must not contain C0/C1 control characters",
+			},
+			{
 				name: "schema has DEL control character only",
 				mutate: func(l *installLock) {
 					l.Schema = "\u007f"

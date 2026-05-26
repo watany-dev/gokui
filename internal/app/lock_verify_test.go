@@ -1914,6 +1914,13 @@ func TestVerifyInstallReportValidationBranches(t *testing.T) {
 			detailHas: "schema_version must not contain C0/C1 control characters",
 		},
 		{
+			name: "schema has C0 NUL control character only",
+			mutate: func(r *installReport) {
+				r.SchemaVersion = "\u0000"
+			},
+			detailHas: "schema_version must not contain C0/C1 control characters",
+		},
+		{
 			name: "schema has DEL control character only",
 			mutate: func(r *installReport) {
 				r.SchemaVersion = "\u007f"
