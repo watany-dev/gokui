@@ -50,9 +50,9 @@ make beta-check
 `beta-check` writes build/SARIF outputs under `.cache/` by default
 (`.cache/gokui-beta-check` and `.cache/inspect-results-beta-check.sarif`) to
 avoid repository-root artifact drift during repeated beta validation.
-It fail-closes on the same output-path preflight guards used by
-`release-check` (for example symlink path components, path collisions, invalid
-segments, and `.git` path usage).
+It fail-closes on the same output-path safety guards used by `release-check`
+(for example symlink path components, path collisions, invalid segments, and
+`.git` path usage), then recreates beta output artifacts under `.cache/`.
 
 For beta audit evidence generation:
 

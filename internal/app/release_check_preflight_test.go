@@ -26,12 +26,91 @@ func runReleaseCheckPreflight(t *testing.T, env map[string]string) (int, string)
 
 	var exitErr *exec.ExitError
 	if !strings.Contains(err.Error(), "exit status") {
-		t.Fatalf("release-check-preflight execution error: %v\noutput:\n%s", err, out)
+		t.Fatalf("beta-check-preflight execution error: %v\noutput:\n%s", err, out)
 	}
 	if ok := errors.As(err, &exitErr); !ok {
 		t.Fatalf("release-check-preflight returned non-exit error: %v\noutput:\n%s", err, out)
 	}
 	return exitErr.ExitCode(), string(out)
+}
+
+func runBetaCheckPreflight(t *testing.T, env map[string]string) (int, string) {
+	t.Helper()
+
+	cmd := exec.Command("make", "-f", "../../Makefile", "beta-check-preflight")
+	cmd.Env = os.Environ()
+	for k, v := range env {
+		cmd.Env = append(cmd.Env, k+"="+v)
+	}
+
+	out, err := cmd.CombinedOutput()
+	if err == nil {
+		return 0, string(out)
+	}
+
+	var exitErr *exec.ExitError
+	if !strings.Contains(err.Error(), "exit status") {
+		t.Fatalf("release-check-preflight execution error: %v\noutput:\n%s", err, out)
+	}
+	if ok := errors.As(err, &exitErr); !ok {
+		t.Fatalf("beta-check-preflight returned non-exit error: %v\noutput:\n%s", err, out)
+	}
+	return exitErr.ExitCode(), string(out)
+}
+
+func TestBetaCheckPreflightRejectsSameOutputPath(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("preflight path contracts are exercised on POSIX in CI")
+	}
+
+	shared := releaseCheckRepoLocalPath(t, "beta-shared.sarif")
+	releaseBuildOut := releaseCheckRepoLocalPath(t, "release-build.out")
+	releaseSarifOut := releaseCheckRepoLocalPath(t, "release-inspect.sarif")
+
+	exitCode, out := runBetaCheckPreflight(t, map[string]string{
+		"BETA_CHECK_BUILD_OUT":    shared,
+		"BETA_CHECK_SARIF_OUT":    shared,
+		"RELEASE_CHECK_BUILD_OUT": releaseBuildOut,
+		"RELEASE_CHECK_SARIF_OUT": releaseSarifOut,
+	})
+	if exitCode == 0 {
+		t.Fatalf("expected non-zero exit when beta outputs share a path\noutput:\n%s", out)
+	}
+	if !strings.Contains(out, "[RC_PREFLIGHT_OUTPUT_PATH_CONFLICT]") {
+		t.Fatalf("expected distinct-path rejection code, got:\n%s", out)
+	}
+	if !strings.Contains(out, "build and SARIF outputs must be different paths") {
+		t.Fatalf("expected distinct-path rejection message, got:\n%s", out)
+	}
+}
+
+func TestBetaCheckPreflightAllowsExistingOutputs(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("preflight path contracts are exercised on POSIX in CI")
+	}
+
+	buildOut := releaseCheckRepoLocalPath(t, "existing-beta-build.out")
+	sarifOut := releaseCheckRepoLocalPath(t, "existing-beta-inspect.sarif")
+	if err := os.MkdirAll(filepath.Dir(buildOut), 0o755); err != nil {
+		t.Fatalf("mkdir beta build output parent: %v", err)
+	}
+	if err := os.WriteFile(buildOut, []byte("existing"), 0o600); err != nil {
+		t.Fatalf("write existing beta build output: %v", err)
+	}
+	if err := os.MkdirAll(filepath.Dir(sarifOut), 0o755); err != nil {
+		t.Fatalf("mkdir beta SARIF output parent: %v", err)
+	}
+	if err := os.WriteFile(sarifOut, []byte("existing"), 0o600); err != nil {
+		t.Fatalf("write existing beta SARIF output: %v", err)
+	}
+
+	exitCode, out := runBetaCheckPreflight(t, map[string]string{
+		"BETA_CHECK_BUILD_OUT": buildOut,
+		"BETA_CHECK_SARIF_OUT": sarifOut,
+	})
+	if exitCode != 0 {
+		t.Fatalf("expected zero exit when beta outputs already exist\noutput:\n%s", out)
+	}
 }
 
 func releaseCheckRepoRootPath(t *testing.T) string {

@@ -90,7 +90,8 @@ This runs:
 
 `beta-check` uses isolated `.cache` outputs by default:
 `.cache/gokui-beta-check` and `.cache/inspect-results-beta-check.sarif`.
-It applies the same output-path safety preflight checks as `release-check`.
+It applies the same output-path safety preflight checks as `release-check`
+before recreating beta output artifacts.
 
 This is the minimum gate for beta publication. Before GA promotion, run the full
 `make release-check`.

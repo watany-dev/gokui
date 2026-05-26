@@ -1,6 +1,7 @@
 GO ?= go
 COVERAGE_THRESHOLD ?= 95
 RELEASE_CHECK_VULN ?= 1
+RELEASE_CHECK_ALLOW_EXISTING_OUTPUTS ?= 0
 INSPECT_SARIF_OUT ?= inspect-results.sarif
 VULN_GOTOOLCHAIN ?= go1.26.3+auto
 GOFMT_TARGETS := cmd internal
@@ -11,6 +12,8 @@ RELEASE_CHECK_BUILD_OUT ?= $(CACHE_DIR)/gokui-release-check
 RELEASE_CHECK_SARIF_OUT ?= $(CACHE_DIR)/inspect-results.sarif
 BETA_CHECK_BUILD_OUT ?= $(CACHE_DIR)/gokui-beta-check
 BETA_CHECK_SARIF_OUT ?= $(CACHE_DIR)/inspect-results-beta-check.sarif
+BETA_CHECK_BUILD_OUT_ABS := $(abspath $(BETA_CHECK_BUILD_OUT))
+BETA_CHECK_SARIF_OUT_ABS := $(abspath $(BETA_CHECK_SARIF_OUT))
 RELEASE_CHECK_BUILD_OUT_ABS := $(abspath $(RELEASE_CHECK_BUILD_OUT))
 RELEASE_CHECK_SARIF_OUT_ABS := $(abspath $(RELEASE_CHECK_SARIF_OUT))
 MAKEFILE_DIR_ABS := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
@@ -80,9 +83,10 @@ actionlint:
 check: fmt-check lint typecheck deadcode coverage
 
 beta-check-preflight:
-	$(MAKE) release-check-preflight RELEASE_CHECK_BUILD_OUT=$(BETA_CHECK_BUILD_OUT) RELEASE_CHECK_SARIF_OUT=$(BETA_CHECK_SARIF_OUT)
+	$(MAKE) -f $(lastword $(MAKEFILE_LIST)) release-check-preflight RELEASE_CHECK_ALLOW_EXISTING_OUTPUTS=1 RELEASE_CHECK_BUILD_OUT=$(BETA_CHECK_BUILD_OUT) RELEASE_CHECK_SARIF_OUT=$(BETA_CHECK_SARIF_OUT)
 
 beta-check: beta-check-preflight
+	rm -f -- "$(BETA_CHECK_BUILD_OUT_ABS)" "$(BETA_CHECK_SARIF_OUT_ABS)"
 	$(MAKE) check
 	$(MAKE) test
 	$(MAKE) build BUILD_OUT=$(BETA_CHECK_BUILD_OUT)
@@ -207,10 +211,10 @@ release-check-preflight:
 	if [ "$(RELEASE_CHECK_BUILD_OUT_ABS)" = "$(RELEASE_CHECK_SARIF_OUT_ABS)" ]; then \
 		emit_preflight_error "RC_PREFLIGHT_OUTPUT_PATH_CONFLICT" "release-check build and SARIF outputs must be different paths: build=$(RELEASE_CHECK_BUILD_OUT_ABS) sarif=$(RELEASE_CHECK_SARIF_OUT_ABS)"; \
 	fi; \
-	if [ -e "$(RELEASE_CHECK_BUILD_OUT_ABS)" ]; then \
+	if [ "$(RELEASE_CHECK_ALLOW_EXISTING_OUTPUTS)" != "1" ] && [ -e "$(RELEASE_CHECK_BUILD_OUT_ABS)" ]; then \
 		emit_preflight_error "RC_PREFLIGHT_BUILD_OUT_EXISTS" "release-check build output already exists: $(RELEASE_CHECK_BUILD_OUT_ABS)"; \
 	fi; \
-	if [ -e "$(RELEASE_CHECK_SARIF_OUT_ABS)" ]; then \
+	if [ "$(RELEASE_CHECK_ALLOW_EXISTING_OUTPUTS)" != "1" ] && [ -e "$(RELEASE_CHECK_SARIF_OUT_ABS)" ]; then \
 		emit_preflight_error "RC_PREFLIGHT_SARIF_OUT_EXISTS" "release-check SARIF output already exists: $(RELEASE_CHECK_SARIF_OUT_ABS)"; \
 	fi
 release-check: release-check-preflight
