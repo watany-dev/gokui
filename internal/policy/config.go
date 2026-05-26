@@ -1,11 +1,13 @@
 package policy
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
+	"syscall"
 	"unicode/utf8"
 
 	"github.com/BurntSushi/toml"
@@ -211,36 +213,42 @@ func resolvePolicyPath() (string, error) {
 }
 
 func rejectSymlinkPath(path string) error {
-	cleaned := filepath.Clean(path)
-	parts := strings.Split(cleaned, string(os.PathSeparator))
-
-	cur := ""
-	if filepath.IsAbs(cleaned) {
-		cur = string(os.PathSeparator)
-	}
-	if vol := filepath.VolumeName(cleaned); vol != "" {
-		cur = vol
-	}
-	for _, part := range parts {
-		if part == "" || part == "." || part == string(os.PathSeparator) {
-			continue
-		}
-		cur = filepath.Join(cur, part)
-		info, err := os.Lstat(cur)
+	for _, candidate := range symlinkCheckCandidates(path) {
+		info, err := os.Lstat(candidate)
 		if err != nil {
-			if os.IsNotExist(err) {
-				continue
+			if os.IsNotExist(err) || errors.Is(err, syscall.ENOTDIR) {
+				return nil
 			}
 			return fmt.Errorf("failed to validate policy path component: %w", err)
 		}
 		if info.Mode()&os.ModeSymlink != 0 {
-			if isRootLevelPathComponent(cur) {
+			if isRootLevelPathComponent(candidate) {
 				continue
 			}
-			return fmt.Errorf("policy path must not contain symlink component: %s", cur)
+			return fmt.Errorf("policy path must not contain symlink component: %s", candidate)
 		}
 	}
 	return nil
+}
+
+func symlinkCheckCandidates(path string) []string {
+	cleanPath := filepath.Clean(path)
+	candidates := []string{cleanPath}
+
+	for current := cleanPath; ; {
+		parent := filepath.Dir(current)
+		if parent == current {
+			break
+		}
+		candidates = append(candidates, parent)
+		current = parent
+	}
+
+	for i, j := 0, len(candidates)-1; i < j; i, j = i+1, j-1 {
+		candidates[i], candidates[j] = candidates[j], candidates[i]
+	}
+
+	return candidates
 }
 
 func isRootLevelPathComponent(path string) bool {

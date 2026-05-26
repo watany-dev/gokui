@@ -155,17 +155,19 @@ func downloadGitHubArchive(spec GitHubSpec, archivePath string) error {
 	if err != nil {
 		return fmt.Errorf("failed to create github archive file: %w", err)
 	}
-	defer func() {
-		_ = out.Close()
-	}()
 
 	_, err = copyWithStrictLimit(out, resp.Body, maxGitHubArchiveBytes)
 	if err != nil {
+		_ = out.Close()
 		_ = os.Remove(archivePath)
 		if limitio.IsSizeExceeded(err) {
 			return fmt.Errorf("github archive exceeds max size")
 		}
 		return fmt.Errorf("failed to write github archive: %w", err)
+	}
+	if err := out.Close(); err != nil {
+		_ = os.Remove(archivePath)
+		return fmt.Errorf("failed to close github archive file: %w", err)
 	}
 	if err := validateGzipArchiveFile(archivePath); err != nil {
 		_ = os.Remove(archivePath)

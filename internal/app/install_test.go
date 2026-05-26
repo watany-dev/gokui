@@ -9,7 +9,6 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
-	"syscall"
 	"testing"
 	"testing/quick"
 
@@ -1264,7 +1263,7 @@ func TestRunInstallJSONOutput(t *testing.T) {
 				t.Skip("fifo behavior differs on windows")
 			}
 			specialSource := createSkillSourceForInstallTest(t, "json-special-file")
-			if err := syscall.Mkfifo(filepath.Join(specialSource, "pipe.fifo"), 0o600); err != nil {
+			if err := mkfifoForTest(filepath.Join(specialSource, "pipe.fifo"), 0o600); err != nil {
 				t.Fatalf("mkfifo: %v", err)
 			}
 
@@ -4924,7 +4923,7 @@ func TestWriteInstallMetadataAndBuildDigestsErrors(t *testing.T) {
 		}
 		root := t.TempDir()
 		fifo := filepath.Join(root, "pipe.fifo")
-		if err := syscall.Mkfifo(fifo, 0o600); err != nil {
+		if err := mkfifoForTest(fifo, 0o600); err != nil {
 			t.Fatalf("mkfifo: %v", err)
 		}
 		_, _, err := buildFileDigestsFiltered(root, nil)
@@ -5138,7 +5137,7 @@ func TestCopyTreeNormalizedRejectsSpecialFile(t *testing.T) {
 
 	src := t.TempDir()
 	fifo := filepath.Join(src, "pipe.fifo")
-	if err := syscall.Mkfifo(fifo, 0o600); err != nil {
+	if err := mkfifoForTest(fifo, 0o600); err != nil {
 		t.Fatalf("mkfifo: %v", err)
 	}
 

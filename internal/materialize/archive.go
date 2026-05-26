@@ -198,18 +198,20 @@ func writeZipFile(file *zip.File, outPath string, maxBytes int64) (int64, error)
 	if err != nil {
 		return 0, fmt.Errorf("failed to create output file %s: %w", outPath, err)
 	}
-	defer func() {
-		_ = out.Close()
-	}()
 
 	written, err := copyWithStrictLimit(out, rc, maxBytes)
 	if err != nil {
+		_ = out.Close()
 		if limitio.IsSizeExceeded(err) {
 			_ = os.Remove(outPath)
 			return 0, fmt.Errorf("archive file exceeds max file bytes during extraction: %s", file.Name)
 		}
 		_ = os.Remove(outPath)
 		return 0, fmt.Errorf("failed to extract file %s: %w", file.Name, err)
+	}
+	if err := out.Close(); err != nil {
+		_ = os.Remove(outPath)
+		return 0, fmt.Errorf("failed to close extracted file %s: %w", file.Name, err)
 	}
 	return written, nil
 }
@@ -386,18 +388,20 @@ func writeTarFile(header *tar.Header, tarReader *tar.Reader, outPath string, max
 	if err != nil {
 		return 0, fmt.Errorf("failed to create output file %s: %w", outPath, err)
 	}
-	defer func() {
-		_ = out.Close()
-	}()
 
 	written, err := copyWithStrictLimit(out, tarReader, maxBytes)
 	if err != nil {
+		_ = out.Close()
 		if limitio.IsSizeExceeded(err) {
 			_ = os.Remove(outPath)
 			return 0, fmt.Errorf("archive file exceeds max file bytes during extraction: %s", header.Name)
 		}
 		_ = os.Remove(outPath)
 		return 0, fmt.Errorf("failed to extract file %s: %w", header.Name, err)
+	}
+	if err := out.Close(); err != nil {
+		_ = os.Remove(outPath)
+		return 0, fmt.Errorf("failed to close extracted file %s: %w", header.Name, err)
 	}
 	return written, nil
 }

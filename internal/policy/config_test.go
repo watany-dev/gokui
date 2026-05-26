@@ -179,6 +179,9 @@ func TestResolvePolicyPath(t *testing.T) {
 	})
 
 	t.Run("falls back to home config path", func(t *testing.T) {
+		if runtime.GOOS == "windows" {
+			t.Skip("home resolution semantics differ on windows")
+		}
 		home := t.TempDir()
 		t.Setenv("HOME", home)
 		t.Setenv(envPolicyPath, "")
@@ -230,7 +233,7 @@ func TestIsRootLevelPathComponent(t *testing.T) {
 	if isRootLevelPathComponent(string(os.PathSeparator)) {
 		t.Fatal("filesystem root must not be treated as root-level component")
 	}
-	rootChild := filepath.Join(string(os.PathSeparator), "var")
+	rootChild := rootChildPathForTest(t)
 	if !isRootLevelPathComponent(rootChild) {
 		t.Fatalf("expected root child to be treated as root-level component: %q", rootChild)
 	}
@@ -257,6 +260,22 @@ func TestRejectSymlinkPathAllowsRootLevelSymlinkComponent(t *testing.T) {
 	if err := rejectSymlinkPath(path); err != nil {
 		t.Fatalf("expected root-level symlink component to be allowed, got %v", err)
 	}
+}
+
+func rootChildPathForTest(t *testing.T) string {
+	t.Helper()
+	if runtime.GOOS != "windows" {
+		return filepath.Join(string(os.PathSeparator), "var")
+	}
+	cwd, err := os.Getwd()
+	if err != nil {
+		t.Skipf("skip: getwd failed on windows: %v", err)
+	}
+	vol := filepath.VolumeName(cwd)
+	if vol == "" {
+		t.Skip("skip: windows volume name unavailable")
+	}
+	return filepath.Join(vol+string(os.PathSeparator), "var")
 }
 
 func TestNormalizeProfileConfigs(t *testing.T) {
