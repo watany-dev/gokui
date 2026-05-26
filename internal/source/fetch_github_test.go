@@ -293,6 +293,35 @@ func TestFetchGitHubSkillErrors(t *testing.T) {
 		}
 	})
 
+	t.Run("downloadGitHubArchive rejects concatenated gzip members and cleans up partial file", func(t *testing.T) {
+		first := buildTarGz(t, map[string]string{
+			"repo-8f3c2d1a4b5c6d7e8f901234567890abcdef1234/skills/x/SKILL.md": "---\nname: x\ndescription: d\n---\n",
+		})
+		second := buildTarGz(t, map[string]string{
+			"repo-8f3c2d1a4b5c6d7e8f901234567890abcdef1234/skills/y/SKILL.md": "---\nname: y\ndescription: d\n---\n",
+		})
+		concatenated := append(append([]byte{}, first...), second...)
+
+		githubCodeloadBaseURL = "https://mock.codeload.local"
+		githubHTTPClient = &http.Client{
+			Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+				resp := httpResponse(http.StatusOK, concatenated)
+				resp.Header.Set("Content-Type", "application/x-gzip")
+				return resp, nil
+			}),
+		}
+
+		spec := GitHubSpec{Owner: "o", Repo: "r", Path: "skills/x", Ref: "8f3c2d1a4b5c6d7e8f901234567890abcdef1234"}
+		outPath := filepath.Join(t.TempDir(), "archive.tar.gz")
+		err := downloadGitHubArchive(spec, outPath)
+		if err == nil || !strings.Contains(err.Error(), "single gzip stream without trailing bytes") {
+			t.Fatalf("expected concatenated-gzip validation error, got %v", err)
+		}
+		if _, statErr := os.Stat(outPath); !errors.Is(statErr, os.ErrNotExist) {
+			t.Fatalf("expected concatenated-gzip archive file to be removed, statErr=%v", statErr)
+		}
+	})
+
 	t.Run("downloadGitHubArchive rejects non-https base URL", func(t *testing.T) {
 		spec := GitHubSpec{Owner: "o", Repo: "r", Path: "skills/x", Ref: "8f3c2d1a4b5c6d7e8f901234567890abcdef1234"}
 		githubCodeloadBaseURL = "http://mock.codeload.local"

@@ -36,7 +36,7 @@ tests/CI:
 - GitHub source parser rejection of Unicode whitespace/zero-width/bidi-control/tag/variation-selector characters in owner/repo segments
 - GitHub archive network hardening (strict redirect cap/constraints + response content-type/encoding validation)
 - GitHub archive content-type hardening (`application/x-gzip|application/gzip|application/octet-stream` allowlist)
-- GitHub archive payload hardening (gzip magic-header validation before extraction)
+- GitHub archive payload hardening (strict single-stream gzip validation with EOF/trailing-byte rejection before extraction)
 - GitHub archive strict stream-size enforcement with overflow-write prevention and cleanup
 - GitHub source parser length bounds (input and owner/repo/path/ref segments)
 - GitHub source parser rejection of C0/C1 control characters in source input
