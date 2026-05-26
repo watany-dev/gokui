@@ -692,6 +692,13 @@ func TestSourceMetadataHelpers(t *testing.T) {
 				detailPart: "source_input must not contain C0/C1 control characters",
 			},
 			{
+				name: "source_input has C0/C1 control only",
+				mutate: func(m *sourceMetadata) {
+					m.SourceInput = "\u0085"
+				},
+				detailPart: "source_input must not contain C0/C1 control characters",
+			},
+			{
 				name: "source_kind has C0/C1 control",
 				mutate: func(m *sourceMetadata) {
 					m.SourceKind = "github-source\u008f"
