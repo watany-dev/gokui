@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/watany-dev/gokui/internal/limitio"
 	srcpkg "github.com/watany-dev/gokui/internal/source"
@@ -22,6 +23,7 @@ const ruleSourceMetadataFileTooLarge = "SOURCE_METADATA_FILE_TOO_LARGE"
 const ruleSourceMetadataSymlink = "SOURCE_METADATA_SYMLINK_DETECTED"
 const ruleSourceMetadataSpecialFile = "SOURCE_METADATA_SPECIAL_FILE"
 const ruleSourceMetadataSourceChanged = "SOURCE_METADATA_SOURCE_CHANGED_DURING_READ"
+const ruleSourceMetadataInvalidUTF8 = "SOURCE_METADATA_INVALID_UTF8"
 
 type sourceMetadata struct {
 	Schema          string `json:"schema"`
@@ -93,6 +95,9 @@ func readSourceMetadata(skillRoot string) (sourceMetadata, bool, error) {
 			return sourceMetadata{}, false, fmt.Errorf("%s: source metadata exceeds size limit: %s", ruleSourceMetadataFileTooLarge, path)
 		}
 		return sourceMetadata{}, false, fmt.Errorf("failed to read source metadata: %w", err)
+	}
+	if !utf8.Valid(raw.Bytes()) {
+		return sourceMetadata{}, false, fmt.Errorf("%s: source metadata must be valid UTF-8: %s", ruleSourceMetadataInvalidUTF8, path)
 	}
 
 	var meta sourceMetadata

@@ -241,6 +241,7 @@ func TestGitHubSourceEncodingAndArchiveStreamHardeningDocumentationSync(t *testi
 		"GitHub source parsing also rejects invalid UTF-8 source inputs.",
 		"GitHub archive downloads must be a strict single gzip stream and reject trailing",
 		"bytes or concatenated gzip members before extraction.",
+		"Source metadata reads also reject invalid UTF-8 payloads before JSON decoding.",
 	}
 	for _, line := range requiredReadme {
 		if !strings.Contains(readme, line) {
@@ -251,6 +252,7 @@ func TestGitHubSourceEncodingAndArchiveStreamHardeningDocumentationSync(t *testi
 	requiredRoadmap := []string{
 		"GitHub source parser rejection of invalid UTF-8 source input",
 		"GitHub archive payload hardening (strict single-stream gzip validation with EOF/trailing-byte rejection before extraction)",
+		"Source metadata read-path hardening with invalid UTF-8 payload rejection before JSON decoding",
 	}
 	for _, line := range requiredRoadmap {
 		if !strings.Contains(roadmap, line) {

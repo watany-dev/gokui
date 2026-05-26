@@ -200,6 +200,17 @@ func TestSourceMetadataHelpers(t *testing.T) {
 			t.Fatal("expected metadata validation error")
 		}
 
+		dirWithInvalidUTF8 := t.TempDir()
+		invalidUTF8Metadata := []byte("{\"schema\":\"gokui.source/v1\",\"source_input\":\"github:org/repo//skills/x@8f3c2d1a4b5c6d7e8f901234567890abcdef1234\",\"source_kind\":\"github-source\",\"resolved_ref\":\"8f3c2d1a4b5c6d7e8f901234567890abcdef1234\",\"fetched_at\":\"2026-05-23T00:00:00Z\",\"skill_root_sha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"note\":\"")
+		invalidUTF8Metadata = append(invalidUTF8Metadata, 0xff)
+		invalidUTF8Metadata = append(invalidUTF8Metadata, []byte("\"}")...)
+		if err := os.WriteFile(filepath.Join(dirWithInvalidUTF8, sourceMetadataFile), invalidUTF8Metadata, 0o644); err != nil {
+			t.Fatalf("write invalid-utf8 metadata: %v", err)
+		}
+		if _, _, err := readSourceMetadata(dirWithInvalidUTF8); err == nil || !strings.Contains(err.Error(), ruleSourceMetadataInvalidUTF8) {
+			t.Fatalf("expected invalid utf-8 metadata error, got %v", err)
+		}
+
 		notDir := filepath.Join(t.TempDir(), "not-dir")
 		if err := os.WriteFile(notDir, []byte("x"), 0o644); err != nil {
 			t.Fatalf("write not-dir file: %v", err)

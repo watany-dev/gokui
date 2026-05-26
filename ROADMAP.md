@@ -15,6 +15,7 @@ tests/CI:
 - Archive inspect source hardening (reject symlinked archive source paths/components before extraction)
 - Symlink target hardening for `fetch --out`, `install --target`, `update --target`, and `lock verify` input paths (including symlink path components)
 - Lock/source-metadata/report read-path hardening with symlink component rejection and regular-file enforcement
+- Source metadata read-path hardening with invalid UTF-8 payload rejection before JSON decoding
 - Source metadata write-path hardening with symlink component rejection and non-regular target rejection
 - Install atomic finalize hardening for symlinked target entries
 - Install idempotent-reuse hardening via strict existing-lock structural validation before provenance match
