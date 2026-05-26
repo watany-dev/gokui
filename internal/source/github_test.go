@@ -111,6 +111,24 @@ func TestParseGitHubSource(t *testing.T) {
 		}
 	})
 
+	t.Run("rejects C1-only controls across owner repo path and ref with explicit error", func(t *testing.T) {
+		cases := []string{
+			"github:\u0085/repo//skills/demo@8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
+			"github:owner/\u0085//skills/demo@8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
+			"github:owner/repo//\u0085@8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
+			"github:owner/repo//skills/demo@\u0085",
+		}
+		for _, in := range cases {
+			_, err := ParseGitHubSource(in)
+			if err == nil {
+				t.Fatalf("expected parse error for %q", in)
+			}
+			if !strings.Contains(err.Error(), "must not contain C0/C1 control characters") {
+				t.Fatalf("error for %q = %q, want C0/C1 control message", in, err.Error())
+			}
+		}
+	})
+
 	t.Run("enforces length bounds", func(t *testing.T) {
 		ownerMax := strings.Repeat("a", maxGitHubOwnerChars)
 		repoMax := strings.Repeat("b", maxGitHubRepoChars)
