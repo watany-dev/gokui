@@ -3527,6 +3527,13 @@ func TestReadInstallLockAndProvenanceMatches(t *testing.T) {
 				detailPart: "installed_at must not contain C0/C1 control characters",
 			},
 			{
+				name: "installed_at has C0 NUL control character only",
+				mutate: func(l *installLock) {
+					l.InstalledAt = "\u0000"
+				},
+				detailPart: "installed_at must not contain C0/C1 control characters",
+			},
+			{
 				name: "installed_at has DEL control character only",
 				mutate: func(l *installLock) {
 					l.InstalledAt = "\u007f"
@@ -3579,6 +3586,13 @@ func TestReadInstallLockAndProvenanceMatches(t *testing.T) {
 				name: "name has C0/C1 control character only",
 				mutate: func(l *installLock) {
 					l.Name = "\u0085"
+				},
+				detailPart: "name must not contain C0/C1 control characters",
+			},
+			{
+				name: "name has C0 NUL control character only",
+				mutate: func(l *installLock) {
+					l.Name = "\u0000"
 				},
 				detailPart: "name must not contain C0/C1 control characters",
 			},
@@ -3772,6 +3786,13 @@ func TestReadInstallLockAndProvenanceMatches(t *testing.T) {
 				detailPart: "source kind must not contain C0/C1 control characters",
 			},
 			{
+				name: "source kind has C0 NUL control character only",
+				mutate: func(l *installLock) {
+					l.Source.Kind = "\u0000"
+				},
+				detailPart: "source kind must not contain C0/C1 control characters",
+			},
+			{
 				name: "source kind has DEL control character only",
 				mutate: func(l *installLock) {
 					l.Source.Kind = "\u007f"
@@ -3835,6 +3856,13 @@ func TestReadInstallLockAndProvenanceMatches(t *testing.T) {
 				detailPart: "source input must not contain C0/C1 control characters",
 			},
 			{
+				name: "source input has C0 NUL control character only",
+				mutate: func(l *installLock) {
+					l.Source.Input = "\u0000"
+				},
+				detailPart: "source input must not contain C0/C1 control characters",
+			},
+			{
 				name: "source input has DEL control character only",
 				mutate: func(l *installLock) {
 					l.Source.Input = "\u007f"
@@ -3894,6 +3922,13 @@ func TestReadInstallLockAndProvenanceMatches(t *testing.T) {
 				name: "source type has C1-only control character",
 				mutate: func(l *installLock) {
 					l.Source.Type = "\u0085"
+				},
+				detailPart: "source type must not contain C0/C1 control characters",
+			},
+			{
+				name: "source type has C0 NUL control character only",
+				mutate: func(l *installLock) {
+					l.Source.Type = "\u0000"
 				},
 				detailPart: "source type must not contain C0/C1 control characters",
 			},
@@ -4025,6 +4060,13 @@ func TestReadInstallLockAndProvenanceMatches(t *testing.T) {
 				name: "lock file path contains C1 control character only",
 				mutate: func(l *installLock) {
 					l.Skill.Files[0].Path = "\u0085"
+				},
+				detailPart: "file path is invalid",
+			},
+			{
+				name: "lock file path contains C0 NUL control character only",
+				mutate: func(l *installLock) {
+					l.Skill.Files[0].Path = "\u0000"
 				},
 				detailPart: "file path is invalid",
 			},
