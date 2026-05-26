@@ -33,6 +33,7 @@ tests/CI:
 - Lock/install-report `severity_overrides` `justification`/`approved_by` validation hardening with surrounding-whitespace rejection
 - Lock/install-report `severity_overrides` `justification`/`approved_by` validation hardening with Unicode bidi/zero-width/tag/variation-selector rejection
 - Source metadata `schema`/`source_kind`/`resolved_ref`/`fetched_at`/`skill_root_sha256` validation hardening with C0/C1 control-character rejection
+- Source metadata `source_input` validation hardening with C0/C1 control-character rejection at metadata verification layer
 - Source metadata write-path hardening with symlink component rejection and non-regular target rejection
 - Install atomic finalize hardening for symlinked target entries
 - Install idempotent-reuse hardening via strict existing-lock structural validation before provenance match

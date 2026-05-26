@@ -741,6 +741,29 @@ func TestSourceMetadataControlCharHardeningDocumentationSync(t *testing.T) {
 	}
 }
 
+func TestSourceMetadataSourceInputControlCharHardeningDocumentationSync(t *testing.T) {
+	readmeBytes, err := os.ReadFile("../../README.md")
+	if err != nil {
+		t.Fatalf("failed to read README.md: %v", err)
+	}
+	readme := string(readmeBytes)
+	roadmapBytes, err := os.ReadFile("../../ROADMAP.md")
+	if err != nil {
+		t.Fatalf("failed to read ROADMAP.md: %v", err)
+	}
+	roadmap := string(roadmapBytes)
+
+	requiredReadme := "Source metadata `source_input` must also not contain C0/C1 control characters."
+	if !strings.Contains(readme, requiredReadme) {
+		t.Fatalf("README missing source-metadata source_input control-char hardening line: %q", requiredReadme)
+	}
+
+	requiredRoadmap := "Source metadata `source_input` validation hardening with C0/C1 control-character rejection at metadata verification layer"
+	if !strings.Contains(roadmap, requiredRoadmap) {
+		t.Fatalf("ROADMAP missing source-metadata source_input control-char hardening line: %q", requiredRoadmap)
+	}
+}
+
 func TestLockfileExampleSchemaSync(t *testing.T) {
 	readmeBytes, err := os.ReadFile("../../README.md")
 	if err != nil {
