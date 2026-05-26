@@ -25,6 +25,7 @@ tests/CI:
 - Lock `installed_at` validation hardening with C0/C1 control-character rejection for install/update/lock-verify provenance checks
 - Install report `policy_profile`/`decision` validation hardening with C0/C1 control-character rejection for lock-verify and install/update integrity checks
 - Install report `source.input`/`source.kind` validation hardening with C0/C1 control-character rejection for lock-verify and install/update integrity checks
+- Install report `installed_path` validation hardening with C0/C1 control-character rejection for lock-verify and install/update integrity checks
 - Source metadata write-path hardening with symlink component rejection and non-regular target rejection
 - Install atomic finalize hardening for symlinked target entries
 - Install idempotent-reuse hardening via strict existing-lock structural validation before provenance match

@@ -906,6 +906,9 @@ func verifyInstallReport(skillPath string, lock installLock) (bool, string) {
 	if !report.Installed {
 		return false, "install report installed must be true"
 	}
+	if strings.IndexFunc(report.InstalledPath, isC0OrC1ControlRune) >= 0 {
+		return false, "install report installed path must not contain C0/C1 control characters"
+	}
 	if filepath.Clean(report.InstalledPath) != filepath.Clean(skillPath) {
 		return false, fmt.Sprintf("install report path mismatch: expected %s, got %s", skillPath, report.InstalledPath)
 	}

@@ -1733,6 +1733,13 @@ func TestVerifyInstallReportValidationBranches(t *testing.T) {
 			},
 			detailHas: "path mismatch",
 		},
+		{
+			name: "installed path has C0/C1 control character",
+			mutate: func(r *installReport) {
+				r.InstalledPath = filepath.Join(skillPath, "ok") + "\u008f"
+			},
+			detailHas: "installed path must not contain C0/C1 control characters",
+		},
 	}
 
 	for _, tc := range cases {
