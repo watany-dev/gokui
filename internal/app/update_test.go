@@ -3446,8 +3446,8 @@ func TestRunUpdateDryRunRejectedAndError(t *testing.T) {
 		if !strings.Contains(stdout.String(), "\"error_code\": \""+updateCodeLockfileInvalid+"\"") {
 			t.Fatalf("stdout should include lockfile-invalid error_code, got %q", stdout.String())
 		}
-		if !strings.Contains(stdout.String(), "lock source input must not contain ASCII control characters") {
-			t.Fatalf("stdout should include ASCII control-character detail, got %q", stdout.String())
+		if !strings.Contains(stdout.String(), "lock source input must not contain C0/C1 control characters") {
+			t.Fatalf("stdout should include C0/C1 control-character detail, got %q", stdout.String())
 		}
 	})
 
@@ -3484,8 +3484,8 @@ func TestRunUpdateDryRunRejectedAndError(t *testing.T) {
 		if stderr.Len() != 0 {
 			t.Fatalf("stderr should be empty, got %q", stderr.String())
 		}
-		if !strings.Contains(stdout.String(), "\"error_code\": \""+updateCodeGitHubSourceBad+"\"") {
-			t.Fatalf("stdout should include invalid-source error_code, got %q", stdout.String())
+		if !strings.Contains(stdout.String(), "\"error_code\": \""+updateCodeLockfileInvalid+"\"") {
+			t.Fatalf("stdout should include lockfile-invalid error_code, got %q", stdout.String())
 		}
 		if !strings.Contains(stdout.String(), "must not contain C0/C1 control characters") {
 			t.Fatalf("stdout should include C0/C1 control-character detail, got %q", stdout.String())
@@ -5377,7 +5377,7 @@ func TestEvaluateUpdateSkillAdditionalBranches(t *testing.T) {
 		if got.ErrorCode != updateCodeLockfileInvalid {
 			t.Fatalf("error_code = %q, want %q", got.ErrorCode, updateCodeLockfileInvalid)
 		}
-		if !strings.Contains(got.Message, "lock source input must not contain ASCII control characters") {
+		if !strings.Contains(got.Message, "lock source input must not contain C0/C1 control characters") {
 			t.Fatalf("message = %q", got.Message)
 		}
 	})

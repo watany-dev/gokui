@@ -1004,7 +1004,11 @@ func TestVerifyLockSourceChecks(t *testing.T) {
 	}
 	lock.Source.Input = "/tmp/skill\npayload"
 	if ok, _ := verifyLockSource(lock); ok {
-		t.Fatal("input with ASCII control characters should fail")
+		t.Fatal("input with C0 control characters should fail")
+	}
+	lock.Source.Input = "/tmp/skill\u0085payload"
+	if ok, _ := verifyLockSource(lock); ok {
+		t.Fatal("input with C1 control characters should fail")
 	}
 	lock.Source.Input = "/tmp/skill"
 	lock.Source.Kind = " local-dir "
@@ -1977,7 +1981,7 @@ func TestLockVerifyHelpers(t *testing.T) {
 			t.Fatalf("expected valid path: %s", p)
 		}
 	}
-	invalidPaths := []string{"", ".", "..", "../x", "/x", `..\x`, `a\b`, "C:/x", "c:/x", "D:relative/path", "z:tmp", "SKILL.md\nx", "SKILL.md\tx", string([]byte{'b', 'a', 'd', 0xff})}
+	invalidPaths := []string{"", ".", "..", "../x", "/x", `..\x`, `a\b`, "C:/x", "c:/x", "D:relative/path", "z:tmp", "SKILL.md\nx", "SKILL.md\tx", "SKILL.md\u0085x", string([]byte{'b', 'a', 'd', 0xff})}
 	for _, p := range invalidPaths {
 		if isValidLockRelativePath(p) {
 			t.Fatalf("expected invalid path: %s", p)

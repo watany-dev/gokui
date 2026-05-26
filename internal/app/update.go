@@ -711,10 +711,10 @@ func evaluateUpdateSkill(item updateSkillItem, lock installLock, policyLoaded bo
 		}
 		return item, nil
 	}
-	if strings.IndexFunc(sourceInput, isASCIIControlRune) >= 0 {
+	if strings.IndexFunc(sourceInput, isC0OrC1ControlRune) >= 0 {
 		item.Status = "ERROR"
 		item.ErrorCode = updateCodeLockfileInvalid
-		item.Message = "lock source input must not contain ASCII control characters"
+		item.Message = "lock source input must not contain C0/C1 control characters"
 		item.RuleID = inferRuleIDForJSONError(item.Message)
 		item.Risk = updateRisk{
 			Previous: lock.Findings,

@@ -3496,7 +3496,14 @@ func TestReadInstallLockAndProvenanceMatches(t *testing.T) {
 				mutate: func(l *installLock) {
 					l.Source.Input = "/tmp/skill\npayload"
 				},
-				detailPart: "source input must not contain ASCII control characters",
+				detailPart: "source input must not contain C0/C1 control characters",
+			},
+			{
+				name: "source input has C1 control character",
+				mutate: func(l *installLock) {
+					l.Source.Input = "/tmp/skill\u0085payload"
+				},
+				detailPart: "source input must not contain C0/C1 control characters",
 			},
 			{
 				name: "source kind mismatch",

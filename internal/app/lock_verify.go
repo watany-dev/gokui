@@ -663,8 +663,8 @@ func verifyLockSource(lock installLock) (bool, string) {
 	if trimmedInput != lock.Source.Input {
 		return false, "lock source input must not contain leading or trailing whitespace"
 	}
-	if strings.IndexFunc(trimmedInput, isASCIIControlRune) >= 0 {
-		return false, "lock source input must not contain ASCII control characters"
+	if strings.IndexFunc(trimmedInput, isC0OrC1ControlRune) >= 0 {
+		return false, "lock source input must not contain C0/C1 control characters"
 	}
 	detectedKind := detectSourceKind(trimmedInput)
 	if trimmedKind != detectedKind {
@@ -921,7 +921,7 @@ func isValidLockRelativePath(in string) bool {
 	if !utf8.ValidString(in) {
 		return false
 	}
-	if strings.IndexFunc(in, isASCIIControlRune) >= 0 {
+	if strings.IndexFunc(in, isC0OrC1ControlRune) >= 0 {
 		return false
 	}
 	if strings.TrimSpace(in) == "" {
@@ -959,8 +959,8 @@ func hasWindowsDrivePathPrefix(path string) bool {
 	return true
 }
 
-func isASCIIControlRune(r rune) bool {
-	return (r >= 0x00 && r <= 0x1f) || r == 0x7f
+func isC0OrC1ControlRune(r rune) bool {
+	return (r >= 0x00 && r <= 0x1f) || r == 0x7f || (r >= 0x80 && r <= 0x9f)
 }
 
 func validateSeverityOverrideAudit(overrides []severityOverrideAudit) error {

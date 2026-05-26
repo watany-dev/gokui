@@ -372,11 +372,11 @@ func TestLockPathUTF8HardeningDocumentationSync(t *testing.T) {
 	roadmap := string(roadmapBytes)
 
 	requiredReadme := "Lock skill file paths in `gokui.lock` must be valid UTF-8 and must not contain"
-	requiredReadmeContinuation := "ASCII control characters for install/update/lock verify provenance checks."
+	requiredReadmeContinuation := "C0/C1 control characters for install/update/lock verify provenance checks."
 	if !strings.Contains(readme, requiredReadme) || !strings.Contains(readme, requiredReadmeContinuation) {
 		t.Fatalf("README missing lock path utf-8/control-char hardening line: %q ... %q", requiredReadme, requiredReadmeContinuation)
 	}
-	requiredRoadmap := "Lock skill file-path validation hardening with invalid UTF-8 and ASCII control-character rejection for install/update/lock-verify provenance checks"
+	requiredRoadmap := "Lock skill file-path validation hardening with invalid UTF-8 and C0/C1 control-character rejection for install/update/lock-verify provenance checks"
 	if !strings.Contains(roadmap, requiredRoadmap) {
 		t.Fatalf("ROADMAP missing lock path utf-8/control-char hardening line: %q", requiredRoadmap)
 	}
@@ -394,12 +394,12 @@ func TestLockSourceInputControlCharHardeningDocumentationSync(t *testing.T) {
 	}
 	roadmap := string(roadmapBytes)
 
-	requiredReadme := "Lock source inputs in `gokui.lock` must not contain ASCII control characters"
+	requiredReadme := "Lock source inputs in `gokui.lock` must not contain C0/C1 control characters"
 	if !strings.Contains(readme, requiredReadme) {
 		t.Fatalf("README missing lock source input control-char hardening line: %q", requiredReadme)
 	}
 
-	requiredRoadmap := "Lock source-input validation hardening with ASCII control-character rejection for install/update/lock-verify provenance checks"
+	requiredRoadmap := "Lock source-input validation hardening with C0/C1 control-character rejection for install/update/lock-verify provenance checks"
 	if !strings.Contains(roadmap, requiredRoadmap) {
 		t.Fatalf("ROADMAP missing lock source input control-char hardening line: %q", requiredRoadmap)
 	}
