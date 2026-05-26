@@ -97,6 +97,9 @@ Install report `policy_profile` / `decision` fields must not contain C0/C1
 control characters during lock verify and reuse/baseline integrity checks.
 Install report `source.input` / `source.kind` fields must not contain C0/C1
 control characters during lock verify and reuse/baseline integrity checks.
+Install report `source.input` / `source.kind` fields must not be empty, must
+not contain surrounding whitespace, and must not contain Unicode
+bidi/zero-width/tag/variation-selector characters.
 Install report `installed_path` must not contain C0/C1 control characters
 during lock verify and reuse/baseline integrity checks.
 Install report `schema_version` must not contain C0/C1 control characters

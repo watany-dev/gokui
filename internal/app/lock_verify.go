@@ -866,11 +866,31 @@ func verifyInstallReport(skillPath string, lock installLock) (bool, string) {
 	if report.SchemaVersion != reportSchemaVersion {
 		return false, fmt.Sprintf("install report schema_version is unsupported: %s", report.SchemaVersion)
 	}
+	trimmedSourceInput := strings.TrimSpace(report.Source.Input)
+	if trimmedSourceInput == "" {
+		return false, "install report source input is empty"
+	}
+	if trimmedSourceInput != report.Source.Input {
+		return false, "install report source input must not contain leading or trailing whitespace"
+	}
 	if strings.IndexFunc(report.Source.Input, isC0OrC1ControlRune) >= 0 {
 		return false, "install report source input must not contain C0/C1 control characters"
 	}
+	if containsSeverityOverrideDisallowedUnicode(report.Source.Input) {
+		return false, "install report source input must not contain Unicode bidi, zero-width, tag, or variation-selector characters"
+	}
+	trimmedSourceKind := strings.TrimSpace(report.Source.Kind)
+	if trimmedSourceKind == "" {
+		return false, "install report source kind is empty"
+	}
+	if trimmedSourceKind != report.Source.Kind {
+		return false, "install report source kind must not contain leading or trailing whitespace"
+	}
 	if strings.IndexFunc(report.Source.Kind, isC0OrC1ControlRune) >= 0 {
 		return false, "install report source kind must not contain C0/C1 control characters"
+	}
+	if containsSeverityOverrideDisallowedUnicode(report.Source.Kind) {
+		return false, "install report source kind must not contain Unicode bidi, zero-width, tag, or variation-selector characters"
 	}
 	if report.Source.Input != lock.Source.Input || report.Source.Kind != lock.Source.Kind {
 		return false, "install report source does not match lock source"

@@ -549,6 +549,31 @@ func TestInstallReportSourceControlCharHardeningDocumentationSync(t *testing.T) 
 	}
 }
 
+func TestInstallReportSourceCanonicalUnicodeHardeningDocumentationSync(t *testing.T) {
+	readmeBytes, err := os.ReadFile("../../README.md")
+	if err != nil {
+		t.Fatalf("failed to read README.md: %v", err)
+	}
+	readme := string(readmeBytes)
+	roadmapBytes, err := os.ReadFile("../../ROADMAP.md")
+	if err != nil {
+		t.Fatalf("failed to read ROADMAP.md: %v", err)
+	}
+	roadmap := string(roadmapBytes)
+
+	requiredReadme := "Install report `source.input` / `source.kind` fields must not be empty, must"
+	requiredReadmeContinuation := "not contain surrounding whitespace, and must not contain Unicode"
+	requiredReadmeTail := "bidi/zero-width/tag/variation-selector characters."
+	if !strings.Contains(readme, requiredReadme) || !strings.Contains(readme, requiredReadmeContinuation) || !strings.Contains(readme, requiredReadmeTail) {
+		t.Fatalf("README missing install report source canonical/unicode hardening line: %q ... %q ... %q", requiredReadme, requiredReadmeContinuation, requiredReadmeTail)
+	}
+
+	requiredRoadmap := "Install report `source.input`/`source.kind` canonical validation hardening with empty/surrounding-whitespace rejection and Unicode bidi/zero-width/tag/variation-selector rejection"
+	if !strings.Contains(roadmap, requiredRoadmap) {
+		t.Fatalf("ROADMAP missing install report source canonical/unicode hardening line: %q", requiredRoadmap)
+	}
+}
+
 func TestInstallReportInstalledPathControlCharHardeningDocumentationSync(t *testing.T) {
 	readmeBytes, err := os.ReadFile("../../README.md")
 	if err != nil {

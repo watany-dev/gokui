@@ -1698,6 +1698,20 @@ func TestVerifyInstallReportValidationBranches(t *testing.T) {
 			detailHas: "schema_version must not contain C0/C1 control characters",
 		},
 		{
+			name: "empty source input",
+			mutate: func(r *installReport) {
+				r.Source.Input = ""
+			},
+			detailHas: "source input is empty",
+		},
+		{
+			name: "source input has surrounding whitespace",
+			mutate: func(r *installReport) {
+				r.Source.Input = " " + r.Source.Input + " "
+			},
+			detailHas: "source input must not contain leading or trailing whitespace",
+		},
+		{
 			name: "source input has C0/C1 control character",
 			mutate: func(r *installReport) {
 				r.Source.Input = "/tmp/\u008fsrc"
@@ -1705,11 +1719,39 @@ func TestVerifyInstallReportValidationBranches(t *testing.T) {
 			detailHas: "source input must not contain C0/C1 control characters",
 		},
 		{
+			name: "source input has unicode obfuscation character",
+			mutate: func(r *installReport) {
+				r.Source.Input = "/tmp/src\u200d"
+			},
+			detailHas: "source input must not contain Unicode bidi, zero-width, tag, or variation-selector characters",
+		},
+		{
+			name: "empty source kind",
+			mutate: func(r *installReport) {
+				r.Source.Kind = ""
+			},
+			detailHas: "source kind is empty",
+		},
+		{
+			name: "source kind has surrounding whitespace",
+			mutate: func(r *installReport) {
+				r.Source.Kind = " " + r.Source.Kind + " "
+			},
+			detailHas: "source kind must not contain leading or trailing whitespace",
+		},
+		{
 			name: "source kind has C0/C1 control character",
 			mutate: func(r *installReport) {
 				r.Source.Kind = "local-\u008fdir"
 			},
 			detailHas: "source kind must not contain C0/C1 control characters",
+		},
+		{
+			name: "source kind has unicode obfuscation character",
+			mutate: func(r *installReport) {
+				r.Source.Kind = "local-dir\u200d"
+			},
+			detailHas: "source kind must not contain Unicode bidi, zero-width, tag, or variation-selector characters",
 		},
 		{
 			name: "empty profile",
