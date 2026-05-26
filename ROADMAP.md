@@ -27,6 +27,7 @@ tests/CI:
 - Lock source kind/type validation hardening with C0/C1 control-character rejection for install/update/lock-verify provenance checks
 - Lock source kind/type validation hardening with Unicode bidi/zero-width/tag/variation-selector rejection for install/update/lock-verify provenance checks
 - Lock policy profile/decision validation hardening with C0/C1 control-character rejection for install/update/lock-verify provenance checks
+- Lock policy decision canonical validation hardening with surrounding-whitespace rejection for install/update/lock-verify provenance checks
 - Lock policy profile/decision validation hardening with Unicode bidi/zero-width/tag/variation-selector rejection for install/update/lock-verify provenance checks
 - Lock `installed_at` validation hardening with C0/C1 control-character rejection for install/update/lock-verify provenance checks
 - Lock `installed_at` validation hardening with Unicode bidi/zero-width/tag/variation-selector rejection for install/update/lock-verify provenance checks

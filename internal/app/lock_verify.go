@@ -795,6 +795,10 @@ func verifyLockStructure(lock installLock) (bool, string) {
 	if !isSupportedPolicyProfile(normalizedProfile) {
 		return false, fmt.Sprintf("lock policy profile is unsupported: %s", lock.Policy.Profile)
 	}
+	trimmedDecision := strings.TrimSpace(lock.Policy.Decision)
+	if trimmedDecision != lock.Policy.Decision {
+		return false, "lock policy decision must not contain leading or trailing whitespace"
+	}
 	if strings.IndexFunc(lock.Policy.Decision, isC0OrC1ControlRune) >= 0 {
 		return false, "lock policy decision must not contain C0/C1 control characters"
 	}

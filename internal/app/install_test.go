@@ -3562,6 +3562,13 @@ func TestReadInstallLockAndProvenanceMatches(t *testing.T) {
 				detailPart: "policy decision must not contain Unicode bidi, zero-width, tag, or variation-selector characters",
 			},
 			{
+				name: "policy decision has surrounding whitespace",
+				mutate: func(l *installLock) {
+					l.Policy.Decision = " pass "
+				},
+				detailPart: "policy decision must not contain leading or trailing whitespace",
+			},
+			{
 				name: "empty source kind",
 				mutate: func(l *installLock) {
 					l.Source.Kind = ""

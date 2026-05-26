@@ -2199,6 +2199,13 @@ func TestVerifyLockStructureValidationBranches(t *testing.T) {
 			detailIn: "lock policy decision must not contain Unicode bidi, zero-width, tag, or variation-selector characters",
 		},
 		{
+			name: "policy decision has surrounding whitespace",
+			mutate: func(l *installLock) {
+				l.Policy.Decision = " pass "
+			},
+			detailIn: "lock policy decision must not contain leading or trailing whitespace",
+		},
+		{
 			name: "invalid root hash",
 			mutate: func(l *installLock) {
 				l.Skill.RootSHA256 = "x"

@@ -698,6 +698,18 @@ func evaluateUpdateSkill(item updateSkillItem, lock installLock, policyLoaded bo
 		return item, nil
 	}
 	policyDecisionRaw := lock.Policy.Decision
+	trimmedPolicyDecision := strings.TrimSpace(policyDecisionRaw)
+	if trimmedPolicyDecision != policyDecisionRaw {
+		item.Status = "ERROR"
+		item.ErrorCode = updateCodeLockfileInvalid
+		item.Message = "lock policy decision must not contain leading or trailing whitespace"
+		item.RuleID = inferRuleIDForJSONError(item.Message)
+		item.Risk = updateRisk{
+			Previous: lock.Findings,
+			Current:  lock.Findings,
+		}
+		return item, nil
+	}
 	if strings.IndexFunc(policyDecisionRaw, isC0OrC1ControlRune) >= 0 {
 		item.Status = "ERROR"
 		item.ErrorCode = updateCodeLockfileInvalid
