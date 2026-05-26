@@ -1184,6 +1184,18 @@ func TestVerifyLockSourceChecks(t *testing.T) {
 	} else if !strings.Contains(detail, "must not contain C0/C1 control characters") {
 		t.Fatalf("input with C1 control characters only should surface control detail, got %q", detail)
 	}
+	lock.Source.Input = "\u007f"
+	if ok, detail := verifyLockSource(lock); ok {
+		t.Fatal("input with DEL control characters only should fail")
+	} else if !strings.Contains(detail, "must not contain C0/C1 control characters") {
+		t.Fatalf("input with DEL control characters only should surface control detail, got %q", detail)
+	}
+	lock.Source.Input = "\u007f/tmp/skill"
+	if ok, detail := verifyLockSource(lock); ok {
+		t.Fatal("input with DEL edge control characters should fail")
+	} else if !strings.Contains(detail, "must not contain C0/C1 control characters") {
+		t.Fatalf("input with DEL edge control characters should surface control detail, got %q", detail)
+	}
 	lock.Source.Input = "/tmp/skill\u200dpayload"
 	if ok, _ := verifyLockSource(lock); ok {
 		t.Fatal("input with unicode obfuscation characters should fail")
