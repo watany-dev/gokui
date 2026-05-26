@@ -3471,6 +3471,13 @@ func TestReadInstallLockAndProvenanceMatches(t *testing.T) {
 				detailPart: "policy profile must not contain C0/C1 control characters",
 			},
 			{
+				name: "policy profile has unicode obfuscation character",
+				mutate: func(l *installLock) {
+					l.Policy.Profile = "strict\u200d"
+				},
+				detailPart: "policy profile must not contain Unicode bidi, zero-width, tag, or variation-selector characters",
+			},
+			{
 				name: "unsupported profile",
 				mutate: func(l *installLock) {
 					l.Policy.Profile = "enterprise"
@@ -3490,6 +3497,13 @@ func TestReadInstallLockAndProvenanceMatches(t *testing.T) {
 					l.Policy.Decision = "pas\u008fs"
 				},
 				detailPart: "policy decision must not contain C0/C1 control characters",
+			},
+			{
+				name: "policy decision has unicode obfuscation character",
+				mutate: func(l *installLock) {
+					l.Policy.Decision = "pass\u200d"
+				},
+				detailPart: "policy decision must not contain Unicode bidi, zero-width, tag, or variation-selector characters",
 			},
 			{
 				name: "empty source kind",

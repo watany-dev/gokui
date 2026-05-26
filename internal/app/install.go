@@ -1512,6 +1512,9 @@ func validateInstallLockForProvenanceReuse(lock installLock, expectedSkillName s
 	if strings.IndexFunc(trimmedProfile, isC0OrC1ControlRune) >= 0 {
 		return fmt.Errorf("lock policy profile must not contain C0/C1 control characters")
 	}
+	if containsSeverityOverrideDisallowedUnicode(trimmedProfile) {
+		return fmt.Errorf("lock policy profile must not contain Unicode bidi, zero-width, tag, or variation-selector characters")
+	}
 	if normalizePolicyProfile(trimmedProfile) != lock.Policy.Profile {
 		return fmt.Errorf("lock policy profile must be canonical lowercase without surrounding whitespace")
 	}
@@ -1520,6 +1523,9 @@ func validateInstallLockForProvenanceReuse(lock installLock, expectedSkillName s
 	}
 	if strings.IndexFunc(lock.Policy.Decision, isC0OrC1ControlRune) >= 0 {
 		return fmt.Errorf("lock policy decision must not contain C0/C1 control characters")
+	}
+	if containsSeverityOverrideDisallowedUnicode(lock.Policy.Decision) {
+		return fmt.Errorf("lock policy decision must not contain Unicode bidi, zero-width, tag, or variation-selector characters")
 	}
 	if lock.Policy.Decision != "pass" {
 		return fmt.Errorf("lock policy decision must be canonical lowercase pass")

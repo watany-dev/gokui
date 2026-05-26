@@ -2042,6 +2042,13 @@ func TestVerifyLockStructureValidationBranches(t *testing.T) {
 			detailIn: "policy profile must not contain C0/C1 control characters",
 		},
 		{
+			name: "policy profile has unicode obfuscation character",
+			mutate: func(l *installLock) {
+				l.Policy.Profile = "strict\u200d"
+			},
+			detailIn: "policy profile must not contain Unicode bidi, zero-width, tag, or variation-selector characters",
+		},
+		{
 			name: "non-canonical profile",
 			mutate: func(l *installLock) {
 				l.Policy.Profile = " Strict "
@@ -2075,6 +2082,13 @@ func TestVerifyLockStructureValidationBranches(t *testing.T) {
 				l.Policy.Decision = "pas\u008fs"
 			},
 			detailIn: "lock policy decision must not contain C0/C1 control characters",
+		},
+		{
+			name: "policy decision has unicode obfuscation character",
+			mutate: func(l *installLock) {
+				l.Policy.Decision = "pass\u200d"
+			},
+			detailIn: "lock policy decision must not contain Unicode bidi, zero-width, tag, or variation-selector characters",
 		},
 		{
 			name: "invalid root hash",

@@ -91,6 +91,8 @@ Lock source kind/type fields in `gokui.lock` must not contain C0/C1 control
 characters for install/update/lock verify provenance checks.
 Lock policy profile/decision fields in `gokui.lock` must not contain C0/C1
 control characters for install/update/lock verify provenance checks.
+Lock policy profile/decision fields in `gokui.lock` must not contain Unicode
+bidi/zero-width/tag/variation-selector characters.
 Lock `installed_at` in `gokui.lock` must not contain C0/C1 control characters
 for install/update/lock verify provenance checks.
 Install report `policy_profile` / `decision` fields must not contain C0/C1

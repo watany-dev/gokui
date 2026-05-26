@@ -766,6 +766,9 @@ func verifyLockStructure(lock installLock) (bool, string) {
 	if strings.IndexFunc(trimmedProfile, isC0OrC1ControlRune) >= 0 {
 		return false, "lock policy profile must not contain C0/C1 control characters"
 	}
+	if containsSeverityOverrideDisallowedUnicode(trimmedProfile) {
+		return false, "lock policy profile must not contain Unicode bidi, zero-width, tag, or variation-selector characters"
+	}
 	normalizedProfile := normalizePolicyProfile(trimmedProfile)
 	if lock.Policy.Profile != normalizedProfile {
 		return false, "lock policy profile must be canonical lowercase without surrounding whitespace"
@@ -775,6 +778,9 @@ func verifyLockStructure(lock installLock) (bool, string) {
 	}
 	if strings.IndexFunc(lock.Policy.Decision, isC0OrC1ControlRune) >= 0 {
 		return false, "lock policy decision must not contain C0/C1 control characters"
+	}
+	if containsSeverityOverrideDisallowedUnicode(lock.Policy.Decision) {
+		return false, "lock policy decision must not contain Unicode bidi, zero-width, tag, or variation-selector characters"
 	}
 	if lock.Policy.Decision != "pass" {
 		return false, fmt.Sprintf("lock policy decision must be canonical lowercase pass for installed skill, got %s", lock.Policy.Decision)
