@@ -1913,6 +1913,13 @@ func TestVerifyInstallReportValidationBranches(t *testing.T) {
 			detailHas: "source input must not contain C0/C1 control characters",
 		},
 		{
+			name: "source input has C0/C1 control character only",
+			mutate: func(r *installReport) {
+				r.Source.Input = "\u0085"
+			},
+			detailHas: "source input must not contain C0/C1 control characters",
+		},
+		{
 			name: "source input has unicode obfuscation character",
 			mutate: func(r *installReport) {
 				r.Source.Input = "/tmp/src\u200d"

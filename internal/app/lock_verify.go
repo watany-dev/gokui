@@ -903,14 +903,14 @@ func verifyInstallReport(skillPath string, lock installLock) (bool, string) {
 		return false, fmt.Sprintf("install report schema_version is unsupported: %s", report.SchemaVersion)
 	}
 	trimmedSourceInput := strings.TrimSpace(report.Source.Input)
-	if trimmedSourceInput == "" {
-		return false, "install report source input is empty"
-	}
 	if strings.IndexFunc(report.Source.Input, isC0OrC1ControlRune) >= 0 {
 		return false, "install report source input must not contain C0/C1 control characters"
 	}
 	if containsSeverityOverrideDisallowedUnicode(report.Source.Input) {
 		return false, "install report source input must not contain Unicode bidi, zero-width, tag, or variation-selector characters"
+	}
+	if trimmedSourceInput == "" {
+		return false, "install report source input is empty"
 	}
 	if trimmedSourceInput != report.Source.Input {
 		return false, "install report source input must not contain leading or trailing whitespace"
