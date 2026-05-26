@@ -706,6 +706,13 @@ func TestSourceMetadataHelpers(t *testing.T) {
 				detailPart: "source_kind must not contain C0/C1 control characters",
 			},
 			{
+				name: "source_kind has C0/C1 control only",
+				mutate: func(m *sourceMetadata) {
+					m.SourceKind = "\u0085"
+				},
+				detailPart: "source_kind must not contain C0/C1 control characters",
+			},
+			{
 				name: "source_kind is empty",
 				mutate: func(m *sourceMetadata) {
 					m.SourceKind = ""
@@ -734,9 +741,23 @@ func TestSourceMetadataHelpers(t *testing.T) {
 				detailPart: "resolved_ref must not contain C0/C1 control characters",
 			},
 			{
+				name: "resolved_ref has C0/C1 control only",
+				mutate: func(m *sourceMetadata) {
+					m.ResolvedRef = "\u0085"
+				},
+				detailPart: "resolved_ref must not contain C0/C1 control characters",
+			},
+			{
 				name: "fetched_at has C0/C1 control",
 				mutate: func(m *sourceMetadata) {
 					m.FetchedAt = "2026-05-23T00:00:00\u008fZ"
+				},
+				detailPart: "fetched_at must not contain C0/C1 control characters",
+			},
+			{
+				name: "fetched_at has C0/C1 control only",
+				mutate: func(m *sourceMetadata) {
+					m.FetchedAt = "\u0085"
 				},
 				detailPart: "fetched_at must not contain C0/C1 control characters",
 			},
@@ -751,6 +772,13 @@ func TestSourceMetadataHelpers(t *testing.T) {
 				name: "skill_root_sha256 has C0/C1 control",
 				mutate: func(m *sourceMetadata) {
 					m.SkillRootSHA256 = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\u008f"
+				},
+				detailPart: "skill_root_sha256 must not contain C0/C1 control characters",
+			},
+			{
+				name: "skill_root_sha256 has C0/C1 control only",
+				mutate: func(m *sourceMetadata) {
+					m.SkillRootSHA256 = "\u0085"
 				},
 				detailPart: "skill_root_sha256 must not contain C0/C1 control characters",
 			},
