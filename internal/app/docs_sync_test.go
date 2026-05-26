@@ -263,6 +263,29 @@ func TestGitHubSourceEncodingAndArchiveStreamHardeningDocumentationSync(t *testi
 	}
 }
 
+func TestVetFailClosedInspectPayloadDocumentationSync(t *testing.T) {
+	readmeBytes, err := os.ReadFile("../../README.md")
+	if err != nil {
+		t.Fatalf("failed to read README.md: %v", err)
+	}
+	readme := string(readmeBytes)
+	roadmapBytes, err := os.ReadFile("../../ROADMAP.md")
+	if err != nil {
+		t.Fatalf("failed to read ROADMAP.md: %v", err)
+	}
+	roadmap := string(roadmapBytes)
+
+	requiredReadme := "`vet` also fail-closes (`REJECTED`) when embedded inspect JSON payloads are malformed or non-UTF-8."
+	if !strings.Contains(readme, requiredReadme) {
+		t.Fatalf("README missing vet fail-closed payload hardening line: %q", requiredReadme)
+	}
+
+	requiredRoadmap := "vet fail-closed decision hardening for malformed/non-UTF-8 embedded inspect JSON payloads"
+	if !strings.Contains(roadmap, requiredRoadmap) {
+		t.Fatalf("ROADMAP missing vet fail-closed payload hardening line: %q", requiredRoadmap)
+	}
+}
+
 func TestLockfileExampleSchemaSync(t *testing.T) {
 	readmeBytes, err := os.ReadFile("../../README.md")
 	if err != nil {

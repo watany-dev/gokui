@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"encoding/json"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -1765,6 +1766,68 @@ func TestRun(t *testing.T) {
 		}
 		if !strings.Contains(stderr.String(), "inspect source not found") {
 			t.Fatalf("stderr should include source-not-found message, got %q", stderr.String())
+		}
+	})
+
+	t.Run("vet fails closed when inspect json is malformed", func(t *testing.T) {
+		var stdout bytes.Buffer
+		var stderr bytes.Buffer
+
+		origRunInspectForVet := runInspectForVet
+		t.Cleanup(func() { runInspectForVet = origRunInspectForVet })
+		runInspectForVet = func(args []string, stdout io.Writer, stderr io.Writer) int {
+			_, _ = stdout.Write([]byte("{"))
+			return 0
+		}
+
+		fixturePath := filepath.FromSlash("../../fixtures/clean-skill")
+		code := Run([]string{"vet", fixturePath, "--format", "json"}, &stdout, &stderr, cfg)
+		if code != 2 {
+			t.Fatalf("Run() code = %d, want 2\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
+		}
+		if stderr.Len() != 0 {
+			t.Fatalf("stderr should be empty for json output, got %q", stderr.String())
+		}
+		var report inspectReport
+		if err := json.Unmarshal(stdout.Bytes(), &report); err != nil {
+			t.Fatalf("report json parse failed: %v", err)
+		}
+		if report.Decision != "REJECTED" {
+			t.Fatalf("decision = %q, want REJECTED", report.Decision)
+		}
+		if !strings.Contains(report.Note, "fail-closed rejection applied") {
+			t.Fatalf("note should include fail-closed marker, got %q", report.Note)
+		}
+	})
+
+	t.Run("vet fails closed when inspect json is non-utf8", func(t *testing.T) {
+		var stdout bytes.Buffer
+		var stderr bytes.Buffer
+
+		origRunInspectForVet := runInspectForVet
+		t.Cleanup(func() { runInspectForVet = origRunInspectForVet })
+		runInspectForVet = func(args []string, stdout io.Writer, stderr io.Writer) int {
+			_, _ = stdout.Write([]byte{0xff})
+			return 0
+		}
+
+		fixturePath := filepath.FromSlash("../../fixtures/clean-skill")
+		code := Run([]string{"vet", fixturePath, "--format", "json"}, &stdout, &stderr, cfg)
+		if code != 2 {
+			t.Fatalf("Run() code = %d, want 2\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
+		}
+		if stderr.Len() != 0 {
+			t.Fatalf("stderr should be empty for json output, got %q", stderr.String())
+		}
+		var report inspectReport
+		if err := json.Unmarshal(stdout.Bytes(), &report); err != nil {
+			t.Fatalf("report json parse failed: %v", err)
+		}
+		if report.Decision != "REJECTED" {
+			t.Fatalf("decision = %q, want REJECTED", report.Decision)
+		}
+		if !strings.Contains(report.Note, "non-UTF-8") {
+			t.Fatalf("note should include non-utf8 marker, got %q", report.Note)
 		}
 	})
 

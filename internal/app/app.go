@@ -191,6 +191,7 @@ var (
 	errorCodePattern                 = regexp.MustCompile(`^[A-Z0-9_]+$`)
 	maxSkillFrontmatterBytes   int64 = 1_000_000
 	errInspectSourceNotFound         = errors.New("inspect source not found")
+	runInspectForVet                 = runInspect
 )
 
 const ruleSkillFrontmatterTooLarge = "SKILL_FRONTMATTER_TOO_LARGE"
@@ -419,7 +420,7 @@ func runVet(args []string, stdout io.Writer, stderr io.Writer) int {
 
 	var inspectStdout bytes.Buffer
 	var inspectStderr bytes.Buffer
-	inspectCode := runInspect([]string{input, "--format", "json"}, &inspectStdout, &inspectStderr)
+	inspectCode := runInspectForVet([]string{input, "--format", "json"}, &inspectStdout, &inspectStderr)
 	if inspectCode == 1 {
 		errorReport := decodeInspectErrorPayload(inspectStdout.Bytes())
 		if emitInspectStructuredError(format, stdout, stderr, errorReport) {
@@ -429,20 +430,7 @@ func runVet(args []string, stdout io.Writer, stderr io.Writer) int {
 		return 1
 	}
 
-	report := inspectReport{
-		SchemaVersion: reportSchemaVersion,
-		PreRelease:    true,
-		Source: source{
-			Input: input,
-			Kind:  sourceKind,
-		},
-		Decision: "REJECTED",
-		Findings: []inspectFinding{},
-		Note:     "vet failed to parse inspect report; fail-closed rejection applied",
-	}
-	_ = json.Unmarshal(inspectStdout.Bytes(), &report)
-	report.Decision = decisionForInspectFindings(report.Findings, rejectSet)
-	report.Note = fmt.Sprintf("%s (vet profile=%s)", report.Note, profile)
+	report := buildVetReportFromInspectJSON(inspectStdout.Bytes(), input, sourceKind, profile, rejectSet)
 
 	if format == "json" {
 		out, _ := json.MarshalIndent(report, "", "  ")
@@ -488,6 +476,33 @@ func runVet(args []string, stdout io.Writer, stderr io.Writer) int {
 		return 2
 	}
 	return 0
+}
+
+func buildVetReportFromInspectJSON(raw []byte, input string, sourceKind string, profile string, rejectSet map[string]struct{}) inspectReport {
+	report := inspectReport{
+		SchemaVersion: reportSchemaVersion,
+		PreRelease:    true,
+		Source: source{
+			Input: input,
+			Kind:  sourceKind,
+		},
+		Decision: "REJECTED",
+		Findings: []inspectFinding{},
+		Note:     "vet failed to parse inspect report; fail-closed rejection applied",
+	}
+	if !utf8.Valid(raw) {
+		report.Note = "vet rejected non-UTF-8 inspect report; fail-closed rejection applied"
+		report.Note = fmt.Sprintf("%s (vet profile=%s)", report.Note, profile)
+		return report
+	}
+	if err := json.Unmarshal(raw, &report); err != nil {
+		report.Note = fmt.Sprintf("vet failed to parse inspect report (%v); fail-closed rejection applied", err)
+		report.Note = fmt.Sprintf("%s (vet profile=%s)", report.Note, profile)
+		return report
+	}
+	report.Decision = decisionForInspectFindings(report.Findings, rejectSet)
+	report.Note = fmt.Sprintf("%s (vet profile=%s)", report.Note, profile)
+	return report
 }
 
 func runInspect(args []string, stdout io.Writer, stderr io.Writer) int {

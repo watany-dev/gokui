@@ -32,6 +32,7 @@ export for optional human/AI-assisted review pipelines.
 For fatal errors, `human` and `compact` write diagnostics to `stderr`.
 `json`, `sarif`, and `review-json` write structured error reports to `stdout`
 with `stderr` left empty.
+`vet` also fail-closes (`REJECTED`) when embedded inspect JSON payloads are malformed or non-UTF-8.
 `fetch` also supports `--format sarif` for quarantine provenance export in CI.
 `install` also supports `--format sarif` for policy findings export in CI.
 In SARIF mode, fatal install failures emit a single structured error result.
