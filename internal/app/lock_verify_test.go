@@ -2170,6 +2170,13 @@ func TestVerifyInstallReportValidationBranches(t *testing.T) {
 			detailHas: "installed path must not contain C0/C1 control characters",
 		},
 		{
+			name: "installed path has DEL control character only",
+			mutate: func(r *installReport) {
+				r.InstalledPath = "\u007f"
+			},
+			detailHas: "installed path must not contain C0/C1 control characters",
+		},
+		{
 			name: "installed path has unicode obfuscation character",
 			mutate: func(r *installReport) {
 				r.InstalledPath = r.InstalledPath + "\u200d"
