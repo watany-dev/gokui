@@ -711,6 +711,17 @@ func evaluateUpdateSkill(item updateSkillItem, lock installLock, policyLoaded bo
 		}
 		return item, nil
 	}
+	if strings.IndexFunc(sourceInput, isASCIIControlRune) >= 0 {
+		item.Status = "ERROR"
+		item.ErrorCode = updateCodeLockfileInvalid
+		item.Message = "lock source input must not contain ASCII control characters"
+		item.RuleID = inferRuleIDForJSONError(item.Message)
+		item.Risk = updateRisk{
+			Previous: lock.Findings,
+			Current:  lock.Findings,
+		}
+		return item, nil
+	}
 
 	kindRaw := lock.Source.Kind
 	kind := strings.TrimSpace(kindRaw)

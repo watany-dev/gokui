@@ -663,6 +663,9 @@ func verifyLockSource(lock installLock) (bool, string) {
 	if trimmedInput != lock.Source.Input {
 		return false, "lock source input must not contain leading or trailing whitespace"
 	}
+	if strings.IndexFunc(trimmedInput, isASCIIControlRune) >= 0 {
+		return false, "lock source input must not contain ASCII control characters"
+	}
 	detectedKind := detectSourceKind(trimmedInput)
 	if trimmedKind != detectedKind {
 		return false, fmt.Sprintf("lock source kind does not match source input: kind=%s detected=%s", trimmedKind, detectedKind)

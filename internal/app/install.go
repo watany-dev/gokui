@@ -1530,6 +1530,9 @@ func validateInstallLockForProvenanceReuse(lock installLock, expectedSkillName s
 	if trimmedInput != lock.Source.Input {
 		return fmt.Errorf("lock source input must not contain leading or trailing whitespace")
 	}
+	if strings.IndexFunc(trimmedInput, isASCIIControlRune) >= 0 {
+		return fmt.Errorf("lock source input must not contain ASCII control characters")
+	}
 	if detectSourceKind(trimmedInput) != trimmedKind {
 		return fmt.Errorf("lock source kind does not match source input")
 	}

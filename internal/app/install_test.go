@@ -3492,6 +3492,13 @@ func TestReadInstallLockAndProvenanceMatches(t *testing.T) {
 				detailPart: "source input must not contain leading or trailing whitespace",
 			},
 			{
+				name: "source input has control character",
+				mutate: func(l *installLock) {
+					l.Source.Input = "/tmp/skill\npayload"
+				},
+				detailPart: "source input must not contain ASCII control characters",
+			},
+			{
 				name: "source kind mismatch",
 				mutate: func(l *installLock) {
 					l.Source.Kind = "github-source"

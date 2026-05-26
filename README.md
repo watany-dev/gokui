@@ -83,6 +83,8 @@ Source metadata reads also reject invalid UTF-8 payloads before JSON decoding.
 Lockfile/install-report reads also reject invalid UTF-8 payloads before JSON decoding.
 Lock skill file paths in `gokui.lock` must be valid UTF-8 and must not contain
 ASCII control characters for install/update/lock verify provenance checks.
+Lock source inputs in `gokui.lock` must not contain ASCII control characters
+for install/update/lock verify provenance checks.
 Install target entries also reject symlink path components.
 `lock verify` now validates installed files against `gokui.lock`, checks source
 field consistency (including strict GitHub source syntax and commit pinning),

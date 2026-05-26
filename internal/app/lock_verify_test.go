@@ -1002,6 +1002,10 @@ func TestVerifyLockSourceChecks(t *testing.T) {
 	if ok, _ := verifyLockSource(lock); ok {
 		t.Fatal("input with surrounding whitespace should fail")
 	}
+	lock.Source.Input = "/tmp/skill\npayload"
+	if ok, _ := verifyLockSource(lock); ok {
+		t.Fatal("input with ASCII control characters should fail")
+	}
 	lock.Source.Input = "/tmp/skill"
 	lock.Source.Kind = " local-dir "
 	if ok, _ := verifyLockSource(lock); ok {

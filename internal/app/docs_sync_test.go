@@ -382,6 +382,29 @@ func TestLockPathUTF8HardeningDocumentationSync(t *testing.T) {
 	}
 }
 
+func TestLockSourceInputControlCharHardeningDocumentationSync(t *testing.T) {
+	readmeBytes, err := os.ReadFile("../../README.md")
+	if err != nil {
+		t.Fatalf("failed to read README.md: %v", err)
+	}
+	readme := string(readmeBytes)
+	roadmapBytes, err := os.ReadFile("../../ROADMAP.md")
+	if err != nil {
+		t.Fatalf("failed to read ROADMAP.md: %v", err)
+	}
+	roadmap := string(roadmapBytes)
+
+	requiredReadme := "Lock source inputs in `gokui.lock` must not contain ASCII control characters"
+	if !strings.Contains(readme, requiredReadme) {
+		t.Fatalf("README missing lock source input control-char hardening line: %q", requiredReadme)
+	}
+
+	requiredRoadmap := "Lock source-input validation hardening with ASCII control-character rejection for install/update/lock-verify provenance checks"
+	if !strings.Contains(roadmap, requiredRoadmap) {
+		t.Fatalf("ROADMAP missing lock source input control-char hardening line: %q", requiredRoadmap)
+	}
+}
+
 func TestLockfileExampleSchemaSync(t *testing.T) {
 	readmeBytes, err := os.ReadFile("../../README.md")
 	if err != nil {
