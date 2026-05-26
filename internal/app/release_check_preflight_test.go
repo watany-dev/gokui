@@ -219,6 +219,40 @@ func TestReleaseCheckPreflightRejectsRootOrDirectoryLikeBuildOutput(t *testing.T
 	}
 }
 
+func TestReleaseCheckPreflightRejectsBuildOutputDotOrDotDotPathSegments(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("release-check preflight path contracts are exercised on POSIX in CI")
+	}
+
+	testCases := []struct {
+		name     string
+		buildOut string
+	}{
+		{name: "dot segment in middle", buildOut: ".cache/./release-check"},
+		{name: "dotdot segment in middle", buildOut: ".cache/tmp/../release-check"},
+		{name: "dot segment suffix", buildOut: ".cache/release-check/."},
+		{name: "dotdot segment suffix", buildOut: ".cache/release-check/.."},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			exitCode, out := runReleaseCheckPreflight(t, map[string]string{
+				"RELEASE_CHECK_BUILD_OUT": tc.buildOut,
+				"RELEASE_CHECK_SARIF_OUT": releaseCheckRepoLocalPath(t, "inspect.sarif"),
+			})
+			if exitCode == 0 {
+				t.Fatalf("expected non-zero exit for build output path with dot/dotdot segment %q\noutput:\n%s", tc.buildOut, out)
+			}
+			if !strings.Contains(out, "build output path must not contain '.' or '..' path segments") {
+				t.Fatalf("expected build output dot/dotdot-segment rejection message, got:\n%s", out)
+			}
+			if !strings.Contains(out, "[RC_PREFLIGHT_BUILD_OUT_INVALID]") {
+				t.Fatalf("expected build output dot/dotdot-segment rejection code, got:\n%s", out)
+			}
+		})
+	}
+}
+
 func TestReleaseCheckPreflightRejectsRootOrDirectoryLikeSARIFOutput(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("release-check preflight path contracts are exercised on POSIX in CI")
@@ -247,6 +281,40 @@ func TestReleaseCheckPreflightRejectsRootOrDirectoryLikeSARIFOutput(t *testing.T
 			}
 			if !strings.Contains(out, "[RC_PREFLIGHT_SARIF_OUT_INVALID]") {
 				t.Fatalf("expected non-root SARIF output rejection code, got:\n%s", out)
+			}
+		})
+	}
+}
+
+func TestReleaseCheckPreflightRejectsSARIFOutputDotOrDotDotPathSegments(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("release-check preflight path contracts are exercised on POSIX in CI")
+	}
+
+	testCases := []struct {
+		name     string
+		sarifOut string
+	}{
+		{name: "dot segment in middle", sarifOut: ".cache/./inspect.sarif"},
+		{name: "dotdot segment in middle", sarifOut: ".cache/tmp/../inspect.sarif"},
+		{name: "dot segment suffix", sarifOut: ".cache/inspect.sarif/."},
+		{name: "dotdot segment suffix", sarifOut: ".cache/inspect.sarif/.."},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			exitCode, out := runReleaseCheckPreflight(t, map[string]string{
+				"RELEASE_CHECK_BUILD_OUT": releaseCheckRepoLocalPath(t, "build.out"),
+				"RELEASE_CHECK_SARIF_OUT": tc.sarifOut,
+			})
+			if exitCode == 0 {
+				t.Fatalf("expected non-zero exit for SARIF output path with dot/dotdot segment %q\noutput:\n%s", tc.sarifOut, out)
+			}
+			if !strings.Contains(out, "SARIF output path must not contain '.' or '..' path segments") {
+				t.Fatalf("expected SARIF output dot/dotdot-segment rejection message, got:\n%s", out)
+			}
+			if !strings.Contains(out, "[RC_PREFLIGHT_SARIF_OUT_INVALID]") {
+				t.Fatalf("expected SARIF output dot/dotdot-segment rejection code, got:\n%s", out)
 			}
 		})
 	}

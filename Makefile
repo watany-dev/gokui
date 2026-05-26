@@ -122,12 +122,24 @@ release-check-preflight:
 			;; \
 		esac; \
 	}; \
+	assert_no_dot_segments() { \
+		path="$$1"; \
+		label="$$2"; \
+		code="$$3"; \
+		case "$$path" in \
+			"."|".."|*/./*|*/../*|./*|../*|*/.|*/..) \
+				emit_preflight_error "$$code" "$$label must not contain '.' or '..' path segments: $$path"; \
+			;; \
+		esac; \
+	}; \
 	case "$(RELEASE_CHECK_BUILD_OUT)" in ""|"/"|"."|*/) \
 		emit_preflight_error "RC_PREFLIGHT_BUILD_OUT_INVALID" "release-check build output path must be a non-root file path"; \
 	;; esac; \
 	case "$(RELEASE_CHECK_SARIF_OUT)" in ""|"/"|"."|*/) \
 		emit_preflight_error "RC_PREFLIGHT_SARIF_OUT_INVALID" "release-check SARIF output path must be a non-root file path"; \
 	;; esac; \
+	assert_no_dot_segments "$(RELEASE_CHECK_BUILD_OUT)" "release-check build output path" "RC_PREFLIGHT_BUILD_OUT_INVALID"; \
+	assert_no_dot_segments "$(RELEASE_CHECK_SARIF_OUT)" "release-check SARIF output path" "RC_PREFLIGHT_SARIF_OUT_INVALID"; \
 	assert_under_repo_root "$(RELEASE_CHECK_BUILD_OUT_ABS)" "release-check build output path" "RC_PREFLIGHT_BUILD_OUT_INVALID"; \
 	assert_under_repo_root "$(RELEASE_CHECK_SARIF_OUT_ABS)" "release-check SARIF output path" "RC_PREFLIGHT_SARIF_OUT_INVALID"; \
 	assert_not_git_path "$(RELEASE_CHECK_BUILD_OUT_ABS)" "release-check build output path" "RC_PREFLIGHT_BUILD_OUT_INVALID"; \

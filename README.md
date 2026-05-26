@@ -401,6 +401,8 @@ Preflight rejections include machine-readable error codes:
 Release-check build/SARIF output paths must also be non-root file paths and must resolve
 under the repository root, and must not be directory-like paths ending with `/` or
 located under `.git/`.
+Release-check build/SARIF output paths must not contain `.` or `..` path
+segments.
 `make inspect-sarif` output paths must resolve under the repository root and
 must resolve outside `.git/`.
 `make inspect-sarif` output paths must not contain `..` path segments.
@@ -612,8 +614,8 @@ finding changes with new URL/executable/file-delta/override-delta signals.
 
 | error_code | Meaning |
 | --- | --- |
-| `RC_PREFLIGHT_BUILD_OUT_INVALID` | `RELEASE_CHECK_BUILD_OUT` is root-like (`/`, `.`, empty), ends with `/`, resolves outside the repository root, or resolves under `.git/` |
-| `RC_PREFLIGHT_SARIF_OUT_INVALID` | `RELEASE_CHECK_SARIF_OUT` is root-like (`/`, `.`, empty), ends with `/`, resolves outside the repository root, or resolves under `.git/` |
+| `RC_PREFLIGHT_BUILD_OUT_INVALID` | `RELEASE_CHECK_BUILD_OUT` is root-like (`/`, `.`, empty), ends with `/`, contains `.`/`..` path segments, resolves outside the repository root, or resolves under `.git/` |
+| `RC_PREFLIGHT_SARIF_OUT_INVALID` | `RELEASE_CHECK_SARIF_OUT` is root-like (`/`, `.`, empty), ends with `/`, contains `.`/`..` path segments, resolves outside the repository root, or resolves under `.git/` |
 | `RC_PREFLIGHT_BUILD_OUT_SYMLINK` | Build output path or ancestor contains a symlink component |
 | `RC_PREFLIGHT_SARIF_OUT_SYMLINK` | SARIF output path or ancestor contains a symlink component |
 | `RC_PREFLIGHT_OUTPUT_PATH_CONFLICT` | Build and SARIF outputs resolve to the same absolute path |
