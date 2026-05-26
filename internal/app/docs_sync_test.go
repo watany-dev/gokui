@@ -507,6 +507,7 @@ func TestReleaseChecklistDocumentationSync(t *testing.T) {
 		!strings.Contains(releaseDoc, "must resolve outside `.git/`") ||
 		!strings.Contains(releaseDoc, "must not contain `..` path segments") ||
 		!strings.Contains(releaseDoc, "must not contain `.` path segments") ||
+		!strings.Contains(releaseDoc, "must not contain empty path segments") ||
 		!strings.Contains(releaseDoc, "must be non-directory file paths") ||
 		!strings.Contains(releaseDoc, "must end with `.sarif`") {
 		t.Fatal("RELEASE.md should document inspect-sarif repository-root/.git/path-segment/non-directory/extension output path guards")
@@ -590,6 +591,7 @@ func TestReleaseCheckDocumentationSync(t *testing.T) {
 		"must resolve outside `.git/`",
 		"must not contain `..` path segments",
 		"must not contain `.` path segments",
+		"must not contain empty path segments",
 		"must be non-directory file paths",
 		"must end with `.sarif`",
 		"fail closed when repository-root/output/log paths include",
@@ -889,6 +891,8 @@ func TestInspectSARIFScriptHardeningSync(t *testing.T) {
 		`out_dir="$(dirname "$out_path")"`,
 		`assert_sarif_output_extension()`,
 		`assert_sarif_output_extension "$out_path" "inspect SARIF output path"`,
+		`assert_no_empty_segments()`,
+		`assert_no_empty_segments "$out_path" "inspect SARIF output path"`,
 		`assert_no_dot_segments()`,
 		`assert_no_dot_segments "$out_path" "inspect SARIF output path"`,
 		`assert_non_directory_file_path()`,
@@ -1093,7 +1097,7 @@ func TestRoadmapReleaseEvidenceHardeningSync(t *testing.T) {
 		"release-evidence template path/output hardening (symlink path-component rejection, restrictive template-output file permissions, and staged temporary output finalized atomically)",
 		"release-evidence output/log path hardening (symlink path-component rejection, restrictive evidence/log file permissions, fail-closed output/log collision checks, staged temporary evidence/log outputs finalized atomically with collision cleanup, descriptor-backed writes, and failure-artifact retention)",
 		"release-evidence commit provenance hardening (fail-closed git `HEAD` resolution with canonical lowercase 40-hex commit SHA enforcement)",
-		"inspect-sarif output path hardening (repository-root-only and outside-`.git` output enforcement, `.sarif` extension enforcement, non-directory file-path enforcement including trailing `/.`/`/..` rejection, `.`/`..` path-segment rejection, symlink path-component rejection, restrictive SARIF file permissions, fail-closed output-collision checks, and atomic file creation with descriptor-backed writes)",
+		"inspect-sarif output path hardening (repository-root-only and outside-`.git` output enforcement, `.sarif` extension enforcement, non-directory file-path enforcement including trailing `/.`/`/..` rejection, empty/`.`/`..` path-segment rejection, symlink path-component rejection, restrictive SARIF file permissions, fail-closed output-collision checks, and atomic file creation with descriptor-backed writes)",
 		"release script repository-root path hardening (reject symlinked repository-root execution paths)",
 		"release-evidence gate hardening with isolated build output (`BUILD_OUT`) and tracked/untracked clean-tree checks (`git status --short`)",
 		"release-check gate hardening with isolated build output (`RELEASE_CHECK_BUILD_OUT`), preflight-first execution ordering, absolute-path preflight normalization, symlink/collision fail-closed build/SARIF output guards (including non-root-path, `.sarif` extension enforcement for SARIF output, `.`/`..` path-segment rejection, repository-root-only outputs, `.git` path rejection, and distinct-path enforcement), machine-readable preflight/cleanup error codes, and failure-safe cleanup for build/SARIF artifacts",

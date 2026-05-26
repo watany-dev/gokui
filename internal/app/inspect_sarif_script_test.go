@@ -137,3 +137,21 @@ func TestInspectSARIFScriptRejectsDotPathSegments(t *testing.T) {
 		t.Fatalf("expected dot-segment rejection message, got:\n%s", text)
 	}
 }
+
+func TestInspectSARIFScriptRejectsEmptyPathSegments(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("shell-script execution contract is exercised on POSIX in CI")
+	}
+
+	outPath := "reports//inspect-results.sarif"
+	cmd := exec.Command("bash", "../../scripts/generate-inspect-sarif.sh", outPath)
+
+	out, err := cmd.CombinedOutput()
+	if err == nil {
+		t.Fatalf("expected non-zero exit for inspect-sarif output with empty path segment\noutput:\n%s", out)
+	}
+	text := string(out)
+	if !strings.Contains(text, "must not contain empty path segments") {
+		t.Fatalf("expected empty-segment rejection message, got:\n%s", text)
+	}
+}
