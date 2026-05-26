@@ -827,6 +827,9 @@ func verifyLockStructure(lock installLock) (bool, string) {
 
 	seen := make(map[string]struct{}, len(lock.Skill.Files))
 	for _, file := range lock.Skill.Files {
+		if strings.IndexFunc(file.Path, isC0OrC1ControlRune) >= 0 {
+			return false, fmt.Sprintf("lock file path is invalid: %s", file.Path)
+		}
 		if strings.TrimSpace(file.Path) == "" {
 			return false, "lock file path is empty"
 		}

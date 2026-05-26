@@ -1641,6 +1641,9 @@ func validateInstallLockForProvenanceReuse(lock installLock, expectedSkillName s
 	}
 	seen := make(map[string]struct{}, len(lock.Skill.Files))
 	for _, file := range lock.Skill.Files {
+		if strings.IndexFunc(file.Path, isC0OrC1ControlRune) >= 0 {
+			return fmt.Errorf("lock file path is invalid: %s", file.Path)
+		}
 		if strings.TrimSpace(file.Path) == "" {
 			return fmt.Errorf("lock file path is empty")
 		}
