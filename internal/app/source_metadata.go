@@ -118,14 +118,14 @@ func ensureSourceMetadataStableFile(previous os.FileInfo, current os.FileInfo, p
 }
 
 func validateSourceMetadata(meta sourceMetadata) error {
-	if strings.TrimSpace(meta.Schema) != meta.Schema {
-		return fmt.Errorf("source metadata schema must not contain leading or trailing whitespace")
-	}
 	if strings.IndexFunc(meta.Schema, isC0OrC1ControlRune) >= 0 {
 		return fmt.Errorf("source metadata schema must not contain C0/C1 control characters")
 	}
 	if containsSeverityOverrideDisallowedUnicode(meta.Schema) {
 		return fmt.Errorf("source metadata schema must not contain Unicode bidi, zero-width, tag, or variation-selector characters")
+	}
+	if strings.TrimSpace(meta.Schema) != meta.Schema {
+		return fmt.Errorf("source metadata schema must not contain leading or trailing whitespace")
 	}
 	if meta.Schema != sourceMetadataSchemaVersion {
 		return fmt.Errorf("unsupported source metadata schema: %s", meta.Schema)
