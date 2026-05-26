@@ -2367,6 +2367,13 @@ func TestVerifyLockStructureValidationBranches(t *testing.T) {
 			detailIn: "name must not contain C0/C1 control characters",
 		},
 		{
+			name: "name has DEL control character at edge",
+			mutate: func(l *installLock) {
+				l.Name = "\u007fx"
+			},
+			detailIn: "name must not contain C0/C1 control characters",
+		},
+		{
 			name: "name has unicode obfuscation character",
 			mutate: func(l *installLock) {
 				l.Name = "x\u200d"
@@ -2405,6 +2412,13 @@ func TestVerifyLockStructureValidationBranches(t *testing.T) {
 			name: "installed_at has DEL control character only",
 			mutate: func(l *installLock) {
 				l.InstalledAt = "\u007f"
+			},
+			detailIn: "installed_at must not contain C0/C1 control characters",
+		},
+		{
+			name: "installed_at has DEL control character at edge",
+			mutate: func(l *installLock) {
+				l.InstalledAt = "\u007f2026-05-23T00:00:00Z"
 			},
 			detailIn: "installed_at must not contain C0/C1 control characters",
 		},
