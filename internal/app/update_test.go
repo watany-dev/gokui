@@ -7851,6 +7851,13 @@ func TestValidateUpdateLockEnvelope(t *testing.T) {
 			detailPart: "lock policy severity_overrides is invalid",
 		},
 		{
+			name: "severity override rule_id has C0 NUL control character",
+			mutate: func(l *installLock) {
+				l.Policy.SeverityOverrides[0].RuleID = "\u0000"
+			},
+			detailPart: "lock policy severity_overrides is invalid",
+		},
+		{
 			name: "duplicate severity override rule_id",
 			mutate: func(l *installLock) {
 				l.Policy.SeverityOverrides = []severityOverrideAudit{
@@ -7887,6 +7894,27 @@ func TestValidateUpdateLockEnvelope(t *testing.T) {
 			name: "severity override approved_by has C0 NUL control character",
 			mutate: func(l *installLock) {
 				l.Policy.SeverityOverrides[0].ApprovedBy = "\u0000"
+			},
+			detailPart: "lock policy severity_overrides is invalid",
+		},
+		{
+			name: "severity override previous_severity has C0 NUL control character",
+			mutate: func(l *installLock) {
+				l.Policy.SeverityOverrides[0].PreviousSeverity = "\u0000"
+			},
+			detailPart: "lock policy severity_overrides is invalid",
+		},
+		{
+			name: "severity override effective_severity has C0 NUL control character",
+			mutate: func(l *installLock) {
+				l.Policy.SeverityOverrides[0].EffectiveSeverity = "\u0000"
+			},
+			detailPart: "lock policy severity_overrides is invalid",
+		},
+		{
+			name: "severity override justification has C0 NUL control character",
+			mutate: func(l *installLock) {
+				l.Policy.SeverityOverrides[0].Justification = "\u0000"
 			},
 			detailPart: "lock policy severity_overrides is invalid",
 		},
