@@ -36,6 +36,9 @@ func ParseGitHubSource(input string) (GitHubSpec, error) {
 	if !strings.HasPrefix(input, prefix) {
 		return GitHubSpec{}, fmt.Errorf("github source must start with %q", prefix)
 	}
+	if containsASCIIControlCharacters(input) {
+		return GitHubSpec{}, fmt.Errorf("github source must not contain ASCII control characters")
+	}
 	if len(input) > maxGitHubSourceInputChars {
 		return GitHubSpec{}, fmt.Errorf("github source exceeds max length: %d", maxGitHubSourceInputChars)
 	}
@@ -128,4 +131,14 @@ func normalizeGitHubPath(p string) (string, error) {
 // IsCommitPinnedRef returns true when ref looks like a commit SHA.
 func IsCommitPinnedRef(ref string) bool {
 	return commitRefPattern.MatchString(strings.TrimSpace(ref))
+}
+
+func containsASCIIControlCharacters(s string) bool {
+	for i := 0; i < len(s); i++ {
+		b := s[i]
+		if b < 0x20 || b == 0x7f {
+			return true
+		}
+	}
+	return false
 }
