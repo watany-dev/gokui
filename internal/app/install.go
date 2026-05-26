@@ -1068,7 +1068,10 @@ func copyTreeNormalized(srcRoot string, dstRoot string) error {
 		}
 		destPath := filepath.Join(dstRoot, rel)
 		if d.IsDir() {
-			return os.MkdirAll(destPath, 0o755)
+			if err := os.MkdirAll(destPath, 0o755); err != nil {
+				return fmt.Errorf("failed to create install directory: %w", err)
+			}
+			return nil
 		}
 		if !srcInfo.Mode().IsRegular() {
 			return fmt.Errorf("%s: install source contains non-regular file: %s", ruleInstallSourceSpecialFile, rel)
@@ -1126,6 +1129,7 @@ func copyFileWithModeChecked(src string, dst string, mode os.FileMode, maxBytes 
 
 	written, err := copyWithStrictLimit(out, in, maxBytes)
 	if err != nil {
+		_ = out.Close()
 		_ = os.Remove(dst)
 		if limitio.IsSizeExceeded(err) {
 			return 0, fmt.Errorf("%s: install source file exceeds size limit during copy: %s", ruleInstallSourceFileTooLarge, src)

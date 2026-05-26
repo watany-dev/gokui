@@ -524,6 +524,14 @@ func buildFetchCompactSummary(report fetchReport) string {
 }
 
 func fetchSkillAtomic(skillRoot string, outRoot string, skillName string) (string, error) {
+	if outInfo, err := os.Stat(outRoot); err == nil {
+		if !outInfo.IsDir() {
+			return "", fmt.Errorf("failed to check fetch output target: %s is not a directory", outRoot)
+		}
+	} else if !os.IsNotExist(err) {
+		return "", fmt.Errorf("failed to check fetch output target: %w", err)
+	}
+
 	finalPath := filepath.Join(outRoot, skillName)
 	if err := rejectSymlinkPath(finalPath, "fetch output entry", ruleFetchOutputEntrySymlink); err != nil {
 		return "", err

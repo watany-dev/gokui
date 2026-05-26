@@ -1261,6 +1261,14 @@ func validateUpdateLockEnvelope(lock installLock, expectedSkillName string) erro
 }
 
 func validateUpdateLockAgainstInstallReport(skillPath string, lock installLock) error {
+	skillInfo, skillStatErr := os.Lstat(skillPath)
+	if skillStatErr != nil {
+		return fmt.Errorf("failed to evaluate install report for update baseline: %w", skillStatErr)
+	}
+	if !skillInfo.IsDir() {
+		return fmt.Errorf("failed to evaluate install report for update baseline: %s is not a directory", skillPath)
+	}
+
 	reportPath := filepath.Join(skillPath, installReportFile)
 	_, statErr := os.Lstat(reportPath)
 	if statErr != nil {

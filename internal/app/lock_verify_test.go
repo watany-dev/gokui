@@ -1139,11 +1139,12 @@ func TestWriteLockVerifySARIFErrorPreservesExplicitRuleID(t *testing.T) {
 }
 
 func TestVerifyLockSourceChecks(t *testing.T) {
+	sourceInput := filepath.Clean(filepath.Join(t.TempDir(), "skill"))
 	lock := installLock{
 		Schema: "gokui.lock/v1",
 		Source: lockSource{
 			Type:  "local",
-			Input: "/tmp/skill",
+			Input: sourceInput,
 			Kind:  "local-dir",
 		},
 	}
@@ -1162,7 +1163,7 @@ func TestVerifyLockSourceChecks(t *testing.T) {
 	if ok, _ := verifyLockSource(lock); ok {
 		t.Fatal("empty input should fail")
 	}
-	lock.Source.Input = " /tmp/skill "
+	lock.Source.Input = " " + sourceInput + " "
 	if ok, _ := verifyLockSource(lock); ok {
 		t.Fatal("input with surrounding whitespace should fail")
 	}

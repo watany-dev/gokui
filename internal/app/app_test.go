@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"testing"
 	"testing/quick"
@@ -18,6 +19,18 @@ import (
 	srcpkg "github.com/watany-dev/gokui/internal/source"
 	yaml "go.yaml.in/yaml/v4"
 )
+
+func parseCompactFetchOutputPath(line string) (string, bool) {
+	parts := strings.SplitN(line, ` output=`, 2)
+	if len(parts) != 2 {
+		return "", false
+	}
+	unquoted, err := strconv.Unquote(strings.TrimSpace(parts[1]))
+	if err != nil {
+		return "", false
+	}
+	return unquoted, true
+}
 
 func TestBuildVersionString(t *testing.T) {
 	t.Run("uses configured values", func(t *testing.T) {
@@ -458,11 +471,10 @@ func TestRun(t *testing.T) {
 		if !strings.Contains(fetchOut, "source_kind=github-source") {
 			t.Fatalf("fetch compact output should include github source kind, got %q", fetchOut)
 		}
-		fetchParts := strings.SplitN(fetchOut, ` output="`, 2)
-		if len(fetchParts) != 2 || !strings.HasSuffix(fetchParts[1], `"`) {
+		fetchedSkillPath, ok := parseCompactFetchOutputPath(fetchOut)
+		if !ok {
 			t.Fatalf("fetch compact output should include quoted output path, got %q", fetchOut)
 		}
-		fetchedSkillPath := strings.TrimSuffix(fetchParts[1], `"`)
 		if strings.TrimSpace(fetchedSkillPath) == "" {
 			t.Fatalf("fetch compact output path should be non-empty, got %q", fetchOut)
 		}
@@ -538,11 +550,10 @@ func TestRun(t *testing.T) {
 			t.Fatalf("stderr should be empty for fetch compact, got %q", stderr.String())
 		}
 		fetchOut := strings.TrimSpace(stdout.String())
-		fetchParts := strings.SplitN(fetchOut, ` output="`, 2)
-		if len(fetchParts) != 2 || !strings.HasSuffix(fetchParts[1], `"`) {
+		fetchedSkillPath, ok := parseCompactFetchOutputPath(fetchOut)
+		if !ok {
 			t.Fatalf("fetch compact output should include quoted output path, got %q", fetchOut)
 		}
-		fetchedSkillPath := strings.TrimSuffix(fetchParts[1], `"`)
 		if strings.TrimSpace(fetchedSkillPath) == "" {
 			t.Fatalf("fetch compact output path should be non-empty, got %q", fetchOut)
 		}
@@ -620,11 +631,10 @@ func TestRun(t *testing.T) {
 			t.Fatalf("stderr should be empty for fetch compact, got %q", stderr.String())
 		}
 		fetchOut := strings.TrimSpace(stdout.String())
-		fetchParts := strings.SplitN(fetchOut, ` output="`, 2)
-		if len(fetchParts) != 2 || !strings.HasSuffix(fetchParts[1], `"`) {
+		fetchedSkillPath, ok := parseCompactFetchOutputPath(fetchOut)
+		if !ok {
 			t.Fatalf("fetch compact output should include quoted output path, got %q", fetchOut)
 		}
-		fetchedSkillPath := strings.TrimSuffix(fetchParts[1], `"`)
 		if strings.TrimSpace(fetchedSkillPath) == "" {
 			t.Fatalf("fetch compact output path should be non-empty, got %q", fetchOut)
 		}
@@ -703,11 +713,10 @@ func TestRun(t *testing.T) {
 			t.Fatalf("stderr should be empty for fetch compact, got %q", stderr.String())
 		}
 		fetchOut := strings.TrimSpace(stdout.String())
-		fetchParts := strings.SplitN(fetchOut, ` output="`, 2)
-		if len(fetchParts) != 2 || !strings.HasSuffix(fetchParts[1], `"`) {
+		fetchedSkillPath, ok := parseCompactFetchOutputPath(fetchOut)
+		if !ok {
 			t.Fatalf("fetch compact output should include quoted output path, got %q", fetchOut)
 		}
-		fetchedSkillPath := strings.TrimSuffix(fetchParts[1], `"`)
 		if strings.TrimSpace(fetchedSkillPath) == "" {
 			t.Fatalf("fetch compact output path should be non-empty, got %q", fetchOut)
 		}

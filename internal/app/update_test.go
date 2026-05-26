@@ -983,7 +983,7 @@ func TestRunUpdateCompactOutput(t *testing.T) {
 		"changed=0",
 		"rejected=0",
 		"errors=0",
-		"target=\"" + targetRoot + "\"",
+		fmt.Sprintf("target=%q", targetRoot),
 	} {
 		if !strings.Contains(line, marker) {
 			t.Fatalf("compact output missing marker %q: %q", marker, line)
@@ -1033,7 +1033,7 @@ func TestRunUpdateCompactOutputRejectedAndError(t *testing.T) {
 			"changed=0",
 			"rejected=1",
 			"errors=0",
-			"target=\"" + targetRoot + "\"",
+			fmt.Sprintf("target=%q", targetRoot),
 		} {
 			if !strings.Contains(line, marker) {
 				t.Fatalf("compact rejected output missing marker %q: %q", marker, line)
@@ -1081,7 +1081,7 @@ func TestRunUpdateCompactOutputRejectedAndError(t *testing.T) {
 			"changed=0",
 			"rejected=0",
 			"errors=1",
-			"target=\"" + targetRoot + "\"",
+			fmt.Sprintf("target=%q", targetRoot),
 		} {
 			if !strings.Contains(line, marker) {
 				t.Fatalf("compact error output missing marker %q: %q", marker, line)
@@ -1132,7 +1132,7 @@ func TestRunUpdateCompactOutputRejectedAndError(t *testing.T) {
 			"changed=0",
 			"rejected=0",
 			"errors=1",
-			"target=\"" + targetRoot + "\"",
+			fmt.Sprintf("target=%q", targetRoot),
 		} {
 			if !strings.Contains(line, marker) {
 				t.Fatalf("compact github-invalid output missing marker %q: %q", marker, line)
@@ -7365,9 +7365,15 @@ func TestEvaluateUpdateSkillAdditionalBranches(t *testing.T) {
 				Changed: []string{},
 			},
 		}
-		_, err := evaluateUpdateSkill(item, lock, false, policypkg.Config{})
-		if err == nil {
-			t.Fatal("expected URL scan error for missing installed path")
+		got, err := evaluateUpdateSkill(item, lock, false, policypkg.Config{})
+		if err != nil {
+			t.Fatalf("evaluateUpdateSkill() error = %v", err)
+		}
+		if got.Status != "ERROR" || got.ErrorCode != updateCodeLockfileInvalid {
+			t.Fatalf("unexpected result: %+v", got)
+		}
+		if !strings.Contains(got.Message, "failed to evaluate install report for update baseline") {
+			t.Fatalf("message = %q", got.Message)
 		}
 	})
 

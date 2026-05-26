@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"testing"
 	"testing/quick"
@@ -131,12 +132,13 @@ func TestParseInstallArgs(t *testing.T) {
 
 func TestResolveInstallTarget(t *testing.T) {
 	t.Run("codex target uses CODEX_HOME", func(t *testing.T) {
-		t.Setenv("CODEX_HOME", "/tmp/codex-home")
+		codexHome := filepath.Join(t.TempDir(), "codex-home")
+		t.Setenv("CODEX_HOME", codexHome)
 		got, err := resolveInstallTarget("codex")
 		if err != nil {
 			t.Fatalf("resolveInstallTarget() error = %v", err)
 		}
-		if got != filepath.Join("/tmp/codex-home", "skills") {
+		if got != filepath.Join(codexHome, "skills") {
 			t.Fatalf("target = %q", got)
 		}
 	})
@@ -145,6 +147,7 @@ func TestResolveInstallTarget(t *testing.T) {
 		t.Setenv("CODEX_HOME", "")
 		home := t.TempDir()
 		t.Setenv("HOME", home)
+		t.Setenv("USERPROFILE", home)
 		got, err := resolveInstallTarget("codex")
 		if err != nil {
 			t.Fatalf("resolveInstallTarget() error = %v", err)
@@ -155,11 +158,12 @@ func TestResolveInstallTarget(t *testing.T) {
 	})
 
 	t.Run("custom target and invalid targets", func(t *testing.T) {
-		got, err := resolveInstallTarget("custom:/tmp/skills")
+		customPath := filepath.Join(t.TempDir(), "skills")
+		got, err := resolveInstallTarget("custom:" + customPath)
 		if err != nil {
 			t.Fatalf("resolveInstallTarget(custom) error = %v", err)
 		}
-		if got != "/tmp/skills" {
+		if got != customPath {
 			t.Fatalf("custom target = %q", got)
 		}
 
@@ -2413,7 +2417,7 @@ func TestRunInstallCompactOutput(t *testing.T) {
 			"overrides=0",
 			"installed=true",
 			"profile=strict",
-			"target=\"custom:" + targetRoot + "\"",
+			"target=" + strconv.Quote("custom:"+targetRoot),
 			"source_kind=local-dir",
 			"error_code=",
 		}

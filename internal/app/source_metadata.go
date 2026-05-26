@@ -58,6 +58,17 @@ func writeSourceMetadata(skillRoot string, meta sourceMetadata) error {
 }
 
 func readSourceMetadata(skillRoot string) (sourceMetadata, bool, error) {
+	rootInfo, rootErr := os.Lstat(skillRoot)
+	if rootErr != nil {
+		if os.IsNotExist(rootErr) {
+			return sourceMetadata{}, false, nil
+		}
+		return sourceMetadata{}, false, fmt.Errorf("failed to read source metadata: %w", rootErr)
+	}
+	if !rootInfo.IsDir() {
+		return sourceMetadata{}, false, fmt.Errorf("failed to read source metadata: %s is not a directory", skillRoot)
+	}
+
 	path := filepath.Join(skillRoot, sourceMetadataFile)
 	if err := rejectSymlinkPath(path, "source metadata file", ruleSourceMetadataSymlink); err != nil {
 		return sourceMetadata{}, false, err
