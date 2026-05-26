@@ -182,6 +182,24 @@ func TestCLIUsageSyntaxDocumentationSync(t *testing.T) {
 	}
 }
 
+func TestStructuredErrorStreamContractDocumentationSync(t *testing.T) {
+	readmeBytes, err := os.ReadFile("../../README.md")
+	if err != nil {
+		t.Fatalf("failed to read README.md: %v", err)
+	}
+	readme := string(readmeBytes)
+
+	required := []string{
+		"For fatal errors, `human` and `compact` write diagnostics to `stderr`.",
+		"`json`, `sarif`, and `review-json` write structured error reports to `stdout`",
+	}
+	for _, line := range required {
+		if !strings.Contains(readme, line) {
+			t.Fatalf("README missing structured error stream contract line: %q", line)
+		}
+	}
+}
+
 func TestLockfileExampleSchemaSync(t *testing.T) {
 	readmeBytes, err := os.ReadFile("../../README.md")
 	if err != nil {
