@@ -104,8 +104,13 @@ not contain surrounding whitespace, and must not contain Unicode
 bidi/zero-width/tag/variation-selector characters.
 Install report `installed_path` must not contain C0/C1 control characters
 during lock verify and reuse/baseline integrity checks.
+Install report `installed_path` must not be empty, must not contain
+surrounding whitespace, and must not contain Unicode
+bidi/zero-width/tag/variation-selector characters.
 Install report `schema_version` must not contain C0/C1 control characters
 during lock verify and reuse/baseline integrity checks.
+Install report `schema_version` must not contain surrounding whitespace and
+must not contain Unicode bidi/zero-width/tag/variation-selector characters.
 Lock `schema` in `gokui.lock` must not contain C0/C1 control characters for
 install/update validation and lock verify schema checks.
 Lock/install report `severity_overrides` entries must not contain C0/C1

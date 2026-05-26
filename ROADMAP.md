@@ -29,6 +29,8 @@ tests/CI:
 - Install report `source.input`/`source.kind` canonical validation hardening with empty/surrounding-whitespace rejection and Unicode bidi/zero-width/tag/variation-selector rejection
 - Install report `installed_path` validation hardening with C0/C1 control-character rejection for lock-verify and install/update integrity checks
 - Install report `schema_version` validation hardening with C0/C1 control-character rejection for lock-verify and install/update integrity checks
+- Install report `installed_path` canonical validation hardening with empty/surrounding-whitespace rejection and Unicode bidi/zero-width/tag/variation-selector rejection
+- Install report `schema_version` canonical validation hardening with surrounding-whitespace rejection and Unicode bidi/zero-width/tag/variation-selector rejection
 - Lock `schema` validation hardening with C0/C1 control-character rejection for install/update and lock-verify schema checks
 - Lock/install-report `severity_overrides` audit-entry validation hardening with C0/C1 control-character rejection across string fields
 - Lock/install-report `severity_overrides` validation hardening with duplicate `rule_id` rejection

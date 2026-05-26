@@ -857,11 +857,18 @@ func verifyInstallReport(skillPath string, lock installLock) (bool, string) {
 	if err := json.Unmarshal(raw.Bytes(), &report); err != nil {
 		return false, "invalid install report JSON"
 	}
-	if strings.TrimSpace(report.SchemaVersion) == "" {
+	trimmedSchemaVersion := strings.TrimSpace(report.SchemaVersion)
+	if trimmedSchemaVersion == "" {
 		return false, "install report schema_version is empty"
+	}
+	if trimmedSchemaVersion != report.SchemaVersion {
+		return false, "install report schema_version must not contain leading or trailing whitespace"
 	}
 	if strings.IndexFunc(report.SchemaVersion, isC0OrC1ControlRune) >= 0 {
 		return false, "install report schema_version must not contain C0/C1 control characters"
+	}
+	if containsSeverityOverrideDisallowedUnicode(report.SchemaVersion) {
+		return false, "install report schema_version must not contain Unicode bidi, zero-width, tag, or variation-selector characters"
 	}
 	if report.SchemaVersion != reportSchemaVersion {
 		return false, fmt.Sprintf("install report schema_version is unsupported: %s", report.SchemaVersion)
@@ -940,8 +947,18 @@ func verifyInstallReport(skillPath string, lock installLock) (bool, string) {
 	if !report.Installed {
 		return false, "install report installed must be true"
 	}
+	trimmedInstalledPath := strings.TrimSpace(report.InstalledPath)
+	if trimmedInstalledPath == "" {
+		return false, "install report installed path is empty"
+	}
+	if trimmedInstalledPath != report.InstalledPath {
+		return false, "install report installed path must not contain leading or trailing whitespace"
+	}
 	if strings.IndexFunc(report.InstalledPath, isC0OrC1ControlRune) >= 0 {
 		return false, "install report installed path must not contain C0/C1 control characters"
+	}
+	if containsSeverityOverrideDisallowedUnicode(report.InstalledPath) {
+		return false, "install report installed path must not contain Unicode bidi, zero-width, tag, or variation-selector characters"
 	}
 	if filepath.Clean(report.InstalledPath) != filepath.Clean(skillPath) {
 		return false, fmt.Sprintf("install report path mismatch: expected %s, got %s", skillPath, report.InstalledPath)

@@ -1698,6 +1698,20 @@ func TestVerifyInstallReportValidationBranches(t *testing.T) {
 			detailHas: "schema_version must not contain C0/C1 control characters",
 		},
 		{
+			name: "schema has surrounding whitespace",
+			mutate: func(r *installReport) {
+				r.SchemaVersion = " 0.1.0-draft "
+			},
+			detailHas: "schema_version must not contain leading or trailing whitespace",
+		},
+		{
+			name: "schema has unicode obfuscation character",
+			mutate: func(r *installReport) {
+				r.SchemaVersion = "0.1.0-draft\u200d"
+			},
+			detailHas: "schema_version must not contain Unicode bidi, zero-width, tag, or variation-selector characters",
+		},
+		{
 			name: "empty source input",
 			mutate: func(r *installReport) {
 				r.Source.Input = ""
@@ -1838,11 +1852,32 @@ func TestVerifyInstallReportValidationBranches(t *testing.T) {
 			detailHas: "path mismatch",
 		},
 		{
+			name: "installed path is empty",
+			mutate: func(r *installReport) {
+				r.InstalledPath = ""
+			},
+			detailHas: "installed path is empty",
+		},
+		{
+			name: "installed path has surrounding whitespace",
+			mutate: func(r *installReport) {
+				r.InstalledPath = " " + r.InstalledPath + " "
+			},
+			detailHas: "installed path must not contain leading or trailing whitespace",
+		},
+		{
 			name: "installed path has C0/C1 control character",
 			mutate: func(r *installReport) {
 				r.InstalledPath = filepath.Join(skillPath, "ok") + "\u008f"
 			},
 			detailHas: "installed path must not contain C0/C1 control characters",
+		},
+		{
+			name: "installed path has unicode obfuscation character",
+			mutate: func(r *installReport) {
+				r.InstalledPath = r.InstalledPath + "\u200d"
+			},
+			detailHas: "installed path must not contain Unicode bidi, zero-width, tag, or variation-selector characters",
 		},
 	}
 
