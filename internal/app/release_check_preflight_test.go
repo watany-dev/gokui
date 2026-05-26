@@ -225,6 +225,33 @@ func TestBetaCheckPreflightRejectsSymlinkedBuildOutputPath(t *testing.T) {
 	}
 }
 
+func TestBetaCheckPreflightRejectsBuildOutputEmptyPathSegmentsFromBetaVars(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("preflight path contracts are exercised on POSIX in CI")
+	}
+
+	betaBuildOut := ".cache//beta-build.out"
+	betaSarifOut := releaseCheckRepoLocalPath(t, "beta-inspect.sarif")
+	releaseBuildOut := releaseCheckRepoLocalPath(t, "release-build.out")
+	releaseSarifOut := releaseCheckRepoLocalPath(t, "release-inspect.sarif")
+
+	exitCode, out := runBetaCheckPreflight(t, map[string]string{
+		"BETA_CHECK_BUILD_OUT":    betaBuildOut,
+		"BETA_CHECK_SARIF_OUT":    betaSarifOut,
+		"RELEASE_CHECK_BUILD_OUT": releaseBuildOut,
+		"RELEASE_CHECK_SARIF_OUT": releaseSarifOut,
+	})
+	if exitCode == 0 {
+		t.Fatalf("expected non-zero exit for beta build output with empty path segment\noutput:\n%s", out)
+	}
+	if !strings.Contains(out, "[RC_PREFLIGHT_BUILD_OUT_INVALID]") {
+		t.Fatalf("expected build output empty-segment rejection code, got:\n%s", out)
+	}
+	if !strings.Contains(out, "build output path must not contain empty path segments") {
+		t.Fatalf("expected build output empty-segment rejection message, got:\n%s", out)
+	}
+}
+
 func TestBetaCheckPreflightCanRunConsecutively(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("beta-check preflight contract is exercised on POSIX in CI")
