@@ -18,6 +18,7 @@ tests/CI:
 - Source metadata read-path hardening with invalid UTF-8 payload rejection before JSON decoding
 - Lockfile/install-report read-path hardening with invalid UTF-8 payload rejection before JSON decoding
 - Lock skill file-path validation hardening with invalid UTF-8 and C0/C1 control-character rejection for install/update/lock-verify provenance checks
+- Lock skill file-path validation hardening with Unicode bidi/zero-width/tag/variation-selector rejection for install/update/lock-verify provenance checks
 - Lock source-input validation hardening with C0/C1 control-character rejection for install/update/lock-verify provenance checks
 - Lock source-input validation hardening with Unicode bidi/zero-width/tag/variation-selector rejection for install/update/lock-verify provenance checks
 - Lock name validation hardening with C0/C1 control-character rejection for install/update/lock-verify provenance checks

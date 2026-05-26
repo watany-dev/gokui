@@ -1043,6 +1043,9 @@ func isValidLockRelativePath(in string) bool {
 	if strings.IndexFunc(in, isC0OrC1ControlRune) >= 0 {
 		return false
 	}
+	if containsSeverityOverrideDisallowedUnicode(in) {
+		return false
+	}
 	if strings.TrimSpace(in) == "" {
 		return false
 	}

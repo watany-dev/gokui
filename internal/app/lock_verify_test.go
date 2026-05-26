@@ -2186,6 +2186,13 @@ func TestVerifyLockStructureValidationBranches(t *testing.T) {
 			detailIn: "file path is invalid",
 		},
 		{
+			name: "file path has unicode obfuscation character",
+			mutate: func(l *installLock) {
+				l.Skill.Files[0].Path = "SKILL.md\u200d"
+			},
+			detailIn: "file path is invalid",
+		},
+		{
 			name: "duplicate file path",
 			mutate: func(l *installLock) {
 				l.Skill.Files = append(l.Skill.Files, l.Skill.Files[0])
@@ -2298,7 +2305,7 @@ func TestLockVerifyHelpers(t *testing.T) {
 			t.Fatalf("expected valid path: %s", p)
 		}
 	}
-	invalidPaths := []string{"", ".", "..", "../x", "/x", `..\x`, `a\b`, "C:/x", "c:/x", "D:relative/path", "z:tmp", "SKILL.md\nx", "SKILL.md\tx", "SKILL.md\u0085x", string([]byte{'b', 'a', 'd', 0xff})}
+	invalidPaths := []string{"", ".", "..", "../x", "/x", `..\x`, `a\b`, "C:/x", "c:/x", "D:relative/path", "z:tmp", "SKILL.md\nx", "SKILL.md\tx", "SKILL.md\u0085x", "SKILL.md\u200dx", string([]byte{'b', 'a', 'd', 0xff})}
 	for _, p := range invalidPaths {
 		if isValidLockRelativePath(p) {
 			t.Fatalf("expected invalid path: %s", p)
