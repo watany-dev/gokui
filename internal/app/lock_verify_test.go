@@ -1115,6 +1115,22 @@ func TestVerifyLockSourceChecks(t *testing.T) {
 	if ok, _ := verifyLockSource(lock); ok {
 		t.Fatal("github source input with bidi-control ref should fail")
 	}
+	lock.Source.Input = "github:or\u00a0g/repo//skills/demo@abc1234a4b5c6d7e8f901234567890abcdef1234"
+	if ok, _ := verifyLockSource(lock); ok {
+		t.Fatal("github source input with owner unicode-whitespace should fail")
+	}
+	lock.Source.Input = "github:org/re\u200bpo//skills/demo@abc1234a4b5c6d7e8f901234567890abcdef1234"
+	if ok, _ := verifyLockSource(lock); ok {
+		t.Fatal("github source input with repo zero-width should fail")
+	}
+	lock.Source.Input = "github:or\U000E0001g/repo//skills/demo@abc1234a4b5c6d7e8f901234567890abcdef1234"
+	if ok, _ := verifyLockSource(lock); ok {
+		t.Fatal("github source input with owner unicode tag should fail")
+	}
+	lock.Source.Input = "github:org/re\ufe0fpo//skills/demo@abc1234a4b5c6d7e8f901234567890abcdef1234"
+	if ok, _ := verifyLockSource(lock); ok {
+		t.Fatal("github source input with repo variation-selector should fail")
+	}
 
 	lock.Source.Input = "github:org/repo//skills/demo@main"
 	if ok, _ := verifyLockSource(lock); ok {
