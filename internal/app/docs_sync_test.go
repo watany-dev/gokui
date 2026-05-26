@@ -225,6 +225,40 @@ func TestStructuredErrorStreamContractDocumentationSync(t *testing.T) {
 	}
 }
 
+func TestGitHubSourceEncodingAndArchiveStreamHardeningDocumentationSync(t *testing.T) {
+	readmeBytes, err := os.ReadFile("../../README.md")
+	if err != nil {
+		t.Fatalf("failed to read README.md: %v", err)
+	}
+	readme := string(readmeBytes)
+	roadmapBytes, err := os.ReadFile("../../ROADMAP.md")
+	if err != nil {
+		t.Fatalf("failed to read ROADMAP.md: %v", err)
+	}
+	roadmap := string(roadmapBytes)
+
+	requiredReadme := []string{
+		"GitHub source parsing also rejects invalid UTF-8 source inputs.",
+		"GitHub archive downloads must be a strict single gzip stream and reject trailing",
+		"bytes or concatenated gzip members before extraction.",
+	}
+	for _, line := range requiredReadme {
+		if !strings.Contains(readme, line) {
+			t.Fatalf("README missing github source/archive hardening line: %q", line)
+		}
+	}
+
+	requiredRoadmap := []string{
+		"GitHub source parser rejection of invalid UTF-8 source input",
+		"GitHub archive payload hardening (strict single-stream gzip validation with EOF/trailing-byte rejection before extraction)",
+	}
+	for _, line := range requiredRoadmap {
+		if !strings.Contains(roadmap, line) {
+			t.Fatalf("ROADMAP missing github source/archive hardening line: %q", line)
+		}
+	}
+}
+
 func TestLockfileExampleSchemaSync(t *testing.T) {
 	readmeBytes, err := os.ReadFile("../../README.md")
 	if err != nil {

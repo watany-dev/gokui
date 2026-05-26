@@ -44,6 +44,9 @@ different-provenance installs. It also supports commit-pinned GitHub sources
 (`github:owner/repo//path@<sha>`) via safe tarball materialization. In JSON
 mode, rejected installs set report `error_code=INSTALL_POLICY_REJECTED`, and
 fatal errors emit a machine-readable error envelope with top-level `error_code`.
+GitHub source parsing also rejects invalid UTF-8 source inputs.
+GitHub archive downloads must be a strict single gzip stream and reject trailing
+bytes or concatenated gzip members before extraction.
 Idempotent reuse also verifies installed-file digests/root hash (and GitHub
 source metadata for GitHub-origin installs), and install-report integrity,
 rejecting drifted installations.
