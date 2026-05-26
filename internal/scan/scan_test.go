@@ -5300,6 +5300,11 @@ func TestClassifyUnicodeThreats(t *testing.T) {
 			t.Fatalf("expected no findings for allowed controls, got %+v", findings)
 		}
 	})
+
+	t.Run("detects C1 control characters in text", func(t *testing.T) {
+		findings := classifyUnicodeThreats("safe\u0085text", "SKILL.md", 23)
+		assertHasID(t, findings, "CONTROL_CHAR_IN_TEXT")
+	})
 }
 
 func TestScanSkillRootLargeFile(t *testing.T) {
