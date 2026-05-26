@@ -3207,6 +3207,15 @@ func TestReadInstallLockAndProvenanceMatches(t *testing.T) {
 				t.Fatalf("expected github source syntax error, got %v", err)
 			}
 		})
+
+		t.Run("github source path surrounding spaces must be invalid", func(t *testing.T) {
+			mut := githubValid
+			mut.Source.Input = "github:org/repo// skills/github-skill@8f3c2d1a4b5c6d7e8f901234567890abcdef1234"
+			err := validateInstallLockForProvenanceReuse(mut, "github-skill")
+			if err == nil || !strings.Contains(err.Error(), "invalid github source input in lock") {
+				t.Fatalf("expected github source path-space syntax error, got %v", err)
+			}
+		})
 	})
 
 	t.Run("validateInstalledContentForIdempotentReuse", func(t *testing.T) {
