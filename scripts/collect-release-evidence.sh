@@ -220,7 +220,7 @@ run_git_clean_check() {
 
 run_git_clean_check
 if [ "$GATE_STEP_NAME" = "beta-check" ]; then
-  run_step "$GATE_STEP_NAME" "GOCACHE=\"$ROOT_DIR/.cache/go-build\" GOMODCACHE=\"$ROOT_DIR/.cache/gomod\" GOPATH=\"$ROOT_DIR/.cache/gopath\" XDG_CACHE_HOME=\"$ROOT_DIR/.cache/xdg\" BUILD_OUT=\"$ROOT_DIR/.cache/gokui-beta-evidence\" INSPECT_SARIF_OUT=\"$ROOT_DIR/.cache/inspect-results-beta-evidence.sarif\" make beta-check" "$LOG_DIR/${BASENAME}-${GATE_STEP_NAME}.log"
+  run_step "$GATE_STEP_NAME" "GOCACHE=\"$ROOT_DIR/.cache/go-build\" GOMODCACHE=\"$ROOT_DIR/.cache/gomod\" GOPATH=\"$ROOT_DIR/.cache/gopath\" XDG_CACHE_HOME=\"$ROOT_DIR/.cache/xdg\" BETA_CHECK_BUILD_OUT=\"$ROOT_DIR/.cache/gokui-beta-evidence\" BETA_CHECK_SARIF_OUT=\"$ROOT_DIR/.cache/inspect-results-beta-evidence.sarif\" make beta-check" "$LOG_DIR/${BASENAME}-${GATE_STEP_NAME}.log"
 else
   run_step "$GATE_STEP_NAME" "GOCACHE=\"$ROOT_DIR/.cache/go-build\" GOMODCACHE=\"$ROOT_DIR/.cache/gomod\" GOPATH=\"$ROOT_DIR/.cache/gopath\" XDG_CACHE_HOME=\"$ROOT_DIR/.cache/xdg\" BUILD_OUT=\"$ROOT_DIR/.cache/gokui-release-evidence\" make release-check-offline" "$LOG_DIR/${BASENAME}-${GATE_STEP_NAME}.log"
 fi
