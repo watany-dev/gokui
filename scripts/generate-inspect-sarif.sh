@@ -88,9 +88,22 @@ assert_non_directory_file_path() {
   esac
 }
 
+assert_sarif_output_extension() {
+  local path="$1"
+  local label="$2"
+  case "$path" in
+    *.sarif) ;;
+    *)
+      echo "${label} must end with .sarif: $path" >&2
+      exit 1
+      ;;
+  esac
+}
+
 assert_no_symlink_components "$ROOT_DIR" "repository root path"
 out_dir="$(dirname "$out_path")"
 assert_non_directory_file_path "$out_path" "inspect SARIF output path"
+assert_sarif_output_extension "$out_path" "inspect SARIF output path"
 assert_no_dotdot_segments "$out_path" "inspect SARIF output path"
 assert_under_repo_root "$out_path" "inspect SARIF output path"
 assert_not_git_path "$out_path" "inspect SARIF output path"

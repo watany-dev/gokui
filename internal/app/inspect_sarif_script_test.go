@@ -101,3 +101,21 @@ func TestInspectSARIFScriptRejectsDotDirectorySuffixOutputPath(t *testing.T) {
 		t.Fatalf("expected dot-directory-suffix rejection message, got:\n%s", text)
 	}
 }
+
+func TestInspectSARIFScriptRejectsNonSarifOutputExtension(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("shell-script execution contract is exercised on POSIX in CI")
+	}
+
+	outPath := "inspect-results.json"
+	cmd := exec.Command("bash", "../../scripts/generate-inspect-sarif.sh", outPath)
+
+	out, err := cmd.CombinedOutput()
+	if err == nil {
+		t.Fatalf("expected non-zero exit for non-sarif output extension\noutput:\n%s", out)
+	}
+	text := string(out)
+	if !strings.Contains(text, "must end with .sarif") {
+		t.Fatalf("expected non-sarif-extension rejection message, got:\n%s", text)
+	}
+}
