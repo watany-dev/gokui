@@ -1955,6 +1955,13 @@ func TestVerifyInstallReportValidationBranches(t *testing.T) {
 			detailHas: "source kind must not contain C0/C1 control characters",
 		},
 		{
+			name: "source kind has C0/C1 control character only",
+			mutate: func(r *installReport) {
+				r.Source.Kind = "\u0085"
+			},
+			detailHas: "source kind must not contain C0/C1 control characters",
+		},
+		{
 			name: "source kind has unicode obfuscation character",
 			mutate: func(r *installReport) {
 				r.Source.Kind = "local-dir\u200d"

@@ -916,14 +916,14 @@ func verifyInstallReport(skillPath string, lock installLock) (bool, string) {
 		return false, "install report source input must not contain leading or trailing whitespace"
 	}
 	trimmedSourceKind := strings.TrimSpace(report.Source.Kind)
-	if trimmedSourceKind == "" {
-		return false, "install report source kind is empty"
-	}
 	if strings.IndexFunc(report.Source.Kind, isC0OrC1ControlRune) >= 0 {
 		return false, "install report source kind must not contain C0/C1 control characters"
 	}
 	if containsSeverityOverrideDisallowedUnicode(report.Source.Kind) {
 		return false, "install report source kind must not contain Unicode bidi, zero-width, tag, or variation-selector characters"
+	}
+	if trimmedSourceKind == "" {
+		return false, "install report source kind is empty"
 	}
 	if trimmedSourceKind != report.Source.Kind {
 		return false, "install report source kind must not contain leading or trailing whitespace"
