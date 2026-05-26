@@ -2629,6 +2629,13 @@ func TestVerifyLockStructureValidationBranches(t *testing.T) {
 			detailIn: "file path is invalid",
 		},
 		{
+			name: "file path has DEL control character at edge",
+			mutate: func(l *installLock) {
+				l.Skill.Files[0].Path = "\u007fSKILL.md"
+			},
+			detailIn: "file path is invalid",
+		},
+		{
 			name: "file path has unicode obfuscation character",
 			mutate: func(l *installLock) {
 				l.Skill.Files[0].Path = "SKILL.md\u200d"
