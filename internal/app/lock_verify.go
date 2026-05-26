@@ -513,12 +513,12 @@ func verifyLock(skillPath string) (lockVerifyReport, error) {
 	checks := make([]lockVerifyCheck, 0, 8)
 	schemaOK := lock.Schema == lockSchemaVersion
 	schemaDetail := fmt.Sprintf("expected gokui.lock/v1, got %s", lock.Schema)
-	if strings.TrimSpace(lock.Schema) != lock.Schema {
-		schemaDetail = "lock schema must not contain leading or trailing whitespace"
-	} else if strings.IndexFunc(lock.Schema, isC0OrC1ControlRune) >= 0 {
+	if strings.IndexFunc(lock.Schema, isC0OrC1ControlRune) >= 0 {
 		schemaDetail = "lock schema must not contain C0/C1 control characters"
 	} else if containsSeverityOverrideDisallowedUnicode(lock.Schema) {
 		schemaDetail = "lock schema must not contain Unicode bidi, zero-width, tag, or variation-selector characters"
+	} else if strings.TrimSpace(lock.Schema) != lock.Schema {
+		schemaDetail = "lock schema must not contain leading or trailing whitespace"
 	}
 	checks = append(checks, lockVerifyCheck{
 		Code:   lockVerifyCodeSchema,
