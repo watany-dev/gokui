@@ -48,6 +48,8 @@ Release-check build/SARIF output paths must not contain `.` or `..` path
 segments.
 Release-check build/SARIF output paths must not contain empty path segments
 (for example `...//...`).
+Release-check build/SARIF output paths must not include leading or trailing
+whitespace.
 `RELEASE_CHECK_SARIF_OUT` must end with `.sarif`.
 `make inspect-sarif` output paths must resolve under the repository root and
 must resolve outside `.git/`.
@@ -142,8 +144,8 @@ When one or more removals fail, a summary line is emitted with
 
 | Release-check code | Typical trigger |
 | --- | --- |
-| `RC_PREFLIGHT_BUILD_OUT_INVALID` | `RELEASE_CHECK_BUILD_OUT` is root-like (`/`, `.`, empty), ends with `/`, contains empty/`.`/`..` path segments, resolves outside the repository root, or resolves under `.git/` |
-| `RC_PREFLIGHT_SARIF_OUT_INVALID` | `RELEASE_CHECK_SARIF_OUT` is root-like (`/`, `.`, empty), ends with `/`, does not end with `.sarif`, contains empty/`.`/`..` path segments, resolves outside the repository root, or resolves under `.git/` |
+| `RC_PREFLIGHT_BUILD_OUT_INVALID` | `RELEASE_CHECK_BUILD_OUT` is root-like (`/`, `.`, empty), ends with `/`, includes leading/trailing whitespace, contains empty/`.`/`..` path segments, resolves outside the repository root, or resolves under `.git/` |
+| `RC_PREFLIGHT_SARIF_OUT_INVALID` | `RELEASE_CHECK_SARIF_OUT` is root-like (`/`, `.`, empty), ends with `/`, includes leading/trailing whitespace, does not end with `.sarif`, contains empty/`.`/`..` path segments, resolves outside the repository root, or resolves under `.git/` |
 | `RC_PREFLIGHT_BUILD_OUT_SYMLINK` | Build output path or ancestor contains a symlink component |
 | `RC_PREFLIGHT_SARIF_OUT_SYMLINK` | SARIF output path or ancestor contains a symlink component |
 | `RC_PREFLIGHT_OUTPUT_PATH_CONFLICT` | Build and SARIF outputs resolve to the same absolute path |

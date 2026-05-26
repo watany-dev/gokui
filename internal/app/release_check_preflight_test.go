@@ -285,6 +285,38 @@ func TestReleaseCheckPreflightRejectsBuildOutputEmptyPathSegments(t *testing.T) 
 	}
 }
 
+func TestReleaseCheckPreflightRejectsBuildOutputWithSurroundingWhitespace(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("release-check preflight path contracts are exercised on POSIX in CI")
+	}
+
+	testCases := []struct {
+		name     string
+		buildOut string
+	}{
+		{name: "leading space", buildOut: " .cache/release-check"},
+		{name: "trailing space", buildOut: ".cache/release-check "},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			exitCode, out := runReleaseCheckPreflight(t, map[string]string{
+				"RELEASE_CHECK_BUILD_OUT": tc.buildOut,
+				"RELEASE_CHECK_SARIF_OUT": releaseCheckRepoLocalPath(t, "inspect.sarif"),
+			})
+			if exitCode == 0 {
+				t.Fatalf("expected non-zero exit for build output path with surrounding whitespace %q\noutput:\n%s", tc.buildOut, out)
+			}
+			if !strings.Contains(out, "build output path must not include leading or trailing whitespace") {
+				t.Fatalf("expected build output surrounding-whitespace rejection message, got:\n%s", out)
+			}
+			if !strings.Contains(out, "[RC_PREFLIGHT_BUILD_OUT_INVALID]") {
+				t.Fatalf("expected build output surrounding-whitespace rejection code, got:\n%s", out)
+			}
+		})
+	}
+}
+
 func TestReleaseCheckPreflightRejectsRootOrDirectoryLikeSARIFOutput(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("release-check preflight path contracts are exercised on POSIX in CI")
@@ -313,6 +345,38 @@ func TestReleaseCheckPreflightRejectsRootOrDirectoryLikeSARIFOutput(t *testing.T
 			}
 			if !strings.Contains(out, "[RC_PREFLIGHT_SARIF_OUT_INVALID]") {
 				t.Fatalf("expected non-root SARIF output rejection code, got:\n%s", out)
+			}
+		})
+	}
+}
+
+func TestReleaseCheckPreflightRejectsSARIFOutputWithSurroundingWhitespace(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("release-check preflight path contracts are exercised on POSIX in CI")
+	}
+
+	testCases := []struct {
+		name     string
+		sarifOut string
+	}{
+		{name: "leading space", sarifOut: " .cache/inspect.sarif"},
+		{name: "trailing space", sarifOut: ".cache/inspect.sarif "},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			exitCode, out := runReleaseCheckPreflight(t, map[string]string{
+				"RELEASE_CHECK_BUILD_OUT": releaseCheckRepoLocalPath(t, "build.out"),
+				"RELEASE_CHECK_SARIF_OUT": tc.sarifOut,
+			})
+			if exitCode == 0 {
+				t.Fatalf("expected non-zero exit for SARIF output path with surrounding whitespace %q\noutput:\n%s", tc.sarifOut, out)
+			}
+			if !strings.Contains(out, "SARIF output path must not include leading or trailing whitespace") {
+				t.Fatalf("expected SARIF output surrounding-whitespace rejection message, got:\n%s", out)
+			}
+			if !strings.Contains(out, "[RC_PREFLIGHT_SARIF_OUT_INVALID]") {
+				t.Fatalf("expected SARIF output surrounding-whitespace rejection code, got:\n%s", out)
 			}
 		})
 	}
