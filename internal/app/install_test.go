@@ -982,6 +982,29 @@ func TestRunInstallJSONOutput(t *testing.T) {
 		}
 	})
 
+	t.Run("json invalid github C1-control source keeps control-char detail", func(t *testing.T) {
+		var stdout strings.Builder
+		var stderr strings.Builder
+		code := runInstall([]string{
+			"github:org/repo//skills/x@\u00858f3c2d1a4b5c6d7e8f901234567890abcdef1234",
+			"--target", "codex",
+			"--profile", "strict",
+			"--format", "json",
+		}, &stdout, &stderr)
+		if code != 1 {
+			t.Fatalf("runInstall(json invalid github C1-control source) code = %d, want 1\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
+		}
+		if stderr.Len() != 0 {
+			t.Fatalf("stderr should be empty for json errors, got %q", stderr.String())
+		}
+		if !strings.Contains(stdout.String(), "\"error_code\": \""+installErrorCodeSourcePrepareFailed+"\"") {
+			t.Fatalf("stdout should include source-prepare-failed error code, got %q", stdout.String())
+		}
+		if !strings.Contains(stdout.String(), "must not contain C0/C1 control characters") {
+			t.Fatalf("stdout should include C0/C1 control-character detail, got %q", stdout.String())
+		}
+	})
+
 	t.Run("json source stat access error uses source-prepare-failed code", func(t *testing.T) {
 		if runtime.GOOS == "windows" {
 			t.Skip("permission behavior differs on windows")

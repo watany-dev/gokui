@@ -1908,6 +1908,26 @@ func TestRun(t *testing.T) {
 		}
 	})
 
+	t.Run("vet rejects github C1-control source in json with github-source rejection detail", func(t *testing.T) {
+		var stdout bytes.Buffer
+		var stderr bytes.Buffer
+
+		source := "github:org/repo//skills/skill-a@\u00858f3c2d1a4b5c6d7e8f901234567890abcdef1234"
+		code := Run([]string{"vet", source, "--format", "json"}, &stdout, &stderr, cfg)
+		if code != 1 {
+			t.Fatalf("Run() code = %d, want 1\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
+		}
+		if stderr.Len() != 0 {
+			t.Fatalf("stderr should be empty, got %q", stderr.String())
+		}
+		if !strings.Contains(stdout.String(), "\"error_code\": \""+inspectErrorCodeSourceInvalid+"\"") {
+			t.Fatalf("stdout should include source-invalid error code, got %q", stdout.String())
+		}
+		if !strings.Contains(stdout.String(), "vet does not accept github sources") {
+			t.Fatalf("stdout should include vet github rejection message, got %q", stdout.String())
+		}
+	})
+
 	t.Run("vet rejects github source in sarif format", func(t *testing.T) {
 		var stdout bytes.Buffer
 		var stderr bytes.Buffer
@@ -2175,6 +2195,25 @@ func TestRun(t *testing.T) {
 		}
 		if strings.Contains(stdout.String(), "\"rule_id\":") {
 			t.Fatalf("stdout should omit rule_id for non-rule source invalid errors, got %q", stdout.String())
+		}
+	})
+
+	t.Run("inspect invalid github C1-control source in json keeps control-char detail", func(t *testing.T) {
+		var stdout bytes.Buffer
+		var stderr bytes.Buffer
+
+		code := Run([]string{"inspect", "github:org/repo//skills/x@\u00858f3c2d1a4b5c6d7e8f901234567890abcdef1234", "--format", "json"}, &stdout, &stderr, cfg)
+		if code != 1 {
+			t.Fatalf("Run() code = %d, want 1\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
+		}
+		if stderr.Len() != 0 {
+			t.Fatalf("stderr should be empty, got %q", stderr.String())
+		}
+		if !strings.Contains(stdout.String(), "\"error_code\": \""+inspectErrorCodeSourceInvalid+"\"") {
+			t.Fatalf("stdout should include source-invalid error code, got %q", stdout.String())
+		}
+		if !strings.Contains(stdout.String(), "must not contain C0/C1 control characters") {
+			t.Fatalf("stdout should include C0/C1 control-character detail, got %q", stdout.String())
 		}
 	})
 
