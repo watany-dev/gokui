@@ -26,7 +26,7 @@ func runReleaseCheckPreflight(t *testing.T, env map[string]string) (int, string)
 
 	var exitErr *exec.ExitError
 	if !strings.Contains(err.Error(), "exit status") {
-		t.Fatalf("release-check-preflight execution error: %v\noutput:\n%s", err, out)
+		t.Fatalf("beta-check-preflight execution error: %v\noutput:\n%s", err, out)
 	}
 	if ok := errors.As(err, &exitErr); !ok {
 		t.Fatalf("release-check-preflight returned non-exit error: %v\noutput:\n%s", err, out)
