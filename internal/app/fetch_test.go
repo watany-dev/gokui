@@ -749,6 +749,28 @@ func TestRunFetch(t *testing.T) {
 		if sarif.Runs[0].Results[0].RuleID != fetchErrorCodeSourceInvalid {
 			t.Fatalf("rule id = %q, want %q", sarif.Runs[0].Results[0].RuleID, fetchErrorCodeSourceInvalid)
 		}
+
+		stdout.Reset()
+		stderr.Reset()
+		code = runFetch([]string{"github:org/repo//skills/x@\u00858f3c2d1a4b5c6d7e8f901234567890abcdef1234", "--out", t.TempDir(), "--format", "sarif"}, &stdout, &stderr)
+		if code != 1 {
+			t.Fatalf("runFetch(sarif invalid source C1-control) code = %d, want 1", code)
+		}
+		if stderr.Len() != 0 {
+			t.Fatalf("stderr should be empty for sarif invalid source error, got %q", stderr.String())
+		}
+		if err := json.Unmarshal([]byte(stdout.String()), &sarif); err != nil {
+			t.Fatalf("sarif parse failed: %v", err)
+		}
+		if len(sarif.Runs) != 1 || len(sarif.Runs[0].Results) != 1 {
+			t.Fatalf("unexpected sarif structure for C1-control source: %+v", sarif)
+		}
+		if sarif.Runs[0].Results[0].RuleID != fetchErrorCodeSourceInvalid {
+			t.Fatalf("rule id = %q, want %q", sarif.Runs[0].Results[0].RuleID, fetchErrorCodeSourceInvalid)
+		}
+		if !strings.Contains(sarif.Runs[0].Results[0].Message.Text, "must not contain C0/C1 control characters") {
+			t.Fatalf("sarif result message should include C0/C1 control-character detail, got %q", sarif.Runs[0].Results[0].Message.Text)
+		}
 	})
 
 	t.Run("json mode failure codes cover major branches", func(t *testing.T) {
