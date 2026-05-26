@@ -1782,6 +1782,13 @@ func TestVerifyInstallReportValidationBranches(t *testing.T) {
 			detailHas: "policy profile must not contain C0/C1 control characters",
 		},
 		{
+			name: "profile has unicode obfuscation character",
+			mutate: func(r *installReport) {
+				r.PolicyProfile = "strict\u200d"
+			},
+			detailHas: "policy profile must not contain Unicode bidi, zero-width, tag, or variation-selector characters",
+		},
+		{
 			name: "profile not canonical lowercase",
 			mutate: func(r *installReport) {
 				r.PolicyProfile = "Strict"
@@ -1808,6 +1815,13 @@ func TestVerifyInstallReportValidationBranches(t *testing.T) {
 				r.Decision = "PAS\u008fS"
 			},
 			detailHas: "decision must not contain C0/C1 control characters",
+		},
+		{
+			name: "decision has unicode obfuscation character",
+			mutate: func(r *installReport) {
+				r.Decision = "PASS\u200d"
+			},
+			detailHas: "decision must not contain Unicode bidi, zero-width, tag, or variation-selector characters",
 		},
 		{
 			name: "installed false",

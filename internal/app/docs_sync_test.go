@@ -525,6 +525,30 @@ func TestInstallReportPolicyDecisionControlCharHardeningDocumentationSync(t *tes
 	}
 }
 
+func TestInstallReportPolicyDecisionUnicodeHardeningDocumentationSync(t *testing.T) {
+	readmeBytes, err := os.ReadFile("../../README.md")
+	if err != nil {
+		t.Fatalf("failed to read README.md: %v", err)
+	}
+	readme := string(readmeBytes)
+	roadmapBytes, err := os.ReadFile("../../ROADMAP.md")
+	if err != nil {
+		t.Fatalf("failed to read ROADMAP.md: %v", err)
+	}
+	roadmap := string(roadmapBytes)
+
+	requiredReadme := "Install report `policy_profile` / `decision` fields must not contain Unicode"
+	requiredReadmeContinuation := "bidi/zero-width/tag/variation-selector characters."
+	if !strings.Contains(readme, requiredReadme) || !strings.Contains(readme, requiredReadmeContinuation) {
+		t.Fatalf("README missing install report policy/decision unicode hardening line: %q ... %q", requiredReadme, requiredReadmeContinuation)
+	}
+
+	requiredRoadmap := "Install report `policy_profile`/`decision` validation hardening with Unicode bidi/zero-width/tag/variation-selector rejection for lock-verify and install/update integrity checks"
+	if !strings.Contains(roadmap, requiredRoadmap) {
+		t.Fatalf("ROADMAP missing install report policy/decision unicode hardening line: %q", requiredRoadmap)
+	}
+}
+
 func TestInstallReportSourceControlCharHardeningDocumentationSync(t *testing.T) {
 	readmeBytes, err := os.ReadFile("../../README.md")
 	if err != nil {
