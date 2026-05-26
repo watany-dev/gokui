@@ -3632,6 +3632,13 @@ func TestReadInstallLockAndProvenanceMatches(t *testing.T) {
 				detailPart: "policy profile must not contain C0/C1 control characters",
 			},
 			{
+				name: "policy profile has C0 NUL control character only",
+				mutate: func(l *installLock) {
+					l.Policy.Profile = "\u0000"
+				},
+				detailPart: "policy profile must not contain C0/C1 control characters",
+			},
+			{
 				name: "policy profile has DEL control character only",
 				mutate: func(l *installLock) {
 					l.Policy.Profile = "\u007f"
@@ -3684,6 +3691,13 @@ func TestReadInstallLockAndProvenanceMatches(t *testing.T) {
 				name: "policy decision has C1-only control character",
 				mutate: func(l *installLock) {
 					l.Policy.Decision = "\u0085"
+				},
+				detailPart: "policy decision must not contain C0/C1 control characters",
+			},
+			{
+				name: "policy decision has C0 NUL control character",
+				mutate: func(l *installLock) {
+					l.Policy.Decision = "\u0000"
 				},
 				detailPart: "policy decision must not contain C0/C1 control characters",
 			},
