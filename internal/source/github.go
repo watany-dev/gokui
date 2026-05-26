@@ -99,6 +99,9 @@ func ParseGitHubSource(input string) (GitHubSpec, error) {
 	if repo != strings.ToLower(repo) {
 		return GitHubSpec{}, fmt.Errorf("github source repo must be canonical lowercase")
 	}
+	if strings.HasPrefix(repo, ".") || strings.HasSuffix(repo, ".") {
+		return GitHubSpec{}, fmt.Errorf("github source repo must not start or end with dot")
+	}
 	if strings.HasSuffix(strings.ToLower(repo), ".git") {
 		return GitHubSpec{}, fmt.Errorf("github source repo must not include .git suffix")
 	}
