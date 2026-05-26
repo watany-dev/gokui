@@ -403,6 +403,7 @@ under the repository root, and must not be directory-like paths ending with `/` 
 located under `.git/`.
 `make inspect-sarif` output paths must resolve under the repository root and
 must resolve outside `.git/`.
+`make inspect-sarif` output paths must not contain `..` path segments.
 Release scripts fail closed when repository-root/output/log paths include
 symlink components, and when expected output/log files already exist.
 Evidence and SARIF outputs are created atomically and written via open file

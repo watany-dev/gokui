@@ -498,8 +498,9 @@ func TestReleaseChecklistDocumentationSync(t *testing.T) {
 	}
 	if !strings.Contains(releaseDoc, "make inspect-sarif") ||
 		!strings.Contains(releaseDoc, "output paths must resolve under the repository root") ||
-		!strings.Contains(releaseDoc, "must resolve outside `.git/`") {
-		t.Fatal("RELEASE.md should document inspect-sarif repository-root/.git output path guards")
+		!strings.Contains(releaseDoc, "must resolve outside `.git/`") ||
+		!strings.Contains(releaseDoc, "must not contain `..` path segments") {
+		t.Fatal("RELEASE.md should document inspect-sarif repository-root/.git/path-traversal output path guards")
 	}
 	if !strings.Contains(releaseDoc, "preflight checks run before format/test/race/vuln gate") {
 		t.Fatal("RELEASE.md should document release-check preflight-first execution ordering")
@@ -572,6 +573,7 @@ func TestReleaseCheckDocumentationSync(t *testing.T) {
 		"located under `.git/`",
 		"inspect-sarif` output paths must resolve under the repository root",
 		"must resolve outside `.git/`",
+		"must not contain `..` path segments",
 		"fail closed when repository-root/output/log paths include",
 		"when expected output/log files already exist",
 		"created atomically and written via open file",
@@ -860,6 +862,8 @@ func TestInspectSARIFScriptHardeningSync(t *testing.T) {
 		`if [[ "$out_path" != /* ]]; then`,
 		`out_path="$ROOT_DIR/$out_path"`,
 		`out_dir="$(dirname "$out_path")"`,
+		`assert_no_dotdot_segments()`,
+		`assert_no_dotdot_segments "$out_path" "inspect SARIF output path"`,
 		`assert_under_repo_root()`,
 		`assert_under_repo_root "$out_path" "inspect SARIF output path"`,
 		`assert_not_git_path()`,
@@ -1043,7 +1047,7 @@ func TestRoadmapReleaseEvidenceHardeningSync(t *testing.T) {
 		"automated online release evidence collection mode (includes vuln step)",
 		"release-evidence template path/output hardening (symlink path-component rejection, restrictive template-output file permissions, and staged temporary output finalized atomically)",
 		"release-evidence output/log path hardening (symlink path-component rejection, restrictive evidence/log file permissions, fail-closed output/log collision checks, staged temporary evidence/log outputs finalized atomically with collision cleanup, descriptor-backed writes, and failure-artifact retention)",
-		"inspect-sarif output path hardening (repository-root-only and outside-`.git` output enforcement, symlink path-component rejection, restrictive SARIF file permissions, fail-closed output-collision checks, and atomic file creation with descriptor-backed writes)",
+		"inspect-sarif output path hardening (repository-root-only and outside-`.git` output enforcement, `..` path-segment rejection, symlink path-component rejection, restrictive SARIF file permissions, fail-closed output-collision checks, and atomic file creation with descriptor-backed writes)",
 		"release script repository-root path hardening (reject symlinked repository-root execution paths)",
 		"release-evidence gate hardening with isolated build output (`BUILD_OUT`) and tracked-file clean-tree checks (`git status --short --untracked-files=no`)",
 		"release-check gate hardening with isolated build output (`RELEASE_CHECK_BUILD_OUT`), preflight-first execution ordering, absolute-path preflight normalization, symlink/collision fail-closed build/SARIF output guards (including non-root-path, repository-root-only outputs, `.git` path rejection, and distinct-path enforcement), machine-readable preflight/cleanup error codes, and failure-safe cleanup for build/SARIF artifacts",

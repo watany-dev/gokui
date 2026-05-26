@@ -47,3 +47,21 @@ func TestInspectSARIFScriptRejectsOutputInsideGitDir(t *testing.T) {
 		t.Fatalf("expected .git-path rejection message, got:\n%s", text)
 	}
 }
+
+func TestInspectSARIFScriptRejectsDotDotPathSegments(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("shell-script execution contract is exercised on POSIX in CI")
+	}
+
+	outPath := "../inspect-results.sarif"
+	cmd := exec.Command("bash", "../../scripts/generate-inspect-sarif.sh", outPath)
+
+	out, err := cmd.CombinedOutput()
+	if err == nil {
+		t.Fatalf("expected non-zero exit for inspect-sarif output with path traversal segment\noutput:\n%s", out)
+	}
+	text := string(out)
+	if !strings.Contains(text, "must not contain '..' path segments") {
+		t.Fatalf("expected dot-dot segment rejection message, got:\n%s", text)
+	}
+}
