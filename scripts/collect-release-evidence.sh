@@ -150,7 +150,7 @@ run_step() {
 
 run_git_clean_check() {
   local step_name="git status clean"
-  local command_text="git status --short --untracked-files=no"
+  local command_text="git status --short"
   local log_path="$LOG_DIR/${BASENAME}-git-status.log"
 
   assert_output_path_available "$log_path" "log path"
@@ -161,7 +161,7 @@ run_git_clean_check() {
   create_temp_file_for_write "$LOG_DIR" "$log_basename" tmp_log_path log_fd
 
   set +e
-  bash -lc "cd \"$ROOT_DIR\" && git status --short --untracked-files=no" >&"$log_fd" 2>&1
+  bash -lc "cd \"$ROOT_DIR\" && git status --short" >&"$log_fd" 2>&1
   local rc=$?
   set -e
 

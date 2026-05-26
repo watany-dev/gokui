@@ -472,8 +472,9 @@ func TestReleaseChecklistDocumentationSync(t *testing.T) {
 	if !strings.Contains(releaseDoc, "releases/evidence/<timestamp>-<commit>-online-audit.md") {
 		t.Fatal("RELEASE.md should describe online release evidence output path")
 	}
-	if !strings.Contains(releaseDoc, "git status --short --untracked-files=no") {
-		t.Fatal("RELEASE.md should document tracked-files clean-tree check for evidence scripts")
+	if !strings.Contains(releaseDoc, "git status --short") ||
+		!strings.Contains(releaseDoc, "tracked and untracked") {
+		t.Fatal("RELEASE.md should document tracked/untracked clean-tree check for evidence scripts")
 	}
 	if !strings.Contains(releaseDoc, ".cache/gokui-release-evidence") {
 		t.Fatal("RELEASE.md should document isolated BUILD_OUT path for evidence scripts")
@@ -585,7 +586,7 @@ func TestReleaseCheckDocumentationSync(t *testing.T) {
 		"RC_CLEANUP_REMOVE_FAILED",
 		"RC_CLEANUP_REMOVE_FAILED_SUMMARY",
 		"`Automation Error Codes` -> `release-check`",
-		"git status --short --untracked-files=no",
+		"git status --short",
 		"-offline-audit.md",
 		"-online-audit.md",
 	}
@@ -921,7 +922,7 @@ func TestReleaseEvidenceScriptExecutionContractSync(t *testing.T) {
 		`assert_output_path_available "$log_path" "log path"`,
 		`create_temp_file_for_write "$LOG_DIR" "$log_basename" tmp_log_path log_fd`,
 		`echo "- Mode: ${EVIDENCE_MODE}"`,
-		`git status --short --untracked-files=no`,
+		`git status --short`,
 		`BUILD_OUT=\"$ROOT_DIR/.cache/gokui-release-evidence\" make release-check-offline`,
 		`if [ "$WITH_VULN" -eq 1 ] && [ "$FAILED_STEPS" -eq 0 ]; then`,
 		`if [ "$FAILED_STEPS" -eq 0 ]; then`,
@@ -1049,7 +1050,7 @@ func TestRoadmapReleaseEvidenceHardeningSync(t *testing.T) {
 		"release-evidence output/log path hardening (symlink path-component rejection, restrictive evidence/log file permissions, fail-closed output/log collision checks, staged temporary evidence/log outputs finalized atomically with collision cleanup, descriptor-backed writes, and failure-artifact retention)",
 		"inspect-sarif output path hardening (repository-root-only and outside-`.git` output enforcement, `..` path-segment rejection, symlink path-component rejection, restrictive SARIF file permissions, fail-closed output-collision checks, and atomic file creation with descriptor-backed writes)",
 		"release script repository-root path hardening (reject symlinked repository-root execution paths)",
-		"release-evidence gate hardening with isolated build output (`BUILD_OUT`) and tracked-file clean-tree checks (`git status --short --untracked-files=no`)",
+		"release-evidence gate hardening with isolated build output (`BUILD_OUT`) and tracked/untracked clean-tree checks (`git status --short`)",
 		"release-check gate hardening with isolated build output (`RELEASE_CHECK_BUILD_OUT`), preflight-first execution ordering, absolute-path preflight normalization, symlink/collision fail-closed build/SARIF output guards (including non-root-path, repository-root-only outputs, `.git` path rejection, and distinct-path enforcement), machine-readable preflight/cleanup error codes, and failure-safe cleanup for build/SARIF artifacts",
 		"release-evidence metadata mode annotation (`offline|online`) and mode-specific evidence filename suffixes (`-offline-audit.md` / `-online-audit.md`)",
 	}

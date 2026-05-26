@@ -110,8 +110,8 @@ Record release evidence using:
 - `make release-evidence-offline` (runs offline gate and creates `releases/evidence/<timestamp>-<commit>-offline-audit.md` with step logs)
 - `make release-evidence-online` (runs offline gate + vuln check and creates `releases/evidence/<timestamp>-<commit>-online-audit.md` with step logs)
 
-For evidence scripts, clean-tree checks are tracked-files only
-(`git status --short --untracked-files=no`), and build output is isolated to
+For evidence scripts, clean-tree checks include tracked and untracked
+(non-ignored) files (`git status --short`), and build output is isolated to
 `.cache/gokui-release-evidence`.
 Evidence file names end with `-offline-audit.md` or `-online-audit.md`
 depending on whether `--with-vuln` is enabled.
