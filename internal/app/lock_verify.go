@@ -751,14 +751,14 @@ func verifyLockSourceMetadata(skillPath string, lock installLock) (bool, string)
 
 func verifyLockStructure(lock installLock) (bool, string) {
 	trimmedName := strings.TrimSpace(lock.Name)
-	if trimmedName == "" {
-		return false, "lock name is empty"
-	}
 	if strings.IndexFunc(lock.Name, isC0OrC1ControlRune) >= 0 {
 		return false, "lock name must not contain C0/C1 control characters"
 	}
 	if containsSeverityOverrideDisallowedUnicode(lock.Name) {
 		return false, "lock name must not contain Unicode bidi, zero-width, tag, or variation-selector characters"
+	}
+	if trimmedName == "" {
+		return false, "lock name is empty"
 	}
 	if trimmedName != lock.Name {
 		return false, "lock name must not contain leading or trailing whitespace"

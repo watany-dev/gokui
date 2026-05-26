@@ -1219,14 +1219,14 @@ func validateUpdateLockEnvelope(lock installLock, expectedSkillName string) erro
 		return fmt.Errorf("unsupported lock schema: %s", lock.Schema)
 	}
 	trimmedName := strings.TrimSpace(lock.Name)
-	if trimmedName == "" {
-		return fmt.Errorf("lock name is empty")
-	}
 	if strings.IndexFunc(lock.Name, isC0OrC1ControlRune) >= 0 {
 		return fmt.Errorf("lock name must not contain C0/C1 control characters")
 	}
 	if containsSeverityOverrideDisallowedUnicode(lock.Name) {
 		return fmt.Errorf("lock name must not contain Unicode bidi, zero-width, tag, or variation-selector characters")
+	}
+	if trimmedName == "" {
+		return fmt.Errorf("lock name is empty")
 	}
 	if trimmedName != lock.Name {
 		return fmt.Errorf("lock name must not contain leading or trailing whitespace")
