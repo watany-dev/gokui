@@ -1944,6 +1944,13 @@ func TestVerifyInstallReportValidationBranches(t *testing.T) {
 			detailHas: "decision must not contain C0/C1 control characters",
 		},
 		{
+			name: "decision has C0/C1 control character at edge",
+			mutate: func(r *installReport) {
+				r.Decision = "\u0085PASS"
+			},
+			detailHas: "decision must not contain C0/C1 control characters",
+		},
+		{
 			name: "decision has unicode obfuscation character",
 			mutate: func(r *installReport) {
 				r.Decision = "PASS\u200d"

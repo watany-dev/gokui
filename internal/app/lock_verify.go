@@ -952,14 +952,14 @@ func verifyInstallReport(skillPath string, lock installLock) (bool, string) {
 	if strings.TrimSpace(report.Decision) == "" {
 		return false, "install report decision is empty"
 	}
-	if strings.TrimSpace(report.Decision) != report.Decision {
-		return false, "install report decision must not contain leading or trailing whitespace"
-	}
 	if strings.IndexFunc(report.Decision, isC0OrC1ControlRune) >= 0 {
 		return false, "install report decision must not contain C0/C1 control characters"
 	}
 	if containsSeverityOverrideDisallowedUnicode(report.Decision) {
 		return false, "install report decision must not contain Unicode bidi, zero-width, tag, or variation-selector characters"
+	}
+	if strings.TrimSpace(report.Decision) != report.Decision {
+		return false, "install report decision must not contain leading or trailing whitespace"
 	}
 	if !strings.EqualFold(report.Decision, lock.Policy.Decision) {
 		return false, "install report decision does not match lock policy decision"
