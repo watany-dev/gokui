@@ -180,11 +180,16 @@ func isWindowsReservedPathSegment(segment string) bool {
 	if dot := strings.IndexByte(base, '.'); dot >= 0 {
 		base = base[:dot]
 	}
+	base = normalizeWindowsSuperscriptDigits(base)
 	switch base {
 	case "con", "prn", "aux", "nul", "conin$", "conout$":
 		return true
 	}
 	return comLptSuffixPattern.MatchString(base)
+}
+
+func normalizeWindowsSuperscriptDigits(s string) string {
+	return strings.NewReplacer("¹", "1", "²", "2", "³", "3").Replace(s)
 }
 
 // IsCommitPinnedRef returns true when ref looks like a commit SHA.

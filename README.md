@@ -322,7 +322,7 @@ Each `//path/to/skill` segment must not have leading/trailing whitespace or a
 trailing dot (`.`).
 The `//path/to/skill` segment must not include Windows reserved device names
 (`con`, `prn`, `aux`, `nul`, `com1..com9`, `lpt1..lpt9`, `conin$`, `conout$`)
-as path segments.
+as path segments (including superscript-digit variants like `COM¹`/`LPT²`).
 `install` and `update` validate fetched source metadata for GitHub-origin
 skills.
 Parser bounds are also enforced for overall source length and owner/repo/path/ref

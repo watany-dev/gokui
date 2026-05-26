@@ -1067,6 +1067,10 @@ func TestVerifyLockSourceChecks(t *testing.T) {
 	if ok, _ := verifyLockSource(lock); ok {
 		t.Fatal("github source input with reserved device path segment should fail")
 	}
+	lock.Source.Input = "github:org/repo//skills/COM¹.txt@abc1234a4b5c6d7e8f901234567890abcdef1234"
+	if ok, _ := verifyLockSource(lock); ok {
+		t.Fatal("github source input with reserved superscript-device path segment should fail")
+	}
 	lock.Source.Input = "github:org/repo//skills/ demo@abc1234a4b5c6d7e8f901234567890abcdef1234"
 	if ok, _ := verifyLockSource(lock); ok {
 		t.Fatal("github source input with path-segment leading space should fail")
