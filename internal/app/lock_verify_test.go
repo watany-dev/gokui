@@ -1839,6 +1839,13 @@ func TestVerifyInstallReportValidationBranches(t *testing.T) {
 			detailHas: "source input must not contain C0/C1 control characters",
 		},
 		{
+			name: "source input has C0/C1 control character at edge",
+			mutate: func(r *installReport) {
+				r.Source.Input = "\u0085/tmp/src"
+			},
+			detailHas: "source input must not contain C0/C1 control characters",
+		},
+		{
 			name: "source input has unicode obfuscation character",
 			mutate: func(r *installReport) {
 				r.Source.Input = "/tmp/src\u200d"
@@ -1863,6 +1870,13 @@ func TestVerifyInstallReportValidationBranches(t *testing.T) {
 			name: "source kind has C0/C1 control character",
 			mutate: func(r *installReport) {
 				r.Source.Kind = "local-\u008fdir"
+			},
+			detailHas: "source kind must not contain C0/C1 control characters",
+		},
+		{
+			name: "source kind has C0/C1 control character at edge",
+			mutate: func(r *installReport) {
+				r.Source.Kind = "\u0085local-dir"
 			},
 			detailHas: "source kind must not contain C0/C1 control characters",
 		},
