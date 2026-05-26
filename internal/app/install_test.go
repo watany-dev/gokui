@@ -3616,6 +3616,13 @@ func TestReadInstallLockAndProvenanceMatches(t *testing.T) {
 				detailPart: "severity_overrides is invalid",
 			},
 			{
+				name: "severity override approved_by has surrounding whitespace",
+				mutate: func(l *installLock) {
+					l.Policy.SeverityOverrides[0].ApprovedBy = " reviewer "
+				},
+				detailPart: "severity_overrides is invalid",
+			},
+			{
 				name: "negative findings summary",
 				mutate: func(l *installLock) {
 					l.Findings.High = -1

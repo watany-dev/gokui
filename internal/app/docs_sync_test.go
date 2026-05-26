@@ -669,6 +669,30 @@ func TestSeverityOverridesDuplicateRuleIDHardeningDocumentationSync(t *testing.T
 	}
 }
 
+func TestSeverityOverridesApproverJustificationWhitespaceHardeningDocumentationSync(t *testing.T) {
+	readmeBytes, err := os.ReadFile("../../README.md")
+	if err != nil {
+		t.Fatalf("failed to read README.md: %v", err)
+	}
+	readme := string(readmeBytes)
+	roadmapBytes, err := os.ReadFile("../../ROADMAP.md")
+	if err != nil {
+		t.Fatalf("failed to read ROADMAP.md: %v", err)
+	}
+	roadmap := string(roadmapBytes)
+
+	requiredReadme := "Lock/install report `severity_overrides` `justification`/`approved_by` fields"
+	requiredReadmeContinuation := "must not contain leading or trailing whitespace."
+	if !strings.Contains(readme, requiredReadme) || !strings.Contains(readme, requiredReadmeContinuation) {
+		t.Fatalf("README missing severity_overrides approver/justification whitespace hardening line: %q ... %q", requiredReadme, requiredReadmeContinuation)
+	}
+
+	requiredRoadmap := "Lock/install-report `severity_overrides` `justification`/`approved_by` validation hardening with surrounding-whitespace rejection"
+	if !strings.Contains(roadmap, requiredRoadmap) {
+		t.Fatalf("ROADMAP missing severity_overrides approver/justification whitespace hardening line: %q", requiredRoadmap)
+	}
+}
+
 func TestLockfileExampleSchemaSync(t *testing.T) {
 	readmeBytes, err := os.ReadFile("../../README.md")
 	if err != nil {

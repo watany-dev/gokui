@@ -1064,14 +1064,22 @@ func validateSeverityOverrideAudit(overrides []severityOverrideAudit) error {
 		if strings.IndexFunc(override.Justification, isC0OrC1ControlRune) >= 0 {
 			return fmt.Errorf("entry %d: justification must not contain C0/C1 control characters", idx)
 		}
-		if strings.TrimSpace(override.Justification) == "" {
+		justification := strings.TrimSpace(override.Justification)
+		if justification == "" {
 			return fmt.Errorf("entry %d: justification is empty", idx)
+		}
+		if justification != override.Justification {
+			return fmt.Errorf("entry %d: justification must not contain leading or trailing whitespace", idx)
 		}
 		if strings.IndexFunc(override.ApprovedBy, isC0OrC1ControlRune) >= 0 {
 			return fmt.Errorf("entry %d: approved_by must not contain C0/C1 control characters", idx)
 		}
-		if strings.TrimSpace(override.ApprovedBy) == "" {
+		approvedBy := strings.TrimSpace(override.ApprovedBy)
+		if approvedBy == "" {
 			return fmt.Errorf("entry %d: approved_by is empty", idx)
+		}
+		if approvedBy != override.ApprovedBy {
+			return fmt.Errorf("entry %d: approved_by must not contain leading or trailing whitespace", idx)
 		}
 		if strings.IndexFunc(override.Source, isC0OrC1ControlRune) >= 0 {
 			return fmt.Errorf("entry %d: source must not contain C0/C1 control characters", idx)

@@ -2303,6 +2303,19 @@ func TestSeverityOverrideAuditHelpers(t *testing.T) {
 				detailPart: "justification must not contain C0/C1 control characters",
 			},
 			{
+				name: "justification has surrounding whitespace",
+				override: severityOverrideAudit{
+					RuleID:            "PROMPT_OVERRIDE_LANGUAGE",
+					PreviousSeverity:  "high",
+					EffectiveSeverity: "medium",
+					Justification:     " approved ",
+					ApprovedBy:        "y",
+					Source:            "policy-file",
+					AppliedAt:         "2026-05-24T00:00:00Z",
+				},
+				detailPart: "justification must not contain leading or trailing whitespace",
+			},
+			{
 				name: "empty approved_by",
 				override: severityOverrideAudit{
 					RuleID:            "PROMPT_OVERRIDE_LANGUAGE",
@@ -2326,6 +2339,19 @@ func TestSeverityOverrideAuditHelpers(t *testing.T) {
 					AppliedAt:         "2026-05-24T00:00:00Z",
 				},
 				detailPart: "approved_by must not contain C0/C1 control characters",
+			},
+			{
+				name: "approved_by has surrounding whitespace",
+				override: severityOverrideAudit{
+					RuleID:            "PROMPT_OVERRIDE_LANGUAGE",
+					PreviousSeverity:  "high",
+					EffectiveSeverity: "medium",
+					Justification:     "x",
+					ApprovedBy:        " reviewer ",
+					Source:            "policy-file",
+					AppliedAt:         "2026-05-24T00:00:00Z",
+				},
+				detailPart: "approved_by must not contain leading or trailing whitespace",
 			},
 			{
 				name: "empty source",
