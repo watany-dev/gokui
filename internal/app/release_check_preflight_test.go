@@ -331,6 +331,33 @@ func TestBetaCheckPreflightRejectsBuildOutputDotSegmentsFromBetaVars(t *testing.
 	}
 }
 
+func TestBetaCheckPreflightRejectsSARIFOutputEmptyPathSegmentsFromBetaVars(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("preflight path contracts are exercised on POSIX in CI")
+	}
+
+	betaBuildOut := releaseCheckRepoLocalPath(t, "beta-build.out")
+	betaSarifOut := ".cache//beta-inspect.sarif"
+	releaseBuildOut := releaseCheckRepoLocalPath(t, "release-build.out")
+	releaseSarifOut := releaseCheckRepoLocalPath(t, "release-inspect.sarif")
+
+	exitCode, out := runBetaCheckPreflight(t, map[string]string{
+		"BETA_CHECK_BUILD_OUT":    betaBuildOut,
+		"BETA_CHECK_SARIF_OUT":    betaSarifOut,
+		"RELEASE_CHECK_BUILD_OUT": releaseBuildOut,
+		"RELEASE_CHECK_SARIF_OUT": releaseSarifOut,
+	})
+	if exitCode == 0 {
+		t.Fatalf("expected non-zero exit for beta SARIF output with empty path segment\noutput:\n%s", out)
+	}
+	if !strings.Contains(out, "[RC_PREFLIGHT_SARIF_OUT_INVALID]") {
+		t.Fatalf("expected SARIF output empty-segment rejection code, got:\n%s", out)
+	}
+	if !strings.Contains(out, "SARIF output path must not contain empty path segments") {
+		t.Fatalf("expected SARIF output empty-segment rejection message, got:\n%s", out)
+	}
+}
+
 func TestBetaCheckPreflightCanRunConsecutively(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("beta-check preflight contract is exercised on POSIX in CI")
