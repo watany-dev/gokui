@@ -358,6 +358,44 @@ func TestBetaCheckPreflightRejectsSARIFOutputEmptyPathSegmentsFromBetaVars(t *te
 	}
 }
 
+func TestBetaCheckPreflightRejectsSARIFOutputDotSegmentsFromBetaVars(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("preflight path contracts are exercised on POSIX in CI")
+	}
+
+	betaBuildOut := releaseCheckRepoLocalPath(t, "beta-build.out")
+	releaseBuildOut := releaseCheckRepoLocalPath(t, "release-build.out")
+	releaseSarifOut := releaseCheckRepoLocalPath(t, "release-inspect.sarif")
+
+	testCases := []struct {
+		name         string
+		betaSarifOut string
+	}{
+		{name: "dot segment in middle", betaSarifOut: ".cache/./beta-inspect.sarif"},
+		{name: "dotdot segment in middle", betaSarifOut: ".cache/tmp/../beta-inspect.sarif"},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			exitCode, out := runBetaCheckPreflight(t, map[string]string{
+				"BETA_CHECK_BUILD_OUT":    betaBuildOut,
+				"BETA_CHECK_SARIF_OUT":    tc.betaSarifOut,
+				"RELEASE_CHECK_BUILD_OUT": releaseBuildOut,
+				"RELEASE_CHECK_SARIF_OUT": releaseSarifOut,
+			})
+			if exitCode == 0 {
+				t.Fatalf("expected non-zero exit for beta SARIF output path with dot/dotdot segment %q\noutput:\n%s", tc.betaSarifOut, out)
+			}
+			if !strings.Contains(out, "[RC_PREFLIGHT_SARIF_OUT_INVALID]") {
+				t.Fatalf("expected SARIF output dot/dotdot-segment rejection code, got:\n%s", out)
+			}
+			if !strings.Contains(out, "SARIF output path must not contain '.' or '..' path segments") {
+				t.Fatalf("expected SARIF output dot/dotdot-segment rejection message, got:\n%s", out)
+			}
+		})
+	}
+}
+
 func TestBetaCheckPreflightCanRunConsecutively(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("beta-check preflight contract is exercised on POSIX in CI")
