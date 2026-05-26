@@ -213,7 +213,7 @@ func validateGitHubArchiveResponseHeaders(resp *http.Response) error {
 		return fmt.Errorf("%s: github archive response has invalid content type: %s", ruleGitHubArchiveType, contentType)
 	}
 	switch strings.ToLower(mediaType) {
-	case "application/x-gzip", "application/gzip", "application/octet-stream", "application/x-tar", "application/tar":
+	case "application/x-gzip", "application/gzip", "application/octet-stream":
 		return nil
 	default:
 		return fmt.Errorf("%s: github archive response has unsupported content type: %s", ruleGitHubArchiveType, mediaType)

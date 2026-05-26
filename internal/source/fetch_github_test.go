@@ -587,14 +587,27 @@ func TestValidateGitHubArchiveResponseHeaders(t *testing.T) {
 			"application/x-gzip",
 			"application/gzip",
 			"application/octet-stream",
-			"application/x-tar",
-			"application/tar; charset=binary",
 		}
 		for _, ct := range allowed {
 			resp := httpResponse(http.StatusOK, []byte("x"))
 			resp.Header.Set("Content-Type", ct)
 			if err := validateGitHubArchiveResponseHeaders(resp); err != nil {
 				t.Fatalf("expected content type %q to pass, got %v", ct, err)
+			}
+		}
+	})
+
+	t.Run("rejects tar content types", func(t *testing.T) {
+		rejected := []string{
+			"application/x-tar",
+			"application/tar; charset=binary",
+		}
+		for _, ct := range rejected {
+			resp := httpResponse(http.StatusOK, []byte("x"))
+			resp.Header.Set("Content-Type", ct)
+			err := validateGitHubArchiveResponseHeaders(resp)
+			if err == nil || !strings.Contains(err.Error(), ruleGitHubArchiveType) {
+				t.Fatalf("expected content type %q to be rejected, got %v", ct, err)
 			}
 		}
 	})
