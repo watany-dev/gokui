@@ -2105,7 +2105,7 @@ func TestReleaseEvidenceScriptExecutionContractSync(t *testing.T) {
 		"create_temp_file_for_write()",
 		"assert_output_path_available()",
 		`tmp_path="$(mktemp "$dir/.${base}.tmp.XXXXXX")"`,
-		`exec {fd}>>"$tmp_path"`,
+		`eval "exec ${EVIDENCE_FD}>>\"$TMP_EVIDENCE_PATH\""`,
 		`assert_no_symlink_components "$ROOT_DIR" "repository root path"`,
 		`EVIDENCE_GOCACHE="${GOCACHE:-$ROOT_DIR/.cache/go-build}"`,
 		`EVIDENCE_GOMODCACHE="${GOMODCACHE:-$ROOT_DIR/.cache/gomod}"`,
@@ -2126,9 +2126,10 @@ func TestReleaseEvidenceScriptExecutionContractSync(t *testing.T) {
 		`COMMIT_SHA="$(resolve_commit_sha)"`,
 		`git HEAD commit SHA must be lowercase 40-hex`,
 		`assert_output_path_available "$OUT_PATH" "evidence path"`,
-		`create_temp_file_for_write "$OUT_DIR" "$OUT_BASENAME" TMP_EVIDENCE_PATH EVIDENCE_FD`,
+		`create_temp_file_for_write "$OUT_DIR" "$OUT_BASENAME" TMP_EVIDENCE_PATH`,
 		`assert_output_path_available "$log_path" "log path"`,
-		`create_temp_file_for_write "$LOG_DIR" "$log_basename" tmp_log_path log_fd`,
+		`create_temp_file_for_write "$LOG_DIR" "$log_basename" tmp_log_path`,
+		`eval "exec ${LOG_FD}>>\"$tmp_log_path\""`,
 		`echo "- Mode: ${EVIDENCE_MODE}"`,
 		`echo "- GOCACHE: ${EVIDENCE_GOCACHE}"`,
 		`echo "- GOMODCACHE: ${EVIDENCE_GOMODCACHE}"`,
@@ -2151,7 +2152,7 @@ func TestReleaseEvidenceScriptExecutionContractSync(t *testing.T) {
 		`mv -n "$TMP_EVIDENCE_PATH" "$OUT_PATH"`,
 		`rm -f -- "$tmp_log_path"`,
 		`rm -f -- "$TMP_EVIDENCE_PATH"`,
-		`exec {EVIDENCE_FD}>&-`,
+		`eval "exec ${EVIDENCE_FD}>&-"`,
 	}
 	for _, line := range required {
 		if !strings.Contains(script, line) {
