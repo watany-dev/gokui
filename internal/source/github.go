@@ -65,6 +65,12 @@ func ParseGitHubSource(input string) (GitHubSpec, error) {
 	if containsUnicodeBidiControl(ref) {
 		return GitHubSpec{}, fmt.Errorf("github source ref must not contain Unicode bidi control characters")
 	}
+	if containsUnicodeTagCharacter(ref) {
+		return GitHubSpec{}, fmt.Errorf("github source ref must not contain Unicode tag characters")
+	}
+	if containsVariationSelectorCharacter(ref) {
+		return GitHubSpec{}, fmt.Errorf("github source ref must not contain variation selector characters")
+	}
 	if commitRefHexPattern.MatchString(ref) && !commitRefPattern.MatchString(ref) {
 		return GitHubSpec{}, fmt.Errorf("github source commit ref must be canonical lowercase 40-hex")
 	}
@@ -159,6 +165,12 @@ func normalizeGitHubPath(p string) (string, error) {
 	if containsUnicodeBidiControl(raw) {
 		return "", fmt.Errorf("github source path must not contain Unicode bidi control characters")
 	}
+	if containsUnicodeTagCharacter(raw) {
+		return "", fmt.Errorf("github source path must not contain Unicode tag characters")
+	}
+	if containsVariationSelectorCharacter(raw) {
+		return "", fmt.Errorf("github source path must not contain variation selector characters")
+	}
 	if strings.HasPrefix(raw, "/") {
 		return "", fmt.Errorf("github source path must be relative")
 	}
@@ -249,6 +261,24 @@ func containsZeroWidthCharacter(s string) bool {
 func containsUnicodeWhitespace(s string) bool {
 	for _, r := range s {
 		if unicode.IsSpace(r) {
+			return true
+		}
+	}
+	return false
+}
+
+func containsUnicodeTagCharacter(s string) bool {
+	for _, r := range s {
+		if r >= 0xE0000 && r <= 0xE007F {
+			return true
+		}
+	}
+	return false
+}
+
+func containsVariationSelectorCharacter(s string) bool {
+	for _, r := range s {
+		if (r >= 0xFE00 && r <= 0xFE0F) || (r >= 0xE0100 && r <= 0xE01EF) {
 			return true
 		}
 	}

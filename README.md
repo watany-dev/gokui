@@ -317,6 +317,7 @@ Commit-pinned refs must use canonical lowercase 40-hex SHA form.
 Commit-pinned refs must not include surrounding whitespace.
 Ref values must not contain Unicode whitespace, zero-width, or bidi control
 characters.
+Ref values must not contain Unicode tag or variation-selector characters.
 The `//path/to/skill` segment must not contain surrounding whitespace.
 The `//path/to/skill` segment must not contain `@`.
 The `//path/to/skill` segment must not contain `:`.
@@ -325,6 +326,8 @@ trailing dot (`.`).
 The `//path/to/skill` segment must not contain Unicode bidi control characters.
 The `//path/to/skill` segment must not contain zero-width characters.
 The `//path/to/skill` segment must not contain whitespace characters.
+The `//path/to/skill` segment must not contain Unicode tag or
+variation-selector characters.
 The `//path/to/skill` segment must not include Windows reserved device names
 (`con`, `prn`, `aux`, `nul`, `com1..com9`, `lpt1..lpt9`, `conin$`, `conout$`)
 as path segments (including superscript-digit variants like `COM¹`/`LPT²`).

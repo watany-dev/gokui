@@ -64,6 +64,8 @@ func TestParseGitHubSource(t *testing.T) {
 			"github:owner/repo//skills/demo.@ref",
 			"github:owner/repo//skills/\u202edemo@ref",
 			"github:owner/repo//skills/\u200bdemo@ref",
+			"github:owner/repo//skills/\U000E0001demo@ref",
+			"github:owner/repo//skills/\ufe0fdemo@ref",
 			`github:owner/repo//skills\demo@ref`,
 			"github:owner/repo//path@ 8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
 			"github:owner/repo//path@8f3c2d1a4b5c6d7e8f901234567890abcdef1234 ",
@@ -71,6 +73,8 @@ func TestParseGitHubSource(t *testing.T) {
 			"github:owner/repo//path@8f3c2d1a4b5c6d7e8f90\u00a01234567890abcdef1234",
 			"github:owner/repo//path@8f3c2d1a4b5c6d7e8f90\u200b1234567890abcdef1234",
 			"github:owner/repo//path@8f3c2d1a4b5c6d7e8f90\u202e1234567890abcdef1234",
+			"github:owner/repo//path@8f3c2d1a4b5c6d7e8f90\U000E00011234567890abcdef1234",
+			"github:owner/repo//path@8f3c2d1a4b5c6d7e8f90\ufe0f1234567890abcdef1234",
 			"github:owner/repo//path@\n8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
 			"github:owner/repo//skills/\x1fhelper@8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
 			"github:owner\x7f/repo//path@8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
@@ -230,6 +234,24 @@ func TestNormalizeGitHubPath(t *testing.T) {
 		for _, in := range cases {
 			if _, err := normalizeGitHubPath(in); err == nil {
 				t.Fatalf("expected path error for whitespace path %q", in)
+			}
+		}
+	})
+
+	t.Run("rejects Unicode tag characters in path", func(t *testing.T) {
+		cases := []string{"skills/\U000E0001demo", "skills/demo\U000E007F"}
+		for _, in := range cases {
+			if _, err := normalizeGitHubPath(in); err == nil {
+				t.Fatalf("expected path error for Unicode tag path %q", in)
+			}
+		}
+	})
+
+	t.Run("rejects variation selector characters in path", func(t *testing.T) {
+		cases := []string{"skills/\ufe0fdemo", "skills/demo\U000E0100"}
+		for _, in := range cases {
+			if _, err := normalizeGitHubPath(in); err == nil {
+				t.Fatalf("expected path error for variation-selector path %q", in)
 			}
 		}
 	})
