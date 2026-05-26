@@ -1984,6 +1984,13 @@ func TestVerifyInstallReportValidationBranches(t *testing.T) {
 			detailHas: "source input must not contain C0/C1 control characters",
 		},
 		{
+			name: "source input has C0 NUL control character only",
+			mutate: func(r *installReport) {
+				r.Source.Input = "\u0000"
+			},
+			detailHas: "source input must not contain C0/C1 control characters",
+		},
+		{
 			name: "source input has DEL control character only",
 			mutate: func(r *installReport) {
 				r.Source.Input = "\u007f"
@@ -2036,6 +2043,13 @@ func TestVerifyInstallReportValidationBranches(t *testing.T) {
 			name: "source kind has C0/C1 control character only",
 			mutate: func(r *installReport) {
 				r.Source.Kind = "\u0085"
+			},
+			detailHas: "source kind must not contain C0/C1 control characters",
+		},
+		{
+			name: "source kind has C0 NUL control character only",
+			mutate: func(r *installReport) {
+				r.Source.Kind = "\u0000"
 			},
 			detailHas: "source kind must not contain C0/C1 control characters",
 		},
@@ -2103,6 +2117,13 @@ func TestVerifyInstallReportValidationBranches(t *testing.T) {
 			detailHas: "policy profile must not contain C0/C1 control characters",
 		},
 		{
+			name: "profile has C0 NUL control character only",
+			mutate: func(r *installReport) {
+				r.PolicyProfile = "\u0000"
+			},
+			detailHas: "policy profile must not contain C0/C1 control characters",
+		},
+		{
 			name: "profile has DEL control character only",
 			mutate: func(r *installReport) {
 				r.PolicyProfile = "\u007f"
@@ -2162,6 +2183,13 @@ func TestVerifyInstallReportValidationBranches(t *testing.T) {
 			name: "decision has C0/C1 control character only",
 			mutate: func(r *installReport) {
 				r.Decision = "\u0085"
+			},
+			detailHas: "decision must not contain C0/C1 control characters",
+		},
+		{
+			name: "decision has C0 NUL control character only",
+			mutate: func(r *installReport) {
+				r.Decision = "\u0000"
 			},
 			detailHas: "decision must not contain C0/C1 control characters",
 		},
@@ -2232,6 +2260,13 @@ func TestVerifyInstallReportValidationBranches(t *testing.T) {
 			name: "installed path has C0/C1 control character only",
 			mutate: func(r *installReport) {
 				r.InstalledPath = "\u0085"
+			},
+			detailHas: "installed path must not contain C0/C1 control characters",
+		},
+		{
+			name: "installed path has C0 NUL control character only",
+			mutate: func(r *installReport) {
+				r.InstalledPath = "\u0000"
 			},
 			detailHas: "installed path must not contain C0/C1 control characters",
 		},
