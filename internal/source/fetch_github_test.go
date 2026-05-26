@@ -79,6 +79,19 @@ func TestFetchGitHubSkillErrors(t *testing.T) {
 		}
 	})
 
+	t.Run("rejects whitespace-padded commit ref", func(t *testing.T) {
+		spec := GitHubSpec{
+			Owner: "o",
+			Repo:  "r",
+			Path:  "skills/x",
+			Ref:   " 8f3c2d1a4b5c6d7e8f901234567890abcdef1234 ",
+		}
+		_, _, err := FetchGitHubSkill(spec)
+		if err == nil || !strings.Contains(err.Error(), "commit-pinned") {
+			t.Fatalf("expected commit-pinned error for whitespace-padded ref, got %v", err)
+		}
+	})
+
 	t.Run("handles non-200 response", func(t *testing.T) {
 		githubCodeloadBaseURL = "https://mock.codeload.local"
 		githubHTTPClient = &http.Client{

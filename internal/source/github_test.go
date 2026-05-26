@@ -196,17 +196,19 @@ func TestIsCommitPinnedRef(t *testing.T) {
 	if IsCommitPinnedRef("8f3c2z1") {
 		t.Fatal("non-hex ref should not be pinned")
 	}
+	if IsCommitPinnedRef(" 8f3c2d1a4b5c6d7e8f901234567890abcdef1234 ") {
+		t.Fatal("whitespace-padded SHA should not be pinned")
+	}
 }
 
 func TestIsCommitPinnedRefProperty(t *testing.T) {
 	hex40 := regexp.MustCompile(`^[0-9a-f]{40}$`)
 	prop := func(raw string) bool {
 		got := IsCommitPinnedRef(raw)
-		trimmed := strings.TrimSpace(raw)
 		if got {
-			return hex40.MatchString(trimmed)
+			return hex40.MatchString(raw)
 		}
-		if hex40.MatchString(trimmed) {
+		if hex40.MatchString(raw) {
 			return false
 		}
 		return true

@@ -155,7 +155,7 @@ func normalizeGitHubPath(p string) (string, error) {
 
 // IsCommitPinnedRef returns true when ref looks like a commit SHA.
 func IsCommitPinnedRef(ref string) bool {
-	return commitRefPattern.MatchString(strings.TrimSpace(ref))
+	return commitRefPattern.MatchString(ref)
 }
 
 func containsASCIIControlCharacters(s string) bool {
