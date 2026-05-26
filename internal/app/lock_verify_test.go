@@ -2426,6 +2426,13 @@ func TestVerifyLockStructureValidationBranches(t *testing.T) {
 			detailIn: "name must not contain C0/C1 control characters",
 		},
 		{
+			name: "name has C0 NUL control character only",
+			mutate: func(l *installLock) {
+				l.Name = "\u0000"
+			},
+			detailIn: "name must not contain C0/C1 control characters",
+		},
+		{
 			name: "name has DEL control character only",
 			mutate: func(l *installLock) {
 				l.Name = "\u007f"
@@ -2471,6 +2478,13 @@ func TestVerifyLockStructureValidationBranches(t *testing.T) {
 			name: "installed_at has C0/C1 control character only",
 			mutate: func(l *installLock) {
 				l.InstalledAt = "\u0085"
+			},
+			detailIn: "installed_at must not contain C0/C1 control characters",
+		},
+		{
+			name: "installed_at has C0 NUL control character only",
+			mutate: func(l *installLock) {
+				l.InstalledAt = "\u0000"
 			},
 			detailIn: "installed_at must not contain C0/C1 control characters",
 		},
@@ -2538,6 +2552,13 @@ func TestVerifyLockStructureValidationBranches(t *testing.T) {
 			detailIn: "policy profile must not contain C0/C1 control characters",
 		},
 		{
+			name: "policy profile has C0 NUL control character only",
+			mutate: func(l *installLock) {
+				l.Policy.Profile = "\u0000"
+			},
+			detailIn: "policy profile must not contain C0/C1 control characters",
+		},
+		{
 			name: "policy profile has DEL control character only",
 			mutate: func(l *installLock) {
 				l.Policy.Profile = "\u007f"
@@ -2601,6 +2622,13 @@ func TestVerifyLockStructureValidationBranches(t *testing.T) {
 			detailIn: "lock policy decision must not contain C0/C1 control characters",
 		},
 		{
+			name: "policy decision has C0 NUL control character only",
+			mutate: func(l *installLock) {
+				l.Policy.Decision = "\u0000"
+			},
+			detailIn: "lock policy decision must not contain C0/C1 control characters",
+		},
+		{
 			name: "policy decision has DEL control character only",
 			mutate: func(l *installLock) {
 				l.Policy.Decision = "\u007f"
@@ -2660,6 +2688,13 @@ func TestVerifyLockStructureValidationBranches(t *testing.T) {
 			name: "file path has C0/C1 control character only",
 			mutate: func(l *installLock) {
 				l.Skill.Files[0].Path = "\u0085"
+			},
+			detailIn: "file path is invalid",
+		},
+		{
+			name: "file path has C0 NUL control character only",
+			mutate: func(l *installLock) {
+				l.Skill.Files[0].Path = "\u0000"
 			},
 			detailIn: "file path is invalid",
 		},
