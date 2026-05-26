@@ -407,6 +407,8 @@ Release-check build/SARIF output paths must not contain empty path segments
 (for example `...//...`).
 Release-check build/SARIF output paths must not include leading or trailing
 whitespace.
+Release-check build/SARIF output paths must not contain ASCII control
+characters.
 `RELEASE_CHECK_SARIF_OUT` must end with `.sarif`.
 `make inspect-sarif` output paths must resolve under the repository root and
 must resolve outside `.git/`.
@@ -620,8 +622,8 @@ finding changes with new URL/executable/file-delta/override-delta signals.
 
 | error_code | Meaning |
 | --- | --- |
-| `RC_PREFLIGHT_BUILD_OUT_INVALID` | `RELEASE_CHECK_BUILD_OUT` is root-like (`/`, `.`, empty), ends with `/`, includes leading/trailing whitespace, contains empty/`.`/`..` path segments, resolves outside the repository root, or resolves under `.git/` |
-| `RC_PREFLIGHT_SARIF_OUT_INVALID` | `RELEASE_CHECK_SARIF_OUT` is root-like (`/`, `.`, empty), ends with `/`, includes leading/trailing whitespace, does not end with `.sarif`, contains empty/`.`/`..` path segments, resolves outside the repository root, or resolves under `.git/` |
+| `RC_PREFLIGHT_BUILD_OUT_INVALID` | `RELEASE_CHECK_BUILD_OUT` is root-like (`/`, `.`, empty), ends with `/`, includes leading/trailing whitespace, contains ASCII control characters, contains empty/`.`/`..` path segments, resolves outside the repository root, or resolves under `.git/` |
+| `RC_PREFLIGHT_SARIF_OUT_INVALID` | `RELEASE_CHECK_SARIF_OUT` is root-like (`/`, `.`, empty), ends with `/`, includes leading/trailing whitespace, contains ASCII control characters, does not end with `.sarif`, contains empty/`.`/`..` path segments, resolves outside the repository root, or resolves under `.git/` |
 | `RC_PREFLIGHT_BUILD_OUT_SYMLINK` | Build output path or ancestor contains a symlink component |
 | `RC_PREFLIGHT_SARIF_OUT_SYMLINK` | SARIF output path or ancestor contains a symlink component |
 | `RC_PREFLIGHT_OUTPUT_PATH_CONFLICT` | Build and SARIF outputs resolve to the same absolute path |

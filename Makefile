@@ -152,6 +152,15 @@ release-check-preflight:
 			;; \
 		esac; \
 	}; \
+	assert_no_control_chars() { \
+		path="$$1"; \
+		label="$$2"; \
+		code="$$3"; \
+		sanitized="$$(printf '%s' "$$path" | LC_ALL=C tr -d '\000-\037\177')"; \
+		if [ "$$path" != "$$sanitized" ]; then \
+			emit_preflight_error "$$code" "$$label must not contain ASCII control characters"; \
+		fi; \
+	}; \
 	assert_sarif_extension() { \
 		path="$$1"; \
 		label="$$2"; \
@@ -169,6 +178,8 @@ release-check-preflight:
 	case "$(RELEASE_CHECK_SARIF_OUT)" in ""|"/"|"."|*/) \
 		emit_preflight_error "RC_PREFLIGHT_SARIF_OUT_INVALID" "release-check SARIF output path must be a non-root file path"; \
 	;; esac; \
+	assert_no_control_chars "$(RELEASE_CHECK_BUILD_OUT)" "release-check build output path" "RC_PREFLIGHT_BUILD_OUT_INVALID"; \
+	assert_no_control_chars "$(RELEASE_CHECK_SARIF_OUT)" "release-check SARIF output path" "RC_PREFLIGHT_SARIF_OUT_INVALID"; \
 	assert_no_surrounding_whitespace "$(RELEASE_CHECK_BUILD_OUT)" "release-check build output path" "RC_PREFLIGHT_BUILD_OUT_INVALID"; \
 	assert_no_surrounding_whitespace "$(RELEASE_CHECK_SARIF_OUT)" "release-check SARIF output path" "RC_PREFLIGHT_SARIF_OUT_INVALID"; \
 	assert_no_empty_segments "$(RELEASE_CHECK_BUILD_OUT)" "release-check build output path" "RC_PREFLIGHT_BUILD_OUT_INVALID"; \

@@ -317,6 +317,38 @@ func TestReleaseCheckPreflightRejectsBuildOutputWithSurroundingWhitespace(t *tes
 	}
 }
 
+func TestReleaseCheckPreflightRejectsBuildOutputWithControlCharacters(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("release-check preflight path contracts are exercised on POSIX in CI")
+	}
+
+	testCases := []struct {
+		name     string
+		buildOut string
+	}{
+		{name: "tab in middle", buildOut: ".cache/\trelease-check"},
+		{name: "del in middle", buildOut: ".cache/\x7frelease-check"},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			exitCode, out := runReleaseCheckPreflight(t, map[string]string{
+				"RELEASE_CHECK_BUILD_OUT": tc.buildOut,
+				"RELEASE_CHECK_SARIF_OUT": releaseCheckRepoLocalPath(t, "inspect.sarif"),
+			})
+			if exitCode == 0 {
+				t.Fatalf("expected non-zero exit for build output path with control characters %q\noutput:\n%s", tc.buildOut, out)
+			}
+			if !strings.Contains(out, "build output path must not contain ASCII control characters") {
+				t.Fatalf("expected build output control-character rejection message, got:\n%s", out)
+			}
+			if !strings.Contains(out, "[RC_PREFLIGHT_BUILD_OUT_INVALID]") {
+				t.Fatalf("expected build output control-character rejection code, got:\n%s", out)
+			}
+		})
+	}
+}
+
 func TestReleaseCheckPreflightRejectsRootOrDirectoryLikeSARIFOutput(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("release-check preflight path contracts are exercised on POSIX in CI")
@@ -345,6 +377,38 @@ func TestReleaseCheckPreflightRejectsRootOrDirectoryLikeSARIFOutput(t *testing.T
 			}
 			if !strings.Contains(out, "[RC_PREFLIGHT_SARIF_OUT_INVALID]") {
 				t.Fatalf("expected non-root SARIF output rejection code, got:\n%s", out)
+			}
+		})
+	}
+}
+
+func TestReleaseCheckPreflightRejectsSARIFOutputWithControlCharacters(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("release-check preflight path contracts are exercised on POSIX in CI")
+	}
+
+	testCases := []struct {
+		name     string
+		sarifOut string
+	}{
+		{name: "tab in middle", sarifOut: ".cache/\tinspect.sarif"},
+		{name: "del in middle", sarifOut: ".cache/\x7finspect.sarif"},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			exitCode, out := runReleaseCheckPreflight(t, map[string]string{
+				"RELEASE_CHECK_BUILD_OUT": releaseCheckRepoLocalPath(t, "build.out"),
+				"RELEASE_CHECK_SARIF_OUT": tc.sarifOut,
+			})
+			if exitCode == 0 {
+				t.Fatalf("expected non-zero exit for SARIF output path with control characters %q\noutput:\n%s", tc.sarifOut, out)
+			}
+			if !strings.Contains(out, "SARIF output path must not contain ASCII control characters") {
+				t.Fatalf("expected SARIF output control-character rejection message, got:\n%s", out)
+			}
+			if !strings.Contains(out, "[RC_PREFLIGHT_SARIF_OUT_INVALID]") {
+				t.Fatalf("expected SARIF output control-character rejection code, got:\n%s", out)
 			}
 		})
 	}
