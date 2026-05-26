@@ -287,6 +287,16 @@ func TestRunInstallErrorPaths(t *testing.T) {
 
 	stdout.Reset()
 	stderr.Reset()
+	code = runInstall([]string{"github:org/repo//skill@8F3C2D1A4B5C6D7E8F901234567890ABCDEF1234", "--target", "codex", "--profile", "strict"}, &stdout, &stderr)
+	if code != 1 {
+		t.Fatalf("runInstall(uppercase sha) code = %d, want 1", code)
+	}
+	if !strings.Contains(stderr.String(), "invalid github source") {
+		t.Fatalf("stderr should include invalid github source for uppercase sha, got %q", stderr.String())
+	}
+
+	stdout.Reset()
+	stderr.Reset()
 	origFetch := fetchGitHubSkill
 	t.Cleanup(func() { fetchGitHubSkill = origFetch })
 	fakeSource := createSkillSourceForInstallTest(t, "mocked-github-skill")
