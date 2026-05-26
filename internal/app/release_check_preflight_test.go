@@ -187,6 +187,26 @@ func TestBetaCheckPreflightIgnoresInvalidReleaseCheckOutputEnv(t *testing.T) {
 	}
 }
 
+func TestBetaCheckPreflightCanRunConsecutively(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("beta-check preflight contract is exercised on POSIX in CI")
+	}
+
+	buildOut := releaseCheckRepoLocalPath(t, "beta-consecutive-build.out")
+	sarifOut := releaseCheckRepoLocalPath(t, "beta-consecutive-inspect.sarif")
+	preflightEnv := map[string]string{
+		"BETA_CHECK_BUILD_OUT": buildOut,
+		"BETA_CHECK_SARIF_OUT": sarifOut,
+	}
+
+	for i := 1; i <= 2; i++ {
+		exitCode, out := runBetaCheckPreflight(t, preflightEnv)
+		if exitCode != 0 {
+			t.Fatalf("beta-check-preflight run %d should succeed\noutput:\n%s", i, out)
+		}
+	}
+}
+
 func releaseCheckRepoRootPath(t *testing.T) string {
 	t.Helper()
 
