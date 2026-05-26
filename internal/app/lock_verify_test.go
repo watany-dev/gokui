@@ -1897,6 +1897,13 @@ func TestVerifyInstallReportValidationBranches(t *testing.T) {
 			detailHas: "schema_version must not contain C0/C1 control characters",
 		},
 		{
+			name: "schema has DEL control character at edge",
+			mutate: func(r *installReport) {
+				r.SchemaVersion = "\u007f0.1.0-draft"
+			},
+			detailHas: "schema_version must not contain C0/C1 control characters",
+		},
+		{
 			name: "schema has surrounding whitespace",
 			mutate: func(r *installReport) {
 				r.SchemaVersion = " 0.1.0-draft "
@@ -1953,6 +1960,13 @@ func TestVerifyInstallReportValidationBranches(t *testing.T) {
 			detailHas: "source input must not contain C0/C1 control characters",
 		},
 		{
+			name: "source input has DEL control character at edge",
+			mutate: func(r *installReport) {
+				r.Source.Input = "\u007f/tmp/src"
+			},
+			detailHas: "source input must not contain C0/C1 control characters",
+		},
+		{
 			name: "source input has unicode obfuscation character",
 			mutate: func(r *installReport) {
 				r.Source.Input = "/tmp/src\u200d"
@@ -1998,6 +2012,13 @@ func TestVerifyInstallReportValidationBranches(t *testing.T) {
 			name: "source kind has DEL control character only",
 			mutate: func(r *installReport) {
 				r.Source.Kind = "\u007f"
+			},
+			detailHas: "source kind must not contain C0/C1 control characters",
+		},
+		{
+			name: "source kind has DEL control character at edge",
+			mutate: func(r *installReport) {
+				r.Source.Kind = "\u007flocal-dir"
 			},
 			detailHas: "source kind must not contain C0/C1 control characters",
 		},
@@ -2058,6 +2079,13 @@ func TestVerifyInstallReportValidationBranches(t *testing.T) {
 			detailHas: "policy profile must not contain C0/C1 control characters",
 		},
 		{
+			name: "profile has DEL control character at edge",
+			mutate: func(r *installReport) {
+				r.PolicyProfile = "\u007fstrict"
+			},
+			detailHas: "policy profile must not contain C0/C1 control characters",
+		},
+		{
 			name: "profile has unicode obfuscation character",
 			mutate: func(r *installReport) {
 				r.PolicyProfile = "strict\u200d"
@@ -2110,6 +2138,13 @@ func TestVerifyInstallReportValidationBranches(t *testing.T) {
 			name: "decision has DEL control character only",
 			mutate: func(r *installReport) {
 				r.Decision = "\u007f"
+			},
+			detailHas: "decision must not contain C0/C1 control characters",
+		},
+		{
+			name: "decision has DEL control character at edge",
+			mutate: func(r *installReport) {
+				r.Decision = "\u007fPASS"
 			},
 			detailHas: "decision must not contain C0/C1 control characters",
 		},
@@ -2173,6 +2208,13 @@ func TestVerifyInstallReportValidationBranches(t *testing.T) {
 			name: "installed path has DEL control character only",
 			mutate: func(r *installReport) {
 				r.InstalledPath = "\u007f"
+			},
+			detailHas: "installed path must not contain C0/C1 control characters",
+		},
+		{
+			name: "installed path has DEL control character at edge",
+			mutate: func(r *installReport) {
+				r.InstalledPath = "\u007f" + skillPath
 			},
 			detailHas: "installed path must not contain C0/C1 control characters",
 		},
