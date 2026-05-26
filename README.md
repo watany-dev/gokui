@@ -314,6 +314,7 @@ GitHub source syntax is now strictly validated as
 `github:owner/repo//path/to/skill@ref`; `inspect`, `install`, and `update`
 require commit-pinned refs for GitHub sources and reject floating refs.
 Commit-pinned refs must use canonical lowercase 40-hex SHA form.
+Commit-pinned refs must not include surrounding whitespace.
 The `//path/to/skill` segment must not contain surrounding whitespace.
 `install` and `update` validate fetched source metadata for GitHub-origin
 skills.

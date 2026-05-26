@@ -30,6 +30,7 @@ tests/CI:
 - UTF-8 BOM-prefixed extensionless shebang script coverage in scan target classification
 - Commit-pinned GitHub source fetch and install/update/verify provenance checks
 - Commit-pinned GitHub source enforcement for `inspect` (floating refs rejected)
+- strict commit-pin matcher (no whitespace-trimmed refs accepted as pinned)
 - GitHub archive network hardening (strict redirect cap/constraints + response content-type/encoding validation)
 - GitHub archive strict stream-size enforcement with overflow-write prevention and cleanup
 - GitHub source parser length bounds (input and owner/repo/path/ref segments)
