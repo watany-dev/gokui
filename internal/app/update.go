@@ -756,6 +756,28 @@ func evaluateUpdateSkill(item updateSkillItem, lock installLock, policyLoaded bo
 		}
 		return item, nil
 	}
+	if strings.IndexFunc(sourceInputRaw, isC0OrC1ControlRune) >= 0 {
+		item.Status = "ERROR"
+		item.ErrorCode = updateCodeLockfileInvalid
+		item.Message = "lock source input must not contain C0/C1 control characters"
+		item.RuleID = inferRuleIDForJSONError(item.Message)
+		item.Risk = updateRisk{
+			Previous: lock.Findings,
+			Current:  lock.Findings,
+		}
+		return item, nil
+	}
+	if containsSeverityOverrideDisallowedUnicode(sourceInputRaw) && detectSourceKind(sourceInput) != "github-source" {
+		item.Status = "ERROR"
+		item.ErrorCode = updateCodeLockfileInvalid
+		item.Message = "lock source input must not contain Unicode bidi, zero-width, tag, or variation-selector characters"
+		item.RuleID = inferRuleIDForJSONError(item.Message)
+		item.Risk = updateRisk{
+			Previous: lock.Findings,
+			Current:  lock.Findings,
+		}
+		return item, nil
+	}
 	if sourceInputRaw != sourceInput {
 		item.Status = "ERROR"
 		item.ErrorCode = updateCodeLockfileInvalid
@@ -767,29 +789,6 @@ func evaluateUpdateSkill(item updateSkillItem, lock installLock, policyLoaded bo
 		}
 		return item, nil
 	}
-	if strings.IndexFunc(sourceInput, isC0OrC1ControlRune) >= 0 {
-		item.Status = "ERROR"
-		item.ErrorCode = updateCodeLockfileInvalid
-		item.Message = "lock source input must not contain C0/C1 control characters"
-		item.RuleID = inferRuleIDForJSONError(item.Message)
-		item.Risk = updateRisk{
-			Previous: lock.Findings,
-			Current:  lock.Findings,
-		}
-		return item, nil
-	}
-	if containsSeverityOverrideDisallowedUnicode(sourceInput) && detectSourceKind(sourceInput) != "github-source" {
-		item.Status = "ERROR"
-		item.ErrorCode = updateCodeLockfileInvalid
-		item.Message = "lock source input must not contain Unicode bidi, zero-width, tag, or variation-selector characters"
-		item.RuleID = inferRuleIDForJSONError(item.Message)
-		item.Risk = updateRisk{
-			Previous: lock.Findings,
-			Current:  lock.Findings,
-		}
-		return item, nil
-	}
-
 	kindRaw := lock.Source.Kind
 	kind := strings.TrimSpace(kindRaw)
 	detectedKind := detectSourceKind(sourceInput)
@@ -804,18 +803,7 @@ func evaluateUpdateSkill(item updateSkillItem, lock installLock, policyLoaded bo
 		}
 		return item, nil
 	}
-	if kindRaw != kind {
-		item.Status = "ERROR"
-		item.ErrorCode = updateCodeLockfileInvalid
-		item.Message = "lock source kind must not contain leading or trailing whitespace"
-		item.RuleID = inferRuleIDForJSONError(item.Message)
-		item.Risk = updateRisk{
-			Previous: lock.Findings,
-			Current:  lock.Findings,
-		}
-		return item, nil
-	}
-	if strings.IndexFunc(kind, isC0OrC1ControlRune) >= 0 {
+	if strings.IndexFunc(kindRaw, isC0OrC1ControlRune) >= 0 {
 		item.Status = "ERROR"
 		item.ErrorCode = updateCodeLockfileInvalid
 		item.Message = "lock source kind must not contain C0/C1 control characters"
@@ -826,10 +814,21 @@ func evaluateUpdateSkill(item updateSkillItem, lock installLock, policyLoaded bo
 		}
 		return item, nil
 	}
-	if containsSeverityOverrideDisallowedUnicode(kind) {
+	if containsSeverityOverrideDisallowedUnicode(kindRaw) {
 		item.Status = "ERROR"
 		item.ErrorCode = updateCodeLockfileInvalid
 		item.Message = "lock source kind must not contain Unicode bidi, zero-width, tag, or variation-selector characters"
+		item.RuleID = inferRuleIDForJSONError(item.Message)
+		item.Risk = updateRisk{
+			Previous: lock.Findings,
+			Current:  lock.Findings,
+		}
+		return item, nil
+	}
+	if kindRaw != kind {
+		item.Status = "ERROR"
+		item.ErrorCode = updateCodeLockfileInvalid
+		item.Message = "lock source kind must not contain leading or trailing whitespace"
 		item.RuleID = inferRuleIDForJSONError(item.Message)
 		item.Risk = updateRisk{
 			Previous: lock.Findings,
@@ -887,18 +886,7 @@ func evaluateUpdateSkill(item updateSkillItem, lock installLock, policyLoaded bo
 	}
 	sourceTypeRaw := lock.Source.Type
 	sourceType := strings.TrimSpace(sourceTypeRaw)
-	if sourceTypeRaw != sourceType {
-		item.Status = "ERROR"
-		item.ErrorCode = updateCodeLockfileInvalid
-		item.Message = "lock source type must not contain leading or trailing whitespace"
-		item.RuleID = inferRuleIDForJSONError(item.Message)
-		item.Risk = updateRisk{
-			Previous: lock.Findings,
-			Current:  lock.Findings,
-		}
-		return item, nil
-	}
-	if strings.IndexFunc(sourceType, isC0OrC1ControlRune) >= 0 {
+	if strings.IndexFunc(sourceTypeRaw, isC0OrC1ControlRune) >= 0 {
 		item.Status = "ERROR"
 		item.ErrorCode = updateCodeLockfileInvalid
 		item.Message = "lock source type must not contain C0/C1 control characters"
@@ -909,10 +897,21 @@ func evaluateUpdateSkill(item updateSkillItem, lock installLock, policyLoaded bo
 		}
 		return item, nil
 	}
-	if containsSeverityOverrideDisallowedUnicode(sourceType) {
+	if containsSeverityOverrideDisallowedUnicode(sourceTypeRaw) {
 		item.Status = "ERROR"
 		item.ErrorCode = updateCodeLockfileInvalid
 		item.Message = "lock source type must not contain Unicode bidi, zero-width, tag, or variation-selector characters"
+		item.RuleID = inferRuleIDForJSONError(item.Message)
+		item.Risk = updateRisk{
+			Previous: lock.Findings,
+			Current:  lock.Findings,
+		}
+		return item, nil
+	}
+	if sourceTypeRaw != sourceType {
+		item.Status = "ERROR"
+		item.ErrorCode = updateCodeLockfileInvalid
+		item.Message = "lock source type must not contain leading or trailing whitespace"
 		item.RuleID = inferRuleIDForJSONError(item.Message)
 		item.Risk = updateRisk{
 			Previous: lock.Findings,

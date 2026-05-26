@@ -1563,14 +1563,14 @@ func validateInstallLockForProvenanceReuse(lock installLock, expectedSkillName s
 	if trimmedKind == "" {
 		return fmt.Errorf("lock source kind is empty")
 	}
-	if trimmedKind != lock.Source.Kind {
-		return fmt.Errorf("lock source kind must not contain leading or trailing whitespace")
-	}
-	if strings.IndexFunc(trimmedKind, isC0OrC1ControlRune) >= 0 {
+	if strings.IndexFunc(lock.Source.Kind, isC0OrC1ControlRune) >= 0 {
 		return fmt.Errorf("lock source kind must not contain C0/C1 control characters")
 	}
-	if containsSeverityOverrideDisallowedUnicode(trimmedKind) {
+	if containsSeverityOverrideDisallowedUnicode(lock.Source.Kind) {
 		return fmt.Errorf("lock source kind must not contain Unicode bidi, zero-width, tag, or variation-selector characters")
+	}
+	if trimmedKind != lock.Source.Kind {
+		return fmt.Errorf("lock source kind must not contain leading or trailing whitespace")
 	}
 	if trimmedKind != strings.ToLower(trimmedKind) {
 		return fmt.Errorf("lock source kind must be canonical lowercase")
@@ -1579,14 +1579,14 @@ func validateInstallLockForProvenanceReuse(lock installLock, expectedSkillName s
 	if trimmedInput == "" {
 		return fmt.Errorf("lock source input is empty")
 	}
-	if trimmedInput != lock.Source.Input {
-		return fmt.Errorf("lock source input must not contain leading or trailing whitespace")
-	}
-	if strings.IndexFunc(trimmedInput, isC0OrC1ControlRune) >= 0 {
+	if strings.IndexFunc(lock.Source.Input, isC0OrC1ControlRune) >= 0 {
 		return fmt.Errorf("lock source input must not contain C0/C1 control characters")
 	}
-	if containsSeverityOverrideDisallowedUnicode(trimmedInput) {
+	if containsSeverityOverrideDisallowedUnicode(lock.Source.Input) {
 		return fmt.Errorf("lock source input must not contain Unicode bidi, zero-width, tag, or variation-selector characters")
+	}
+	if trimmedInput != lock.Source.Input {
+		return fmt.Errorf("lock source input must not contain leading or trailing whitespace")
 	}
 	if detectSourceKind(trimmedInput) != trimmedKind {
 		return fmt.Errorf("lock source kind does not match source input")
@@ -1597,14 +1597,14 @@ func validateInstallLockForProvenanceReuse(lock installLock, expectedSkillName s
 		return fmt.Errorf("unsupported lock source kind: %s", trimmedKind)
 	}
 	trimmedType := strings.TrimSpace(lock.Source.Type)
-	if trimmedType != lock.Source.Type {
-		return fmt.Errorf("lock source type must not contain leading or trailing whitespace")
-	}
-	if strings.IndexFunc(trimmedType, isC0OrC1ControlRune) >= 0 {
+	if strings.IndexFunc(lock.Source.Type, isC0OrC1ControlRune) >= 0 {
 		return fmt.Errorf("lock source type must not contain C0/C1 control characters")
 	}
-	if containsSeverityOverrideDisallowedUnicode(trimmedType) {
+	if containsSeverityOverrideDisallowedUnicode(lock.Source.Type) {
 		return fmt.Errorf("lock source type must not contain Unicode bidi, zero-width, tag, or variation-selector characters")
+	}
+	if trimmedType != lock.Source.Type {
+		return fmt.Errorf("lock source type must not contain leading or trailing whitespace")
 	}
 	if trimmedType != strings.ToLower(trimmedType) {
 		return fmt.Errorf("lock source type must be canonical lowercase")

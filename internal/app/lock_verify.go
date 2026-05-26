@@ -659,14 +659,14 @@ func verifyLockSource(lock installLock) (bool, string) {
 	if trimmedKind == "" {
 		return false, "lock source kind is empty"
 	}
-	if trimmedKind != lock.Source.Kind {
-		return false, "lock source kind must not contain leading or trailing whitespace"
-	}
-	if strings.IndexFunc(trimmedKind, isC0OrC1ControlRune) >= 0 {
+	if strings.IndexFunc(lock.Source.Kind, isC0OrC1ControlRune) >= 0 {
 		return false, "lock source kind must not contain C0/C1 control characters"
 	}
-	if containsSeverityOverrideDisallowedUnicode(trimmedKind) {
+	if containsSeverityOverrideDisallowedUnicode(lock.Source.Kind) {
 		return false, "lock source kind must not contain Unicode bidi, zero-width, tag, or variation-selector characters"
+	}
+	if trimmedKind != lock.Source.Kind {
+		return false, "lock source kind must not contain leading or trailing whitespace"
 	}
 	if trimmedKind != strings.ToLower(trimmedKind) {
 		return false, "lock source kind must be canonical lowercase"
@@ -675,14 +675,14 @@ func verifyLockSource(lock installLock) (bool, string) {
 	if trimmedInput == "" {
 		return false, "lock source input is empty"
 	}
-	if trimmedInput != lock.Source.Input {
-		return false, "lock source input must not contain leading or trailing whitespace"
-	}
-	if strings.IndexFunc(trimmedInput, isC0OrC1ControlRune) >= 0 {
+	if strings.IndexFunc(lock.Source.Input, isC0OrC1ControlRune) >= 0 {
 		return false, "lock source input must not contain C0/C1 control characters"
 	}
-	if containsSeverityOverrideDisallowedUnicode(trimmedInput) {
+	if containsSeverityOverrideDisallowedUnicode(lock.Source.Input) {
 		return false, "lock source input must not contain Unicode bidi, zero-width, tag, or variation-selector characters"
+	}
+	if trimmedInput != lock.Source.Input {
+		return false, "lock source input must not contain leading or trailing whitespace"
 	}
 	detectedKind := detectSourceKind(trimmedInput)
 	if trimmedKind != detectedKind {
@@ -700,14 +700,14 @@ func verifyLockSource(lock installLock) (bool, string) {
 		}
 	}
 	trimmedType := strings.TrimSpace(lock.Source.Type)
-	if trimmedType != lock.Source.Type {
-		return false, "lock source type must not contain leading or trailing whitespace"
-	}
-	if strings.IndexFunc(trimmedType, isC0OrC1ControlRune) >= 0 {
+	if strings.IndexFunc(lock.Source.Type, isC0OrC1ControlRune) >= 0 {
 		return false, "lock source type must not contain C0/C1 control characters"
 	}
-	if containsSeverityOverrideDisallowedUnicode(trimmedType) {
+	if containsSeverityOverrideDisallowedUnicode(lock.Source.Type) {
 		return false, "lock source type must not contain Unicode bidi, zero-width, tag, or variation-selector characters"
+	}
+	if trimmedType != lock.Source.Type {
+		return false, "lock source type must not contain leading or trailing whitespace"
 	}
 	if trimmedType != strings.ToLower(trimmedType) {
 		return false, "lock source type must be canonical lowercase"

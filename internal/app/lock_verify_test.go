@@ -1133,6 +1133,10 @@ func TestVerifyLockSourceChecks(t *testing.T) {
 	if ok, _ := verifyLockSource(lock); ok {
 		t.Fatal("input with C1 control characters should fail")
 	}
+	lock.Source.Input = "\u0085/tmp/skill"
+	if ok, _ := verifyLockSource(lock); ok {
+		t.Fatal("input with edge C1 control characters should fail")
+	}
 	lock.Source.Input = "/tmp/skill\u200dpayload"
 	if ok, _ := verifyLockSource(lock); ok {
 		t.Fatal("input with unicode obfuscation characters should fail")
@@ -1145,6 +1149,10 @@ func TestVerifyLockSourceChecks(t *testing.T) {
 	lock.Source.Kind = "local\u008fdir"
 	if ok, _ := verifyLockSource(lock); ok {
 		t.Fatal("kind with C0/C1 control characters should fail")
+	}
+	lock.Source.Kind = "\u0085local-dir"
+	if ok, _ := verifyLockSource(lock); ok {
+		t.Fatal("kind with edge C1 control characters should fail")
 	}
 	lock.Source.Kind = "local-dir\u200d"
 	if ok, _ := verifyLockSource(lock); ok {
@@ -1162,6 +1170,10 @@ func TestVerifyLockSourceChecks(t *testing.T) {
 	lock.Source.Type = "loca\u008fl"
 	if ok, _ := verifyLockSource(lock); ok {
 		t.Fatal("type with C0/C1 control characters should fail")
+	}
+	lock.Source.Type = "\u0085local"
+	if ok, _ := verifyLockSource(lock); ok {
+		t.Fatal("type with edge C1 control characters should fail")
 	}
 	lock.Source.Type = "local\u200d"
 	if ok, _ := verifyLockSource(lock); ok {
