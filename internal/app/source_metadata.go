@@ -118,6 +118,9 @@ func ensureSourceMetadataStableFile(previous os.FileInfo, current os.FileInfo, p
 }
 
 func validateSourceMetadata(meta sourceMetadata) error {
+	if strings.IndexFunc(meta.Schema, isC0OrC1ControlRune) >= 0 {
+		return fmt.Errorf("source metadata schema must not contain C0/C1 control characters")
+	}
 	if meta.Schema != sourceMetadataSchemaVersion {
 		return fmt.Errorf("unsupported source metadata schema: %s", meta.Schema)
 	}
@@ -127,6 +130,9 @@ func validateSourceMetadata(meta sourceMetadata) error {
 	}
 	if trimmedSourceInput != meta.SourceInput {
 		return fmt.Errorf("source metadata source_input must not contain leading or trailing whitespace")
+	}
+	if strings.IndexFunc(meta.SourceKind, isC0OrC1ControlRune) >= 0 {
+		return fmt.Errorf("source metadata source_kind must not contain C0/C1 control characters")
 	}
 	if meta.SourceKind != "github-source" {
 		return fmt.Errorf("source metadata source_kind is unsupported: %s", meta.SourceKind)
@@ -140,6 +146,9 @@ func validateSourceMetadata(meta sourceMetadata) error {
 	}
 	if !srcpkg.IsCommitPinnedRef(spec.Ref) {
 		return fmt.Errorf("source metadata requires commit-pinned github ref")
+	}
+	if strings.IndexFunc(meta.ResolvedRef, isC0OrC1ControlRune) >= 0 {
+		return fmt.Errorf("source metadata resolved_ref must not contain C0/C1 control characters")
 	}
 	trimmedResolvedRef := strings.TrimSpace(meta.ResolvedRef)
 	if trimmedResolvedRef == "" {
@@ -157,11 +166,17 @@ func validateSourceMetadata(meta sourceMetadata) error {
 	if spec.Ref != meta.ResolvedRef {
 		return fmt.Errorf("source metadata resolved_ref does not match source_input ref")
 	}
+	if strings.IndexFunc(meta.FetchedAt, isC0OrC1ControlRune) >= 0 {
+		return fmt.Errorf("source metadata fetched_at must not contain C0/C1 control characters")
+	}
 	if strings.TrimSpace(meta.FetchedAt) == "" {
 		return fmt.Errorf("source metadata fetched_at is empty")
 	}
 	if _, err := time.Parse(time.RFC3339, meta.FetchedAt); err != nil {
 		return fmt.Errorf("source metadata fetched_at must be RFC3339")
+	}
+	if strings.IndexFunc(meta.SkillRootSHA256, isC0OrC1ControlRune) >= 0 {
+		return fmt.Errorf("source metadata skill_root_sha256 must not contain C0/C1 control characters")
 	}
 	if strings.TrimSpace(meta.SkillRootSHA256) == "" {
 		return fmt.Errorf("source metadata skill_root_sha256 is empty")

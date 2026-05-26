@@ -642,6 +642,68 @@ func TestSourceMetadataHelpers(t *testing.T) {
 		}
 	})
 
+	t.Run("validate metadata rejects C0/C1 controls with explicit errors", func(t *testing.T) {
+		valid := sourceMetadata{
+			Schema:          "gokui.source/v1",
+			SourceInput:     "github:org/repo//skills/x@8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
+			SourceKind:      "github-source",
+			ResolvedRef:     "8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
+			FetchedAt:       "2026-05-23T00:00:00Z",
+			SkillRootSHA256: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+		}
+		cases := []struct {
+			name       string
+			mutate     func(*sourceMetadata)
+			detailPart string
+		}{
+			{
+				name: "schema has C0/C1 control",
+				mutate: func(m *sourceMetadata) {
+					m.Schema = "gokui.source/v1\u008f"
+				},
+				detailPart: "schema must not contain C0/C1 control characters",
+			},
+			{
+				name: "source_kind has C0/C1 control",
+				mutate: func(m *sourceMetadata) {
+					m.SourceKind = "github-source\u008f"
+				},
+				detailPart: "source_kind must not contain C0/C1 control characters",
+			},
+			{
+				name: "resolved_ref has C0/C1 control",
+				mutate: func(m *sourceMetadata) {
+					m.ResolvedRef = "8f3c2d1a4b5c6d7e8f901234567890abcdef12\u008f4"
+				},
+				detailPart: "resolved_ref must not contain C0/C1 control characters",
+			},
+			{
+				name: "fetched_at has C0/C1 control",
+				mutate: func(m *sourceMetadata) {
+					m.FetchedAt = "2026-05-23T00:00:00\u008fZ"
+				},
+				detailPart: "fetched_at must not contain C0/C1 control characters",
+			},
+			{
+				name: "skill_root_sha256 has C0/C1 control",
+				mutate: func(m *sourceMetadata) {
+					m.SkillRootSHA256 = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\u008f"
+				},
+				detailPart: "skill_root_sha256 must not contain C0/C1 control characters",
+			},
+		}
+		for _, tc := range cases {
+			t.Run(tc.name, func(t *testing.T) {
+				mut := valid
+				tc.mutate(&mut)
+				err := validateSourceMetadata(mut)
+				if err == nil || !strings.Contains(err.Error(), tc.detailPart) {
+					t.Fatalf("expected validation detail %q, got err=%v", tc.detailPart, err)
+				}
+			})
+		}
+	})
+
 	t.Run("verify installed metadata errors", func(t *testing.T) {
 		dir := t.TempDir()
 		if err := verifyInstalledSourceMetadata(dir, source{Input: "x", Kind: "github-source"}); err == nil {

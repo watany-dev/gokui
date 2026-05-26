@@ -150,6 +150,8 @@ For `github-source`, lock input must also be canonical
 The same canonical requirement applies to `.gokui-source.json`
 `source_input` during metadata validation. Source metadata also requires
 canonical lowercase/no-whitespace `resolved_ref` and `skill_root_sha256`.
+Source metadata `schema`/`source_kind`/`resolved_ref`/`fetched_at`/
+`skill_root_sha256` fields must not contain C0/C1 control characters.
 Update policy decisions also honor profile-specific `reject_severities`
 configured via user policy (`policy.toml`) or repository policy
 (`.gokui-policy.toml`) for `local-dir` sources.
