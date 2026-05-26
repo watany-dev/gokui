@@ -371,14 +371,14 @@ func TestLockPathUTF8HardeningDocumentationSync(t *testing.T) {
 	}
 	roadmap := string(roadmapBytes)
 
-	requiredReadme := "Lock skill file paths in `gokui.lock` must be valid UTF-8 for install/update/lock verify provenance checks."
-	if !strings.Contains(readme, requiredReadme) {
-		t.Fatalf("README missing lock path utf-8 hardening line: %q", requiredReadme)
+	requiredReadme := "Lock skill file paths in `gokui.lock` must be valid UTF-8 and must not contain"
+	requiredReadmeContinuation := "ASCII control characters for install/update/lock verify provenance checks."
+	if !strings.Contains(readme, requiredReadme) || !strings.Contains(readme, requiredReadmeContinuation) {
+		t.Fatalf("README missing lock path utf-8/control-char hardening line: %q ... %q", requiredReadme, requiredReadmeContinuation)
 	}
-
-	requiredRoadmap := "Lock skill file-path validation hardening with invalid UTF-8 rejection for install/update/lock-verify provenance checks"
+	requiredRoadmap := "Lock skill file-path validation hardening with invalid UTF-8 and ASCII control-character rejection for install/update/lock-verify provenance checks"
 	if !strings.Contains(roadmap, requiredRoadmap) {
-		t.Fatalf("ROADMAP missing lock path utf-8 hardening line: %q", requiredRoadmap)
+		t.Fatalf("ROADMAP missing lock path utf-8/control-char hardening line: %q", requiredRoadmap)
 	}
 }
 

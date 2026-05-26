@@ -918,6 +918,9 @@ func isValidLockRelativePath(in string) bool {
 	if !utf8.ValidString(in) {
 		return false
 	}
+	if strings.IndexFunc(in, isASCIIControlRune) >= 0 {
+		return false
+	}
 	if strings.TrimSpace(in) == "" {
 		return false
 	}
@@ -951,6 +954,10 @@ func hasWindowsDrivePathPrefix(path string) bool {
 	// Treat both "C:foo" (drive-relative) and "C:/foo" (absolute) as invalid
 	// lock-relative paths for cross-platform safety.
 	return true
+}
+
+func isASCIIControlRune(r rune) bool {
+	return (r >= 0x00 && r <= 0x1f) || r == 0x7f
 }
 
 func validateSeverityOverrideAudit(overrides []severityOverrideAudit) error {
