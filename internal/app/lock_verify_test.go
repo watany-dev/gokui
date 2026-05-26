@@ -2362,6 +2362,13 @@ func TestVerifyLockStructureValidationBranches(t *testing.T) {
 			detailIn: "policy profile must not contain C0/C1 control characters",
 		},
 		{
+			name: "policy profile has DEL control character only",
+			mutate: func(l *installLock) {
+				l.Policy.Profile = "\u007f"
+			},
+			detailIn: "policy profile must not contain C0/C1 control characters",
+		},
+		{
 			name: "policy profile has unicode obfuscation character",
 			mutate: func(l *installLock) {
 				l.Policy.Profile = "strict\u200d"
