@@ -2979,6 +2979,82 @@ func TestRunUpdateDryRunRejectedAndError(t *testing.T) {
 		}
 	})
 
+	t.Run("github source with unicode-tag ref in lock is error", func(t *testing.T) {
+		targetRoot := filepath.Join(t.TempDir(), "skills")
+		if err := os.MkdirAll(filepath.Join(targetRoot, "github-ref-unicode-tag"), 0o755); err != nil {
+			t.Fatalf("mkdir github-ref-unicode-tag skill dir: %v", err)
+		}
+		lock := installLock{
+			Schema:      "gokui.lock/v1",
+			Name:        "github-ref-unicode-tag",
+			InstalledAt: "2026-05-24T00:00:00Z",
+			Source: lockSource{
+				Type:  "github",
+				Input: "github:org/repo//skills/demo@8f3c2d1a4b5c6d7e8f90\U000E00011234567890abcdef1234",
+				Kind:  "github-source",
+			},
+			Policy: lockPolicy{Profile: "strict", Decision: "pass"},
+		}
+		raw, err := json.MarshalIndent(lock, "", "  ")
+		if err != nil {
+			t.Fatalf("marshal lock: %v", err)
+		}
+		if err := os.WriteFile(filepath.Join(targetRoot, "github-ref-unicode-tag", installLockFile), raw, 0o644); err != nil {
+			t.Fatalf("write lock: %v", err)
+		}
+
+		var stdout strings.Builder
+		var stderr strings.Builder
+		code := runUpdate([]string{"--dry-run", "--target", "custom:" + targetRoot, "--format", "json"}, &stdout, &stderr)
+		if code != 1 {
+			t.Fatalf("runUpdate(github source ref-unicode-tag) code = %d, want 1\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
+		}
+		if stderr.Len() != 0 {
+			t.Fatalf("stderr should be empty, got %q", stderr.String())
+		}
+		if !strings.Contains(stdout.String(), "\"error_code\": \""+updateCodeGitHubSourceBad+"\"") {
+			t.Fatalf("stdout should include invalid-source error_code, got %q", stdout.String())
+		}
+	})
+
+	t.Run("github source with variation-selector ref in lock is error", func(t *testing.T) {
+		targetRoot := filepath.Join(t.TempDir(), "skills")
+		if err := os.MkdirAll(filepath.Join(targetRoot, "github-ref-variation-selector"), 0o755); err != nil {
+			t.Fatalf("mkdir github-ref-variation-selector skill dir: %v", err)
+		}
+		lock := installLock{
+			Schema:      "gokui.lock/v1",
+			Name:        "github-ref-variation-selector",
+			InstalledAt: "2026-05-24T00:00:00Z",
+			Source: lockSource{
+				Type:  "github",
+				Input: "github:org/repo//skills/demo@8f3c2d1a4b5c6d7e8f90\ufe0f1234567890abcdef1234",
+				Kind:  "github-source",
+			},
+			Policy: lockPolicy{Profile: "strict", Decision: "pass"},
+		}
+		raw, err := json.MarshalIndent(lock, "", "  ")
+		if err != nil {
+			t.Fatalf("marshal lock: %v", err)
+		}
+		if err := os.WriteFile(filepath.Join(targetRoot, "github-ref-variation-selector", installLockFile), raw, 0o644); err != nil {
+			t.Fatalf("write lock: %v", err)
+		}
+
+		var stdout strings.Builder
+		var stderr strings.Builder
+		code := runUpdate([]string{"--dry-run", "--target", "custom:" + targetRoot, "--format", "json"}, &stdout, &stderr)
+		if code != 1 {
+			t.Fatalf("runUpdate(github source ref-variation-selector) code = %d, want 1\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
+		}
+		if stderr.Len() != 0 {
+			t.Fatalf("stderr should be empty, got %q", stderr.String())
+		}
+		if !strings.Contains(stdout.String(), "\"error_code\": \""+updateCodeGitHubSourceBad+"\"") {
+			t.Fatalf("stdout should include invalid-source error_code, got %q", stdout.String())
+		}
+	})
+
 	t.Run("github source with unicode-whitespace owner in lock is error", func(t *testing.T) {
 		targetRoot := filepath.Join(t.TempDir(), "skills")
 		if err := os.MkdirAll(filepath.Join(targetRoot, "github-owner-unicode-whitespace"), 0o755); err != nil {
