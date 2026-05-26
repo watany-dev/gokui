@@ -730,6 +730,25 @@ func TestRunFetch(t *testing.T) {
 		if sarif.Runs[0].Results[0].RuleID != fetchErrorCodeSourceUnsupported {
 			t.Fatalf("rule id = %q, want %q", sarif.Runs[0].Results[0].RuleID, fetchErrorCodeSourceUnsupported)
 		}
+
+		stdout.Reset()
+		stderr.Reset()
+		code = runFetch([]string{"github:org/re\u200bpo//skills/x@8f3c2d1a4b5c6d7e8f901234567890abcdef1234", "--out", t.TempDir(), "--format", "sarif"}, &stdout, &stderr)
+		if code != 1 {
+			t.Fatalf("runFetch(sarif invalid source unicode-threat) code = %d, want 1", code)
+		}
+		if stderr.Len() != 0 {
+			t.Fatalf("stderr should be empty for sarif invalid source error, got %q", stderr.String())
+		}
+		if err := json.Unmarshal([]byte(stdout.String()), &sarif); err != nil {
+			t.Fatalf("sarif parse failed: %v", err)
+		}
+		if len(sarif.Runs) != 1 || len(sarif.Runs[0].Results) != 1 {
+			t.Fatalf("unexpected sarif structure for unicode-threat source: %+v", sarif)
+		}
+		if sarif.Runs[0].Results[0].RuleID != fetchErrorCodeSourceInvalid {
+			t.Fatalf("rule id = %q, want %q", sarif.Runs[0].Results[0].RuleID, fetchErrorCodeSourceInvalid)
+		}
 	})
 
 	t.Run("json mode failure codes cover major branches", func(t *testing.T) {
@@ -776,6 +795,39 @@ func TestRunFetch(t *testing.T) {
 		}
 		stdout.Reset()
 		stderr.Reset()
+
+		unicodeThreatSources := []struct {
+			name   string
+			source string
+		}{
+			{
+				name:   "owner unicode whitespace",
+				source: "github:or\u00a0g/repo//skills/x@8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
+			},
+			{
+				name:   "repo zero-width",
+				source: "github:org/re\u200bpo//skills/x@8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
+			},
+			{
+				name:   "ref unicode tag",
+				source: "github:org/repo//skills/x@8f3c2d1a4b5c6d7e8f90\U000E00011234567890abcdef1234",
+			},
+			{
+				name:   "ref variation selector",
+				source: "github:org/repo//skills/x@8f3c2d1a4b5c6d7e8f90\ufe0f1234567890abcdef1234",
+			},
+		}
+		for _, tc := range unicodeThreatSources {
+			code = runFetch([]string{tc.source, "--out", t.TempDir(), "--format", "json"}, &stdout, &stderr)
+			if code != 1 || !strings.Contains(stdout.String(), fetchErrorCodeSourceInvalid) {
+				t.Fatalf("expected source invalid code for %s, got code=%d stdout=%q stderr=%q", tc.name, code, stdout.String(), stderr.String())
+			}
+			if strings.Contains(stdout.String(), "\"rule_id\":") {
+				t.Fatalf("stdout should omit rule_id for non-rule source invalid (%s), got %q", tc.name, stdout.String())
+			}
+			stdout.Reset()
+			stderr.Reset()
+		}
 
 		// floating ref
 		code = runFetch([]string{"github:org/repo//skills/x@main", "--out", t.TempDir(), "--format", "json"}, &stdout, &stderr)
