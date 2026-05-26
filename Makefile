@@ -132,6 +132,16 @@ release-check-preflight:
 			;; \
 		esac; \
 	}; \
+	assert_no_empty_segments() { \
+		path="$$1"; \
+		label="$$2"; \
+		code="$$3"; \
+		case "$$path" in \
+			*//*) \
+				emit_preflight_error "$$code" "$$label must not contain empty path segments: $$path"; \
+			;; \
+		esac; \
+	}; \
 	assert_sarif_extension() { \
 		path="$$1"; \
 		label="$$2"; \
@@ -149,6 +159,8 @@ release-check-preflight:
 	case "$(RELEASE_CHECK_SARIF_OUT)" in ""|"/"|"."|*/) \
 		emit_preflight_error "RC_PREFLIGHT_SARIF_OUT_INVALID" "release-check SARIF output path must be a non-root file path"; \
 	;; esac; \
+	assert_no_empty_segments "$(RELEASE_CHECK_BUILD_OUT)" "release-check build output path" "RC_PREFLIGHT_BUILD_OUT_INVALID"; \
+	assert_no_empty_segments "$(RELEASE_CHECK_SARIF_OUT)" "release-check SARIF output path" "RC_PREFLIGHT_SARIF_OUT_INVALID"; \
 	assert_no_dot_segments "$(RELEASE_CHECK_BUILD_OUT)" "release-check build output path" "RC_PREFLIGHT_BUILD_OUT_INVALID"; \
 	assert_no_dot_segments "$(RELEASE_CHECK_SARIF_OUT)" "release-check SARIF output path" "RC_PREFLIGHT_SARIF_OUT_INVALID"; \
 	assert_sarif_extension "$(RELEASE_CHECK_SARIF_OUT)" "release-check SARIF output path" "RC_PREFLIGHT_SARIF_OUT_INVALID"; \
