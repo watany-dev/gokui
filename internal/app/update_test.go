@@ -6171,6 +6171,13 @@ func TestValidateUpdateLockEnvelope(t *testing.T) {
 			detailPart: "lock name must not contain C0/C1 control characters",
 		},
 		{
+			name: "installed_at has C0/C1 control character",
+			mutate: func(l *installLock) {
+				l.InstalledAt = "2026-05-24T00:00:00\u008fZ"
+			},
+			detailPart: "lock installed_at must not contain C0/C1 control characters",
+		},
+		{
 			name: "invalid installed_at",
 			mutate: func(l *installLock) {
 				l.InstalledAt = "not-rfc3339"

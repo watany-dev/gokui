@@ -1153,6 +1153,9 @@ func validateUpdateLockEnvelope(lock installLock, expectedSkillName string) erro
 	if trimmedInstalledAt != lock.InstalledAt {
 		return fmt.Errorf("lock installed_at must not contain leading or trailing whitespace")
 	}
+	if strings.IndexFunc(lock.InstalledAt, isC0OrC1ControlRune) >= 0 {
+		return fmt.Errorf("lock installed_at must not contain C0/C1 control characters")
+	}
 	if _, err := time.Parse(time.RFC3339, lock.InstalledAt); err != nil {
 		return fmt.Errorf("lock installed_at must be RFC3339")
 	}

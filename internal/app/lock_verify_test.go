@@ -1833,6 +1833,13 @@ func TestVerifyLockStructureValidationBranches(t *testing.T) {
 			detailIn: "installed_at is empty",
 		},
 		{
+			name: "installed_at has C0/C1 control character",
+			mutate: func(l *installLock) {
+				l.InstalledAt = "2026-05-23T00:00:00\u008fZ"
+			},
+			detailIn: "installed_at must not contain C0/C1 control characters",
+		},
+		{
 			name: "invalid installed_at",
 			mutate: func(l *installLock) {
 				l.InstalledAt = "x"

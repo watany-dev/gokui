@@ -3422,6 +3422,13 @@ func TestReadInstallLockAndProvenanceMatches(t *testing.T) {
 				detailPart: "installed_at must not contain leading or trailing whitespace",
 			},
 			{
+				name: "installed_at has C0/C1 control character",
+				mutate: func(l *installLock) {
+					l.InstalledAt = "2026-05-24T00:00:00\u008fZ"
+				},
+				detailPart: "installed_at must not contain C0/C1 control characters",
+			},
+			{
 				name: "installed_at invalid rfc3339",
 				mutate: func(l *installLock) {
 					l.InstalledAt = "not-rfc3339"
