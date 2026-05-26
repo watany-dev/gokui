@@ -89,6 +89,8 @@ Lock names in `gokui.lock` must not contain C0/C1 control characters for
 install/update/lock verify provenance checks.
 Lock source kind/type fields in `gokui.lock` must not contain C0/C1 control
 characters for install/update/lock verify provenance checks.
+Lock policy profile/decision fields in `gokui.lock` must not contain C0/C1
+control characters for install/update/lock verify provenance checks.
 Install target entries also reject symlink path components.
 `lock verify` now validates installed files against `gokui.lock`, checks source
 field consistency (including strict GitHub source syntax and commit pinning),

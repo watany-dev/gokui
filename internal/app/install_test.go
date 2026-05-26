@@ -3450,6 +3450,13 @@ func TestReadInstallLockAndProvenanceMatches(t *testing.T) {
 				detailPart: "profile must be canonical lowercase without surrounding whitespace",
 			},
 			{
+				name: "policy profile has C0/C1 control character",
+				mutate: func(l *installLock) {
+					l.Policy.Profile = "stric\u008ft"
+				},
+				detailPart: "policy profile must not contain C0/C1 control characters",
+			},
+			{
 				name: "unsupported profile",
 				mutate: func(l *installLock) {
 					l.Policy.Profile = "enterprise"
@@ -3462,6 +3469,13 @@ func TestReadInstallLockAndProvenanceMatches(t *testing.T) {
 					l.Policy.Decision = "PASS"
 				},
 				detailPart: "decision must be canonical lowercase pass",
+			},
+			{
+				name: "policy decision has C0/C1 control character",
+				mutate: func(l *installLock) {
+					l.Policy.Decision = "pas\u008fs"
+				},
+				detailPart: "policy decision must not contain C0/C1 control characters",
 			},
 			{
 				name: "empty source kind",

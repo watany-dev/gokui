@@ -751,12 +751,18 @@ func verifyLockStructure(lock installLock) (bool, string) {
 	if trimmedProfile == "" {
 		return false, "lock policy profile is empty"
 	}
+	if strings.IndexFunc(trimmedProfile, isC0OrC1ControlRune) >= 0 {
+		return false, "lock policy profile must not contain C0/C1 control characters"
+	}
 	normalizedProfile := normalizePolicyProfile(trimmedProfile)
 	if lock.Policy.Profile != normalizedProfile {
 		return false, "lock policy profile must be canonical lowercase without surrounding whitespace"
 	}
 	if !isSupportedPolicyProfile(normalizedProfile) {
 		return false, fmt.Sprintf("lock policy profile is unsupported: %s", lock.Policy.Profile)
+	}
+	if strings.IndexFunc(lock.Policy.Decision, isC0OrC1ControlRune) >= 0 {
+		return false, "lock policy decision must not contain C0/C1 control characters"
 	}
 	if lock.Policy.Decision != "pass" {
 		return false, fmt.Sprintf("lock policy decision must be canonical lowercase pass for installed skill, got %s", lock.Policy.Decision)

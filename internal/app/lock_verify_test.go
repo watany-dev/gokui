@@ -1854,6 +1854,13 @@ func TestVerifyLockStructureValidationBranches(t *testing.T) {
 			detailIn: "policy profile is unsupported",
 		},
 		{
+			name: "policy profile has C0/C1 control character",
+			mutate: func(l *installLock) {
+				l.Policy.Profile = "stric\u008ft"
+			},
+			detailIn: "policy profile must not contain C0/C1 control characters",
+		},
+		{
 			name: "non-canonical profile",
 			mutate: func(l *installLock) {
 				l.Policy.Profile = " Strict "
@@ -1880,6 +1887,13 @@ func TestVerifyLockStructureValidationBranches(t *testing.T) {
 				l.Policy.Decision = "PASS"
 			},
 			detailIn: "lock policy decision must be canonical lowercase pass",
+		},
+		{
+			name: "policy decision has C0/C1 control character",
+			mutate: func(l *installLock) {
+				l.Policy.Decision = "pas\u008fs"
+			},
+			detailIn: "lock policy decision must not contain C0/C1 control characters",
 		},
 		{
 			name: "invalid root hash",

@@ -652,6 +652,17 @@ func evaluateUpdateSkill(item updateSkillItem, lock installLock, policyLoaded bo
 		return item, nil
 	}
 	policyProfileRaw := lock.Policy.Profile
+	if strings.IndexFunc(policyProfileRaw, isC0OrC1ControlRune) >= 0 {
+		item.Status = "ERROR"
+		item.ErrorCode = updateCodeLockfileInvalid
+		item.Message = "lock policy profile must not contain C0/C1 control characters"
+		item.RuleID = inferRuleIDForJSONError(item.Message)
+		item.Risk = updateRisk{
+			Previous: lock.Findings,
+			Current:  lock.Findings,
+		}
+		return item, nil
+	}
 	policyProfile := normalizePolicyProfile(policyProfileRaw)
 	if policyProfileRaw != policyProfile {
 		item.Status = "ERROR"
@@ -676,6 +687,17 @@ func evaluateUpdateSkill(item updateSkillItem, lock installLock, policyLoaded bo
 		return item, nil
 	}
 	policyDecisionRaw := lock.Policy.Decision
+	if strings.IndexFunc(policyDecisionRaw, isC0OrC1ControlRune) >= 0 {
+		item.Status = "ERROR"
+		item.ErrorCode = updateCodeLockfileInvalid
+		item.Message = "lock policy decision must not contain C0/C1 control characters"
+		item.RuleID = inferRuleIDForJSONError(item.Message)
+		item.Risk = updateRisk{
+			Previous: lock.Findings,
+			Current:  lock.Findings,
+		}
+		return item, nil
+	}
 	if policyDecisionRaw != "pass" {
 		item.Status = "ERROR"
 		item.ErrorCode = updateCodeLockfileInvalid
