@@ -3534,6 +3534,13 @@ func TestReadInstallLockAndProvenanceMatches(t *testing.T) {
 				detailPart: "source kind must not contain C0/C1 control characters",
 			},
 			{
+				name: "source kind has unicode obfuscation character",
+				mutate: func(l *installLock) {
+					l.Source.Kind = "local-dir\u200d"
+				},
+				detailPart: "source kind must not contain Unicode bidi, zero-width, tag, or variation-selector characters",
+			},
+			{
 				name: "empty source input",
 				mutate: func(l *installLock) {
 					l.Source.Input = ""
@@ -3588,6 +3595,13 @@ func TestReadInstallLockAndProvenanceMatches(t *testing.T) {
 					l.Source.Type = "loca\u008fl"
 				},
 				detailPart: "source type must not contain C0/C1 control characters",
+			},
+			{
+				name: "source type has unicode obfuscation character",
+				mutate: func(l *installLock) {
+					l.Source.Type = "local\u200d"
+				},
+				detailPart: "source type must not contain Unicode bidi, zero-width, tag, or variation-selector characters",
 			},
 			{
 				name: "source type mismatch",

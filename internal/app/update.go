@@ -814,6 +814,17 @@ func evaluateUpdateSkill(item updateSkillItem, lock installLock, policyLoaded bo
 		}
 		return item, nil
 	}
+	if containsSeverityOverrideDisallowedUnicode(kind) {
+		item.Status = "ERROR"
+		item.ErrorCode = updateCodeLockfileInvalid
+		item.Message = "lock source kind must not contain Unicode bidi, zero-width, tag, or variation-selector characters"
+		item.RuleID = inferRuleIDForJSONError(item.Message)
+		item.Risk = updateRisk{
+			Previous: lock.Findings,
+			Current:  lock.Findings,
+		}
+		return item, nil
+	}
 	if kind != strings.ToLower(kind) {
 		item.Status = "ERROR"
 		item.ErrorCode = updateCodeLockfileInvalid
@@ -879,6 +890,17 @@ func evaluateUpdateSkill(item updateSkillItem, lock installLock, policyLoaded bo
 		item.Status = "ERROR"
 		item.ErrorCode = updateCodeLockfileInvalid
 		item.Message = "lock source type must not contain C0/C1 control characters"
+		item.RuleID = inferRuleIDForJSONError(item.Message)
+		item.Risk = updateRisk{
+			Previous: lock.Findings,
+			Current:  lock.Findings,
+		}
+		return item, nil
+	}
+	if containsSeverityOverrideDisallowedUnicode(sourceType) {
+		item.Status = "ERROR"
+		item.ErrorCode = updateCodeLockfileInvalid
+		item.Message = "lock source type must not contain Unicode bidi, zero-width, tag, or variation-selector characters"
 		item.RuleID = inferRuleIDForJSONError(item.Message)
 		item.Risk = updateRisk{
 			Previous: lock.Findings,

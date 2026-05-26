@@ -1547,6 +1547,9 @@ func validateInstallLockForProvenanceReuse(lock installLock, expectedSkillName s
 	if strings.IndexFunc(trimmedKind, isC0OrC1ControlRune) >= 0 {
 		return fmt.Errorf("lock source kind must not contain C0/C1 control characters")
 	}
+	if containsSeverityOverrideDisallowedUnicode(trimmedKind) {
+		return fmt.Errorf("lock source kind must not contain Unicode bidi, zero-width, tag, or variation-selector characters")
+	}
 	if trimmedKind != strings.ToLower(trimmedKind) {
 		return fmt.Errorf("lock source kind must be canonical lowercase")
 	}
@@ -1577,6 +1580,9 @@ func validateInstallLockForProvenanceReuse(lock installLock, expectedSkillName s
 	}
 	if strings.IndexFunc(trimmedType, isC0OrC1ControlRune) >= 0 {
 		return fmt.Errorf("lock source type must not contain C0/C1 control characters")
+	}
+	if containsSeverityOverrideDisallowedUnicode(trimmedType) {
+		return fmt.Errorf("lock source type must not contain Unicode bidi, zero-width, tag, or variation-selector characters")
 	}
 	if trimmedType != strings.ToLower(trimmedType) {
 		return fmt.Errorf("lock source type must be canonical lowercase")
