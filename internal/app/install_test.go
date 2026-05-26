@@ -3632,6 +3632,13 @@ func TestReadInstallLockAndProvenanceMatches(t *testing.T) {
 				detailPart: "policy decision must not contain C0/C1 control characters",
 			},
 			{
+				name: "policy decision has C1-only control character",
+				mutate: func(l *installLock) {
+					l.Policy.Decision = "\u0085"
+				},
+				detailPart: "policy decision must not contain C0/C1 control characters",
+			},
+			{
 				name: "policy decision has DEL control character only",
 				mutate: func(l *installLock) {
 					l.Policy.Decision = "\u007f"
@@ -3789,6 +3796,13 @@ func TestReadInstallLockAndProvenanceMatches(t *testing.T) {
 				name: "source type has C0/C1 control character at edge",
 				mutate: func(l *installLock) {
 					l.Source.Type = "\u0085local"
+				},
+				detailPart: "source type must not contain C0/C1 control characters",
+			},
+			{
+				name: "source type has C1-only control character",
+				mutate: func(l *installLock) {
+					l.Source.Type = "\u0085"
 				},
 				detailPart: "source type must not contain C0/C1 control characters",
 			},
