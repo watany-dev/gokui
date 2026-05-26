@@ -931,16 +931,17 @@ func verifyInstallReport(skillPath string, lock installLock) (bool, string) {
 	if report.Source.Input != lock.Source.Input || report.Source.Kind != lock.Source.Kind {
 		return false, "install report source does not match lock source"
 	}
-	if strings.TrimSpace(report.PolicyProfile) == "" {
-		return false, "install report policy profile is empty"
-	}
+	trimmedPolicyProfile := strings.TrimSpace(report.PolicyProfile)
 	if strings.IndexFunc(report.PolicyProfile, isC0OrC1ControlRune) >= 0 {
 		return false, "install report policy profile must not contain C0/C1 control characters"
 	}
 	if containsSeverityOverrideDisallowedUnicode(report.PolicyProfile) {
 		return false, "install report policy profile must not contain Unicode bidi, zero-width, tag, or variation-selector characters"
 	}
-	if strings.TrimSpace(report.PolicyProfile) != report.PolicyProfile {
+	if trimmedPolicyProfile == "" {
+		return false, "install report policy profile is empty"
+	}
+	if trimmedPolicyProfile != report.PolicyProfile {
 		return false, "install report policy profile must not contain leading or trailing whitespace"
 	}
 	if normalizePolicyProfile(report.PolicyProfile) != report.PolicyProfile {
@@ -949,16 +950,17 @@ func verifyInstallReport(skillPath string, lock installLock) (bool, string) {
 	if report.PolicyProfile != lock.Policy.Profile {
 		return false, "install report policy profile does not match lock policy"
 	}
-	if strings.TrimSpace(report.Decision) == "" {
-		return false, "install report decision is empty"
-	}
+	trimmedDecision := strings.TrimSpace(report.Decision)
 	if strings.IndexFunc(report.Decision, isC0OrC1ControlRune) >= 0 {
 		return false, "install report decision must not contain C0/C1 control characters"
 	}
 	if containsSeverityOverrideDisallowedUnicode(report.Decision) {
 		return false, "install report decision must not contain Unicode bidi, zero-width, tag, or variation-selector characters"
 	}
-	if strings.TrimSpace(report.Decision) != report.Decision {
+	if trimmedDecision == "" {
+		return false, "install report decision is empty"
+	}
+	if trimmedDecision != report.Decision {
 		return false, "install report decision must not contain leading or trailing whitespace"
 	}
 	if !strings.EqualFold(report.Decision, lock.Policy.Decision) {
