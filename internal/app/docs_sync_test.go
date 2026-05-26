@@ -193,6 +193,11 @@ func TestStructuredErrorStreamContractDocumentationSync(t *testing.T) {
 		t.Fatalf("failed to read ROADMAP.md: %v", err)
 	}
 	roadmap := string(roadmapBytes)
+	releaseBytes, err := os.ReadFile("../../RELEASE.md")
+	if err != nil {
+		t.Fatalf("failed to read RELEASE.md: %v", err)
+	}
+	releaseDoc := string(releaseBytes)
 
 	required := []string{
 		"For fatal errors, `human` and `compact` write diagnostics to `stderr`.",
@@ -207,6 +212,16 @@ func TestStructuredErrorStreamContractDocumentationSync(t *testing.T) {
 	requiredRoadmap := "deterministic error stream contract: `human`/`compact` errors to `stderr`, `json`/`sarif`/`review-json` structured errors to `stdout`"
 	if !strings.Contains(roadmap, requiredRoadmap) {
 		t.Fatalf("ROADMAP missing structured error stream contract line: %q", requiredRoadmap)
+	}
+
+	requiredRelease := []string{
+		"fatal `human`/`compact` diagnostics to `stderr`",
+		"fatal `json`/`sarif`/`review-json` structured reports to `stdout`",
+	}
+	for _, line := range requiredRelease {
+		if !strings.Contains(releaseDoc, line) {
+			t.Fatalf("RELEASE missing structured error stream contract line: %q", line)
+		}
 	}
 }
 

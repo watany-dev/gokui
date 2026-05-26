@@ -95,6 +95,9 @@ toolchain baseline.
 
 - JSON error contracts:
   - `fetch`, `inspect`, `install`, `update`, `lock verify`
+- Structured error output stream contract:
+  - fatal `human`/`compact` diagnostics to `stderr`
+  - fatal `json`/`sarif`/`review-json` structured reports to `stdout`
 - SARIF contract smoke check:
   - `make inspect-sarif` (expects reject exit code path and emits `inspect-results.sarif`)
 - release-check stderr error codes:
