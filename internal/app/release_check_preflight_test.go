@@ -266,6 +266,44 @@ func TestBetaCheckPreflightRejectsSymlinkedBuildOutputPath(t *testing.T) {
 	}
 }
 
+func TestBetaCheckPreflightRejectsSymlinkedSARIFOutputPath(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("preflight path contracts are exercised on POSIX in CI")
+	}
+
+	basePath := releaseCheckRepoLocalPath(t, "seed")
+	baseDir := filepath.Dir(basePath)
+	realDir := filepath.Join(baseDir, "real")
+	linkDir := filepath.Join(baseDir, "symlinked")
+	if err := os.MkdirAll(realDir, 0o755); err != nil {
+		t.Fatalf("mkdir real output dir: %v", err)
+	}
+	if err := os.Symlink(realDir, linkDir); err != nil {
+		t.Fatalf("create symlink output dir: %v", err)
+	}
+
+	betaBuildOut := releaseCheckRepoLocalPath(t, "beta-build.out")
+	betaSarifOut := filepath.Join(linkDir, "beta-inspect.sarif")
+	releaseBuildOut := releaseCheckRepoLocalPath(t, "release-build.out")
+	releaseSarifOut := releaseCheckRepoLocalPath(t, "release-inspect.sarif")
+
+	exitCode, out := runBetaCheckPreflight(t, map[string]string{
+		"BETA_CHECK_BUILD_OUT":    betaBuildOut,
+		"BETA_CHECK_SARIF_OUT":    betaSarifOut,
+		"RELEASE_CHECK_BUILD_OUT": releaseBuildOut,
+		"RELEASE_CHECK_SARIF_OUT": releaseSarifOut,
+	})
+	if exitCode == 0 {
+		t.Fatalf("expected non-zero exit for symlinked beta SARIF output path\noutput:\n%s", out)
+	}
+	if !strings.Contains(out, "[RC_PREFLIGHT_SARIF_OUT_SYMLINK]") {
+		t.Fatalf("expected symlink SARIF output rejection code, got:\n%s", out)
+	}
+	if !strings.Contains(out, "SARIF output path contains symlink path component") {
+		t.Fatalf("expected symlink SARIF output rejection message, got:\n%s", out)
+	}
+}
+
 func TestBetaCheckPreflightRejectsBuildOutputEmptyPathSegmentsFromBetaVars(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("preflight path contracts are exercised on POSIX in CI")
