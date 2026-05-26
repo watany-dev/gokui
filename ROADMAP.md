@@ -26,6 +26,7 @@ tests/CI:
 - Install source-copy and digest root hardening for symlink/non-directory root rejection
 - Fetch atomic finalize hardening for symlinked output entries
 - Update dry-run hardening for symlinked target entries, symlinked URL/executable scan inputs, and non-directory/symlink scan roots
+- Update URL scan read-path hardening with non-UTF-8 markdown payload rejection before URL extraction
 - Scan/update walker hardening for symlink/non-directory root rejection and
   non-regular file rejection before reads
 - extensionless script coverage for shebang files and executable-bit files in scan target classification

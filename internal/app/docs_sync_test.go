@@ -311,6 +311,29 @@ func TestScanNonUTF8TextHardeningDocumentationSync(t *testing.T) {
 	}
 }
 
+func TestUpdateURLScanUTF8HardeningDocumentationSync(t *testing.T) {
+	readmeBytes, err := os.ReadFile("../../README.md")
+	if err != nil {
+		t.Fatalf("failed to read README.md: %v", err)
+	}
+	readme := string(readmeBytes)
+	roadmapBytes, err := os.ReadFile("../../ROADMAP.md")
+	if err != nil {
+		t.Fatalf("failed to read ROADMAP.md: %v", err)
+	}
+	roadmap := string(roadmapBytes)
+
+	requiredReadme := "Update URL scan also rejects non-UTF-8 markdown payloads before URL extraction."
+	if !strings.Contains(readme, requiredReadme) {
+		t.Fatalf("README missing update URL scan utf-8 hardening line: %q", requiredReadme)
+	}
+
+	requiredRoadmap := "Update URL scan read-path hardening with non-UTF-8 markdown payload rejection before URL extraction"
+	if !strings.Contains(roadmap, requiredRoadmap) {
+		t.Fatalf("ROADMAP missing update URL scan utf-8 hardening line: %q", requiredRoadmap)
+	}
+}
+
 func TestLockfileExampleSchemaSync(t *testing.T) {
 	readmeBytes, err := os.ReadFile("../../README.md")
 	if err != nil {

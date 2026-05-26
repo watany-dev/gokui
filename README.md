@@ -106,6 +106,7 @@ are validated before evaluation. Lock envelope integrity (`schema`, `name`,
 `installed_at`, `severity_overrides`, and non-negative findings counters) is also validated before evaluating
 source diffs. When `.gokui-report.json` exists in the installed skill, update
 also requires it to match lock baseline fields before differential evaluation.
+Update URL scan also rejects non-UTF-8 markdown payloads before URL extraction.
 JSON output now emits
 stable
 skill-item keys for automation-friendly parsing, including `error_code` for

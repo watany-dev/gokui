@@ -1875,6 +1875,44 @@ func TestRunUpdateDryRunRejectedAndError(t *testing.T) {
 		}
 	})
 
+	t.Run("installed non-utf8 markdown yields evaluation error with URL-scan utf8 rule_id", func(t *testing.T) {
+		targetRoot := filepath.Join(t.TempDir(), "skills")
+		if err := os.MkdirAll(targetRoot, 0o755); err != nil {
+			t.Fatalf("mkdir target root: %v", err)
+		}
+		src := createSkillSourceForInstallTest(t, "update-url-utf8-skill")
+		report := installReport{
+			SchemaVersion: "0.1.0-draft",
+			Source:        source{Input: src, Kind: "local-dir"},
+			PolicyProfile: "strict",
+			Decision:      "PASS",
+		}
+		installedPath, _, err := installSkillAtomic(src, targetRoot, "update-url-utf8-skill", report)
+		if err != nil {
+			t.Fatalf("installSkillAtomic() error = %v", err)
+		}
+		invalid := append([]byte("prefix"), 0xff)
+		if err := os.WriteFile(filepath.Join(installedPath, "README.md"), invalid, 0o644); err != nil {
+			t.Fatalf("write invalid utf-8 markdown: %v", err)
+		}
+
+		var stdout strings.Builder
+		var stderr strings.Builder
+		code := runUpdate([]string{"--dry-run", "--target", "custom:" + targetRoot, "--format", "json"}, &stdout, &stderr)
+		if code != 1 {
+			t.Fatalf("runUpdate(installed non-utf8 markdown) code = %d, want 1\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
+		}
+		if stderr.Len() != 0 {
+			t.Fatalf("stderr should be empty, got %q", stderr.String())
+		}
+		if !strings.Contains(stdout.String(), "\"error_code\": \""+updateCodeEvaluationError+"\"") {
+			t.Fatalf("stdout should include evaluation error_code, got %q", stdout.String())
+		}
+		if !strings.Contains(stdout.String(), "\"rule_id\": \""+ruleUpdateURLScanInvalidUTF8+"\"") {
+			t.Fatalf("stdout should include URL-scan utf8 rule_id, got %q", stdout.String())
+		}
+	})
+
 	t.Run("installed non-markdown symlink yields evaluation error with executable-scan rule_id", func(t *testing.T) {
 		if runtime.GOOS == "windows" {
 			t.Skip("symlink permissions differ on windows")
@@ -4824,6 +4862,11 @@ func TestUpdateHelpers(t *testing.T) {
 		if err == nil || !strings.Contains(err.Error(), "failed to read file for URL scan") {
 			t.Fatalf("expected read error, got %v", err)
 		}
+
+		_, err = readURLScanContent(bytes.NewReader([]byte{0xff}), path, root)
+		if err == nil || !strings.Contains(err.Error(), ruleUpdateURLScanInvalidUTF8) {
+			t.Fatalf("expected invalid utf-8 URL scan error, got %v", err)
+		}
 	})
 
 	t.Run("collectURLs enforces max scan file count", func(t *testing.T) {
@@ -4841,6 +4884,18 @@ func TestUpdateHelpers(t *testing.T) {
 		_, err := collectURLs(root)
 		if err == nil || !strings.Contains(err.Error(), "URL scan exceeded max file count") {
 			t.Fatalf("expected URL scan max-file error, got %v", err)
+		}
+	})
+
+	t.Run("collectURLs rejects non-utf8 markdown inputs", func(t *testing.T) {
+		root := t.TempDir()
+		invalid := append([]byte("prefix"), 0xff)
+		if err := os.WriteFile(filepath.Join(root, "bad.md"), invalid, 0o644); err != nil {
+			t.Fatalf("write invalid utf-8 markdown: %v", err)
+		}
+		_, err := collectURLs(root)
+		if err == nil || !strings.Contains(err.Error(), ruleUpdateURLScanInvalidUTF8) {
+			t.Fatalf("expected URL scan invalid-utf8 error, got %v", err)
 		}
 	})
 

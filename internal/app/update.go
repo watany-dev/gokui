@@ -12,6 +12,7 @@ import (
 	"sort"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/watany-dev/gokui/internal/limitio"
 	policypkg "github.com/watany-dev/gokui/internal/policy"
@@ -101,6 +102,7 @@ const ruleUpdateTargetEntrySymlink = "UPDATE_TARGET_ENTRY_SYMLINK_DETECTED"
 const ruleUpdateURLScanSymlink = "UPDATE_URL_SCAN_SYMLINK_DETECTED"
 const ruleUpdateURLScanSpecialFile = "UPDATE_URL_SCAN_SPECIAL_FILE"
 const ruleUpdateURLScanSourceChanged = "UPDATE_URL_SCAN_SOURCE_CHANGED_DURING_READ"
+const ruleUpdateURLScanInvalidUTF8 = "UPDATE_URL_SCAN_INVALID_UTF8"
 const ruleUpdateExecutableScanSymlink = "UPDATE_EXECUTABLE_SCAN_SYMLINK_DETECTED"
 const ruleUpdateExecutableScanSpecialFile = "UPDATE_EXECUTABLE_SCAN_SPECIAL_FILE"
 
@@ -1403,6 +1405,13 @@ func readURLScanContent(r io.Reader, path string, root string) (string, error) {
 			return "", fmt.Errorf("markdown file exceeds URL scan size limit: %s", path)
 		}
 		return "", fmt.Errorf("failed to read file for URL scan: %w", err)
+	}
+	if !utf8.Valid(content.Bytes()) {
+		rel, relErr := filepath.Rel(root, path)
+		if relErr == nil {
+			path = filepath.ToSlash(rel)
+		}
+		return "", fmt.Errorf("%s: markdown file must be valid UTF-8: %s", ruleUpdateURLScanInvalidUTF8, path)
 	}
 	return content.String(), nil
 }
