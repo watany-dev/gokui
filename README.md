@@ -361,7 +361,7 @@ Release readiness gate:
 make release-check
 
 # Optional: override isolated release-check build artifact path
-make release-check RELEASE_CHECK_BUILD_OUT=/tmp/gokui-release-check
+make release-check RELEASE_CHECK_BUILD_OUT=.cache/custom/gokui-release-check
 
 # Offline fallback when vulnerability DB access is unavailable
 make release-check RELEASE_CHECK_VULN=0
@@ -398,8 +398,10 @@ Preflight rejections include machine-readable error codes:
 `RC_PREFLIGHT_BUILD_OUT_SYMLINK`, `RC_PREFLIGHT_SARIF_OUT_SYMLINK`,
 `RC_PREFLIGHT_OUTPUT_PATH_CONFLICT`, `RC_PREFLIGHT_BUILD_OUT_EXISTS`, and
 `RC_PREFLIGHT_SARIF_OUT_EXISTS`.
-Release-check build/SARIF output paths must also be non-root file paths and
-must not be directory-like paths ending with `/` or located under `.git/`.
+Release-check build/SARIF output paths must also be non-root file paths and must resolve
+under the repository root, and must not be directory-like paths ending with `/` or
+located under `.git/`.
+`make inspect-sarif` output paths must resolve under the repository root.
 Release scripts fail closed when repository-root/output/log paths include
 symlink components, and when expected output/log files already exist.
 Evidence and SARIF outputs are created atomically and written via open file
@@ -602,8 +604,8 @@ finding changes with new URL/executable/file-delta/override-delta signals.
 
 | error_code | Meaning |
 | --- | --- |
-| `RC_PREFLIGHT_BUILD_OUT_INVALID` | `RELEASE_CHECK_BUILD_OUT` is root-like (`/`, `.`, empty), ends with `/`, or resolves under `.git/` |
-| `RC_PREFLIGHT_SARIF_OUT_INVALID` | `RELEASE_CHECK_SARIF_OUT` is root-like (`/`, `.`, empty), ends with `/`, or resolves under `.git/` |
+| `RC_PREFLIGHT_BUILD_OUT_INVALID` | `RELEASE_CHECK_BUILD_OUT` is root-like (`/`, `.`, empty), ends with `/`, resolves outside the repository root, or resolves under `.git/` |
+| `RC_PREFLIGHT_SARIF_OUT_INVALID` | `RELEASE_CHECK_SARIF_OUT` is root-like (`/`, `.`, empty), ends with `/`, resolves outside the repository root, or resolves under `.git/` |
 | `RC_PREFLIGHT_BUILD_OUT_SYMLINK` | Build output path or ancestor contains a symlink component |
 | `RC_PREFLIGHT_SARIF_OUT_SYMLINK` | SARIF output path or ancestor contains a symlink component |
 | `RC_PREFLIGHT_OUTPUT_PATH_CONFLICT` | Build and SARIF outputs resolve to the same absolute path |

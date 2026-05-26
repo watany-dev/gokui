@@ -41,15 +41,17 @@ Preflight rejections include machine-readable error codes:
 `RC_PREFLIGHT_BUILD_OUT_SYMLINK`, `RC_PREFLIGHT_SARIF_OUT_SYMLINK`,
 `RC_PREFLIGHT_OUTPUT_PATH_CONFLICT`, `RC_PREFLIGHT_BUILD_OUT_EXISTS`, and
 `RC_PREFLIGHT_SARIF_OUT_EXISTS`.
-Release-check build/SARIF output paths must also be non-root file paths and
-must not be directory-like paths ending with `/` or located under `.git/`.
+Release-check build/SARIF output paths must also be non-root file paths and must resolve
+under the repository root, and must not be directory-like paths ending with `/` or
+located under `.git/`.
+`make inspect-sarif` output paths must resolve under the repository root.
 Output-path safety preflight checks run before format/test/race/vuln gate
 steps.
 
 To override the isolated release-check build artifact path:
 
 ```sh
-make release-check RELEASE_CHECK_BUILD_OUT=/tmp/gokui-release-check
+make release-check RELEASE_CHECK_BUILD_OUT=.cache/custom/gokui-release-check
 ```
 
 ## 3) Offline Fallback
@@ -126,8 +128,8 @@ When one or more removals fail, a summary line is emitted with
 
 | Release-check code | Typical trigger |
 | --- | --- |
-| `RC_PREFLIGHT_BUILD_OUT_INVALID` | `RELEASE_CHECK_BUILD_OUT` is root-like (`/`, `.`, empty), ends with `/`, or resolves under `.git/` |
-| `RC_PREFLIGHT_SARIF_OUT_INVALID` | `RELEASE_CHECK_SARIF_OUT` is root-like (`/`, `.`, empty), ends with `/`, or resolves under `.git/` |
+| `RC_PREFLIGHT_BUILD_OUT_INVALID` | `RELEASE_CHECK_BUILD_OUT` is root-like (`/`, `.`, empty), ends with `/`, resolves outside the repository root, or resolves under `.git/` |
+| `RC_PREFLIGHT_SARIF_OUT_INVALID` | `RELEASE_CHECK_SARIF_OUT` is root-like (`/`, `.`, empty), ends with `/`, resolves outside the repository root, or resolves under `.git/` |
 | `RC_PREFLIGHT_BUILD_OUT_SYMLINK` | Build output path or ancestor contains a symlink component |
 | `RC_PREFLIGHT_SARIF_OUT_SYMLINK` | SARIF output path or ancestor contains a symlink component |
 | `RC_PREFLIGHT_OUTPUT_PATH_CONFLICT` | Build and SARIF outputs resolve to the same absolute path |

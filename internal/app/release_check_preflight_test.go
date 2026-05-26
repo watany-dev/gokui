@@ -34,13 +34,40 @@ func runReleaseCheckPreflight(t *testing.T, env map[string]string) (int, string)
 	return exitErr.ExitCode(), string(out)
 }
 
+func releaseCheckRepoRootPath(t *testing.T) string {
+	t.Helper()
+
+	root, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatalf("resolve repository root: %v", err)
+	}
+	return root
+}
+
+func releaseCheckRepoLocalPath(t *testing.T, suffix string) string {
+	t.Helper()
+
+	safeName := strings.NewReplacer("/", "-", "\\", "-", " ", "-").Replace(strings.ToLower(t.Name()))
+	baseDir := filepath.Join(releaseCheckRepoRootPath(t), ".cache", "release-check-preflight-tests")
+	if err := os.MkdirAll(baseDir, 0o755); err != nil {
+		t.Fatalf("mkdir preflight test base dir: %v", err)
+	}
+	tempDir, err := os.MkdirTemp(baseDir, safeName+"-")
+	if err != nil {
+		t.Fatalf("create preflight test temp dir: %v", err)
+	}
+	t.Cleanup(func() {
+		_ = os.RemoveAll(tempDir)
+	})
+	return filepath.Join(tempDir, suffix)
+}
+
 func TestReleaseCheckPreflightRejectsSameOutputPath(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("release-check preflight path contracts are exercised on POSIX in CI")
 	}
 
-	tmp := t.TempDir()
-	shared := filepath.Join(tmp, "shared.out")
+	shared := releaseCheckRepoLocalPath(t, "shared.out")
 
 	exitCode, out := runReleaseCheckPreflight(t, map[string]string{
 		"RELEASE_CHECK_BUILD_OUT": shared,
@@ -65,9 +92,21 @@ func TestReleaseCheckPreflightRejectsSameOutputPathAfterNormalization(t *testing
 		t.Skip("release-check preflight path contracts are exercised on POSIX in CI")
 	}
 
-	tmp := t.TempDir()
-	buildOut := filepath.Join(tmp, "nested", "..", "shared.out")
-	sarifOut := filepath.Join(tmp, "shared.out")
+	root := releaseCheckRepoRootPath(t)
+	safeName := strings.NewReplacer("/", "-", "\\", "-", " ", "-").Replace(strings.ToLower(t.Name()))
+	baseDir := filepath.Join(root, ".cache", "release-check-preflight-tests")
+	if err := os.MkdirAll(baseDir, 0o755); err != nil {
+		t.Fatalf("mkdir preflight test base dir: %v", err)
+	}
+	tempDir, err := os.MkdirTemp(baseDir, safeName+"-")
+	if err != nil {
+		t.Fatalf("create preflight test temp dir: %v", err)
+	}
+	t.Cleanup(func() {
+		_ = os.RemoveAll(tempDir)
+	})
+	buildOut := filepath.Join(tempDir, "nested", "..", "shared.out")
+	sarifOut := filepath.Join(tempDir, "shared.out")
 
 	exitCode, out := runReleaseCheckPreflight(t, map[string]string{
 		"RELEASE_CHECK_BUILD_OUT": buildOut,
@@ -94,9 +133,11 @@ func TestReleaseCheckPreflightRejectsExistingBuildOutput(t *testing.T) {
 		t.Skip("release-check preflight path contracts are exercised on POSIX in CI")
 	}
 
-	tmp := t.TempDir()
-	buildOut := filepath.Join(tmp, "existing-build.out")
-	sarifOut := filepath.Join(tmp, "inspect.sarif")
+	buildOut := releaseCheckRepoLocalPath(t, "existing-build.out")
+	sarifOut := releaseCheckRepoLocalPath(t, "inspect.sarif")
+	if err := os.MkdirAll(filepath.Dir(buildOut), 0o755); err != nil {
+		t.Fatalf("mkdir build output parent: %v", err)
+	}
 	if err := os.WriteFile(buildOut, []byte("existing"), 0o600); err != nil {
 		t.Fatalf("write existing build output: %v", err)
 	}
@@ -121,9 +162,11 @@ func TestReleaseCheckPreflightRejectsExistingSARIFOutput(t *testing.T) {
 		t.Skip("release-check preflight path contracts are exercised on POSIX in CI")
 	}
 
-	tmp := t.TempDir()
-	buildOut := filepath.Join(tmp, "build.out")
-	sarifOut := filepath.Join(tmp, "existing-inspect.sarif")
+	buildOut := releaseCheckRepoLocalPath(t, "build.out")
+	sarifOut := releaseCheckRepoLocalPath(t, "existing-inspect.sarif")
+	if err := os.MkdirAll(filepath.Dir(sarifOut), 0o755); err != nil {
+		t.Fatalf("mkdir SARIF output parent: %v", err)
+	}
 	if err := os.WriteFile(sarifOut, []byte("existing"), 0o600); err != nil {
 		t.Fatalf("write existing SARIF output: %v", err)
 	}
@@ -159,10 +202,9 @@ func TestReleaseCheckPreflightRejectsRootOrDirectoryLikeBuildOutput(t *testing.T
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			tmp := t.TempDir()
 			exitCode, out := runReleaseCheckPreflight(t, map[string]string{
 				"RELEASE_CHECK_BUILD_OUT": tc.buildOut,
-				"RELEASE_CHECK_SARIF_OUT": filepath.Join(tmp, "inspect.sarif"),
+				"RELEASE_CHECK_SARIF_OUT": releaseCheckRepoLocalPath(t, "inspect.sarif"),
 			})
 			if exitCode == 0 {
 				t.Fatalf("expected non-zero exit for invalid build output path %q\noutput:\n%s", tc.buildOut, out)
@@ -193,9 +235,8 @@ func TestReleaseCheckPreflightRejectsRootOrDirectoryLikeSARIFOutput(t *testing.T
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			tmp := t.TempDir()
 			exitCode, out := runReleaseCheckPreflight(t, map[string]string{
-				"RELEASE_CHECK_BUILD_OUT": filepath.Join(tmp, "build.out"),
+				"RELEASE_CHECK_BUILD_OUT": releaseCheckRepoLocalPath(t, "build.out"),
 				"RELEASE_CHECK_SARIF_OUT": tc.sarifOut,
 			})
 			if exitCode == 0 {
@@ -216,10 +257,10 @@ func TestReleaseCheckPreflightRejectsBuildOutputInsideGitDir(t *testing.T) {
 		t.Skip("release-check preflight path contracts are exercised on POSIX in CI")
 	}
 
-	tmp := t.TempDir()
+	repoRoot := releaseCheckRepoRootPath(t)
 	exitCode, out := runReleaseCheckPreflight(t, map[string]string{
-		"RELEASE_CHECK_BUILD_OUT": filepath.Join(".git", "hooks", "pre-commit"),
-		"RELEASE_CHECK_SARIF_OUT": filepath.Join(tmp, "inspect.sarif"),
+		"RELEASE_CHECK_BUILD_OUT": filepath.Join(repoRoot, ".git", "hooks", "pre-commit"),
+		"RELEASE_CHECK_SARIF_OUT": releaseCheckRepoLocalPath(t, "inspect.sarif"),
 	})
 	if exitCode == 0 {
 		t.Fatalf("expected non-zero exit for build output inside .git\noutput:\n%s", out)
@@ -237,10 +278,10 @@ func TestReleaseCheckPreflightRejectsSARIFOutputInsideGitDir(t *testing.T) {
 		t.Skip("release-check preflight path contracts are exercised on POSIX in CI")
 	}
 
-	tmp := t.TempDir()
+	repoRoot := releaseCheckRepoRootPath(t)
 	exitCode, out := runReleaseCheckPreflight(t, map[string]string{
-		"RELEASE_CHECK_BUILD_OUT": filepath.Join(tmp, "build.out"),
-		"RELEASE_CHECK_SARIF_OUT": filepath.Join(".git", "logs", "HEAD"),
+		"RELEASE_CHECK_BUILD_OUT": releaseCheckRepoLocalPath(t, "build.out"),
+		"RELEASE_CHECK_SARIF_OUT": filepath.Join(repoRoot, ".git", "logs", "HEAD"),
 	})
 	if exitCode == 0 {
 		t.Fatalf("expected non-zero exit for SARIF output inside .git\noutput:\n%s", out)
@@ -250,6 +291,46 @@ func TestReleaseCheckPreflightRejectsSARIFOutputInsideGitDir(t *testing.T) {
 	}
 	if !strings.Contains(out, "outside .git") {
 		t.Fatalf("expected SARIF output invalid-path rejection to mention .git guard, got:\n%s", out)
+	}
+}
+
+func TestReleaseCheckPreflightRejectsBuildOutputOutsideRepoRoot(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("release-check preflight path contracts are exercised on POSIX in CI")
+	}
+
+	exitCode, out := runReleaseCheckPreflight(t, map[string]string{
+		"RELEASE_CHECK_BUILD_OUT": filepath.Join(t.TempDir(), "build.out"),
+		"RELEASE_CHECK_SARIF_OUT": releaseCheckRepoLocalPath(t, "inspect.sarif"),
+	})
+	if exitCode == 0 {
+		t.Fatalf("expected non-zero exit for build output outside repository root\noutput:\n%s", out)
+	}
+	if !strings.Contains(out, "[RC_PREFLIGHT_BUILD_OUT_INVALID]") {
+		t.Fatalf("expected build output invalid-path rejection code, got:\n%s", out)
+	}
+	if !strings.Contains(out, "under repository root") {
+		t.Fatalf("expected build output invalid-path rejection to mention repository-root guard, got:\n%s", out)
+	}
+}
+
+func TestReleaseCheckPreflightRejectsSARIFOutputOutsideRepoRoot(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("release-check preflight path contracts are exercised on POSIX in CI")
+	}
+
+	exitCode, out := runReleaseCheckPreflight(t, map[string]string{
+		"RELEASE_CHECK_BUILD_OUT": releaseCheckRepoLocalPath(t, "build.out"),
+		"RELEASE_CHECK_SARIF_OUT": filepath.Join(t.TempDir(), "inspect.sarif"),
+	})
+	if exitCode == 0 {
+		t.Fatalf("expected non-zero exit for SARIF output outside repository root\noutput:\n%s", out)
+	}
+	if !strings.Contains(out, "[RC_PREFLIGHT_SARIF_OUT_INVALID]") {
+		t.Fatalf("expected SARIF output invalid-path rejection code, got:\n%s", out)
+	}
+	if !strings.Contains(out, "under repository root") {
+		t.Fatalf("expected SARIF output invalid-path rejection to mention repository-root guard, got:\n%s", out)
 	}
 }
 
@@ -263,14 +344,18 @@ func TestReleaseCheckPreflightRejectsSymlinkPathComponent(t *testing.T) {
 	if err := os.Mkdir(realDir, 0o755); err != nil {
 		t.Fatalf("mkdir real dir: %v", err)
 	}
-	linkedDir := filepath.Join(tmp, "linked")
+	linkedDir := releaseCheckRepoLocalPath(t, "linked")
+	if err := os.MkdirAll(filepath.Dir(linkedDir), 0o755); err != nil {
+		t.Fatalf("mkdir linked dir parent: %v", err)
+	}
+	_ = os.Remove(linkedDir)
 	if err := os.Symlink(realDir, linkedDir); err != nil {
 		t.Fatalf("create symlink dir: %v", err)
 	}
 
 	exitCode, out := runReleaseCheckPreflight(t, map[string]string{
 		"RELEASE_CHECK_BUILD_OUT": filepath.Join(linkedDir, "build.out"),
-		"RELEASE_CHECK_SARIF_OUT": filepath.Join(tmp, "inspect.sarif"),
+		"RELEASE_CHECK_SARIF_OUT": releaseCheckRepoLocalPath(t, "inspect.sarif"),
 	})
 	if exitCode == 0 {
 		t.Fatalf("expected non-zero exit when output path contains symlink component\noutput:\n%s", out)
@@ -293,13 +378,17 @@ func TestReleaseCheckPreflightRejectsSARIFSymlinkPathComponent(t *testing.T) {
 	if err := os.Mkdir(realDir, 0o755); err != nil {
 		t.Fatalf("mkdir real dir: %v", err)
 	}
-	linkedDir := filepath.Join(tmp, "linked")
+	linkedDir := releaseCheckRepoLocalPath(t, "linked")
+	if err := os.MkdirAll(filepath.Dir(linkedDir), 0o755); err != nil {
+		t.Fatalf("mkdir linked dir parent: %v", err)
+	}
+	_ = os.Remove(linkedDir)
 	if err := os.Symlink(realDir, linkedDir); err != nil {
 		t.Fatalf("create symlink dir: %v", err)
 	}
 
 	exitCode, out := runReleaseCheckPreflight(t, map[string]string{
-		"RELEASE_CHECK_BUILD_OUT": filepath.Join(tmp, "build.out"),
+		"RELEASE_CHECK_BUILD_OUT": releaseCheckRepoLocalPath(t, "build.out"),
 		"RELEASE_CHECK_SARIF_OUT": filepath.Join(linkedDir, "inspect.sarif"),
 	})
 	if exitCode == 0 {
@@ -318,9 +407,8 @@ func TestReleaseCheckPreflightAcceptsDistinctNonExistingPaths(t *testing.T) {
 		t.Skip("release-check preflight path contracts are exercised on POSIX in CI")
 	}
 
-	tmp := t.TempDir()
-	buildOut := filepath.Join(tmp, "ok-build.out")
-	sarifOut := filepath.Join(tmp, "ok-inspect.sarif")
+	buildOut := releaseCheckRepoLocalPath(t, "ok-build.out")
+	sarifOut := releaseCheckRepoLocalPath(t, "ok-inspect.sarif")
 
 	exitCode, out := runReleaseCheckPreflight(t, map[string]string{
 		"RELEASE_CHECK_BUILD_OUT": buildOut,

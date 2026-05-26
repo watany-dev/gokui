@@ -7,7 +7,7 @@ umask 077
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 out_path="${1:-inspect-results.sarif}"
 if [[ "$out_path" != /* ]]; then
-  out_path="$(pwd)/$out_path"
+  out_path="$ROOT_DIR/$out_path"
 fi
 
 assert_no_symlink_components() {
@@ -43,8 +43,21 @@ create_temp_file_for_write() {
   printf -v "$fd_var" '%s' "$fd"
 }
 
+assert_under_repo_root() {
+  local path="$1"
+  local label="$2"
+  case "$path" in
+    "$ROOT_DIR"/*) ;;
+    *)
+      echo "${label} must resolve under repository root ($ROOT_DIR): $path" >&2
+      exit 1
+      ;;
+  esac
+}
+
 assert_no_symlink_components "$ROOT_DIR" "repository root path"
 out_dir="$(dirname "$out_path")"
+assert_under_repo_root "$out_path" "inspect SARIF output path"
 assert_no_symlink_components "$out_dir" "inspect SARIF output directory"
 assert_no_symlink_components "$out_path" "inspect SARIF output path"
 if [ -e "$out_path" ]; then

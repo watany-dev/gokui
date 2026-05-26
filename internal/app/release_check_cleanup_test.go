@@ -9,6 +9,42 @@ import (
 	"testing"
 )
 
+func releaseCheckCleanupRepoRootPath(t *testing.T) string {
+	t.Helper()
+
+	root, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatalf("resolve repository root: %v", err)
+	}
+	return root
+}
+
+func releaseCheckCleanupRepoLocalPath(t *testing.T, suffix string) string {
+	t.Helper()
+
+	safeName := strings.NewReplacer("/", "-", "\\", "-", " ", "-").Replace(strings.ToLower(t.Name()))
+	baseDir := filepath.Join(releaseCheckCleanupRepoRootPath(t), ".cache", "release-check-cleanup-tests")
+	if err := os.MkdirAll(baseDir, 0o755); err != nil {
+		t.Fatalf("mkdir cleanup test base dir: %v", err)
+	}
+	tempDir, err := os.MkdirTemp(baseDir, safeName+"-")
+	if err != nil {
+		t.Fatalf("create cleanup test temp dir: %v", err)
+	}
+	t.Cleanup(func() {
+		_ = os.RemoveAll(tempDir)
+	})
+	return filepath.Join(tempDir, suffix)
+}
+
+func removeIfExists(path string) error {
+	err := os.Remove(path)
+	if err == nil || os.IsNotExist(err) {
+		return nil
+	}
+	return err
+}
+
 func writeFakeSubmake(t *testing.T, failVuln bool) string {
 	t.Helper()
 
@@ -122,9 +158,14 @@ func TestReleaseCheckCleansArtifactsOnSuccess(t *testing.T) {
 		t.Skip("release-check shell contract is exercised on POSIX in CI")
 	}
 
-	tmp := t.TempDir()
-	buildOut := filepath.Join(tmp, "release-build")
-	sarifOut := filepath.Join(tmp, "inspect.sarif")
+	buildOut := releaseCheckCleanupRepoLocalPath(t, "release-build")
+	sarifOut := releaseCheckCleanupRepoLocalPath(t, "inspect.sarif")
+	if err := removeIfExists(buildOut); err != nil {
+		t.Fatalf("remove stale build output path: %v", err)
+	}
+	if err := removeIfExists(sarifOut); err != nil {
+		t.Fatalf("remove stale SARIF output path: %v", err)
+	}
 	fakeMake := writeFakeSubmake(t, false)
 
 	exitCode, out := runReleaseCheck(t, fakeMake, buildOut, sarifOut, false, false)
@@ -144,9 +185,14 @@ func TestReleaseCheckCleansArtifactsOnFailure(t *testing.T) {
 		t.Skip("release-check shell contract is exercised on POSIX in CI")
 	}
 
-	tmp := t.TempDir()
-	buildOut := filepath.Join(tmp, "release-build")
-	sarifOut := filepath.Join(tmp, "inspect.sarif")
+	buildOut := releaseCheckCleanupRepoLocalPath(t, "release-build")
+	sarifOut := releaseCheckCleanupRepoLocalPath(t, "inspect.sarif")
+	if err := removeIfExists(buildOut); err != nil {
+		t.Fatalf("remove stale build output path: %v", err)
+	}
+	if err := removeIfExists(sarifOut); err != nil {
+		t.Fatalf("remove stale SARIF output path: %v", err)
+	}
 	fakeMake := writeFakeSubmake(t, true)
 
 	exitCode, out := runReleaseCheck(t, fakeMake, buildOut, sarifOut, true, false)
@@ -166,9 +212,14 @@ func TestReleaseCheckFailsClosedWhenCleanupRemovalFails(t *testing.T) {
 		t.Skip("release-check shell contract is exercised on POSIX in CI")
 	}
 
-	tmp := t.TempDir()
-	buildDir := filepath.Join(tmp, "build-dir")
-	sarifDir := filepath.Join(tmp, "sarif-dir")
+	buildDir := releaseCheckCleanupRepoLocalPath(t, "build-dir")
+	sarifDir := releaseCheckCleanupRepoLocalPath(t, "sarif-dir")
+	if err := os.RemoveAll(buildDir); err != nil {
+		t.Fatalf("remove stale build dir: %v", err)
+	}
+	if err := os.RemoveAll(sarifDir); err != nil {
+		t.Fatalf("remove stale SARIF dir: %v", err)
+	}
 	buildOut := filepath.Join(buildDir, "release-build")
 	sarifOut := filepath.Join(sarifDir, "inspect.sarif")
 	fakeMake := writeFakeSubmake(t, false)

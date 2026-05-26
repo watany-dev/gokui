@@ -428,7 +428,7 @@ func TestReleaseChecklistDocumentationSync(t *testing.T) {
 	releaseDoc := string(releaseBytes)
 	required := []string{
 		"make release-check",
-		"RELEASE_CHECK_BUILD_OUT=/tmp/gokui-release-check",
+		"RELEASE_CHECK_BUILD_OUT=.cache/custom/gokui-release-check",
 		"make release-check-offline",
 		"make inspect-sarif",
 		"make release-evidence",
@@ -493,8 +493,11 @@ func TestReleaseChecklistDocumentationSync(t *testing.T) {
 		!strings.Contains(releaseDoc, "RC_PREFLIGHT_SARIF_OUT_EXISTS") {
 		t.Fatal("RELEASE.md should document release-check preflight machine-readable error codes")
 	}
-	if !strings.Contains(releaseDoc, "non-root file paths") || !strings.Contains(releaseDoc, "directory-like paths ending with `/`") || !strings.Contains(releaseDoc, "under `.git/`") {
-		t.Fatal("RELEASE.md should document release-check non-root/non-directory/.git output path guards")
+	if !strings.Contains(releaseDoc, "non-root file paths") || !strings.Contains(releaseDoc, "under the repository root") || !strings.Contains(releaseDoc, "directory-like paths ending with `/`") || !strings.Contains(releaseDoc, "under `.git/`") {
+		t.Fatal("RELEASE.md should document release-check non-root/repository-root/non-directory/.git output path guards")
+	}
+	if !strings.Contains(releaseDoc, "make inspect-sarif") || !strings.Contains(releaseDoc, "output paths must resolve under the repository root") {
+		t.Fatal("RELEASE.md should document inspect-sarif repository-root-only output path guard")
 	}
 	if !strings.Contains(releaseDoc, "preflight checks run before format/test/race/vuln gate") {
 		t.Fatal("RELEASE.md should document release-check preflight-first execution ordering")
@@ -562,8 +565,10 @@ func TestReleaseCheckDocumentationSync(t *testing.T) {
 		"RC_PREFLIGHT_BUILD_OUT_EXISTS",
 		"RC_PREFLIGHT_SARIF_OUT_EXISTS",
 		"non-root file paths",
+		"under the repository root",
 		"directory-like paths ending with `/`",
 		"located under `.git/`",
+		"inspect-sarif` output paths must resolve under the repository root",
 		"fail closed when repository-root/output/log paths include",
 		"when expected output/log files already exist",
 		"created atomically and written via open file",
@@ -750,7 +755,9 @@ func TestMakefileVulnToolchainBaselineSync(t *testing.T) {
 		"RELEASE_CHECK_SARIF_OUT ?= $(CACHE_DIR)/inspect-results.sarif",
 		"RELEASE_CHECK_BUILD_OUT_ABS := $(abspath $(RELEASE_CHECK_BUILD_OUT))",
 		"RELEASE_CHECK_SARIF_OUT_ABS := $(abspath $(RELEASE_CHECK_SARIF_OUT))",
-		"RELEASE_CHECK_GIT_DIR_ABS := $(abspath .git)",
+		"MAKEFILE_DIR_ABS := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))",
+		"RELEASE_CHECK_GIT_DIR_ABS := $(MAKEFILE_DIR_ABS)/.git",
+		"RELEASE_CHECK_REPO_ROOT_ABS := $(MAKEFILE_DIR_ABS)",
 		"release-check-preflight:",
 		"release-check: release-check-preflight",
 		"$(MAKE) check; \\",
@@ -763,7 +770,10 @@ func TestMakefileVulnToolchainBaselineSync(t *testing.T) {
 		"emit_preflight_error() {",
 		`echo "[$$code] $$message" >&2; \`,
 		"assert_no_symlink_components() {",
+		"assert_under_repo_root() {",
 		"assert_not_git_path() {",
+		`assert_under_repo_root "$(RELEASE_CHECK_BUILD_OUT_ABS)" "release-check build output path" "RC_PREFLIGHT_BUILD_OUT_INVALID"; \`,
+		`assert_under_repo_root "$(RELEASE_CHECK_SARIF_OUT_ABS)" "release-check SARIF output path" "RC_PREFLIGHT_SARIF_OUT_INVALID"; \`,
 		`assert_not_git_path "$(RELEASE_CHECK_BUILD_OUT_ABS)" "release-check build output path" "RC_PREFLIGHT_BUILD_OUT_INVALID"; \`,
 		`assert_not_git_path "$(RELEASE_CHECK_SARIF_OUT_ABS)" "release-check SARIF output path" "RC_PREFLIGHT_SARIF_OUT_INVALID"; \`,
 		`assert_no_symlink_components "$(RELEASE_CHECK_BUILD_OUT_ABS)" "release-check build output path" "RC_PREFLIGHT_BUILD_OUT_SYMLINK"; \`,
@@ -845,8 +855,10 @@ func TestInspectSARIFScriptHardeningSync(t *testing.T) {
 		`exec {fd}>>"$tmp_path"`,
 		`assert_no_symlink_components "$ROOT_DIR" "repository root path"`,
 		`if [[ "$out_path" != /* ]]; then`,
-		`out_path="$(pwd)/$out_path"`,
+		`out_path="$ROOT_DIR/$out_path"`,
 		`out_dir="$(dirname "$out_path")"`,
+		`assert_under_repo_root()`,
+		`assert_under_repo_root "$out_path" "inspect SARIF output path"`,
 		`assert_no_symlink_components "$out_dir" "inspect SARIF output directory"`,
 		`assert_no_symlink_components "$out_path" "inspect SARIF output path"`,
 		`if [ -e "$out_path" ]; then`,
@@ -1026,10 +1038,10 @@ func TestRoadmapReleaseEvidenceHardeningSync(t *testing.T) {
 		"automated online release evidence collection mode (includes vuln step)",
 		"release-evidence template path/output hardening (symlink path-component rejection, restrictive template-output file permissions, and staged temporary output finalized atomically)",
 		"release-evidence output/log path hardening (symlink path-component rejection, restrictive evidence/log file permissions, fail-closed output/log collision checks, staged temporary evidence/log outputs finalized atomically with collision cleanup, descriptor-backed writes, and failure-artifact retention)",
-		"inspect-sarif output path hardening (symlink path-component rejection, restrictive SARIF file permissions, fail-closed output-collision checks, and atomic file creation with descriptor-backed writes)",
+		"inspect-sarif output path hardening (repository-root-only output enforcement, symlink path-component rejection, restrictive SARIF file permissions, fail-closed output-collision checks, and atomic file creation with descriptor-backed writes)",
 		"release script repository-root path hardening (reject symlinked repository-root execution paths)",
 		"release-evidence gate hardening with isolated build output (`BUILD_OUT`) and tracked-file clean-tree checks (`git status --short --untracked-files=no`)",
-		"release-check gate hardening with isolated build output (`RELEASE_CHECK_BUILD_OUT`), preflight-first execution ordering, absolute-path preflight normalization, symlink/collision fail-closed build/SARIF output guards (including non-root-path, `.git` path rejection, and distinct-path enforcement), machine-readable preflight/cleanup error codes, and failure-safe cleanup for build/SARIF artifacts",
+		"release-check gate hardening with isolated build output (`RELEASE_CHECK_BUILD_OUT`), preflight-first execution ordering, absolute-path preflight normalization, symlink/collision fail-closed build/SARIF output guards (including non-root-path, repository-root-only outputs, `.git` path rejection, and distinct-path enforcement), machine-readable preflight/cleanup error codes, and failure-safe cleanup for build/SARIF artifacts",
 		"release-evidence metadata mode annotation (`offline|online`) and mode-specific evidence filename suffixes (`-offline-audit.md` / `-online-audit.md`)",
 	}
 	for _, line := range required {
