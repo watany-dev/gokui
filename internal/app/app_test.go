@@ -2263,6 +2263,32 @@ func TestRun(t *testing.T) {
 		}
 	})
 
+	t.Run("inspect invalid github C1-control source with sarif error detail", func(t *testing.T) {
+		var stdout bytes.Buffer
+		var stderr bytes.Buffer
+
+		code := Run([]string{"inspect", "github:org/repo//skills/x@\u00858f3c2d1a4b5c6d7e8f901234567890abcdef1234", "--format", "sarif"}, &stdout, &stderr, cfg)
+		if code != 1 {
+			t.Fatalf("Run() code = %d, want 1\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
+		}
+		if stderr.Len() != 0 {
+			t.Fatalf("stderr should be empty, got %q", stderr.String())
+		}
+		var sarif inspectSARIFReport
+		if err := json.Unmarshal(stdout.Bytes(), &sarif); err != nil {
+			t.Fatalf("sarif parse failed: %v", err)
+		}
+		if len(sarif.Runs) != 1 || len(sarif.Runs[0].Results) != 1 {
+			t.Fatalf("unexpected sarif structure: %+v", sarif)
+		}
+		if sarif.Runs[0].Results[0].RuleID != inspectErrorCodeSourceInvalid {
+			t.Fatalf("rule id = %q, want %q", sarif.Runs[0].Results[0].RuleID, inspectErrorCodeSourceInvalid)
+		}
+		if !strings.Contains(sarif.Runs[0].Results[0].Message.Text, "must not contain C0/C1 control characters") {
+			t.Fatalf("sarif result message should include C0/C1 control-character detail, got %q", sarif.Runs[0].Results[0].Message.Text)
+		}
+	})
+
 	t.Run("inspect surfaces archive source symlink rule_id in sarif error", func(t *testing.T) {
 		if runtime.GOOS == "windows" {
 			t.Skip("symlink permissions differ on windows")
