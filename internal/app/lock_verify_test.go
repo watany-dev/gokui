@@ -1055,6 +1055,10 @@ func TestVerifyLockSourceChecks(t *testing.T) {
 	if ok, _ := verifyLockSource(lock); ok {
 		t.Fatal("github repo consecutive dots should fail")
 	}
+	lock.Source.Input = "github:org/repo//skills/demo@shadow@abc1234a4b5c6d7e8f901234567890abcdef1234"
+	if ok, _ := verifyLockSource(lock); ok {
+		t.Fatal("github source input with @ in path should fail")
+	}
 	lock.Source.Input = "github:org/repo//skills/./demo@abc1234a4b5c6d7e8f901234567890abcdef1234"
 	if ok, _ := verifyLockSource(lock); ok {
 		t.Fatal("non-canonical github source input should fail")

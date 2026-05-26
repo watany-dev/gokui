@@ -316,6 +316,7 @@ require commit-pinned refs for GitHub sources and reject floating refs.
 Commit-pinned refs must use canonical lowercase 40-hex SHA form.
 Commit-pinned refs must not include surrounding whitespace.
 The `//path/to/skill` segment must not contain surrounding whitespace.
+The `//path/to/skill` segment must not contain `@`.
 `install` and `update` validate fetched source metadata for GitHub-origin
 skills.
 Parser bounds are also enforced for overall source length and owner/repo/path/ref

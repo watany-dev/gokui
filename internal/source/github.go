@@ -133,6 +133,9 @@ func normalizeGitHubPath(p string) (string, error) {
 	if strings.Contains(raw, `\`) {
 		return "", fmt.Errorf("github source path must use forward slashes")
 	}
+	if strings.Contains(raw, "@") {
+		return "", fmt.Errorf("github source path must not contain @")
+	}
 	if strings.HasPrefix(raw, "/") {
 		return "", fmt.Errorf("github source path must be relative")
 	}
