@@ -2134,6 +2134,31 @@ func TestLockVerifyHelpers(t *testing.T) {
 	}
 }
 
+func TestContainsSeverityOverrideDisallowedUnicode(t *testing.T) {
+	cases := []struct {
+		name string
+		in   string
+		want bool
+	}{
+		{name: "plain ascii", in: "approved by reviewer", want: false},
+		{name: "bidi override", in: "approved\u202E", want: true},
+		{name: "bidi isolate", in: "approved\u2067", want: true},
+		{name: "zero width joiner", in: "approved\u200D", want: true},
+		{name: "variation selector", in: "approved\ufe0f", want: true},
+		{name: "variation selector supplement", in: "approved\U000E0100", want: true},
+		{name: "unicode tag", in: "approved\U000E0001", want: true},
+		{name: "line separator", in: "approved\u2028", want: true},
+		{name: "paragraph separator", in: "approved\u2029", want: true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := containsSeverityOverrideDisallowedUnicode(tc.in); got != tc.want {
+				t.Fatalf("containsSeverityOverrideDisallowedUnicode(%q) = %v, want %v", tc.in, got, tc.want)
+			}
+		})
+	}
+}
+
 func TestSeverityOverrideAuditHelpers(t *testing.T) {
 	valid := []severityOverrideAudit{
 		{
@@ -2316,6 +2341,19 @@ func TestSeverityOverrideAuditHelpers(t *testing.T) {
 				detailPart: "justification must not contain leading or trailing whitespace",
 			},
 			{
+				name: "justification has bidi control character",
+				override: severityOverrideAudit{
+					RuleID:            "PROMPT_OVERRIDE_LANGUAGE",
+					PreviousSeverity:  "high",
+					EffectiveSeverity: "medium",
+					Justification:     "approved\u202E",
+					ApprovedBy:        "y",
+					Source:            "policy-file",
+					AppliedAt:         "2026-05-24T00:00:00Z",
+				},
+				detailPart: "justification must not contain Unicode bidi, zero-width, tag, or variation-selector characters",
+			},
+			{
 				name: "empty approved_by",
 				override: severityOverrideAudit{
 					RuleID:            "PROMPT_OVERRIDE_LANGUAGE",
@@ -2352,6 +2390,19 @@ func TestSeverityOverrideAuditHelpers(t *testing.T) {
 					AppliedAt:         "2026-05-24T00:00:00Z",
 				},
 				detailPart: "approved_by must not contain leading or trailing whitespace",
+			},
+			{
+				name: "approved_by has zero-width character",
+				override: severityOverrideAudit{
+					RuleID:            "PROMPT_OVERRIDE_LANGUAGE",
+					PreviousSeverity:  "high",
+					EffectiveSeverity: "medium",
+					Justification:     "x",
+					ApprovedBy:        "reviewer\u200d",
+					Source:            "policy-file",
+					AppliedAt:         "2026-05-24T00:00:00Z",
+				},
+				detailPart: "approved_by must not contain Unicode bidi, zero-width, tag, or variation-selector characters",
 			},
 			{
 				name: "empty source",

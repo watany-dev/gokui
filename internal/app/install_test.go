@@ -3623,6 +3623,13 @@ func TestReadInstallLockAndProvenanceMatches(t *testing.T) {
 				detailPart: "severity_overrides is invalid",
 			},
 			{
+				name: "severity override justification has bidi control",
+				mutate: func(l *installLock) {
+					l.Policy.SeverityOverrides[0].Justification = "approved\u202E"
+				},
+				detailPart: "severity_overrides is invalid",
+			},
+			{
 				name: "negative findings summary",
 				mutate: func(l *installLock) {
 					l.Findings.High = -1

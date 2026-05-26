@@ -13,6 +13,7 @@ import (
 	"sort"
 	"strings"
 	"time"
+	"unicode"
 	"unicode/utf8"
 
 	"github.com/watany-dev/gokui/internal/limitio"
@@ -1015,6 +1016,28 @@ func isC0OrC1ControlRune(r rune) bool {
 	return (r >= 0x00 && r <= 0x1f) || r == 0x7f || (r >= 0x80 && r <= 0x9f)
 }
 
+func containsSeverityOverrideDisallowedUnicode(s string) bool {
+	for _, r := range s {
+		switch {
+		case r >= 0x202a && r <= 0x202e:
+			return true
+		case r >= 0x2066 && r <= 0x2069:
+			return true
+		case r >= 0x200b && r <= 0x200f:
+			return true
+		case r >= 0xfe00 && r <= 0xfe0f:
+			return true
+		case r >= 0xe0100 && r <= 0xe01ef:
+			return true
+		case r >= 0xe0000 && r <= 0xe007f:
+			return true
+		case unicode.Is(unicode.Zl, r), unicode.Is(unicode.Zp, r):
+			return true
+		}
+	}
+	return false
+}
+
 func validateSeverityOverrideAudit(overrides []severityOverrideAudit) error {
 	seenRuleIDs := make(map[string]struct{}, len(overrides))
 	for idx, override := range overrides {
@@ -1064,6 +1087,9 @@ func validateSeverityOverrideAudit(overrides []severityOverrideAudit) error {
 		if strings.IndexFunc(override.Justification, isC0OrC1ControlRune) >= 0 {
 			return fmt.Errorf("entry %d: justification must not contain C0/C1 control characters", idx)
 		}
+		if containsSeverityOverrideDisallowedUnicode(override.Justification) {
+			return fmt.Errorf("entry %d: justification must not contain Unicode bidi, zero-width, tag, or variation-selector characters", idx)
+		}
 		justification := strings.TrimSpace(override.Justification)
 		if justification == "" {
 			return fmt.Errorf("entry %d: justification is empty", idx)
@@ -1073,6 +1099,9 @@ func validateSeverityOverrideAudit(overrides []severityOverrideAudit) error {
 		}
 		if strings.IndexFunc(override.ApprovedBy, isC0OrC1ControlRune) >= 0 {
 			return fmt.Errorf("entry %d: approved_by must not contain C0/C1 control characters", idx)
+		}
+		if containsSeverityOverrideDisallowedUnicode(override.ApprovedBy) {
+			return fmt.Errorf("entry %d: approved_by must not contain Unicode bidi, zero-width, tag, or variation-selector characters", idx)
 		}
 		approvedBy := strings.TrimSpace(override.ApprovedBy)
 		if approvedBy == "" {
