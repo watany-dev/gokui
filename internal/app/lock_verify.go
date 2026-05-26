@@ -672,14 +672,14 @@ func verifyLockSource(lock installLock) (bool, string) {
 		return false, "lock source kind must be canonical lowercase"
 	}
 	trimmedInput := strings.TrimSpace(lock.Source.Input)
-	if trimmedInput == "" {
-		return false, "lock source input is empty"
-	}
 	if strings.IndexFunc(lock.Source.Input, isC0OrC1ControlRune) >= 0 {
 		return false, "lock source input must not contain C0/C1 control characters"
 	}
 	if containsSeverityOverrideDisallowedUnicode(lock.Source.Input) {
 		return false, "lock source input must not contain Unicode bidi, zero-width, tag, or variation-selector characters"
+	}
+	if trimmedInput == "" {
+		return false, "lock source input is empty"
 	}
 	if trimmedInput != lock.Source.Input {
 		return false, "lock source input must not contain leading or trailing whitespace"
