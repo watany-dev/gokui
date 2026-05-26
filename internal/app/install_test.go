@@ -3233,6 +3233,20 @@ func TestReadInstallLockAndProvenanceMatches(t *testing.T) {
 			t.Fatalf("expected unsupported schema error, got %v", err)
 		}
 
+		badWhitespaceSchema := base
+		badWhitespaceSchema.Schema = " gokui.lock/v1 "
+		badWhitespaceSchemaRaw, err := json.Marshal(badWhitespaceSchema)
+		if err != nil {
+			t.Fatalf("marshal bad whitespace schema lock: %v", err)
+		}
+		badWhitespaceSchemaPath := filepath.Join(dir, "bad-whitespace-schema.lock")
+		if err := os.WriteFile(badWhitespaceSchemaPath, badWhitespaceSchemaRaw, 0o644); err != nil {
+			t.Fatalf("write bad whitespace schema lock: %v", err)
+		}
+		if _, err := readInstallLock(badWhitespaceSchemaPath); err == nil || !strings.Contains(err.Error(), "install lockfile schema must not contain leading or trailing whitespace") {
+			t.Fatalf("expected whitespace schema error, got %v", err)
+		}
+
 		badUnicodeSchema := base
 		badUnicodeSchema.Schema = "gokui.lock/v1\u200d"
 		badUnicodeSchemaRaw, err := json.Marshal(badUnicodeSchema)
@@ -3420,6 +3434,13 @@ func TestReadInstallLockAndProvenanceMatches(t *testing.T) {
 					l.Schema = "gokui.lock/v1\u008f"
 				},
 				detailPart: "schema must not contain C0/C1 control characters",
+			},
+			{
+				name: "schema has surrounding whitespace",
+				mutate: func(l *installLock) {
+					l.Schema = " gokui.lock/v1 "
+				},
+				detailPart: "schema must not contain leading or trailing whitespace",
 			},
 			{
 				name: "schema has unicode obfuscation character",

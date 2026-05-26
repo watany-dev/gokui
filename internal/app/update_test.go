@@ -6402,6 +6402,13 @@ func TestValidateUpdateLockEnvelope(t *testing.T) {
 			detailPart: "lock schema must not contain C0/C1 control characters",
 		},
 		{
+			name: "schema has surrounding whitespace",
+			mutate: func(l *installLock) {
+				l.Schema = " gokui.lock/v1 "
+			},
+			detailPart: "lock schema must not contain leading or trailing whitespace",
+		},
+		{
 			name: "schema has unicode obfuscation character",
 			mutate: func(l *installLock) {
 				l.Schema = "gokui.lock/v1\u200d"

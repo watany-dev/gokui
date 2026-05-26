@@ -862,6 +862,29 @@ func TestLockSchemaControlCharHardeningDocumentationSync(t *testing.T) {
 	}
 }
 
+func TestLockSchemaWhitespaceHardeningDocumentationSync(t *testing.T) {
+	readmeBytes, err := os.ReadFile("../../README.md")
+	if err != nil {
+		t.Fatalf("failed to read README.md: %v", err)
+	}
+	readme := string(readmeBytes)
+	roadmapBytes, err := os.ReadFile("../../ROADMAP.md")
+	if err != nil {
+		t.Fatalf("failed to read ROADMAP.md: %v", err)
+	}
+	roadmap := string(roadmapBytes)
+
+	requiredReadme := "Lock `schema` in `gokui.lock` must not contain leading or trailing whitespace."
+	if !strings.Contains(readme, requiredReadme) {
+		t.Fatalf("README missing lock schema whitespace hardening line: %q", requiredReadme)
+	}
+
+	requiredRoadmap := "Lock `schema` canonical validation hardening with surrounding-whitespace rejection for install/update and lock-verify schema checks"
+	if !strings.Contains(roadmap, requiredRoadmap) {
+		t.Fatalf("ROADMAP missing lock schema whitespace hardening line: %q", requiredRoadmap)
+	}
+}
+
 func TestLockSchemaUnicodeHardeningDocumentationSync(t *testing.T) {
 	readmeBytes, err := os.ReadFile("../../README.md")
 	if err != nil {
