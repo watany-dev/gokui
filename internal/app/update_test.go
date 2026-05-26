@@ -7760,6 +7760,13 @@ func TestValidateUpdateLockEnvelope(t *testing.T) {
 			detailPart: "lock name must not contain C0/C1 control characters",
 		},
 		{
+			name: "name has C0 NUL control character only",
+			mutate: func(l *installLock) {
+				l.Name = "\u0000"
+			},
+			detailPart: "lock name must not contain C0/C1 control characters",
+		},
+		{
 			name: "name has DEL control character only",
 			mutate: func(l *installLock) {
 				l.Name = "\u007f"
@@ -7798,6 +7805,13 @@ func TestValidateUpdateLockEnvelope(t *testing.T) {
 			name: "installed_at has C0/C1 control character only",
 			mutate: func(l *installLock) {
 				l.InstalledAt = "\u0085"
+			},
+			detailPart: "lock installed_at must not contain C0/C1 control characters",
+		},
+		{
+			name: "installed_at has C0 NUL control character only",
+			mutate: func(l *installLock) {
+				l.InstalledAt = "\u0000"
 			},
 			detailPart: "lock installed_at must not contain C0/C1 control characters",
 		},
