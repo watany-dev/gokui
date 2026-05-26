@@ -1031,6 +1031,10 @@ func TestVerifyLockSourceChecks(t *testing.T) {
 	if ok, _ := verifyLockSource(lock); ok {
 		t.Fatal("invalid github owner format should fail")
 	}
+	lock.Source.Input = "github:Owner/repo//skills/demo@abc1234a4b5c6d7e8f901234567890abcdef1234"
+	if ok, _ := verifyLockSource(lock); ok {
+		t.Fatal("uppercase github owner should fail")
+	}
 	lock.Source.Input = "github:owner/repo.git//skills/demo@abc1234a4b5c6d7e8f901234567890abcdef1234"
 	if ok, _ := verifyLockSource(lock); ok {
 		t.Fatal("github repo .git suffix should fail")

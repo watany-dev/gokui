@@ -166,6 +166,16 @@ func TestRunFetch(t *testing.T) {
 
 		stdout.Reset()
 		stderr.Reset()
+		code = runFetch([]string{"github:Owner/repo//skills/demo@8f3c2d1a4b5c6d7e8f901234567890abcdef1234", "--out", t.TempDir()}, &stdout, &stderr)
+		if code != 1 {
+			t.Fatalf("runFetch(uppercase owner) code = %d, want 1", code)
+		}
+		if !strings.Contains(stderr.String(), "invalid github source") {
+			t.Fatalf("stderr should include parse error for uppercase owner, got %q", stderr.String())
+		}
+
+		stdout.Reset()
+		stderr.Reset()
 		code = runFetch([]string{"github:owner/repo.git//skills/demo@8f3c2d1a4b5c6d7e8f901234567890abcdef1234", "--out", t.TempDir()}, &stdout, &stderr)
 		if code != 1 {
 			t.Fatalf("runFetch(repo .git suffix) code = %d, want 1", code)
