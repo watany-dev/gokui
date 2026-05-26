@@ -416,6 +416,7 @@ must resolve outside `.git/`.
 `make inspect-sarif` output paths must not contain `.` path segments (for example `..././...`).
 `make inspect-sarif` output paths must not contain empty path segments (for example `...//...`).
 `make inspect-sarif` output paths must not include leading or trailing whitespace.
+`make inspect-sarif` output paths must not contain ASCII control characters.
 `make inspect-sarif` output paths must be non-directory file paths (no trailing `/`,
 `/.`, or `/..`).
 `make inspect-sarif` output paths must end with `.sarif`.

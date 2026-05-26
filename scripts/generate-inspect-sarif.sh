@@ -111,6 +111,17 @@ assert_no_surrounding_whitespace() {
   esac
 }
 
+assert_no_control_chars() {
+  local path="$1"
+  local label="$2"
+  local sanitized
+  sanitized="$(printf '%s' "$path" | LC_ALL=C tr -d '\000-\037\177')"
+  if [ "$path" != "$sanitized" ]; then
+    echo "${label} must not contain ASCII control characters" >&2
+    exit 1
+  fi
+}
+
 assert_non_directory_file_path() {
   local path="$1"
   local label="$2"
@@ -136,6 +147,8 @@ assert_sarif_output_extension() {
 
 assert_no_symlink_components "$ROOT_DIR" "repository root path"
 out_dir="$(dirname "$out_path")"
+assert_no_control_chars "$out_path_input" "inspect SARIF output path"
+assert_no_control_chars "$out_path" "inspect SARIF output path"
 assert_no_surrounding_whitespace "$out_path_input" "inspect SARIF output path"
 assert_no_surrounding_whitespace "$out_path" "inspect SARIF output path"
 assert_non_directory_file_path "$out_path" "inspect SARIF output path"

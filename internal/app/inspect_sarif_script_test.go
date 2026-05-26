@@ -191,3 +191,32 @@ func TestInspectSARIFScriptRejectsTrailingWhitespaceOutputPath(t *testing.T) {
 		t.Fatalf("expected trailing-whitespace rejection message, got:\n%s", text)
 	}
 }
+
+func TestInspectSARIFScriptRejectsControlCharactersInOutputPath(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("shell-script execution contract is exercised on POSIX in CI")
+	}
+
+	testCases := []struct {
+		name    string
+		outPath string
+	}{
+		{name: "tab in middle", outPath: "inspect\t-results.sarif"},
+		{name: "del in middle", outPath: "inspect\x7f-results.sarif"},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			cmd := exec.Command("bash", "../../scripts/generate-inspect-sarif.sh", tc.outPath)
+
+			out, err := cmd.CombinedOutput()
+			if err == nil {
+				t.Fatalf("expected non-zero exit for inspect-sarif output with control characters %q\noutput:\n%s", tc.outPath, out)
+			}
+			text := string(out)
+			if !strings.Contains(text, "must not contain ASCII control characters") {
+				t.Fatalf("expected control-character rejection message, got:\n%s", text)
+			}
+		})
+	}
+}
