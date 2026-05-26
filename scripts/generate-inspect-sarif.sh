@@ -5,7 +5,8 @@ set -o noclobber
 umask 077
 
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-out_path="${1:-inspect-results.sarif}"
+out_path_input="${1:-inspect-results.sarif}"
+out_path="$out_path_input"
 if [[ "$out_path" != /* ]]; then
   out_path="$ROOT_DIR/$out_path"
 fi
@@ -99,6 +100,17 @@ assert_no_empty_segments() {
   esac
 }
 
+assert_no_surrounding_whitespace() {
+  local path="$1"
+  local label="$2"
+  case "$path" in
+    " "*|*" ")
+      echo "${label} must not include leading or trailing whitespace: $path" >&2
+      exit 1
+      ;;
+  esac
+}
+
 assert_non_directory_file_path() {
   local path="$1"
   local label="$2"
@@ -124,6 +136,8 @@ assert_sarif_output_extension() {
 
 assert_no_symlink_components "$ROOT_DIR" "repository root path"
 out_dir="$(dirname "$out_path")"
+assert_no_surrounding_whitespace "$out_path_input" "inspect SARIF output path"
+assert_no_surrounding_whitespace "$out_path" "inspect SARIF output path"
 assert_non_directory_file_path "$out_path" "inspect SARIF output path"
 assert_sarif_output_extension "$out_path" "inspect SARIF output path"
 assert_no_empty_segments "$out_path" "inspect SARIF output path"
