@@ -113,6 +113,33 @@ func TestBetaCheckPreflightAllowsExistingOutputs(t *testing.T) {
 	}
 }
 
+func TestBetaCheckPreflightRejectsInvalidSARIFExtensionFromBetaOutputVars(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("preflight path contracts are exercised on POSIX in CI")
+	}
+
+	betaBuildOut := releaseCheckRepoLocalPath(t, "beta-build.out")
+	betaSarifOut := releaseCheckRepoLocalPath(t, "beta-inspect.txt")
+	releaseBuildOut := releaseCheckRepoLocalPath(t, "release-build.out")
+	releaseSarifOut := releaseCheckRepoLocalPath(t, "release-inspect.sarif")
+
+	exitCode, out := runBetaCheckPreflight(t, map[string]string{
+		"BETA_CHECK_BUILD_OUT":    betaBuildOut,
+		"BETA_CHECK_SARIF_OUT":    betaSarifOut,
+		"RELEASE_CHECK_BUILD_OUT": releaseBuildOut,
+		"RELEASE_CHECK_SARIF_OUT": releaseSarifOut,
+	})
+	if exitCode == 0 {
+		t.Fatalf("expected non-zero exit for beta SARIF output without .sarif extension\noutput:\n%s", out)
+	}
+	if !strings.Contains(out, "[RC_PREFLIGHT_SARIF_OUT_INVALID]") {
+		t.Fatalf("expected invalid SARIF output rejection code, got:\n%s", out)
+	}
+	if !strings.Contains(out, "SARIF output path must end with .sarif") {
+		t.Fatalf("expected invalid SARIF output rejection message, got:\n%s", out)
+	}
+}
+
 func releaseCheckRepoRootPath(t *testing.T) string {
 	t.Helper()
 
