@@ -433,6 +433,17 @@ func TestVerifyLockErrorsAndDiff(t *testing.T) {
 		t.Fatalf("expected invalid JSON error, got %v", err)
 	}
 
+	invalidUTF8Dir := t.TempDir()
+	invalidUTF8Lock := append([]byte(`{"schema":"gokui.lock/v1","name":"skill","source":{"type":"local","input":"/tmp/skill","kind":"local-dir"},"skill":{"root_sha256":"abc"},"policy":{"profile":"strict","decision":"pass"},"note":"`), 0xff)
+	invalidUTF8Lock = append(invalidUTF8Lock, []byte(`"}`)...)
+	if err := os.WriteFile(filepath.Join(invalidUTF8Dir, installLockFile), invalidUTF8Lock, 0o644); err != nil {
+		t.Fatalf("write invalid utf-8 lock: %v", err)
+	}
+	_, err = verifyLock(invalidUTF8Dir)
+	if err == nil || !strings.Contains(err.Error(), ruleLockfileInvalidUTF8) || !strings.Contains(err.Error(), "invalid lockfile JSON") {
+		t.Fatalf("expected invalid utf-8 lockfile JSON error, got %v", err)
+	}
+
 	t.Run("oversized lockfile", func(t *testing.T) {
 		origLimit := maxLockVerifyLockFileBytes
 		maxLockVerifyLockFileBytes = 8
@@ -1473,6 +1484,18 @@ func TestVerifyInstallReportValidationBranches(t *testing.T) {
 		ok, detail := verifyInstallReport(skillPath, lock)
 		if ok || !strings.Contains(detail, "invalid install report JSON") {
 			t.Fatalf("expected invalid json failure, got ok=%v detail=%q", ok, detail)
+		}
+	})
+
+	t.Run("invalid utf-8 payload", func(t *testing.T) {
+		invalidUTF8Report := append([]byte(`{"schema_version":"0.1.0-draft","source":{"input":"/tmp/src","kind":"local-dir"},"policy_profile":"strict","decision":"PASS","note":"`), 0xff)
+		invalidUTF8Report = append(invalidUTF8Report, []byte(`"}`)...)
+		if err := os.WriteFile(filepath.Join(skillPath, installReportFile), invalidUTF8Report, 0o644); err != nil {
+			t.Fatalf("write invalid utf-8 report: %v", err)
+		}
+		ok, detail := verifyInstallReport(skillPath, lock)
+		if ok || !strings.Contains(detail, ruleInstallReportInvalidUTF8) {
+			t.Fatalf("expected invalid utf-8 report failure, got ok=%v detail=%q", ok, detail)
 		}
 	})
 

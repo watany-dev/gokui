@@ -3209,6 +3209,16 @@ func TestReadInstallLockAndProvenanceMatches(t *testing.T) {
 			t.Fatalf("expected invalid JSON error, got %v", err)
 		}
 
+		invalidUTF8Path := filepath.Join(dir, "invalid-utf8.lock")
+		invalidUTF8 := append([]byte(`{"schema":"gokui.lock/v1","name":"skill","source":{"type":"local","input":"/tmp/skill","kind":"local-dir"},"skill":{"root_sha256":"abc"},"policy":{"profile":"strict","decision":"pass"},"note":"`), 0xff)
+		invalidUTF8 = append(invalidUTF8, []byte(`"}`)...)
+		if err := os.WriteFile(invalidUTF8Path, invalidUTF8, 0o644); err != nil {
+			t.Fatalf("write invalid utf-8 lock: %v", err)
+		}
+		if _, err := readInstallLock(invalidUTF8Path); err == nil || !strings.Contains(err.Error(), ruleLockfileInvalidUTF8) {
+			t.Fatalf("expected invalid utf-8 lockfile error, got %v", err)
+		}
+
 		badSchema := base
 		badSchema.Schema = "gokui.lock/v0"
 		badSchemaRaw, err := json.Marshal(badSchema)

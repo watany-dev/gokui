@@ -13,6 +13,7 @@ import (
 	"sort"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/watany-dev/gokui/internal/limitio"
 	policypkg "github.com/watany-dev/gokui/internal/policy"
@@ -40,6 +41,7 @@ var (
 
 const (
 	ruleLockfileTooLarge                = "LOCKFILE_TOO_LARGE"
+	ruleLockfileInvalidUTF8             = "LOCKFILE_INVALID_UTF8"
 	ruleLockfileSymlink                 = "LOCKFILE_SYMLINK_DETECTED"
 	ruleLockfileSpecialFile             = "LOCKFILE_SPECIAL_FILE"
 	ruleInstallTargetSymlink            = "INSTALL_TARGET_SYMLINK_DETECTED"
@@ -1420,6 +1422,9 @@ func readInstallLock(path string) (installLock, error) {
 			return installLock{}, fmt.Errorf("%s: install lockfile exceeds size limit: %s", ruleLockfileTooLarge, path)
 		}
 		return installLock{}, fmt.Errorf("failed to read install lockfile: %s", path)
+	}
+	if !utf8.Valid(raw.Bytes()) {
+		return installLock{}, fmt.Errorf("%s: install lockfile must be valid UTF-8: %s", ruleLockfileInvalidUTF8, path)
 	}
 
 	var lock installLock

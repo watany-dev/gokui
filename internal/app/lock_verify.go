@@ -13,6 +13,7 @@ import (
 	"sort"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/watany-dev/gokui/internal/limitio"
 	srcpkg "github.com/watany-dev/gokui/internal/source"
@@ -59,6 +60,7 @@ var (
 var severityOverrideRuleIDPattern = regexp.MustCompile(`^[A-Z][A-Z0-9_]+$`)
 
 const ruleInstallReportTooLarge = "INSTALL_REPORT_TOO_LARGE"
+const ruleInstallReportInvalidUTF8 = "INSTALL_REPORT_INVALID_UTF8"
 const ruleInstallReportSymlink = "INSTALL_REPORT_SYMLINK_DETECTED"
 const ruleInstallReportSpecialFile = "INSTALL_REPORT_SPECIAL_FILE"
 const ruleInstallReportSourceChanged = "INSTALL_REPORT_SOURCE_CHANGED_DURING_READ"
@@ -498,6 +500,9 @@ func verifyLock(skillPath string) (lockVerifyReport, error) {
 		}
 		return lockVerifyReport{}, fmt.Errorf("%w: %s", errLockfileReadFailed, lockPath)
 	}
+	if !utf8.Valid(lockRaw.Bytes()) {
+		return lockVerifyReport{}, fmt.Errorf("%s: %w (must be valid UTF-8): %s", ruleLockfileInvalidUTF8, errLockfileInvalidJSON, lockPath)
+	}
 
 	var lock installLock
 	if err := json.Unmarshal(lockRaw.Bytes(), &lock); err != nil {
@@ -805,6 +810,9 @@ func verifyInstallReport(skillPath string, lock installLock) (bool, string) {
 			return false, fmt.Sprintf("%s: install report exceeds size limit: %s", ruleInstallReportTooLarge, reportPath)
 		}
 		return false, fmt.Sprintf("failed to read install report: %s", reportPath)
+	}
+	if !utf8.Valid(raw.Bytes()) {
+		return false, fmt.Sprintf("%s: install report must be valid UTF-8: %s", ruleInstallReportInvalidUTF8, reportPath)
 	}
 
 	var report installReport
