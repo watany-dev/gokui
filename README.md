@@ -153,6 +153,8 @@ canonical lowercase/no-whitespace `resolved_ref` and `skill_root_sha256`.
 Source metadata `schema`/`source_kind`/`resolved_ref`/`fetched_at`/
 `skill_root_sha256` fields must not contain C0/C1 control characters.
 Source metadata `source_input` must also not contain C0/C1 control characters.
+Source metadata `source_input` must not contain Unicode bidi/zero-width/tag/
+variation-selector characters.
 Source metadata `source_kind` and `fetched_at` must be canonical without
 leading/trailing whitespace (`source_kind` also requires lowercase).
 Source metadata `schema`/`source_kind`/`resolved_ref`/`fetched_at`/

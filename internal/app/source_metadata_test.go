@@ -739,6 +739,20 @@ func TestSourceMetadataHelpers(t *testing.T) {
 		}
 	})
 
+	t.Run("validate metadata rejects source_input unicode obfuscation with explicit error", func(t *testing.T) {
+		err := validateSourceMetadata(sourceMetadata{
+			Schema:          "gokui.source/v1",
+			SourceInput:     "github:org/repo//skills/x@8f3c2d1a4b5c6d7e8f901234567890abcdef12\u200d34",
+			SourceKind:      "github-source",
+			ResolvedRef:     "8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
+			FetchedAt:       "2026-05-23T00:00:00Z",
+			SkillRootSHA256: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+		})
+		if err == nil || !strings.Contains(err.Error(), "source_input must not contain Unicode bidi, zero-width, tag, or variation-selector characters") {
+			t.Fatalf("expected source_input unicode-obfuscation validation error, got %v", err)
+		}
+	})
+
 	t.Run("validate metadata rejects unicode obfuscation characters with explicit errors", func(t *testing.T) {
 		valid := sourceMetadata{
 			Schema:          "gokui.source/v1",

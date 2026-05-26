@@ -764,6 +764,30 @@ func TestSourceMetadataSourceInputControlCharHardeningDocumentationSync(t *testi
 	}
 }
 
+func TestSourceMetadataSourceInputUnicodeHardeningDocumentationSync(t *testing.T) {
+	readmeBytes, err := os.ReadFile("../../README.md")
+	if err != nil {
+		t.Fatalf("failed to read README.md: %v", err)
+	}
+	readme := string(readmeBytes)
+	roadmapBytes, err := os.ReadFile("../../ROADMAP.md")
+	if err != nil {
+		t.Fatalf("failed to read ROADMAP.md: %v", err)
+	}
+	roadmap := string(roadmapBytes)
+
+	requiredReadme := "Source metadata `source_input` must not contain Unicode bidi/zero-width/tag/"
+	requiredReadmeContinuation := "variation-selector characters."
+	if !strings.Contains(readme, requiredReadme) || !strings.Contains(readme, requiredReadmeContinuation) {
+		t.Fatalf("README missing source-metadata source_input unicode hardening line: %q ... %q", requiredReadme, requiredReadmeContinuation)
+	}
+
+	requiredRoadmap := "Source metadata `source_input` validation hardening with Unicode bidi/zero-width/tag/variation-selector rejection at metadata verification layer"
+	if !strings.Contains(roadmap, requiredRoadmap) {
+		t.Fatalf("ROADMAP missing source-metadata source_input unicode hardening line: %q", requiredRoadmap)
+	}
+}
+
 func TestSourceMetadataSourceKindFetchedAtCanonicalDocumentationSync(t *testing.T) {
 	readmeBytes, err := os.ReadFile("../../README.md")
 	if err != nil {
