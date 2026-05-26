@@ -116,6 +116,7 @@ tests/CI:
 - critical detection of Unicode Tags and bidi controls in scanned text
 - critical detection of zero-width and disallowed C0/C1 controls in scanned text
 - critical detection of variation selectors and ANSI/OSC escapes in scanned text
+- high-severity fail-closed detection for non-UTF-8 payloads in markdown/script/manifest scan targets
 - critical detection of hex decode pipelines into interpreter execution
 - bounded base64/hex payload deobfuscation with recursive decoded-text rescanning
   (size/depth-limited; decoded artifacts are never executed)

@@ -146,6 +146,7 @@ Escaped exclamation forms (`\![...](...)`) are treated as normal links and are
 still evaluated for link-spoofing mismatch.
 Prompt-override language detection now includes bounded fuzzy/typoglycemia
 matching for common injection phrases.
+Scan text targets (`markdown`/`script`/`manifest`) now fail-closed with a high-severity finding when file payloads are non-UTF-8.
 PowerShell `-EncodedCommand` / `-enc` execution flags are now flagged as
 critical findings.
 PowerShell `FromBase64String(...)` decode routed to `IEX`/`Invoke-Expression`

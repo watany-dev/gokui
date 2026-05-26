@@ -286,6 +286,29 @@ func TestVetFailClosedInspectPayloadDocumentationSync(t *testing.T) {
 	}
 }
 
+func TestScanNonUTF8TextHardeningDocumentationSync(t *testing.T) {
+	readmeBytes, err := os.ReadFile("../../README.md")
+	if err != nil {
+		t.Fatalf("failed to read README.md: %v", err)
+	}
+	readme := string(readmeBytes)
+	roadmapBytes, err := os.ReadFile("../../ROADMAP.md")
+	if err != nil {
+		t.Fatalf("failed to read ROADMAP.md: %v", err)
+	}
+	roadmap := string(roadmapBytes)
+
+	requiredReadme := "Scan text targets (`markdown`/`script`/`manifest`) now fail-closed with a high-severity finding when file payloads are non-UTF-8."
+	if !strings.Contains(readme, requiredReadme) {
+		t.Fatalf("README missing scan non-utf8 hardening line: %q", requiredReadme)
+	}
+
+	requiredRoadmap := "high-severity fail-closed detection for non-UTF-8 payloads in markdown/script/manifest scan targets"
+	if !strings.Contains(roadmap, requiredRoadmap) {
+		t.Fatalf("ROADMAP missing scan non-utf8 hardening line: %q", requiredRoadmap)
+	}
+}
+
 func TestLockfileExampleSchemaSync(t *testing.T) {
 	readmeBytes, err := os.ReadFile("../../README.md")
 	if err != nil {

@@ -873,6 +873,15 @@ func scanTextFile(target scanTarget) ([]Finding, error) {
 		return nil, fmt.Errorf("failed to read scan file %s: %w", target.Relative, err)
 	}
 	content := contentBuf.Bytes()
+	if target.Kind != "unknown" && !utf8.Valid(content) {
+		return []Finding{{
+			ID:       "NON_UTF8_TEXT",
+			Severity: "high",
+			File:     target.Relative,
+			Line:     1,
+			Summary:  "text scan input must be valid UTF-8",
+		}}, nil
+	}
 
 	lines := strings.Split(strings.ReplaceAll(string(content), "\r\n", "\n"), "\n")
 	referenceHosts := map[string]string{}
