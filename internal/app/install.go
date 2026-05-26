@@ -1524,14 +1524,14 @@ func validateInstallLockForProvenanceReuse(lock installLock, expectedSkillName s
 	}
 
 	trimmedProfile := strings.TrimSpace(lock.Policy.Profile)
-	if trimmedProfile == "" {
-		return fmt.Errorf("lock policy profile is empty")
-	}
 	if strings.IndexFunc(lock.Policy.Profile, isC0OrC1ControlRune) >= 0 {
 		return fmt.Errorf("lock policy profile must not contain C0/C1 control characters")
 	}
 	if containsSeverityOverrideDisallowedUnicode(lock.Policy.Profile) {
 		return fmt.Errorf("lock policy profile must not contain Unicode bidi, zero-width, tag, or variation-selector characters")
+	}
+	if trimmedProfile == "" {
+		return fmt.Errorf("lock policy profile is empty")
 	}
 	if normalizePolicyProfile(trimmedProfile) != lock.Policy.Profile {
 		return fmt.Errorf("lock policy profile must be canonical lowercase without surrounding whitespace")
