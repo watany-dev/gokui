@@ -1431,6 +1431,9 @@ func readInstallLock(path string) (installLock, error) {
 	if err := json.Unmarshal(raw.Bytes(), &lock); err != nil {
 		return installLock{}, fmt.Errorf("invalid install lockfile JSON: %s", path)
 	}
+	if strings.IndexFunc(lock.Schema, isC0OrC1ControlRune) >= 0 {
+		return installLock{}, fmt.Errorf("install lockfile schema must not contain C0/C1 control characters at %s: %s", path, lock.Schema)
+	}
 	if lock.Schema != lockSchemaVersion {
 		return installLock{}, fmt.Errorf("unsupported install lockfile schema at %s: %s", path, lock.Schema)
 	}
@@ -1468,6 +1471,9 @@ func provenanceMatches(existing installLock, incoming installLock) bool {
 }
 
 func validateInstallLockForProvenanceReuse(lock installLock, expectedSkillName string) error {
+	if strings.IndexFunc(lock.Schema, isC0OrC1ControlRune) >= 0 {
+		return fmt.Errorf("lock schema must not contain C0/C1 control characters")
+	}
 	if lock.Schema != lockSchemaVersion {
 		return fmt.Errorf("unsupported install lock schema: %s", lock.Schema)
 	}

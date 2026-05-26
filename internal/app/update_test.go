@@ -6150,6 +6150,13 @@ func TestValidateUpdateLockEnvelope(t *testing.T) {
 			detailPart: "unsupported lock schema",
 		},
 		{
+			name: "schema has C0/C1 control character",
+			mutate: func(l *installLock) {
+				l.Schema = "gokui.lock/v1\u008f"
+			},
+			detailPart: "lock schema must not contain C0/C1 control characters",
+		},
+		{
 			name: "empty name",
 			mutate: func(l *installLock) {
 				l.Name = ""

@@ -511,11 +511,15 @@ func verifyLock(skillPath string) (lockVerifyReport, error) {
 
 	checks := make([]lockVerifyCheck, 0, 8)
 	schemaOK := lock.Schema == lockSchemaVersion
+	schemaDetail := fmt.Sprintf("expected gokui.lock/v1, got %s", lock.Schema)
+	if strings.IndexFunc(lock.Schema, isC0OrC1ControlRune) >= 0 {
+		schemaDetail = "lock schema must not contain C0/C1 control characters"
+	}
 	checks = append(checks, lockVerifyCheck{
 		Code:   lockVerifyCodeSchema,
 		Name:   "schema",
 		OK:     schemaOK,
-		Detail: fmt.Sprintf("expected gokui.lock/v1, got %s", lock.Schema),
+		Detail: schemaDetail,
 	})
 
 	nameOK := lock.Name == filepath.Base(cleanPath)
