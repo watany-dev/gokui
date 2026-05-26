@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"strings"
 	"syscall"
+	"unicode/utf8"
 
 	"github.com/watany-dev/gokui/internal/limitio"
 )
@@ -21,6 +22,7 @@ const (
 	defaultMaxTotalBytes             = 50 * 1024 * 1024
 	defaultMaxFileBytes              = 10 * 1024 * 1024
 	ruleArchivePathEscape            = "ARCHIVE_PATH_ESCAPE"
+	ruleArchivePathInvalidUTF8       = "ARCHIVE_PATH_INVALID_UTF8"
 	ruleSymlinkInArchive             = "SYMLINK_IN_ARCHIVE"
 	ruleArchiveSourceSymlinkDetected = "ARCHIVE_SOURCE_SYMLINK_DETECTED"
 	ruleArchiveSourceSpecialFile     = "ARCHIVE_SOURCE_SPECIAL_FILE"
@@ -390,6 +392,9 @@ func copyWithStrictLimit(dst io.Writer, src io.Reader, maxBytes int64) (int64, e
 }
 
 func safeJoin(root, name string) (string, error) {
+	if !utf8.ValidString(name) {
+		return "", fmt.Errorf("%s: archive path must be valid UTF-8: %q", ruleArchivePathInvalidUTF8, name)
+	}
 	normalized := strings.ReplaceAll(name, "\\", "/")
 	if strings.HasPrefix(normalized, "/") || filepath.IsAbs(name) || hasWindowsDrivePrefix(normalized) {
 		return "", fmt.Errorf("%s: archive contains absolute path: %s", ruleArchivePathEscape, name)

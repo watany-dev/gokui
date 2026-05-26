@@ -41,6 +41,7 @@ tests/CI:
 - GitHub archive content-type hardening (`application/x-gzip|application/gzip|application/octet-stream` allowlist)
 - GitHub archive payload hardening (strict single-stream gzip validation with EOF/trailing-byte rejection before extraction)
 - GitHub archive strict stream-size enforcement with overflow-write prevention and cleanup
+- Archive extraction path hardening with non-UTF-8 entry-name rejection before normalization
 - GitHub source parser length bounds (input and owner/repo/path/ref segments)
 - GitHub source parser rejection of C0/C1 control characters in source input
 - GitHub source parser rejection of invalid UTF-8 source input

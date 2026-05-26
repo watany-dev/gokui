@@ -758,6 +758,12 @@ func TestSafeJoinRejectsAbsoluteAndDot(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "absolute path") {
 		t.Fatalf("expected normalized windows-drive absolute-path error, got %v", err)
 	}
+
+	invalidName := string([]byte{'b', 0xff, 'a'})
+	_, err = safeJoin(root, invalidName)
+	if err == nil || !strings.Contains(err.Error(), ruleArchivePathInvalidUTF8) {
+		t.Fatalf("expected invalid utf-8 archive path error, got %v", err)
+	}
 }
 
 func TestSafeJoinPropertyNoEscapeNoPanic(t *testing.T) {
