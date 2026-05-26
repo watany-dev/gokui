@@ -1973,7 +1973,7 @@ func TestLockVerifyHelpers(t *testing.T) {
 			t.Fatalf("expected valid path: %s", p)
 		}
 	}
-	invalidPaths := []string{"", ".", "..", "../x", "/x", `..\x`, `a\b`, "C:/x", "c:/x", "D:relative/path", "z:tmp"}
+	invalidPaths := []string{"", ".", "..", "../x", "/x", `..\x`, `a\b`, "C:/x", "c:/x", "D:relative/path", "z:tmp", string([]byte{'b', 'a', 'd', 0xff})}
 	for _, p := range invalidPaths {
 		if isValidLockRelativePath(p) {
 			t.Fatalf("expected invalid path: %s", p)

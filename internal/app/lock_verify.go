@@ -915,6 +915,9 @@ func isCanonicalSHA256Hex(in string) bool {
 }
 
 func isValidLockRelativePath(in string) bool {
+	if !utf8.ValidString(in) {
+		return false
+	}
 	if strings.TrimSpace(in) == "" {
 		return false
 	}

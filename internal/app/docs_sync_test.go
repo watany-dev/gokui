@@ -359,6 +359,29 @@ func TestPolicyUTF8HardeningDocumentationSync(t *testing.T) {
 	}
 }
 
+func TestLockPathUTF8HardeningDocumentationSync(t *testing.T) {
+	readmeBytes, err := os.ReadFile("../../README.md")
+	if err != nil {
+		t.Fatalf("failed to read README.md: %v", err)
+	}
+	readme := string(readmeBytes)
+	roadmapBytes, err := os.ReadFile("../../ROADMAP.md")
+	if err != nil {
+		t.Fatalf("failed to read ROADMAP.md: %v", err)
+	}
+	roadmap := string(roadmapBytes)
+
+	requiredReadme := "Lock skill file paths in `gokui.lock` must be valid UTF-8 for install/update/lock verify provenance checks."
+	if !strings.Contains(readme, requiredReadme) {
+		t.Fatalf("README missing lock path utf-8 hardening line: %q", requiredReadme)
+	}
+
+	requiredRoadmap := "Lock skill file-path validation hardening with invalid UTF-8 rejection for install/update/lock-verify provenance checks"
+	if !strings.Contains(roadmap, requiredRoadmap) {
+		t.Fatalf("ROADMAP missing lock path utf-8 hardening line: %q", requiredRoadmap)
+	}
+}
+
 func TestLockfileExampleSchemaSync(t *testing.T) {
 	readmeBytes, err := os.ReadFile("../../README.md")
 	if err != nil {

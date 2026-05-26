@@ -17,6 +17,7 @@ tests/CI:
 - Lock/source-metadata/report read-path hardening with symlink component rejection and regular-file enforcement
 - Source metadata read-path hardening with invalid UTF-8 payload rejection before JSON decoding
 - Lockfile/install-report read-path hardening with invalid UTF-8 payload rejection before JSON decoding
+- Lock skill file-path validation hardening with invalid UTF-8 rejection for install/update/lock-verify provenance checks
 - Source metadata write-path hardening with symlink component rejection and non-regular target rejection
 - Install atomic finalize hardening for symlinked target entries
 - Install idempotent-reuse hardening via strict existing-lock structural validation before provenance match
