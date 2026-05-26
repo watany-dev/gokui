@@ -37,6 +37,7 @@ tests/CI:
 - GitHub source parser rejection of surrounding whitespace in `//path` segment
 - GitHub source parser rejection of non-canonical `//path` segments (`//`, `/./`, `/../`, trailing `/`)
 - GitHub source parser owner-format hardening (uppercase letters and `_` disallowed; no leading/trailing `-`; no `--`)
+- GitHub source parser repo-format hardening (uppercase letters disallowed)
 - GitHub source parser repo-format hardening (`.git` suffix disallowed)
 - GitHub source parser repo-format hardening (consecutive-dot `..` segments disallowed)
 - Atomic install with `.gokui-report.json` and `gokui.lock`

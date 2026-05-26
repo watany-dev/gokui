@@ -96,6 +96,9 @@ func ParseGitHubSource(input string) (GitHubSpec, error) {
 	if owner != strings.ToLower(owner) {
 		return GitHubSpec{}, fmt.Errorf("github source owner must be canonical lowercase github login format")
 	}
+	if repo != strings.ToLower(repo) {
+		return GitHubSpec{}, fmt.Errorf("github source repo must be canonical lowercase")
+	}
 	if strings.HasSuffix(strings.ToLower(repo), ".git") {
 		return GitHubSpec{}, fmt.Errorf("github source repo must not include .git suffix")
 	}
