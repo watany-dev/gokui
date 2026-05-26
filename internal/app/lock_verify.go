@@ -656,14 +656,14 @@ func diffLockFiles(expected []lockFileHash, actual []lockFileHash) (missing []st
 
 func verifyLockSource(lock installLock) (bool, string) {
 	trimmedKind := strings.TrimSpace(lock.Source.Kind)
-	if trimmedKind == "" {
-		return false, "lock source kind is empty"
-	}
 	if strings.IndexFunc(lock.Source.Kind, isC0OrC1ControlRune) >= 0 {
 		return false, "lock source kind must not contain C0/C1 control characters"
 	}
 	if containsSeverityOverrideDisallowedUnicode(lock.Source.Kind) {
 		return false, "lock source kind must not contain Unicode bidi, zero-width, tag, or variation-selector characters"
+	}
+	if trimmedKind == "" {
+		return false, "lock source kind is empty"
 	}
 	if trimmedKind != lock.Source.Kind {
 		return false, "lock source kind must not contain leading or trailing whitespace"
