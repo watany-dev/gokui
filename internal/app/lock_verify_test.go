@@ -2264,6 +2264,13 @@ func TestVerifyLockStructureValidationBranches(t *testing.T) {
 			detailIn: "name must not contain C0/C1 control characters",
 		},
 		{
+			name: "name has DEL control character only",
+			mutate: func(l *installLock) {
+				l.Name = "\u007f"
+			},
+			detailIn: "name must not contain C0/C1 control characters",
+		},
+		{
 			name: "name has unicode obfuscation character",
 			mutate: func(l *installLock) {
 				l.Name = "x\u200d"
