@@ -90,6 +90,17 @@ func TestParseGitHubSource(t *testing.T) {
 		}
 	})
 
+	t.Run("rejects invalid UTF-8 input", func(t *testing.T) {
+		input := string([]byte("github:owner/repo//skills/demo@8f3c2d1a4b5c6d7e8f901234567890abcdef1234\xff"))
+		_, err := ParseGitHubSource(input)
+		if err == nil {
+			t.Fatal("expected parse error for invalid UTF-8 input")
+		}
+		if !strings.Contains(err.Error(), "must be valid UTF-8") {
+			t.Fatalf("error = %q, want UTF-8 validation message", err.Error())
+		}
+	})
+
 	t.Run("rejects C1 controls with explicit error", func(t *testing.T) {
 		_, err := ParseGitHubSource("github:owner/repo//skills/demo@8f3c2d1a4b5c6d7e8f901234567890abcdef12\u009f34")
 		if err == nil {

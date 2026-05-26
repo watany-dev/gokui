@@ -40,6 +40,7 @@ tests/CI:
 - GitHub archive strict stream-size enforcement with overflow-write prevention and cleanup
 - GitHub source parser length bounds (input and owner/repo/path/ref segments)
 - GitHub source parser rejection of C0/C1 control characters in source input
+- GitHub source parser rejection of invalid UTF-8 source input
 - GitHub source parser rejection of surrounding whitespace in `//path` segment
 - GitHub source parser rejection of `@` in `//path` segment
 - GitHub source parser rejection of `:` in `//path` segment

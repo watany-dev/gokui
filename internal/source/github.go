@@ -6,6 +6,7 @@ import (
 	"regexp"
 	"strings"
 	"unicode"
+	"unicode/utf8"
 )
 
 var (
@@ -38,6 +39,9 @@ func ParseGitHubSource(input string) (GitHubSpec, error) {
 	const prefix = "github:"
 	if !strings.HasPrefix(input, prefix) {
 		return GitHubSpec{}, fmt.Errorf("github source must start with %q", prefix)
+	}
+	if !utf8.ValidString(input) {
+		return GitHubSpec{}, fmt.Errorf("github source must be valid UTF-8")
 	}
 	if containsDisallowedControlCharacters(input) {
 		return GitHubSpec{}, fmt.Errorf("github source must not contain C0/C1 control characters")
