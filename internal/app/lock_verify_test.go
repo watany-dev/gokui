@@ -2479,6 +2479,13 @@ func TestVerifyLockStructureValidationBranches(t *testing.T) {
 			detailIn: "policy profile must not contain C0/C1 control characters",
 		},
 		{
+			name: "policy profile has DEL control character at edge",
+			mutate: func(l *installLock) {
+				l.Policy.Profile = "\u007fstrict"
+			},
+			detailIn: "policy profile must not contain C0/C1 control characters",
+		},
+		{
 			name: "policy profile has unicode obfuscation character",
 			mutate: func(l *installLock) {
 				l.Policy.Profile = "strict\u200d"
@@ -2531,6 +2538,13 @@ func TestVerifyLockStructureValidationBranches(t *testing.T) {
 			name: "policy decision has DEL control character only",
 			mutate: func(l *installLock) {
 				l.Policy.Decision = "\u007f"
+			},
+			detailIn: "lock policy decision must not contain C0/C1 control characters",
+		},
+		{
+			name: "policy decision has DEL control character at edge",
+			mutate: func(l *installLock) {
+				l.Policy.Decision = "\u007fpass"
 			},
 			detailIn: "lock policy decision must not contain C0/C1 control characters",
 		},
