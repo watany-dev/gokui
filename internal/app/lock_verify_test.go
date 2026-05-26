@@ -1902,6 +1902,13 @@ func TestVerifyInstallReportValidationBranches(t *testing.T) {
 			detailHas: "policy profile must not contain C0/C1 control characters",
 		},
 		{
+			name: "profile has C0/C1 control character at edge",
+			mutate: func(r *installReport) {
+				r.PolicyProfile = "\u0085strict"
+			},
+			detailHas: "policy profile must not contain C0/C1 control characters",
+		},
+		{
 			name: "profile has unicode obfuscation character",
 			mutate: func(r *installReport) {
 				r.PolicyProfile = "strict\u200d"

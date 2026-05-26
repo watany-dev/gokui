@@ -934,14 +934,14 @@ func verifyInstallReport(skillPath string, lock installLock) (bool, string) {
 	if strings.TrimSpace(report.PolicyProfile) == "" {
 		return false, "install report policy profile is empty"
 	}
-	if strings.TrimSpace(report.PolicyProfile) != report.PolicyProfile {
-		return false, "install report policy profile must not contain leading or trailing whitespace"
-	}
 	if strings.IndexFunc(report.PolicyProfile, isC0OrC1ControlRune) >= 0 {
 		return false, "install report policy profile must not contain C0/C1 control characters"
 	}
 	if containsSeverityOverrideDisallowedUnicode(report.PolicyProfile) {
 		return false, "install report policy profile must not contain Unicode bidi, zero-width, tag, or variation-selector characters"
+	}
+	if strings.TrimSpace(report.PolicyProfile) != report.PolicyProfile {
+		return false, "install report policy profile must not contain leading or trailing whitespace"
 	}
 	if normalizePolicyProfile(report.PolicyProfile) != report.PolicyProfile {
 		return false, "install report policy profile must be canonical lowercase without surrounding whitespace"
