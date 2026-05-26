@@ -82,6 +82,19 @@ func TestLoadUserPolicy(t *testing.T) {
 		}
 	})
 
+	t.Run("rejects non-utf8 policy file", func(t *testing.T) {
+		p := filepath.Join(t.TempDir(), "policy.toml")
+		invalid := append([]byte("default_profile = \"strict\"\n"), 0xff)
+		if err := os.WriteFile(p, invalid, 0o644); err != nil {
+			t.Fatalf("write invalid utf-8 policy file: %v", err)
+		}
+		t.Setenv(envPolicyPath, p)
+		_, _, err := LoadUserPolicy()
+		if err == nil || !strings.Contains(err.Error(), "must be valid UTF-8") {
+			t.Fatalf("expected utf-8 validation error, got %v", err)
+		}
+	})
+
 	t.Run("rejects too-large policy file", func(t *testing.T) {
 		p := filepath.Join(t.TempDir(), "policy.toml")
 		tooLarge := strings.Repeat("a", maxPolicyBytes+1)
@@ -325,6 +338,18 @@ func TestLoadRepositoryPolicy(t *testing.T) {
 		_, _, err := LoadRepositoryPolicy(root)
 		if err == nil || !strings.Contains(err.Error(), "unknown policy keys") {
 			t.Fatalf("expected unknown key error, got %v", err)
+		}
+	})
+
+	t.Run("rejects non-utf8 repository policy", func(t *testing.T) {
+		root := t.TempDir()
+		invalid := append([]byte("default_profile = \"strict\"\n"), 0xff)
+		if err := os.WriteFile(filepath.Join(root, repoPolicyFile), invalid, 0o644); err != nil {
+			t.Fatalf("write invalid utf-8 repository policy: %v", err)
+		}
+		_, _, err := LoadRepositoryPolicy(root)
+		if err == nil || !strings.Contains(err.Error(), "must be valid UTF-8") {
+			t.Fatalf("expected utf-8 validation error, got %v", err)
 		}
 	})
 }

@@ -334,6 +334,29 @@ func TestUpdateURLScanUTF8HardeningDocumentationSync(t *testing.T) {
 	}
 }
 
+func TestPolicyUTF8HardeningDocumentationSync(t *testing.T) {
+	readmeBytes, err := os.ReadFile("../../README.md")
+	if err != nil {
+		t.Fatalf("failed to read README.md: %v", err)
+	}
+	readme := string(readmeBytes)
+	roadmapBytes, err := os.ReadFile("../../ROADMAP.md")
+	if err != nil {
+		t.Fatalf("failed to read ROADMAP.md: %v", err)
+	}
+	roadmap := string(roadmapBytes)
+
+	requiredReadme := "Policy files (`policy.toml` / `.gokui-policy.toml`) must be valid UTF-8."
+	if !strings.Contains(readme, requiredReadme) {
+		t.Fatalf("README missing policy utf-8 hardening line: %q", requiredReadme)
+	}
+
+	requiredRoadmap := "Policy file load-path hardening with invalid UTF-8 rejection for `policy.toml` / `.gokui-policy.toml`"
+	if !strings.Contains(roadmap, requiredRoadmap) {
+		t.Fatalf("ROADMAP missing policy utf-8 hardening line: %q", requiredRoadmap)
+	}
+}
+
 func TestLockfileExampleSchemaSync(t *testing.T) {
 	readmeBytes, err := os.ReadFile("../../README.md")
 	if err != nil {

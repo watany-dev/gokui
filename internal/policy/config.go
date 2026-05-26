@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/BurntSushi/toml"
 )
@@ -119,6 +120,9 @@ func loadPolicyFile(path string) (cfg Config, found bool, err error) {
 	raw, err := os.ReadFile(path)
 	if err != nil {
 		return Config{}, false, fmt.Errorf("failed to read policy file: %w", err)
+	}
+	if !utf8.Valid(raw) {
+		return Config{}, false, fmt.Errorf("policy file must be valid UTF-8: %s", path)
 	}
 
 	meta, err := toml.Decode(string(raw), &cfg)

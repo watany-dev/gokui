@@ -54,6 +54,7 @@ source metadata for GitHub-origin installs), and install-report integrity,
 rejecting drifted installations.
 When `--profile` is omitted, install can load `default_profile` from
 `~/.config/gokui/policy.toml` (or `GOKUI_POLICY_PATH`).
+Policy files (`policy.toml` / `.gokui-policy.toml`) must be valid UTF-8.
 Install and update can also load the nearest ancestor repository policy file
 named `.gokui-policy.toml` for `local-dir` sources; when found, it is used in
 preference to user policy for that skill evaluation.

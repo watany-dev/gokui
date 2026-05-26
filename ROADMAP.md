@@ -64,6 +64,7 @@ tests/CI:
 - Built-in install policy profiles: `strict`, `team`, `research`
 - User policy loading from `~/.config/gokui/policy.toml` (`default_profile`)
 - Repository policy loading from nearest-ancestor `.gokui-policy.toml` for `local-dir` install/update source evaluation
+- Policy file load-path hardening with invalid UTF-8 rejection for `policy.toml` / `.gokui-policy.toml`
 - Policy-driven CLI override controls via `policy.toml` (`overrides.enabled`, `overrides.allowed_rule_ids`)
 - Profile-specific reject severity controls via `policy.toml` (`profiles.<name>.reject_severities`)
 - `vet` policy resolution for effective profile/reject severities via user policy (`GOKUI_POLICY_PATH`/`~/.config/gokui/policy.toml`) and nearest-ancestor repository policy precedence for `local-dir` sources
