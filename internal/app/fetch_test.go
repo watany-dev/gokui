@@ -266,6 +266,17 @@ func TestRunFetch(t *testing.T) {
 
 		stdout.Reset()
 		stderr.Reset()
+		invalidUTF8Source := string([]byte("github:org/repo//skills/demo@8f3c2d1a4b5c6d7e8f901234567890abcdef1234\xff"))
+		code = runFetch([]string{invalidUTF8Source, "--out", t.TempDir()}, &stdout, &stderr)
+		if code != 1 {
+			t.Fatalf("runFetch(non-UTF-8 source) code = %d, want 1", code)
+		}
+		if !strings.Contains(stderr.String(), "must be valid UTF-8") {
+			t.Fatalf("stderr should include UTF-8 validation detail for non-UTF-8 source, got %q", stderr.String())
+		}
+
+		stdout.Reset()
+		stderr.Reset()
 		code = runFetch([]string{"github:org/repo//skills/demo@8f3c2d1a4b5c6d7e8f90\u202e1234567890abcdef1234", "--out", t.TempDir()}, &stdout, &stderr)
 		if code != 1 {
 			t.Fatalf("runFetch(ref-bidi-control source) code = %d, want 1", code)

@@ -1173,6 +1173,23 @@ func TestRun(t *testing.T) {
 		}
 	})
 
+	t.Run("inspect compact invalid github non-UTF-8 source writes UTF-8 detail", func(t *testing.T) {
+		var stdout bytes.Buffer
+		var stderr bytes.Buffer
+
+		source := string([]byte("github:org/repo//skills/x@8f3c2d1a4b5c6d7e8f901234567890abcdef1234\xff"))
+		code := Run([]string{"inspect", source, "--format", "compact"}, &stdout, &stderr, cfg)
+		if code != 1 {
+			t.Fatalf("Run() code = %d, want 1\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
+		}
+		if stdout.Len() != 0 {
+			t.Fatalf("stdout should be empty for compact error output, got %q", stdout.String())
+		}
+		if !strings.Contains(stderr.String(), "must be valid UTF-8") {
+			t.Fatalf("stderr should include UTF-8 validation detail, got %q", stderr.String())
+		}
+	})
+
 	t.Run("inspect review-json emits neutralized structured report", func(t *testing.T) {
 		var stdout bytes.Buffer
 		var stderr bytes.Buffer

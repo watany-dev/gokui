@@ -337,6 +337,17 @@ func TestRunInstallErrorPaths(t *testing.T) {
 
 	stdout.Reset()
 	stderr.Reset()
+	invalidUTF8Source := string([]byte("github:org/repo//skill@8f3c2d1a4b5c6d7e8f901234567890abcdef1234\xff"))
+	code = runInstall([]string{invalidUTF8Source, "--target", "codex", "--profile", "strict"}, &stdout, &stderr)
+	if code != 1 {
+		t.Fatalf("runInstall(non-UTF-8 source) code = %d, want 1", code)
+	}
+	if !strings.Contains(stderr.String(), "must be valid UTF-8") {
+		t.Fatalf("stderr should include UTF-8 validation detail for non-UTF-8 source, got %q", stderr.String())
+	}
+
+	stdout.Reset()
+	stderr.Reset()
 	code = runInstall([]string{"github:owner/repo.//skill@8f3c2d1a4b5c6d7e8f901234567890abcdef1234", "--target", "codex", "--profile", "strict"}, &stdout, &stderr)
 	if code != 1 {
 		t.Fatalf("runInstall(repo trailing dot) code = %d, want 1", code)
