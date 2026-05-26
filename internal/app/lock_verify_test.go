@@ -1120,6 +1120,10 @@ func TestVerifyLockSourceChecks(t *testing.T) {
 	if ok, _ := verifyLockSource(lock); ok {
 		t.Fatal("github source input with unicode-whitespace ref should fail")
 	}
+	lock.Source.Input = "github:org/repo//skills/demo@abc1234a4b5c6d7e8f90\u00851234567890abcdef1234"
+	if ok, _ := verifyLockSource(lock); ok {
+		t.Fatal("github source input with C1 control ref should fail")
+	}
 	lock.Source.Input = "github:org/repo//skills/demo@abc1234a4b5c6d7e8f90\u200b1234567890abcdef1234"
 	if ok, _ := verifyLockSource(lock); ok {
 		t.Fatal("github source input with zero-width ref should fail")
