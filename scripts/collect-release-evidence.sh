@@ -10,13 +10,15 @@ LOG_DIR="$OUT_DIR/logs"
 WITH_VULN=0
 AUDIT_KIND="offline-audit"
 EVIDENCE_MODE="offline"
+GATE_STEP_NAME="release-check-offline"
 
 usage() {
   cat <<USAGE
-Usage: $(basename "$0") [--with-vuln]
+Usage: $(basename "$0") [--with-vuln] [--beta]
 
 Options:
   --with-vuln   Also run 'make vuln' and record the result.
+  --beta        Run beta gate ('make beta-check') instead of release-check-offline.
 USAGE
 }
 
@@ -85,6 +87,11 @@ while [ "$#" -gt 0 ]; do
       WITH_VULN=1
       AUDIT_KIND="online-audit"
       EVIDENCE_MODE="online"
+      ;;
+    --beta)
+      AUDIT_KIND="beta-audit"
+      EVIDENCE_MODE="beta"
+      GATE_STEP_NAME="beta-check"
       ;;
     -h|--help)
       usage
@@ -212,7 +219,11 @@ run_git_clean_check() {
 } >&${EVIDENCE_FD}
 
 run_git_clean_check
-run_step "release-check-offline" "GOCACHE=\"$ROOT_DIR/.cache/go-build\" GOMODCACHE=\"$ROOT_DIR/.cache/gomod\" GOPATH=\"$ROOT_DIR/.cache/gopath\" XDG_CACHE_HOME=\"$ROOT_DIR/.cache/xdg\" BUILD_OUT=\"$ROOT_DIR/.cache/gokui-release-evidence\" make release-check-offline" "$LOG_DIR/${BASENAME}-release-check-offline.log"
+if [ "$GATE_STEP_NAME" = "beta-check" ]; then
+  run_step "$GATE_STEP_NAME" "GOCACHE=\"$ROOT_DIR/.cache/go-build\" GOMODCACHE=\"$ROOT_DIR/.cache/gomod\" GOPATH=\"$ROOT_DIR/.cache/gopath\" XDG_CACHE_HOME=\"$ROOT_DIR/.cache/xdg\" BUILD_OUT=\"$ROOT_DIR/.cache/gokui-beta-evidence\" INSPECT_SARIF_OUT=\"$ROOT_DIR/.cache/inspect-results-beta-evidence.sarif\" make beta-check" "$LOG_DIR/${BASENAME}-${GATE_STEP_NAME}.log"
+else
+  run_step "$GATE_STEP_NAME" "GOCACHE=\"$ROOT_DIR/.cache/go-build\" GOMODCACHE=\"$ROOT_DIR/.cache/gomod\" GOPATH=\"$ROOT_DIR/.cache/gopath\" XDG_CACHE_HOME=\"$ROOT_DIR/.cache/xdg\" BUILD_OUT=\"$ROOT_DIR/.cache/gokui-release-evidence\" make release-check-offline" "$LOG_DIR/${BASENAME}-${GATE_STEP_NAME}.log"
+fi
 
 if [ "$WITH_VULN" -eq 1 ] && [ "$FAILED_STEPS" -eq 0 ]; then
   run_step "vuln" "GOCACHE=\"$ROOT_DIR/.cache/go-build\" GOMODCACHE=\"$ROOT_DIR/.cache/gomod\" GOPATH=\"$ROOT_DIR/.cache/gopath\" XDG_CACHE_HOME=\"$ROOT_DIR/.cache/xdg\" make vuln" "$LOG_DIR/${BASENAME}-vuln.log"
@@ -229,7 +240,11 @@ else
 fi
 
 if [ "$FAILED_STEPS" -eq 0 ]; then
-  run_step "cleanup evidence build artifact" "rm -f -- \"$ROOT_DIR/.cache/gokui-release-evidence\"" "$LOG_DIR/${BASENAME}-cleanup.log"
+  if [ "$GATE_STEP_NAME" = "beta-check" ]; then
+    run_step "cleanup evidence build artifact" "rm -f -- \"$ROOT_DIR/.cache/gokui-beta-evidence\" \"$ROOT_DIR/.cache/inspect-results-beta-evidence.sarif\"" "$LOG_DIR/${BASENAME}-cleanup.log"
+  else
+    run_step "cleanup evidence build artifact" "rm -f -- \"$ROOT_DIR/.cache/gokui-release-evidence\"" "$LOG_DIR/${BASENAME}-cleanup.log"
+  fi
 else
   {
     echo "- cleanup evidence build artifact: SKIPPED"

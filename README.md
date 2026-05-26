@@ -46,6 +46,15 @@ make beta-check
 - `make build`
 - `make inspect-sarif`
 
+For beta audit evidence generation:
+
+```sh
+make release-evidence-beta
+```
+
+This runs the beta gate and writes an evidence markdown record under
+`releases/evidence/` with a `-beta-audit.md` suffix.
+
 Full pre-release gate (`make release-check`) remains the target before GA.
 
 `fetch`, `inspect`, `vet`, `install`, `update`, and `lock verify` also support `--format compact` for single-line CI summaries.

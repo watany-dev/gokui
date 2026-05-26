@@ -31,7 +31,7 @@ LDFLAGS := -s -w \
 	-X main.commit=$(COMMIT) \
 	-X main.date=$(DATE)
 
-.PHONY: build fmt fmt-check lint typecheck deadcode test test-race coverage vuln actionlint check beta-check release-check-preflight release-check release-check-offline release-evidence release-evidence-offline release-evidence-online inspect-sarif
+.PHONY: build fmt fmt-check lint typecheck deadcode test test-race coverage vuln actionlint check beta-check release-check-preflight release-check release-check-offline release-evidence release-evidence-offline release-evidence-online release-evidence-beta inspect-sarif
 
 build:
 	$(GO) build -trimpath -buildvcs=true -ldflags='$(LDFLAGS)' -o $(BUILD_OUT) $(MAIN_PKG)
@@ -248,6 +248,9 @@ release-evidence-offline:
 
 release-evidence-online:
 	./scripts/collect-release-evidence.sh --with-vuln
+
+release-evidence-beta:
+	./scripts/collect-release-evidence.sh --beta
 
 inspect-sarif:
 	./scripts/generate-inspect-sarif.sh "$(INSPECT_SARIF_OUT)"

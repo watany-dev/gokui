@@ -90,6 +90,15 @@ This runs:
 This is the minimum gate for beta publication. Before GA promotion, run the full
 `make release-check`.
 
+For beta release evidence generation:
+
+```sh
+make release-evidence-beta
+```
+
+This records a `-beta-audit.md` evidence file plus per-step logs under
+`releases/evidence/`.
+
 ## 4) Offline Fallback
 
 If vulnerability DB/network access is temporarily unavailable:
@@ -146,6 +155,7 @@ Record release evidence using:
 - `make release-evidence` (creates `releases/evidence/<timestamp>-<commit>.md`)
 - `make release-evidence-offline` (runs offline gate and creates `releases/evidence/<timestamp>-<commit>-offline-audit.md` with step logs)
 - `make release-evidence-online` (runs offline gate + vuln check and creates `releases/evidence/<timestamp>-<commit>-online-audit.md` with step logs)
+- `make release-evidence-beta` (runs beta gate and creates `releases/evidence/<timestamp>-<commit>-beta-audit.md` with step logs)
 
 For evidence scripts, clean-tree checks include tracked and untracked
 (non-ignored) files (`git status --short`), and build output is isolated to

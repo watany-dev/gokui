@@ -22,6 +22,8 @@ stable contracts, and clear operational boundaries. Work is now split into:
   - `make test`
   - `make build`
   - `make inspect-sarif`
+- Generate beta audit evidence via `make release-evidence-beta` to capture
+  gate logs and release-candidate metadata.
 
 ### Beta Exit Criteria
 
