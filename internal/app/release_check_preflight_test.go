@@ -1,0 +1,1155 @@
+package app
+
+import (
+	"errors"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"runtime"
+	"strings"
+	"testing"
+)
+
+func runReleaseCheckPreflight(t *testing.T, env map[string]string) (int, string) {
+	t.Helper()
+
+	cmd := exec.Command("make", "-f", "../../Makefile", "release-check-preflight")
+	cmd.Env = os.Environ()
+	for k, v := range env {
+		cmd.Env = append(cmd.Env, k+"="+v)
+	}
+
+	out, err := cmd.CombinedOutput()
+	if err == nil {
+		return 0, string(out)
+	}
+
+	var exitErr *exec.ExitError
+	if !strings.Contains(err.Error(), "exit status") {
+		t.Fatalf("release-check-preflight execution error: %v\noutput:\n%s", err, out)
+	}
+	if ok := errors.As(err, &exitErr); !ok {
+		t.Fatalf("release-check-preflight returned non-exit error: %v\noutput:\n%s", err, out)
+	}
+	return exitErr.ExitCode(), string(out)
+}
+
+func runBetaCheckPreflight(t *testing.T, env map[string]string) (int, string) {
+	t.Helper()
+
+	cmd := exec.Command("make", "-f", "../../Makefile", "beta-check-preflight")
+	cmd.Env = os.Environ()
+	for k, v := range env {
+		cmd.Env = append(cmd.Env, k+"="+v)
+	}
+
+	out, err := cmd.CombinedOutput()
+	if err == nil {
+		return 0, string(out)
+	}
+
+	var exitErr *exec.ExitError
+	if !strings.Contains(err.Error(), "exit status") {
+		t.Fatalf("beta-check-preflight execution error: %v\noutput:\n%s", err, out)
+	}
+	if ok := errors.As(err, &exitErr); !ok {
+		t.Fatalf("beta-check-preflight returned non-exit error: %v\noutput:\n%s", err, out)
+	}
+	return exitErr.ExitCode(), string(out)
+}
+
+func TestBetaCheckPreflightRejectsSameOutputPath(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("preflight path contracts are exercised on POSIX in CI")
+	}
+
+	shared := releaseCheckRepoLocalPath(t, "beta-shared.sarif")
+	releaseBuildOut := releaseCheckRepoLocalPath(t, "release-build.out")
+	releaseSarifOut := releaseCheckRepoLocalPath(t, "release-inspect.sarif")
+
+	exitCode, out := runBetaCheckPreflight(t, map[string]string{
+		"BETA_CHECK_BUILD_OUT":    shared,
+		"BETA_CHECK_SARIF_OUT":    shared,
+		"RELEASE_CHECK_BUILD_OUT": releaseBuildOut,
+		"RELEASE_CHECK_SARIF_OUT": releaseSarifOut,
+	})
+	if exitCode == 0 {
+		t.Fatalf("expected non-zero exit when beta outputs share a path\noutput:\n%s", out)
+	}
+	if !strings.Contains(out, "[RC_PREFLIGHT_OUTPUT_PATH_CONFLICT]") {
+		t.Fatalf("expected distinct-path rejection code, got:\n%s", out)
+	}
+	if !strings.Contains(out, "build and SARIF outputs must be different paths") {
+		t.Fatalf("expected distinct-path rejection message, got:\n%s", out)
+	}
+}
+
+func TestBetaCheckPreflightRejectsSameOutputPathAfterNormalization(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("preflight path contracts are exercised on POSIX in CI")
+	}
+
+	root := releaseCheckRepoRootPath(t)
+	safeName := strings.NewReplacer("/", "-", "\\", "-", " ", "-").Replace(strings.ToLower(t.Name()))
+	baseDir := filepath.Join(root, ".cache", "release-check-preflight-tests")
+	if err := os.MkdirAll(baseDir, 0o755); err != nil {
+		t.Fatalf("mkdir preflight test base dir: %v", err)
+	}
+	tempDir, err := os.MkdirTemp(baseDir, safeName+"-")
+	if err != nil {
+		t.Fatalf("create preflight test temp dir: %v", err)
+	}
+	t.Cleanup(func() {
+		_ = os.RemoveAll(tempDir)
+	})
+
+	betaBuildOut := filepath.Join(tempDir, "nested", "..", "shared.sarif")
+	betaSarifOut := filepath.Join(tempDir, "shared.sarif")
+	releaseBuildOut := releaseCheckRepoLocalPath(t, "release-build.out")
+	releaseSarifOut := releaseCheckRepoLocalPath(t, "release-inspect.sarif")
+
+	exitCode, out := runBetaCheckPreflight(t, map[string]string{
+		"BETA_CHECK_BUILD_OUT":    betaBuildOut,
+		"BETA_CHECK_SARIF_OUT":    betaSarifOut,
+		"RELEASE_CHECK_BUILD_OUT": releaseBuildOut,
+		"RELEASE_CHECK_SARIF_OUT": releaseSarifOut,
+	})
+	if exitCode == 0 {
+		t.Fatalf("expected non-zero exit when normalized beta outputs share a path\noutput:\n%s", out)
+	}
+	if !strings.Contains(out, "[RC_PREFLIGHT_OUTPUT_PATH_CONFLICT]") {
+		t.Fatalf("expected normalized distinct-path rejection code, got:\n%s", out)
+	}
+	if !strings.Contains(out, "build and SARIF outputs must be different paths") {
+		t.Fatalf("expected normalized distinct-path rejection message, got:\n%s", out)
+	}
+}
+
+func TestBetaCheckPreflightAllowsExistingOutputs(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("preflight path contracts are exercised on POSIX in CI")
+	}
+
+	buildOut := releaseCheckRepoLocalPath(t, "existing-beta-build.out")
+	sarifOut := releaseCheckRepoLocalPath(t, "existing-beta-inspect.sarif")
+	if err := os.MkdirAll(filepath.Dir(buildOut), 0o755); err != nil {
+		t.Fatalf("mkdir beta build output parent: %v", err)
+	}
+	if err := os.WriteFile(buildOut, []byte("existing"), 0o600); err != nil {
+		t.Fatalf("write existing beta build output: %v", err)
+	}
+	if err := os.MkdirAll(filepath.Dir(sarifOut), 0o755); err != nil {
+		t.Fatalf("mkdir beta SARIF output parent: %v", err)
+	}
+	if err := os.WriteFile(sarifOut, []byte("existing"), 0o600); err != nil {
+		t.Fatalf("write existing beta SARIF output: %v", err)
+	}
+
+	exitCode, out := runBetaCheckPreflight(t, map[string]string{
+		"BETA_CHECK_BUILD_OUT": buildOut,
+		"BETA_CHECK_SARIF_OUT": sarifOut,
+	})
+	if exitCode != 0 {
+		t.Fatalf("expected zero exit when beta outputs already exist\noutput:\n%s", out)
+	}
+}
+
+func TestBetaCheckPreflightRejectsInvalidSARIFExtensionFromBetaOutputVars(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("preflight path contracts are exercised on POSIX in CI")
+	}
+
+	betaBuildOut := releaseCheckRepoLocalPath(t, "beta-build.out")
+	betaSarifOut := releaseCheckRepoLocalPath(t, "beta-inspect.txt")
+	releaseBuildOut := releaseCheckRepoLocalPath(t, "release-build.out")
+	releaseSarifOut := releaseCheckRepoLocalPath(t, "release-inspect.sarif")
+
+	exitCode, out := runBetaCheckPreflight(t, map[string]string{
+		"BETA_CHECK_BUILD_OUT":    betaBuildOut,
+		"BETA_CHECK_SARIF_OUT":    betaSarifOut,
+		"RELEASE_CHECK_BUILD_OUT": releaseBuildOut,
+		"RELEASE_CHECK_SARIF_OUT": releaseSarifOut,
+	})
+	if exitCode == 0 {
+		t.Fatalf("expected non-zero exit for beta SARIF output without .sarif extension\noutput:\n%s", out)
+	}
+	if !strings.Contains(out, "[RC_PREFLIGHT_SARIF_OUT_INVALID]") {
+		t.Fatalf("expected invalid SARIF output rejection code, got:\n%s", out)
+	}
+	if !strings.Contains(out, "SARIF output path must end with .sarif") {
+		t.Fatalf("expected invalid SARIF output rejection message, got:\n%s", out)
+	}
+}
+
+func TestBetaCheckPreflightRejectsRootOrDirectoryLikeSARIFOutput(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("preflight path contracts are exercised on POSIX in CI")
+	}
+
+	testCases := []struct {
+		name     string
+		sarifOut string
+	}{
+		{name: "dot path", sarifOut: "."},
+		{name: "root path", sarifOut: "/"},
+		{name: "directory-like trailing slash", sarifOut: filepath.Join(t.TempDir(), "dir-like") + "/"},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			exitCode, out := runBetaCheckPreflight(t, map[string]string{
+				"BETA_CHECK_BUILD_OUT":    releaseCheckRepoLocalPath(t, "beta-build.out"),
+				"BETA_CHECK_SARIF_OUT":    tc.sarifOut,
+				"RELEASE_CHECK_BUILD_OUT": releaseCheckRepoLocalPath(t, "release-build.out"),
+				"RELEASE_CHECK_SARIF_OUT": releaseCheckRepoLocalPath(t, "release-inspect.sarif"),
+			})
+			if exitCode == 0 {
+				t.Fatalf("expected non-zero exit for invalid beta SARIF output path %q\noutput:\n%s", tc.sarifOut, out)
+			}
+			if !strings.Contains(out, "[RC_PREFLIGHT_SARIF_OUT_INVALID]") {
+				t.Fatalf("expected non-root beta SARIF output rejection code, got:\n%s", out)
+			}
+			if !strings.Contains(out, "SARIF output path must be a non-root file path") {
+				t.Fatalf("expected non-root beta SARIF output rejection message, got:\n%s", out)
+			}
+		})
+	}
+}
+
+func TestBetaCheckPreflightRejectsGitPathFromBetaOutputVars(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("preflight path contracts are exercised on POSIX in CI")
+	}
+
+	root := releaseCheckRepoRootPath(t)
+	betaBuildOut := filepath.Join(root, ".git", "beta-build.out")
+	betaSarifOut := releaseCheckRepoLocalPath(t, "beta-inspect.sarif")
+	releaseBuildOut := releaseCheckRepoLocalPath(t, "release-build.out")
+	releaseSarifOut := releaseCheckRepoLocalPath(t, "release-inspect.sarif")
+
+	exitCode, out := runBetaCheckPreflight(t, map[string]string{
+		"BETA_CHECK_BUILD_OUT":    betaBuildOut,
+		"BETA_CHECK_SARIF_OUT":    betaSarifOut,
+		"RELEASE_CHECK_BUILD_OUT": releaseBuildOut,
+		"RELEASE_CHECK_SARIF_OUT": releaseSarifOut,
+	})
+	if exitCode == 0 {
+		t.Fatalf("expected non-zero exit for beta build output under .git\noutput:\n%s", out)
+	}
+	if !strings.Contains(out, "[RC_PREFLIGHT_BUILD_OUT_INVALID]") {
+		t.Fatalf("expected invalid build output rejection code, got:\n%s", out)
+	}
+	if !strings.Contains(out, "build output path must be a non-root file path outside .git") {
+		t.Fatalf("expected .git build output rejection message, got:\n%s", out)
+	}
+}
+
+func TestBetaCheckPreflightIgnoresInvalidReleaseCheckOutputEnv(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("preflight path contracts are exercised on POSIX in CI")
+	}
+
+	betaBuildOut := releaseCheckRepoLocalPath(t, "beta-build.out")
+	betaSarifOut := releaseCheckRepoLocalPath(t, "beta-inspect.sarif")
+
+	exitCode, out := runBetaCheckPreflight(t, map[string]string{
+		"BETA_CHECK_BUILD_OUT":    betaBuildOut,
+		"BETA_CHECK_SARIF_OUT":    betaSarifOut,
+		"RELEASE_CHECK_BUILD_OUT": ".",
+		"RELEASE_CHECK_SARIF_OUT": "/",
+	})
+	if exitCode != 0 {
+		t.Fatalf("expected zero exit when only RELEASE_CHECK_* env values are invalid\noutput:\n%s", out)
+	}
+}
+
+func TestBetaCheckPreflightRejectsSymlinkedBuildOutputPath(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("preflight path contracts are exercised on POSIX in CI")
+	}
+
+	basePath := releaseCheckRepoLocalPath(t, "seed")
+	baseDir := filepath.Dir(basePath)
+	realDir := filepath.Join(baseDir, "real")
+	linkDir := filepath.Join(baseDir, "symlinked")
+	if err := os.MkdirAll(realDir, 0o755); err != nil {
+		t.Fatalf("mkdir real output dir: %v", err)
+	}
+	if err := os.Symlink(realDir, linkDir); err != nil {
+		t.Fatalf("create symlink output dir: %v", err)
+	}
+
+	betaBuildOut := filepath.Join(linkDir, "beta-build.out")
+	betaSarifOut := releaseCheckRepoLocalPath(t, "beta-inspect.sarif")
+	releaseBuildOut := releaseCheckRepoLocalPath(t, "release-build.out")
+	releaseSarifOut := releaseCheckRepoLocalPath(t, "release-inspect.sarif")
+
+	exitCode, out := runBetaCheckPreflight(t, map[string]string{
+		"BETA_CHECK_BUILD_OUT":    betaBuildOut,
+		"BETA_CHECK_SARIF_OUT":    betaSarifOut,
+		"RELEASE_CHECK_BUILD_OUT": releaseBuildOut,
+		"RELEASE_CHECK_SARIF_OUT": releaseSarifOut,
+	})
+	if exitCode == 0 {
+		t.Fatalf("expected non-zero exit for symlinked beta build output path\noutput:\n%s", out)
+	}
+	if !strings.Contains(out, "[RC_PREFLIGHT_BUILD_OUT_SYMLINK]") {
+		t.Fatalf("expected symlink build output rejection code, got:\n%s", out)
+	}
+	if !strings.Contains(out, "build output path contains symlink path component") {
+		t.Fatalf("expected symlink build output rejection message, got:\n%s", out)
+	}
+}
+
+func TestBetaCheckPreflightRejectsSymlinkedSARIFOutputPath(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("preflight path contracts are exercised on POSIX in CI")
+	}
+
+	basePath := releaseCheckRepoLocalPath(t, "seed")
+	baseDir := filepath.Dir(basePath)
+	realDir := filepath.Join(baseDir, "real")
+	linkDir := filepath.Join(baseDir, "symlinked")
+	if err := os.MkdirAll(realDir, 0o755); err != nil {
+		t.Fatalf("mkdir real output dir: %v", err)
+	}
+	if err := os.Symlink(realDir, linkDir); err != nil {
+		t.Fatalf("create symlink output dir: %v", err)
+	}
+
+	betaBuildOut := releaseCheckRepoLocalPath(t, "beta-build.out")
+	betaSarifOut := filepath.Join(linkDir, "beta-inspect.sarif")
+	releaseBuildOut := releaseCheckRepoLocalPath(t, "release-build.out")
+	releaseSarifOut := releaseCheckRepoLocalPath(t, "release-inspect.sarif")
+
+	exitCode, out := runBetaCheckPreflight(t, map[string]string{
+		"BETA_CHECK_BUILD_OUT":    betaBuildOut,
+		"BETA_CHECK_SARIF_OUT":    betaSarifOut,
+		"RELEASE_CHECK_BUILD_OUT": releaseBuildOut,
+		"RELEASE_CHECK_SARIF_OUT": releaseSarifOut,
+	})
+	if exitCode == 0 {
+		t.Fatalf("expected non-zero exit for symlinked beta SARIF output path\noutput:\n%s", out)
+	}
+	if !strings.Contains(out, "[RC_PREFLIGHT_SARIF_OUT_SYMLINK]") {
+		t.Fatalf("expected symlink SARIF output rejection code, got:\n%s", out)
+	}
+	if !strings.Contains(out, "SARIF output path contains symlink path component") {
+		t.Fatalf("expected symlink SARIF output rejection message, got:\n%s", out)
+	}
+}
+
+func TestBetaCheckPreflightRejectsBuildOutputEmptyPathSegmentsFromBetaVars(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("preflight path contracts are exercised on POSIX in CI")
+	}
+
+	betaBuildOut := ".cache//beta-build.out"
+	betaSarifOut := releaseCheckRepoLocalPath(t, "beta-inspect.sarif")
+	releaseBuildOut := releaseCheckRepoLocalPath(t, "release-build.out")
+	releaseSarifOut := releaseCheckRepoLocalPath(t, "release-inspect.sarif")
+
+	exitCode, out := runBetaCheckPreflight(t, map[string]string{
+		"BETA_CHECK_BUILD_OUT":    betaBuildOut,
+		"BETA_CHECK_SARIF_OUT":    betaSarifOut,
+		"RELEASE_CHECK_BUILD_OUT": releaseBuildOut,
+		"RELEASE_CHECK_SARIF_OUT": releaseSarifOut,
+	})
+	if exitCode == 0 {
+		t.Fatalf("expected non-zero exit for beta build output with empty path segment\noutput:\n%s", out)
+	}
+	if !strings.Contains(out, "[RC_PREFLIGHT_BUILD_OUT_INVALID]") {
+		t.Fatalf("expected build output empty-segment rejection code, got:\n%s", out)
+	}
+	if !strings.Contains(out, "build output path must not contain empty path segments") {
+		t.Fatalf("expected build output empty-segment rejection message, got:\n%s", out)
+	}
+}
+
+func TestBetaCheckPreflightRejectsBuildOutputDotSegmentsFromBetaVars(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("preflight path contracts are exercised on POSIX in CI")
+	}
+
+	betaSarifOut := releaseCheckRepoLocalPath(t, "beta-inspect.sarif")
+	releaseBuildOut := releaseCheckRepoLocalPath(t, "release-build.out")
+	releaseSarifOut := releaseCheckRepoLocalPath(t, "release-inspect.sarif")
+
+	testCases := []struct {
+		name         string
+		betaBuildOut string
+	}{
+		{name: "dot segment in middle", betaBuildOut: ".cache/./beta-build.out"},
+		{name: "dotdot segment in middle", betaBuildOut: ".cache/tmp/../beta-build.out"},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			exitCode, out := runBetaCheckPreflight(t, map[string]string{
+				"BETA_CHECK_BUILD_OUT":    tc.betaBuildOut,
+				"BETA_CHECK_SARIF_OUT":    betaSarifOut,
+				"RELEASE_CHECK_BUILD_OUT": releaseBuildOut,
+				"RELEASE_CHECK_SARIF_OUT": releaseSarifOut,
+			})
+			if exitCode == 0 {
+				t.Fatalf("expected non-zero exit for beta build output path with dot/dotdot segment %q\noutput:\n%s", tc.betaBuildOut, out)
+			}
+			if !strings.Contains(out, "[RC_PREFLIGHT_BUILD_OUT_INVALID]") {
+				t.Fatalf("expected build output dot/dotdot-segment rejection code, got:\n%s", out)
+			}
+			if !strings.Contains(out, "build output path must not contain '.' or '..' path segments") {
+				t.Fatalf("expected build output dot/dotdot-segment rejection message, got:\n%s", out)
+			}
+		})
+	}
+}
+
+func TestBetaCheckPreflightRejectsSARIFOutputEmptyPathSegmentsFromBetaVars(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("preflight path contracts are exercised on POSIX in CI")
+	}
+
+	betaBuildOut := releaseCheckRepoLocalPath(t, "beta-build.out")
+	betaSarifOut := ".cache//beta-inspect.sarif"
+	releaseBuildOut := releaseCheckRepoLocalPath(t, "release-build.out")
+	releaseSarifOut := releaseCheckRepoLocalPath(t, "release-inspect.sarif")
+
+	exitCode, out := runBetaCheckPreflight(t, map[string]string{
+		"BETA_CHECK_BUILD_OUT":    betaBuildOut,
+		"BETA_CHECK_SARIF_OUT":    betaSarifOut,
+		"RELEASE_CHECK_BUILD_OUT": releaseBuildOut,
+		"RELEASE_CHECK_SARIF_OUT": releaseSarifOut,
+	})
+	if exitCode == 0 {
+		t.Fatalf("expected non-zero exit for beta SARIF output with empty path segment\noutput:\n%s", out)
+	}
+	if !strings.Contains(out, "[RC_PREFLIGHT_SARIF_OUT_INVALID]") {
+		t.Fatalf("expected SARIF output empty-segment rejection code, got:\n%s", out)
+	}
+	if !strings.Contains(out, "SARIF output path must not contain empty path segments") {
+		t.Fatalf("expected SARIF output empty-segment rejection message, got:\n%s", out)
+	}
+}
+
+func TestBetaCheckPreflightRejectsSARIFOutputDotSegmentsFromBetaVars(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("preflight path contracts are exercised on POSIX in CI")
+	}
+
+	betaBuildOut := releaseCheckRepoLocalPath(t, "beta-build.out")
+	releaseBuildOut := releaseCheckRepoLocalPath(t, "release-build.out")
+	releaseSarifOut := releaseCheckRepoLocalPath(t, "release-inspect.sarif")
+
+	testCases := []struct {
+		name         string
+		betaSarifOut string
+	}{
+		{name: "dot segment in middle", betaSarifOut: ".cache/./beta-inspect.sarif"},
+		{name: "dotdot segment in middle", betaSarifOut: ".cache/tmp/../beta-inspect.sarif"},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			exitCode, out := runBetaCheckPreflight(t, map[string]string{
+				"BETA_CHECK_BUILD_OUT":    betaBuildOut,
+				"BETA_CHECK_SARIF_OUT":    tc.betaSarifOut,
+				"RELEASE_CHECK_BUILD_OUT": releaseBuildOut,
+				"RELEASE_CHECK_SARIF_OUT": releaseSarifOut,
+			})
+			if exitCode == 0 {
+				t.Fatalf("expected non-zero exit for beta SARIF output path with dot/dotdot segment %q\noutput:\n%s", tc.betaSarifOut, out)
+			}
+			if !strings.Contains(out, "[RC_PREFLIGHT_SARIF_OUT_INVALID]") {
+				t.Fatalf("expected SARIF output dot/dotdot-segment rejection code, got:\n%s", out)
+			}
+			if !strings.Contains(out, "SARIF output path must not contain '.' or '..' path segments") {
+				t.Fatalf("expected SARIF output dot/dotdot-segment rejection message, got:\n%s", out)
+			}
+		})
+	}
+}
+
+func TestBetaCheckPreflightCanRunConsecutively(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("beta-check preflight contract is exercised on POSIX in CI")
+	}
+
+	buildOut := releaseCheckRepoLocalPath(t, "beta-consecutive-build.out")
+	sarifOut := releaseCheckRepoLocalPath(t, "beta-consecutive-inspect.sarif")
+	preflightEnv := map[string]string{
+		"BETA_CHECK_BUILD_OUT": buildOut,
+		"BETA_CHECK_SARIF_OUT": sarifOut,
+	}
+
+	for i := 1; i <= 2; i++ {
+		exitCode, out := runBetaCheckPreflight(t, preflightEnv)
+		if exitCode != 0 {
+			t.Fatalf("beta-check-preflight run %d should succeed\noutput:\n%s", i, out)
+		}
+	}
+}
+
+func releaseCheckRepoRootPath(t *testing.T) string {
+	t.Helper()
+
+	root, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatalf("resolve repository root: %v", err)
+	}
+	return root
+}
+
+func releaseCheckRepoLocalPath(t *testing.T, suffix string) string {
+	t.Helper()
+
+	safeName := strings.NewReplacer("/", "-", "\\", "-", " ", "-").Replace(strings.ToLower(t.Name()))
+	baseDir := filepath.Join(releaseCheckRepoRootPath(t), ".cache", "release-check-preflight-tests")
+	if err := os.MkdirAll(baseDir, 0o755); err != nil {
+		t.Fatalf("mkdir preflight test base dir: %v", err)
+	}
+	tempDir, err := os.MkdirTemp(baseDir, safeName+"-")
+	if err != nil {
+		t.Fatalf("create preflight test temp dir: %v", err)
+	}
+	t.Cleanup(func() {
+		_ = os.RemoveAll(tempDir)
+	})
+	return filepath.Join(tempDir, suffix)
+}
+
+func TestReleaseCheckPreflightRejectsSameOutputPath(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("release-check preflight path contracts are exercised on POSIX in CI")
+	}
+
+	shared := releaseCheckRepoLocalPath(t, "shared.sarif")
+
+	exitCode, out := runReleaseCheckPreflight(t, map[string]string{
+		"RELEASE_CHECK_BUILD_OUT": shared,
+		"RELEASE_CHECK_SARIF_OUT": shared,
+	})
+	if exitCode == 0 {
+		t.Fatalf("expected non-zero exit when outputs share a path\noutput:\n%s", out)
+	}
+	if !strings.Contains(out, "build and SARIF outputs must be different paths") {
+		t.Fatalf("expected distinct-path rejection message, got:\n%s", out)
+	}
+	if !strings.Contains(out, "[RC_PREFLIGHT_OUTPUT_PATH_CONFLICT]") {
+		t.Fatalf("expected distinct-path rejection code, got:\n%s", out)
+	}
+	if !strings.Contains(out, "build="+shared) || !strings.Contains(out, "sarif="+shared) {
+		t.Fatalf("expected distinct-path rejection to include concrete paths, got:\n%s", out)
+	}
+}
+
+func TestReleaseCheckPreflightRejectsSameOutputPathAfterNormalization(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("release-check preflight path contracts are exercised on POSIX in CI")
+	}
+
+	root := releaseCheckRepoRootPath(t)
+	safeName := strings.NewReplacer("/", "-", "\\", "-", " ", "-").Replace(strings.ToLower(t.Name()))
+	baseDir := filepath.Join(root, ".cache", "release-check-preflight-tests")
+	if err := os.MkdirAll(baseDir, 0o755); err != nil {
+		t.Fatalf("mkdir preflight test base dir: %v", err)
+	}
+	tempDir, err := os.MkdirTemp(baseDir, safeName+"-")
+	if err != nil {
+		t.Fatalf("create preflight test temp dir: %v", err)
+	}
+	t.Cleanup(func() {
+		_ = os.RemoveAll(tempDir)
+	})
+	buildOut := filepath.Join(tempDir, "nested", "..", "shared.sarif")
+	sarifOut := filepath.Join(tempDir, "shared.sarif")
+
+	exitCode, out := runReleaseCheckPreflight(t, map[string]string{
+		"RELEASE_CHECK_BUILD_OUT": buildOut,
+		"RELEASE_CHECK_SARIF_OUT": sarifOut,
+	})
+	if exitCode == 0 {
+		t.Fatalf("expected non-zero exit when normalized outputs share a path\noutput:\n%s", out)
+	}
+	if !strings.Contains(out, "build and SARIF outputs must be different paths") {
+		t.Fatalf("expected normalized distinct-path rejection message, got:\n%s", out)
+	}
+	if !strings.Contains(out, "[RC_PREFLIGHT_OUTPUT_PATH_CONFLICT]") {
+		t.Fatalf("expected normalized distinct-path rejection code, got:\n%s", out)
+	}
+	buildAbs := filepath.Clean(buildOut)
+	sarifAbs := filepath.Clean(sarifOut)
+	if !strings.Contains(out, "build="+buildAbs) || !strings.Contains(out, "sarif="+sarifAbs) {
+		t.Fatalf("expected normalized distinct-path rejection to include concrete paths, got:\n%s", out)
+	}
+}
+
+func TestReleaseCheckPreflightRejectsExistingBuildOutput(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("release-check preflight path contracts are exercised on POSIX in CI")
+	}
+
+	buildOut := releaseCheckRepoLocalPath(t, "existing-build.out")
+	sarifOut := releaseCheckRepoLocalPath(t, "inspect.sarif")
+	if err := os.MkdirAll(filepath.Dir(buildOut), 0o755); err != nil {
+		t.Fatalf("mkdir build output parent: %v", err)
+	}
+	if err := os.WriteFile(buildOut, []byte("existing"), 0o600); err != nil {
+		t.Fatalf("write existing build output: %v", err)
+	}
+
+	exitCode, out := runReleaseCheckPreflight(t, map[string]string{
+		"RELEASE_CHECK_BUILD_OUT": buildOut,
+		"RELEASE_CHECK_SARIF_OUT": sarifOut,
+	})
+	if exitCode == 0 {
+		t.Fatalf("expected non-zero exit when build output already exists\noutput:\n%s", out)
+	}
+	if !strings.Contains(out, "release-check build output already exists:") {
+		t.Fatalf("expected build output collision rejection message, got:\n%s", out)
+	}
+	if !strings.Contains(out, "[RC_PREFLIGHT_BUILD_OUT_EXISTS]") {
+		t.Fatalf("expected build output collision rejection code, got:\n%s", out)
+	}
+}
+
+func TestReleaseCheckPreflightRejectsExistingSARIFOutput(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("release-check preflight path contracts are exercised on POSIX in CI")
+	}
+
+	buildOut := releaseCheckRepoLocalPath(t, "build.out")
+	sarifOut := releaseCheckRepoLocalPath(t, "existing-inspect.sarif")
+	if err := os.MkdirAll(filepath.Dir(sarifOut), 0o755); err != nil {
+		t.Fatalf("mkdir SARIF output parent: %v", err)
+	}
+	if err := os.WriteFile(sarifOut, []byte("existing"), 0o600); err != nil {
+		t.Fatalf("write existing SARIF output: %v", err)
+	}
+
+	exitCode, out := runReleaseCheckPreflight(t, map[string]string{
+		"RELEASE_CHECK_BUILD_OUT": buildOut,
+		"RELEASE_CHECK_SARIF_OUT": sarifOut,
+	})
+	if exitCode == 0 {
+		t.Fatalf("expected non-zero exit when SARIF output already exists\noutput:\n%s", out)
+	}
+	if !strings.Contains(out, "release-check SARIF output already exists:") {
+		t.Fatalf("expected SARIF output collision rejection message, got:\n%s", out)
+	}
+	if !strings.Contains(out, "[RC_PREFLIGHT_SARIF_OUT_EXISTS]") {
+		t.Fatalf("expected SARIF output collision rejection code, got:\n%s", out)
+	}
+}
+
+func TestReleaseCheckPreflightRejectsRootOrDirectoryLikeBuildOutput(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("release-check preflight path contracts are exercised on POSIX in CI")
+	}
+
+	testCases := []struct {
+		name     string
+		buildOut string
+	}{
+		{name: "dot path", buildOut: "."},
+		{name: "root path", buildOut: "/"},
+		{name: "directory-like trailing slash", buildOut: filepath.Join(t.TempDir(), "dir-like") + "/"},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			exitCode, out := runReleaseCheckPreflight(t, map[string]string{
+				"RELEASE_CHECK_BUILD_OUT": tc.buildOut,
+				"RELEASE_CHECK_SARIF_OUT": releaseCheckRepoLocalPath(t, "inspect.sarif"),
+			})
+			if exitCode == 0 {
+				t.Fatalf("expected non-zero exit for invalid build output path %q\noutput:\n%s", tc.buildOut, out)
+			}
+			if !strings.Contains(out, "build output path must be a non-root file path") {
+				t.Fatalf("expected non-root build output rejection message, got:\n%s", out)
+			}
+			if !strings.Contains(out, "[RC_PREFLIGHT_BUILD_OUT_INVALID]") {
+				t.Fatalf("expected non-root build output rejection code, got:\n%s", out)
+			}
+		})
+	}
+}
+
+func TestReleaseCheckPreflightRejectsBuildOutputDotOrDotDotPathSegments(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("release-check preflight path contracts are exercised on POSIX in CI")
+	}
+
+	testCases := []struct {
+		name     string
+		buildOut string
+	}{
+		{name: "dot segment in middle", buildOut: ".cache/./release-check"},
+		{name: "dotdot segment in middle", buildOut: ".cache/tmp/../release-check"},
+		{name: "dot segment suffix", buildOut: ".cache/release-check/."},
+		{name: "dotdot segment suffix", buildOut: ".cache/release-check/.."},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			exitCode, out := runReleaseCheckPreflight(t, map[string]string{
+				"RELEASE_CHECK_BUILD_OUT": tc.buildOut,
+				"RELEASE_CHECK_SARIF_OUT": releaseCheckRepoLocalPath(t, "inspect.sarif"),
+			})
+			if exitCode == 0 {
+				t.Fatalf("expected non-zero exit for build output path with dot/dotdot segment %q\noutput:\n%s", tc.buildOut, out)
+			}
+			if !strings.Contains(out, "build output path must not contain '.' or '..' path segments") {
+				t.Fatalf("expected build output dot/dotdot-segment rejection message, got:\n%s", out)
+			}
+			if !strings.Contains(out, "[RC_PREFLIGHT_BUILD_OUT_INVALID]") {
+				t.Fatalf("expected build output dot/dotdot-segment rejection code, got:\n%s", out)
+			}
+		})
+	}
+}
+
+func TestReleaseCheckPreflightRejectsBuildOutputEmptyPathSegments(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("release-check preflight path contracts are exercised on POSIX in CI")
+	}
+
+	testCases := []struct {
+		name     string
+		buildOut string
+	}{
+		{name: "double slash in middle", buildOut: ".cache//release-check"},
+		{name: "double slash at prefix", buildOut: "//tmp/release-check"},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			exitCode, out := runReleaseCheckPreflight(t, map[string]string{
+				"RELEASE_CHECK_BUILD_OUT": tc.buildOut,
+				"RELEASE_CHECK_SARIF_OUT": releaseCheckRepoLocalPath(t, "inspect.sarif"),
+			})
+			if exitCode == 0 {
+				t.Fatalf("expected non-zero exit for build output path with empty segment %q\noutput:\n%s", tc.buildOut, out)
+			}
+			if !strings.Contains(out, "build output path must not contain empty path segments") {
+				t.Fatalf("expected build output empty-segment rejection message, got:\n%s", out)
+			}
+			if !strings.Contains(out, "[RC_PREFLIGHT_BUILD_OUT_INVALID]") {
+				t.Fatalf("expected build output empty-segment rejection code, got:\n%s", out)
+			}
+		})
+	}
+}
+
+func TestReleaseCheckPreflightRejectsBuildOutputWithSurroundingWhitespace(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("release-check preflight path contracts are exercised on POSIX in CI")
+	}
+
+	testCases := []struct {
+		name     string
+		buildOut string
+	}{
+		{name: "leading space", buildOut: " .cache/release-check"},
+		{name: "trailing space", buildOut: ".cache/release-check "},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			exitCode, out := runReleaseCheckPreflight(t, map[string]string{
+				"RELEASE_CHECK_BUILD_OUT": tc.buildOut,
+				"RELEASE_CHECK_SARIF_OUT": releaseCheckRepoLocalPath(t, "inspect.sarif"),
+			})
+			if exitCode == 0 {
+				t.Fatalf("expected non-zero exit for build output path with surrounding whitespace %q\noutput:\n%s", tc.buildOut, out)
+			}
+			if !strings.Contains(out, "build output path must not include leading or trailing whitespace") {
+				t.Fatalf("expected build output surrounding-whitespace rejection message, got:\n%s", out)
+			}
+			if !strings.Contains(out, "[RC_PREFLIGHT_BUILD_OUT_INVALID]") {
+				t.Fatalf("expected build output surrounding-whitespace rejection code, got:\n%s", out)
+			}
+		})
+	}
+}
+
+func TestReleaseCheckPreflightRejectsBuildOutputWithControlCharacters(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("release-check preflight path contracts are exercised on POSIX in CI")
+	}
+
+	testCases := []struct {
+		name     string
+		buildOut string
+	}{
+		{name: "tab in middle", buildOut: ".cache/\trelease-check"},
+		{name: "del in middle", buildOut: ".cache/\x7frelease-check"},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			exitCode, out := runReleaseCheckPreflight(t, map[string]string{
+				"RELEASE_CHECK_BUILD_OUT": tc.buildOut,
+				"RELEASE_CHECK_SARIF_OUT": releaseCheckRepoLocalPath(t, "inspect.sarif"),
+			})
+			if exitCode == 0 {
+				t.Fatalf("expected non-zero exit for build output path with control characters %q\noutput:\n%s", tc.buildOut, out)
+			}
+			if !strings.Contains(out, "build output path must not contain ASCII control characters") {
+				t.Fatalf("expected build output control-character rejection message, got:\n%s", out)
+			}
+			if !strings.Contains(out, "[RC_PREFLIGHT_BUILD_OUT_INVALID]") {
+				t.Fatalf("expected build output control-character rejection code, got:\n%s", out)
+			}
+		})
+	}
+}
+
+func TestReleaseCheckPreflightRejectsRootOrDirectoryLikeSARIFOutput(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("release-check preflight path contracts are exercised on POSIX in CI")
+	}
+
+	testCases := []struct {
+		name     string
+		sarifOut string
+	}{
+		{name: "dot path", sarifOut: "."},
+		{name: "root path", sarifOut: "/"},
+		{name: "directory-like trailing slash", sarifOut: filepath.Join(t.TempDir(), "dir-like") + "/"},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			exitCode, out := runReleaseCheckPreflight(t, map[string]string{
+				"RELEASE_CHECK_BUILD_OUT": releaseCheckRepoLocalPath(t, "build.out"),
+				"RELEASE_CHECK_SARIF_OUT": tc.sarifOut,
+			})
+			if exitCode == 0 {
+				t.Fatalf("expected non-zero exit for invalid SARIF output path %q\noutput:\n%s", tc.sarifOut, out)
+			}
+			if !strings.Contains(out, "SARIF output path must be a non-root file path") {
+				t.Fatalf("expected non-root SARIF output rejection message, got:\n%s", out)
+			}
+			if !strings.Contains(out, "[RC_PREFLIGHT_SARIF_OUT_INVALID]") {
+				t.Fatalf("expected non-root SARIF output rejection code, got:\n%s", out)
+			}
+		})
+	}
+}
+
+func TestReleaseCheckPreflightRejectsSARIFOutputWithControlCharacters(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("release-check preflight path contracts are exercised on POSIX in CI")
+	}
+
+	testCases := []struct {
+		name     string
+		sarifOut string
+	}{
+		{name: "tab in middle", sarifOut: ".cache/\tinspect.sarif"},
+		{name: "del in middle", sarifOut: ".cache/\x7finspect.sarif"},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			exitCode, out := runReleaseCheckPreflight(t, map[string]string{
+				"RELEASE_CHECK_BUILD_OUT": releaseCheckRepoLocalPath(t, "build.out"),
+				"RELEASE_CHECK_SARIF_OUT": tc.sarifOut,
+			})
+			if exitCode == 0 {
+				t.Fatalf("expected non-zero exit for SARIF output path with control characters %q\noutput:\n%s", tc.sarifOut, out)
+			}
+			if !strings.Contains(out, "SARIF output path must not contain ASCII control characters") {
+				t.Fatalf("expected SARIF output control-character rejection message, got:\n%s", out)
+			}
+			if !strings.Contains(out, "[RC_PREFLIGHT_SARIF_OUT_INVALID]") {
+				t.Fatalf("expected SARIF output control-character rejection code, got:\n%s", out)
+			}
+		})
+	}
+}
+
+func TestReleaseCheckPreflightRejectsSARIFOutputWithSurroundingWhitespace(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("release-check preflight path contracts are exercised on POSIX in CI")
+	}
+
+	testCases := []struct {
+		name     string
+		sarifOut string
+	}{
+		{name: "leading space", sarifOut: " .cache/inspect.sarif"},
+		{name: "trailing space", sarifOut: ".cache/inspect.sarif "},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			exitCode, out := runReleaseCheckPreflight(t, map[string]string{
+				"RELEASE_CHECK_BUILD_OUT": releaseCheckRepoLocalPath(t, "build.out"),
+				"RELEASE_CHECK_SARIF_OUT": tc.sarifOut,
+			})
+			if exitCode == 0 {
+				t.Fatalf("expected non-zero exit for SARIF output path with surrounding whitespace %q\noutput:\n%s", tc.sarifOut, out)
+			}
+			if !strings.Contains(out, "SARIF output path must not include leading or trailing whitespace") {
+				t.Fatalf("expected SARIF output surrounding-whitespace rejection message, got:\n%s", out)
+			}
+			if !strings.Contains(out, "[RC_PREFLIGHT_SARIF_OUT_INVALID]") {
+				t.Fatalf("expected SARIF output surrounding-whitespace rejection code, got:\n%s", out)
+			}
+		})
+	}
+}
+
+func TestReleaseCheckPreflightRejectsSARIFOutputEmptyPathSegments(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("release-check preflight path contracts are exercised on POSIX in CI")
+	}
+
+	testCases := []struct {
+		name     string
+		sarifOut string
+	}{
+		{name: "double slash in middle", sarifOut: ".cache//inspect.sarif"},
+		{name: "double slash at prefix", sarifOut: "//tmp/inspect.sarif"},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			exitCode, out := runReleaseCheckPreflight(t, map[string]string{
+				"RELEASE_CHECK_BUILD_OUT": releaseCheckRepoLocalPath(t, "build.out"),
+				"RELEASE_CHECK_SARIF_OUT": tc.sarifOut,
+			})
+			if exitCode == 0 {
+				t.Fatalf("expected non-zero exit for SARIF output path with empty segment %q\noutput:\n%s", tc.sarifOut, out)
+			}
+			if !strings.Contains(out, "SARIF output path must not contain empty path segments") {
+				t.Fatalf("expected SARIF output empty-segment rejection message, got:\n%s", out)
+			}
+			if !strings.Contains(out, "[RC_PREFLIGHT_SARIF_OUT_INVALID]") {
+				t.Fatalf("expected SARIF output empty-segment rejection code, got:\n%s", out)
+			}
+		})
+	}
+}
+
+func TestReleaseCheckPreflightRejectsSARIFOutputDotOrDotDotPathSegments(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("release-check preflight path contracts are exercised on POSIX in CI")
+	}
+
+	testCases := []struct {
+		name     string
+		sarifOut string
+	}{
+		{name: "dot segment in middle", sarifOut: ".cache/./inspect.sarif"},
+		{name: "dotdot segment in middle", sarifOut: ".cache/tmp/../inspect.sarif"},
+		{name: "dot segment suffix", sarifOut: ".cache/inspect.sarif/."},
+		{name: "dotdot segment suffix", sarifOut: ".cache/inspect.sarif/.."},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			exitCode, out := runReleaseCheckPreflight(t, map[string]string{
+				"RELEASE_CHECK_BUILD_OUT": releaseCheckRepoLocalPath(t, "build.out"),
+				"RELEASE_CHECK_SARIF_OUT": tc.sarifOut,
+			})
+			if exitCode == 0 {
+				t.Fatalf("expected non-zero exit for SARIF output path with dot/dotdot segment %q\noutput:\n%s", tc.sarifOut, out)
+			}
+			if !strings.Contains(out, "SARIF output path must not contain '.' or '..' path segments") {
+				t.Fatalf("expected SARIF output dot/dotdot-segment rejection message, got:\n%s", out)
+			}
+			if !strings.Contains(out, "[RC_PREFLIGHT_SARIF_OUT_INVALID]") {
+				t.Fatalf("expected SARIF output dot/dotdot-segment rejection code, got:\n%s", out)
+			}
+		})
+	}
+}
+
+func TestReleaseCheckPreflightRejectsNonSarifSARIFOutputExtension(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("release-check preflight path contracts are exercised on POSIX in CI")
+	}
+
+	exitCode, out := runReleaseCheckPreflight(t, map[string]string{
+		"RELEASE_CHECK_BUILD_OUT": releaseCheckRepoLocalPath(t, "build.out"),
+		"RELEASE_CHECK_SARIF_OUT": releaseCheckRepoLocalPath(t, "inspect.json"),
+	})
+	if exitCode == 0 {
+		t.Fatalf("expected non-zero exit for non-sarif RELEASE_CHECK_SARIF_OUT\noutput:\n%s", out)
+	}
+	if !strings.Contains(out, "SARIF output path must end with .sarif") {
+		t.Fatalf("expected SARIF extension rejection message, got:\n%s", out)
+	}
+	if !strings.Contains(out, "[RC_PREFLIGHT_SARIF_OUT_INVALID]") {
+		t.Fatalf("expected SARIF extension rejection code, got:\n%s", out)
+	}
+}
+
+func TestReleaseCheckPreflightRejectsBuildOutputInsideGitDir(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("release-check preflight path contracts are exercised on POSIX in CI")
+	}
+
+	repoRoot := releaseCheckRepoRootPath(t)
+	exitCode, out := runReleaseCheckPreflight(t, map[string]string{
+		"RELEASE_CHECK_BUILD_OUT": filepath.Join(repoRoot, ".git", "hooks", "pre-commit"),
+		"RELEASE_CHECK_SARIF_OUT": releaseCheckRepoLocalPath(t, "inspect.sarif"),
+	})
+	if exitCode == 0 {
+		t.Fatalf("expected non-zero exit for build output inside .git\noutput:\n%s", out)
+	}
+	if !strings.Contains(out, "[RC_PREFLIGHT_BUILD_OUT_INVALID]") {
+		t.Fatalf("expected build output invalid-path rejection code, got:\n%s", out)
+	}
+	if !strings.Contains(out, "outside .git") {
+		t.Fatalf("expected build output invalid-path rejection to mention .git guard, got:\n%s", out)
+	}
+}
+
+func TestReleaseCheckPreflightRejectsSARIFOutputInsideGitDir(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("release-check preflight path contracts are exercised on POSIX in CI")
+	}
+
+	repoRoot := releaseCheckRepoRootPath(t)
+	exitCode, out := runReleaseCheckPreflight(t, map[string]string{
+		"RELEASE_CHECK_BUILD_OUT": releaseCheckRepoLocalPath(t, "build.out"),
+		"RELEASE_CHECK_SARIF_OUT": filepath.Join(repoRoot, ".git", "logs", "inspect.sarif"),
+	})
+	if exitCode == 0 {
+		t.Fatalf("expected non-zero exit for SARIF output inside .git\noutput:\n%s", out)
+	}
+	if !strings.Contains(out, "[RC_PREFLIGHT_SARIF_OUT_INVALID]") {
+		t.Fatalf("expected SARIF output invalid-path rejection code, got:\n%s", out)
+	}
+	if !strings.Contains(out, "outside .git") {
+		t.Fatalf("expected SARIF output invalid-path rejection to mention .git guard, got:\n%s", out)
+	}
+}
+
+func TestReleaseCheckPreflightRejectsBuildOutputOutsideRepoRoot(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("release-check preflight path contracts are exercised on POSIX in CI")
+	}
+
+	exitCode, out := runReleaseCheckPreflight(t, map[string]string{
+		"RELEASE_CHECK_BUILD_OUT": filepath.Join(t.TempDir(), "build.out"),
+		"RELEASE_CHECK_SARIF_OUT": releaseCheckRepoLocalPath(t, "inspect.sarif"),
+	})
+	if exitCode == 0 {
+		t.Fatalf("expected non-zero exit for build output outside repository root\noutput:\n%s", out)
+	}
+	if !strings.Contains(out, "[RC_PREFLIGHT_BUILD_OUT_INVALID]") {
+		t.Fatalf("expected build output invalid-path rejection code, got:\n%s", out)
+	}
+	if !strings.Contains(out, "under repository root") {
+		t.Fatalf("expected build output invalid-path rejection to mention repository-root guard, got:\n%s", out)
+	}
+}
+
+func TestReleaseCheckPreflightRejectsSARIFOutputOutsideRepoRoot(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("release-check preflight path contracts are exercised on POSIX in CI")
+	}
+
+	exitCode, out := runReleaseCheckPreflight(t, map[string]string{
+		"RELEASE_CHECK_BUILD_OUT": releaseCheckRepoLocalPath(t, "build.out"),
+		"RELEASE_CHECK_SARIF_OUT": filepath.Join(t.TempDir(), "inspect.sarif"),
+	})
+	if exitCode == 0 {
+		t.Fatalf("expected non-zero exit for SARIF output outside repository root\noutput:\n%s", out)
+	}
+	if !strings.Contains(out, "[RC_PREFLIGHT_SARIF_OUT_INVALID]") {
+		t.Fatalf("expected SARIF output invalid-path rejection code, got:\n%s", out)
+	}
+	if !strings.Contains(out, "under repository root") {
+		t.Fatalf("expected SARIF output invalid-path rejection to mention repository-root guard, got:\n%s", out)
+	}
+}
+
+func TestReleaseCheckPreflightRejectsSymlinkPathComponent(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlink path-component check is exercised on POSIX in CI")
+	}
+
+	tmp := t.TempDir()
+	realDir := filepath.Join(tmp, "real")
+	if err := os.Mkdir(realDir, 0o755); err != nil {
+		t.Fatalf("mkdir real dir: %v", err)
+	}
+	linkedDir := releaseCheckRepoLocalPath(t, "linked")
+	if err := os.MkdirAll(filepath.Dir(linkedDir), 0o755); err != nil {
+		t.Fatalf("mkdir linked dir parent: %v", err)
+	}
+	_ = os.Remove(linkedDir)
+	if err := os.Symlink(realDir, linkedDir); err != nil {
+		t.Fatalf("create symlink dir: %v", err)
+	}
+
+	exitCode, out := runReleaseCheckPreflight(t, map[string]string{
+		"RELEASE_CHECK_BUILD_OUT": filepath.Join(linkedDir, "build.out"),
+		"RELEASE_CHECK_SARIF_OUT": releaseCheckRepoLocalPath(t, "inspect.sarif"),
+	})
+	if exitCode == 0 {
+		t.Fatalf("expected non-zero exit when output path contains symlink component\noutput:\n%s", out)
+	}
+	if !strings.Contains(out, "release-check build output path contains symlink path component") {
+		t.Fatalf("expected build symlink-component rejection message, got:\n%s", out)
+	}
+	if !strings.Contains(out, "[RC_PREFLIGHT_BUILD_OUT_SYMLINK]") {
+		t.Fatalf("expected build symlink-component rejection code, got:\n%s", out)
+	}
+}
+
+func TestReleaseCheckPreflightRejectsSARIFSymlinkPathComponent(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlink path-component check is exercised on POSIX in CI")
+	}
+
+	tmp := t.TempDir()
+	realDir := filepath.Join(tmp, "real")
+	if err := os.Mkdir(realDir, 0o755); err != nil {
+		t.Fatalf("mkdir real dir: %v", err)
+	}
+	linkedDir := releaseCheckRepoLocalPath(t, "linked")
+	if err := os.MkdirAll(filepath.Dir(linkedDir), 0o755); err != nil {
+		t.Fatalf("mkdir linked dir parent: %v", err)
+	}
+	_ = os.Remove(linkedDir)
+	if err := os.Symlink(realDir, linkedDir); err != nil {
+		t.Fatalf("create symlink dir: %v", err)
+	}
+
+	exitCode, out := runReleaseCheckPreflight(t, map[string]string{
+		"RELEASE_CHECK_BUILD_OUT": releaseCheckRepoLocalPath(t, "build.out"),
+		"RELEASE_CHECK_SARIF_OUT": filepath.Join(linkedDir, "inspect.sarif"),
+	})
+	if exitCode == 0 {
+		t.Fatalf("expected non-zero exit when SARIF path contains symlink component\noutput:\n%s", out)
+	}
+	if !strings.Contains(out, "release-check SARIF output path contains symlink path component") {
+		t.Fatalf("expected SARIF symlink-component rejection message, got:\n%s", out)
+	}
+	if !strings.Contains(out, "[RC_PREFLIGHT_SARIF_OUT_SYMLINK]") {
+		t.Fatalf("expected SARIF symlink-component rejection code, got:\n%s", out)
+	}
+}
+
+func TestReleaseCheckPreflightAcceptsDistinctNonExistingPaths(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("release-check preflight path contracts are exercised on POSIX in CI")
+	}
+
+	buildOut := releaseCheckRepoLocalPath(t, "ok-build.out")
+	sarifOut := releaseCheckRepoLocalPath(t, "ok-inspect.sarif")
+
+	exitCode, out := runReleaseCheckPreflight(t, map[string]string{
+		"RELEASE_CHECK_BUILD_OUT": buildOut,
+		"RELEASE_CHECK_SARIF_OUT": sarifOut,
+	})
+	if exitCode != 0 {
+		t.Fatalf("expected zero exit for distinct non-existing outputs, got %d\noutput:\n%s", exitCode, out)
+	}
+}

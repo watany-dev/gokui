@@ -1,0 +1,256 @@
+# Release Checklist
+
+This checklist standardizes pre-release and release-candidate verification.
+
+## 1) Repository State
+
+- Confirm the branch is up to date with intended release commit.
+- Confirm working tree is clean.
+
+```sh
+git status --short
+```
+
+Expected: no output.
+
+## 2) Full Quality Gate (Online)
+
+Run the complete gate including vulnerability database checks:
+
+```sh
+make release-check
+```
+
+This runs:
+- format check
+- `go vet` + `staticcheck`
+- typecheck (`go test -run '^$' ./...`)
+- deadcode
+- coverage threshold check
+- full tests
+- race tests
+- build (isolated output: `.cache/gokui-release-check`, auto-cleaned)
+- inspect SARIF smoke generation (`make inspect-sarif`)
+- `govulncheck`
+
+`release-check` fails closed when build/SARIF output paths include symlink
+components, when either output already exists, or when build and SARIF outputs
+resolve to the same path.
+Preflight rejections include machine-readable error codes:
+`RC_PREFLIGHT_BUILD_OUT_INVALID`, `RC_PREFLIGHT_SARIF_OUT_INVALID`,
+`RC_PREFLIGHT_BUILD_OUT_SYMLINK`, `RC_PREFLIGHT_SARIF_OUT_SYMLINK`,
+`RC_PREFLIGHT_OUTPUT_PATH_CONFLICT`, `RC_PREFLIGHT_BUILD_OUT_EXISTS`, and
+`RC_PREFLIGHT_SARIF_OUT_EXISTS`.
+Release-check build/SARIF output paths must also be non-root file paths and must resolve
+under the repository root, and must not be directory-like paths ending with `/` or
+located under `.git/`.
+Release-check build/SARIF output paths must not contain `.` or `..` path
+segments.
+Release-check build/SARIF output paths must not contain empty path segments
+(for example `...//...`).
+Release-check build/SARIF output paths must not include leading or trailing
+whitespace.
+Release-check build/SARIF output paths must not contain ASCII control
+characters.
+`RELEASE_CHECK_SARIF_OUT` must end with `.sarif`.
+`make inspect-sarif` output paths must resolve under the repository root and
+must resolve outside `.git/`.
+`make inspect-sarif` output paths must not contain `..` path segments.
+`make inspect-sarif` output paths must not contain `.` path segments (for example `..././...`).
+`make inspect-sarif` output paths must not contain empty path segments (for example `...//...`).
+`make inspect-sarif` output paths must not include leading or trailing whitespace.
+`make inspect-sarif` output paths must not contain ASCII control characters.
+`make inspect-sarif` output paths must be non-empty.
+`make inspect-sarif` output paths must be non-directory file paths (no trailing `/`,
+`/.`, or `/..`).
+`make inspect-sarif` output paths must end with `.sarif`.
+Output-path safety preflight checks run before format/test/race/vuln gate
+steps.
+
+To override the isolated release-check build artifact path:
+
+```sh
+make release-check RELEASE_CHECK_BUILD_OUT=.cache/custom/gokui-release-check
+```
+
+## 3) Beta Fast Path
+
+For beta releases where rapid iteration is preferred over full GA depth, run:
+
+```sh
+make beta-check
+```
+
+This runs:
+- `make release-check-preflight` (using beta output paths)
+- `make check`
+- `make test`
+- `make build`
+- `make inspect-sarif`
+
+`beta-check` uses isolated `.cache` outputs by default:
+`.cache/gokui-beta-check` and `.cache/inspect-results-beta-check.sarif`.
+It applies the same output-path safety preflight checks as `release-check`
+before recreating beta output artifacts.
+
+This is the minimum gate for beta publication. Before GA promotion, run the full
+`make release-check`.
+
+For beta release evidence generation:
+
+```sh
+make release-evidence-beta
+```
+
+This records a `-beta-audit.md` evidence file plus per-step logs under
+`releases/evidence/`.
+Beta evidence mode is offline-only and does not allow `--with-vuln`.
+Beta evidence generation also requires a clean tracked/untracked working tree
+(`git status --short` must be empty).
+If local repository state or permissions prevent that (for example read-only
+`.git` metadata), run:
+
+```sh
+make release-evidence-beta-selfcheck
+```
+
+This performs beta evidence generation in a temporary clean snapshot repository
+under `/tmp`.
+For a single command that auto-selects evidence mode by repository cleanliness:
+
+```sh
+make beta-ready
+```
+
+`beta-ready` chooses an evidence path by repository cleanliness:
+- clean tree: `make release-evidence-beta` (includes `beta-check`)
+- dirty tree: `make release-evidence-beta-selfcheck` (includes `beta-check`)
+
+## 4) Offline Fallback
+
+If vulnerability DB/network access is temporarily unavailable:
+
+```sh
+make release-check-offline
+```
+
+Before final release publication, rerun:
+
+```sh
+make vuln
+```
+
+with network access and record the result. The default target runs with
+`VULN_GOTOOLCHAIN=go1.26.3+auto` so standard-library checks use a patched
+toolchain baseline.
+
+## 5) Contract Spot-Checks
+
+- JSON error contracts:
+  - `fetch`, `inspect`, `install`, `update`, `lock verify`
+- Structured error output stream contract:
+  - fatal `human`/`compact` diagnostics to `stderr`
+  - fatal `json`/`sarif`/`review-json` structured reports to `stdout`
+- SARIF contract smoke check:
+  - `make inspect-sarif` (expects reject exit code path and emits `inspect-results.sarif`)
+- release-check stderr error codes:
+  - see `README.md` -> `Automation Error Codes` -> `release-check`
+- Exit code contract:
+  - success: `0`
+  - fatal error: `1`
+  - policy rejection / drift: `2` (where applicable)
+- Documentation sync tests in `internal/app/docs_sync_test.go` and related contract tests.
+
+## 6) Build Artifact Hygiene
+
+`gokui` is ignored as a local build artifact, and `releases/beta/` is ignored
+as a local staging-artifact directory, so tracked-file clean checks are not
+affected by local beta packaging outputs.
+
+If you need an explicit cleanup or alternate path:
+
+```sh
+rm -f gokui
+# or
+make build BUILD_OUT=.cache/gokui-local
+```
+
+## 7) Release Evidence Record
+
+Record release evidence using:
+
+- [RELEASE_EVIDENCE_TEMPLATE.md](RELEASE_EVIDENCE_TEMPLATE.md)
+- `make release-evidence` (creates `releases/evidence/<timestamp>-<commit>.md`)
+- `make release-evidence-offline` (runs offline gate and creates `releases/evidence/<timestamp>-<commit>-offline-audit.md` with step logs)
+- `make release-evidence-online` (runs offline gate + vuln check and creates `releases/evidence/<timestamp>-<commit>-online-audit.md` with step logs)
+- `make release-evidence-beta` (runs beta gate and creates `releases/evidence/<timestamp>-<commit>-beta-audit.md` with step logs)
+
+For evidence scripts, clean-tree checks include tracked and untracked
+(non-ignored) files (`git status --short`), and build output is isolated to
+`.cache/gokui-release-evidence`.
+Evidence scripts inherit `GOCACHE`, `GOMODCACHE`, `GOPATH`, and
+`XDG_CACHE_HOME` from the environment when set; otherwise they default to
+repository-local `.cache` paths.
+Evidence file names end with `-offline-audit.md` or `-online-audit.md`
+depending on whether `--with-vuln` is enabled.
+Evidence scripts fail closed when git `HEAD` commit SHA cannot be resolved as
+canonical lowercase 40-hex.
+Release scripts fail closed when repository-root/output/log paths include
+symlink components or expected output/log files already exist.
+Evidence and SARIF outputs are created atomically and written via open file
+descriptors to reduce path-swap race windows during script execution.
+Staged temporary evidence/SARIF files are also removed when finalization
+collides with an existing destination path.
+When offline gate steps fail, evidence scripts keep failing build artifacts for
+investigation and skip subsequent vuln/cleanup steps.
+Cleanup-removal failures are tagged with machine-readable code
+`RC_CLEANUP_REMOVE_FAILED`.
+When one or more removals fail, a summary line is emitted with
+`RC_CLEANUP_REMOVE_FAILED_SUMMARY`.
+
+| Release-check code | Typical trigger |
+| --- | --- |
+| `RC_PREFLIGHT_BUILD_OUT_INVALID` | `RELEASE_CHECK_BUILD_OUT` is root-like (`/`, `.`, empty), ends with `/`, includes leading/trailing whitespace, contains ASCII control characters, contains empty/`.`/`..` path segments, resolves outside the repository root, or resolves under `.git/` |
+| `RC_PREFLIGHT_SARIF_OUT_INVALID` | `RELEASE_CHECK_SARIF_OUT` is root-like (`/`, `.`, empty), ends with `/`, includes leading/trailing whitespace, contains ASCII control characters, does not end with `.sarif`, contains empty/`.`/`..` path segments, resolves outside the repository root, or resolves under `.git/` |
+| `RC_PREFLIGHT_BUILD_OUT_SYMLINK` | Build output path or ancestor contains a symlink component |
+| `RC_PREFLIGHT_SARIF_OUT_SYMLINK` | SARIF output path or ancestor contains a symlink component |
+| `RC_PREFLIGHT_OUTPUT_PATH_CONFLICT` | Build and SARIF outputs resolve to the same absolute path |
+| `RC_PREFLIGHT_BUILD_OUT_EXISTS` | Build output path already exists before gate execution |
+| `RC_PREFLIGHT_SARIF_OUT_EXISTS` | SARIF output path already exists before gate execution |
+| `RC_CLEANUP_REMOVE_FAILED` | Cleanup failed to remove one output path |
+| `RC_CLEANUP_REMOVE_FAILED_SUMMARY` | Cleanup failed to remove one or more output paths (summary line with count) |
+
+At minimum, capture:
+- mode (`offline` or `online`)
+- commit SHA
+- executed commands
+- pass/fail result per gate
+- vulnerability check result (or offline exception with follow-up run)
+
+## 8) GitHub Actions Publication
+
+Tag conventions:
+
+- Beta pre-release tag: `vX.Y.Z-beta.N` (for example `v0.4.0-beta.1`)
+- GA release tag: `vX.Y.Z` (for example `v0.4.0`)
+
+Workflows:
+
+- `.github/workflows/release-beta.yml`
+  - trigger: beta tags (or `workflow_dispatch`)
+  - gate: `make beta-ready`
+  - publication: GitHub pre-release with auto-generated release notes
+- `.github/workflows/release-ga.yml`
+  - trigger: GA tags (or `workflow_dispatch`)
+  - gate: `make release-check` and `make release-evidence-online`
+  - publication: GitHub release with auto-generated release notes
+  - publish job requires `release` environment approval
+
+Published assets include all supported targets and checksums:
+
+- `gokui-darwin-amd64`
+- `gokui-darwin-arm64`
+- `gokui-linux-amd64`
+- `gokui-linux-arm64`
+- `gokui-windows-amd64.exe`
+- `SHA256SUMS`

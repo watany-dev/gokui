@@ -1,0 +1,408 @@
+package source
+
+import (
+	"fmt"
+	"regexp"
+	"strings"
+	"testing"
+	"testing/quick"
+)
+
+func TestParseGitHubSource(t *testing.T) {
+	t.Run("parses valid source", func(t *testing.T) {
+		got, err := ParseGitHubSource("github:watany-dev/gokui//skills/pdf-helper@8f3c2d1a4b5c6d7e8f901234567890abcdef1234")
+		if err != nil {
+			t.Fatalf("ParseGitHubSource() error = %v", err)
+		}
+		if got.Owner != "watany-dev" || got.Repo != "gokui" || got.Path != "skills/pdf-helper" || got.Ref != "8f3c2d1a4b5c6d7e8f901234567890abcdef1234" {
+			t.Fatalf("unexpected parse result: %+v", got)
+		}
+	})
+
+	t.Run("rejects invalid inputs", func(t *testing.T) {
+		cases := []string{
+			"git:owner/repo//path@ref",
+			"github:owner/repo/path@ref",
+			"github:owner/repo/extra//path@ref",
+			"github:./repo//path@ref",
+			"github:../repo//path@ref",
+			"github:owner/.//path@ref",
+			"github:owner/..//path@ref",
+			"github:owner/repo//@ref",
+			"github:owner/repo//../path@ref",
+			"github:owner/repo//skills//demo@ref",
+			"github:owner/repo//skills/./demo@ref",
+			"github:owner/repo//skills/demo/@ref",
+			"github:owner/repo//skills/demo/../other@ref",
+			"github:owner/repo//path",
+			"github:/repo//path@ref",
+			"github:owner/ repo//path@ref",
+			"github: owner/repo//path@ref",
+			"github:owner!/repo//path@ref",
+			"github:owner_name/repo//path@ref",
+			"github:-owner/repo//path@ref",
+			"github:owner-/repo//path@ref",
+			"github:owner--name/repo//path@ref",
+			"github:Owner/repo//path@ref",
+			"github:owner/Repo//path@ref",
+			"github:owner/.repo//path@ref",
+			"github:owner/repo.//path@ref",
+			"github:owner/repo.git//path@ref",
+			"github:owner/repo.GIT//path@ref",
+			"github:owner/re..po//path@ref",
+			"github:owner/repo//path@",
+			"github:owner/repo//@",
+			"github:owner/repo///abs@ref",
+			"github:owner/repo//./@ref",
+			"github:owner/repo//skills/demo@shadow@ref",
+			"github:owner/repo//skills:demo@ref",
+			"github:owner/repo//skills/con@ref",
+			"github:owner/repo//skills/com1.txt@ref",
+			"github:owner/repo//skills/com¹.txt@ref",
+			"github:owner/repo//skills/my skill@ref",
+			"github:owner/repo//skills/ demo@ref",
+			"github:owner/repo//skills/demo.@ref",
+			"github:owner/repo//skills/\u202edemo@ref",
+			"github:owner/repo//skills/\u200bdemo@ref",
+			"github:owner/repo//skills/\U000E0001demo@ref",
+			"github:owner/repo//skills/\ufe0fdemo@ref",
+			`github:owner/repo//skills\demo@ref`,
+			"github:owner/repo//path@ 8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
+			"github:owner/repo//path@8f3c2d1a4b5c6d7e8f901234567890abcdef1234 ",
+			"github:owner/repo//path@8F3C2D1A4B5C6D7E8F901234567890ABCDEF1234",
+			"github:owner/repo//path@8f3c2d1a4b5c6d7e8f90\u00a01234567890abcdef1234",
+			"github:owner/repo//path@8f3c2d1a4b5c6d7e8f90\u200b1234567890abcdef1234",
+			"github:owner/repo//path@8f3c2d1a4b5c6d7e8f90\u202e1234567890abcdef1234",
+			"github:owner/repo//path@8f3c2d1a4b5c6d7e8f90\U000E00011234567890abcdef1234",
+			"github:owner/repo//path@8f3c2d1a4b5c6d7e8f90\ufe0f1234567890abcdef1234",
+			"github:owner/repo//path@\n8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
+			"github:owner/repo//skills/\x1fhelper@8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
+			"github:owner/repo//skills/\u0085helper@8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
+			"github:owner\x7f/repo//path@8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
+			"github:owner/repo//path@8f3c2d1a4b5c6d7e8f901234567890abcdef12\u009f34",
+			"github:owner/repo// skills/path@8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
+			"github:owner/repo//skills/path @8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
+		}
+		for _, in := range cases {
+			if _, err := ParseGitHubSource(in); err == nil {
+				t.Fatalf("expected parse error for %q", in)
+			}
+		}
+	})
+
+	t.Run("rejects invalid UTF-8 input", func(t *testing.T) {
+		input := string([]byte("github:owner/repo//skills/demo@8f3c2d1a4b5c6d7e8f901234567890abcdef1234\xff"))
+		_, err := ParseGitHubSource(input)
+		if err == nil {
+			t.Fatal("expected parse error for invalid UTF-8 input")
+		}
+		if !strings.Contains(err.Error(), "must be valid UTF-8") {
+			t.Fatalf("error = %q, want UTF-8 validation message", err.Error())
+		}
+	})
+
+	t.Run("rejects C1 controls with explicit error", func(t *testing.T) {
+		_, err := ParseGitHubSource("github:owner/repo//skills/demo@8f3c2d1a4b5c6d7e8f901234567890abcdef12\u009f34")
+		if err == nil {
+			t.Fatal("expected parse error for C1 control in github source")
+		}
+		if !strings.Contains(err.Error(), "must not contain C0/C1 control characters") {
+			t.Fatalf("error = %q, want C0/C1 control message", err.Error())
+		}
+	})
+
+	t.Run("rejects C1-only controls across owner repo path and ref with explicit error", func(t *testing.T) {
+		cases := []string{
+			"github:\u0085/repo//skills/demo@8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
+			"github:owner/\u0085//skills/demo@8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
+			"github:owner/repo//\u0085@8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
+			"github:owner/repo//skills/demo@\u0085",
+		}
+		for _, in := range cases {
+			_, err := ParseGitHubSource(in)
+			if err == nil {
+				t.Fatalf("expected parse error for %q", in)
+			}
+			if !strings.Contains(err.Error(), "must not contain C0/C1 control characters") {
+				t.Fatalf("error for %q = %q, want C0/C1 control message", in, err.Error())
+			}
+		}
+	})
+
+	t.Run("enforces length bounds", func(t *testing.T) {
+		ownerMax := strings.Repeat("a", maxGitHubOwnerChars)
+		repoMax := strings.Repeat("b", maxGitHubRepoChars)
+		pathMax := strings.Repeat("c", maxGitHubPathChars)
+		refMax := strings.Repeat("d", maxGitHubRefChars)
+		valid := fmt.Sprintf("github:%s/%s//%s@%s", ownerMax, repoMax, pathMax, refMax)
+		if _, err := ParseGitHubSource(valid); err != nil {
+			t.Fatalf("expected max-length source to pass, got %v", err)
+		}
+
+		cases := []struct {
+			name  string
+			input string
+		}{
+			{
+				name:  "owner too long",
+				input: fmt.Sprintf("github:%s/x//skills/demo@main", strings.Repeat("o", maxGitHubOwnerChars+1)),
+			},
+			{
+				name:  "repo too long",
+				input: fmt.Sprintf("github:owner/%s//skills/demo@main", strings.Repeat("r", maxGitHubRepoChars+1)),
+			},
+			{
+				name:  "path too long",
+				input: fmt.Sprintf("github:owner/repo//%s@main", strings.Repeat("p", maxGitHubPathChars+1)),
+			},
+			{
+				name:  "ref too long",
+				input: fmt.Sprintf("github:owner/repo//skills/demo@%s", strings.Repeat("f", maxGitHubRefChars+1)),
+			},
+			{
+				name:  "total input too long",
+				input: "github:owner/repo//skills/demo@" + strings.Repeat("x", maxGitHubSourceInputChars),
+			},
+		}
+		for _, tc := range cases {
+			t.Run(tc.name, func(t *testing.T) {
+				if _, err := ParseGitHubSource(tc.input); err == nil {
+					t.Fatalf("expected parse error for over-limit input: %s", tc.name)
+				}
+			})
+		}
+	})
+
+	t.Run("rejects unicode threat characters in owner and repo with explicit errors", func(t *testing.T) {
+		cases := []struct {
+			input       string
+			errContains string
+		}{
+			{
+				input:       "github:ow\u00a0ner/repo//skills/demo@8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
+				errContains: "owner must not contain whitespace characters",
+			},
+			{
+				input:       "github:owner/re\u00a0po//skills/demo@8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
+				errContains: "repo must not contain whitespace characters",
+			},
+			{
+				input:       "github:ow\u200bner/repo//skills/demo@8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
+				errContains: "owner must not contain zero-width characters",
+			},
+			{
+				input:       "github:owner/re\u200bpo//skills/demo@8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
+				errContains: "repo must not contain zero-width characters",
+			},
+			{
+				input:       "github:ow\u202ener/repo//skills/demo@8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
+				errContains: "owner must not contain Unicode bidi control characters",
+			},
+			{
+				input:       "github:owner/re\u202epo//skills/demo@8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
+				errContains: "repo must not contain Unicode bidi control characters",
+			},
+			{
+				input:       "github:ow\U000E0001ner/repo//skills/demo@8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
+				errContains: "owner must not contain Unicode tag characters",
+			},
+			{
+				input:       "github:owner/re\U000E0001po//skills/demo@8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
+				errContains: "repo must not contain Unicode tag characters",
+			},
+			{
+				input:       "github:ow\ufe0fner/repo//skills/demo@8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
+				errContains: "owner must not contain variation selector characters",
+			},
+			{
+				input:       "github:owner/re\ufe0fpo//skills/demo@8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
+				errContains: "repo must not contain variation selector characters",
+			},
+		}
+		for _, tc := range cases {
+			_, err := ParseGitHubSource(tc.input)
+			if err == nil {
+				t.Fatalf("expected parse error for %q", tc.input)
+			}
+			if !strings.Contains(err.Error(), tc.errContains) {
+				t.Fatalf("error = %q, want substring %q", err.Error(), tc.errContains)
+			}
+		}
+	})
+}
+
+func TestParseGitHubSourcePropertyNoPanic(t *testing.T) {
+	prop := func(input string) (ok bool) {
+		defer func() {
+			if r := recover(); r != nil {
+				ok = false
+			}
+		}()
+		_, _ = ParseGitHubSource(input)
+		return true
+	}
+
+	if err := quick.Check(prop, &quick.Config{MaxCount: 1000}); err != nil {
+		t.Fatalf("ParseGitHubSource panic-safety property failed: %v", err)
+	}
+}
+
+func TestNormalizeGitHubPath(t *testing.T) {
+	t.Run("accepts normalized relative path", func(t *testing.T) {
+		got, err := normalizeGitHubPath("skills/my-skill")
+		if err != nil {
+			t.Fatalf("normalizeGitHubPath() error = %v", err)
+		}
+		if got != "skills/my-skill" {
+			t.Fatalf("normalized path = %q", got)
+		}
+	})
+
+	t.Run("rejects empty and absolute and dot paths", func(t *testing.T) {
+		cases := []string{"", " ", "/abs/path", ".", "./"}
+		for _, in := range cases {
+			if _, err := normalizeGitHubPath(in); err == nil {
+				t.Fatalf("expected path error for %q", in)
+			}
+		}
+	})
+
+	t.Run("rejects surrounding spaces in path", func(t *testing.T) {
+		cases := []string{" skills/demo", "skills/demo ", "\tskills/demo"}
+		for _, in := range cases {
+			if _, err := normalizeGitHubPath(in); err == nil {
+				t.Fatalf("expected path-space error for %q", in)
+			}
+		}
+	})
+
+	t.Run("rejects non-canonical path segments", func(t *testing.T) {
+		cases := []string{"skills//demo", "skills/./demo", "skills/demo/", "skills/a/../demo"}
+		for _, in := range cases {
+			if _, err := normalizeGitHubPath(in); err == nil {
+				t.Fatalf("expected canonical-path error for %q", in)
+			}
+		}
+	})
+
+	t.Run("rejects backslash-separated paths", func(t *testing.T) {
+		if _, err := normalizeGitHubPath(`skills\demo`); err == nil {
+			t.Fatal("expected path error for backslash-separated path")
+		}
+	})
+
+	t.Run("rejects Windows reserved path-name segments", func(t *testing.T) {
+		cases := []string{"skills/con", "skills/COM1.txt", "skills/COM¹.txt", "skills/prn.", "skills/conin$"}
+		for _, in := range cases {
+			if _, err := normalizeGitHubPath(in); err == nil {
+				t.Fatalf("expected path error for reserved segment %q", in)
+			}
+		}
+	})
+
+	t.Run("rejects path segments with surrounding spaces or trailing dot", func(t *testing.T) {
+		cases := []string{"skills/ demo", "skills/demo.", "skills/\tdemo"}
+		for _, in := range cases {
+			if _, err := normalizeGitHubPath(in); err == nil {
+				t.Fatalf("expected path error for segment form %q", in)
+			}
+		}
+	})
+
+	t.Run("rejects Unicode bidi control characters in path", func(t *testing.T) {
+		cases := []string{"skills/\u202edemo", "skills/\u2066demo"}
+		for _, in := range cases {
+			if _, err := normalizeGitHubPath(in); err == nil {
+				t.Fatalf("expected path error for bidi-control path %q", in)
+			}
+		}
+	})
+
+	t.Run("rejects zero-width characters in path", func(t *testing.T) {
+		cases := []string{"skills/\u200bdemo", "skills/\ufeffdemo"}
+		for _, in := range cases {
+			if _, err := normalizeGitHubPath(in); err == nil {
+				t.Fatalf("expected path error for zero-width path %q", in)
+			}
+		}
+	})
+
+	t.Run("rejects whitespace characters in path", func(t *testing.T) {
+		cases := []string{"skills/my skill", "skills/my\u00a0skill"}
+		for _, in := range cases {
+			if _, err := normalizeGitHubPath(in); err == nil {
+				t.Fatalf("expected path error for whitespace path %q", in)
+			}
+		}
+	})
+
+	t.Run("rejects Unicode tag characters in path", func(t *testing.T) {
+		cases := []string{"skills/\U000E0001demo", "skills/demo\U000E007F"}
+		for _, in := range cases {
+			if _, err := normalizeGitHubPath(in); err == nil {
+				t.Fatalf("expected path error for Unicode tag path %q", in)
+			}
+		}
+	})
+
+	t.Run("rejects variation selector characters in path", func(t *testing.T) {
+		cases := []string{"skills/\ufe0fdemo", "skills/demo\U000E0100"}
+		for _, in := range cases {
+			if _, err := normalizeGitHubPath(in); err == nil {
+				t.Fatalf("expected path error for variation-selector path %q", in)
+			}
+		}
+	})
+}
+
+func TestIsCommitPinnedRef(t *testing.T) {
+	if IsCommitPinnedRef("8f3c2d1") {
+		t.Fatal("short SHA should not be pinned")
+	}
+	if !IsCommitPinnedRef("8f3c2d1a4b5c6d7e8f901234567890abcdef1234") {
+		t.Fatal("full SHA should be pinned")
+	}
+	if IsCommitPinnedRef("8F3C2D1A4B5C6D7E8F901234567890ABCDEF1234") {
+		t.Fatal("uppercase full SHA should not be pinned")
+	}
+	if IsCommitPinnedRef("main") {
+		t.Fatal("branch should not be pinned")
+	}
+	if IsCommitPinnedRef("v1.0.0") {
+		t.Fatal("tag should not be pinned")
+	}
+	if IsCommitPinnedRef("8f3c2z1") {
+		t.Fatal("non-hex ref should not be pinned")
+	}
+	if IsCommitPinnedRef(" 8f3c2d1a4b5c6d7e8f901234567890abcdef1234 ") {
+		t.Fatal("whitespace-padded SHA should not be pinned")
+	}
+}
+
+func TestIsCommitPinnedRefProperty(t *testing.T) {
+	hex40 := regexp.MustCompile(`^[0-9a-f]{40}$`)
+	prop := func(raw string) bool {
+		got := IsCommitPinnedRef(raw)
+		if got {
+			return hex40.MatchString(raw)
+		}
+		if hex40.MatchString(raw) {
+			return false
+		}
+		return true
+	}
+
+	if err := quick.Check(prop, &quick.Config{MaxCount: 1000}); err != nil {
+		t.Fatalf("IsCommitPinnedRef property failed: %v", err)
+	}
+}
+
+func TestIsCommitPinnedRefPropertyKnownTrueCases(t *testing.T) {
+	prop := func(suffix uint32) bool {
+		ref := fmt.Sprintf("8f3c2d1a4b5c6d7e8f901234567890ab%08x", suffix)
+		return IsCommitPinnedRef(ref)
+	}
+	if err := quick.Check(prop, &quick.Config{MaxCount: 200}); err != nil {
+		t.Fatalf("IsCommitPinnedRef true-case property failed: %v", err)
+	}
+}
