@@ -3882,6 +3882,13 @@ func TestReadInstallLockAndProvenanceMatches(t *testing.T) {
 				detailPart: "file path is invalid",
 			},
 			{
+				name: "lock file path contains DEL control character only",
+				mutate: func(l *installLock) {
+					l.Skill.Files[0].Path = "\u007f"
+				},
+				detailPart: "file path is invalid",
+			},
+			{
 				name: "lock file path has unicode obfuscation character",
 				mutate: func(l *installLock) {
 					l.Skill.Files[0].Path = "SKILL.md\u200d"

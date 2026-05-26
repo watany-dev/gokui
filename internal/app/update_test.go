@@ -7199,6 +7199,12 @@ func TestValidateUpdateLockEnvelopeAndSkillSnapshotBranches(t *testing.T) {
 		}
 
 		mut = clone(valid)
+		mut.Skill.Files[0].Path = "\u007f"
+		if err := validateUpdateLockSkillSnapshot(mut); err == nil || !strings.Contains(err.Error(), "file path is invalid") {
+			t.Fatalf("expected invalid DEL-only-path error, got %v", err)
+		}
+
+		mut = clone(valid)
 		mut.Skill.Files[0].Path = "SKILL.md\u200d"
 		if err := validateUpdateLockSkillSnapshot(mut); err == nil || !strings.Contains(err.Error(), "file path is invalid") {
 			t.Fatalf("expected invalid unicode-obfuscation-path error, got %v", err)
