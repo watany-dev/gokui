@@ -685,6 +685,13 @@ func TestSourceMetadataHelpers(t *testing.T) {
 				detailPart: "schema must not contain C0/C1 control characters",
 			},
 			{
+				name: "schema has DEL control at edge",
+				mutate: func(m *sourceMetadata) {
+					m.Schema = "\u007fgokui.source/v1"
+				},
+				detailPart: "schema must not contain C0/C1 control characters",
+			},
+			{
 				name: "schema has surrounding whitespace",
 				mutate: func(m *sourceMetadata) {
 					m.Schema = " gokui.source/v1 "
@@ -720,6 +727,13 @@ func TestSourceMetadataHelpers(t *testing.T) {
 				detailPart: "source_input must not contain C0/C1 control characters",
 			},
 			{
+				name: "source_input has DEL control at edge",
+				mutate: func(m *sourceMetadata) {
+					m.SourceInput = "\u007fgithub:org/repo//skills/x@8f3c2d1a4b5c6d7e8f901234567890abcdef1234"
+				},
+				detailPart: "source_input must not contain C0/C1 control characters",
+			},
+			{
 				name: "source_kind has C0/C1 control",
 				mutate: func(m *sourceMetadata) {
 					m.SourceKind = "github-source\u008f"
@@ -737,6 +751,13 @@ func TestSourceMetadataHelpers(t *testing.T) {
 				name: "source_kind has DEL control only",
 				mutate: func(m *sourceMetadata) {
 					m.SourceKind = "\u007f"
+				},
+				detailPart: "source_kind must not contain C0/C1 control characters",
+			},
+			{
+				name: "source_kind has DEL control at edge",
+				mutate: func(m *sourceMetadata) {
+					m.SourceKind = "\u007fgithub-source"
 				},
 				detailPart: "source_kind must not contain C0/C1 control characters",
 			},
@@ -783,6 +804,13 @@ func TestSourceMetadataHelpers(t *testing.T) {
 				detailPart: "resolved_ref must not contain C0/C1 control characters",
 			},
 			{
+				name: "resolved_ref has DEL control at edge",
+				mutate: func(m *sourceMetadata) {
+					m.ResolvedRef = "\u007f8f3c2d1a4b5c6d7e8f901234567890abcdef1234"
+				},
+				detailPart: "resolved_ref must not contain C0/C1 control characters",
+			},
+			{
 				name: "fetched_at has C0/C1 control",
 				mutate: func(m *sourceMetadata) {
 					m.FetchedAt = "2026-05-23T00:00:00\u008fZ"
@@ -800,6 +828,13 @@ func TestSourceMetadataHelpers(t *testing.T) {
 				name: "fetched_at has DEL control only",
 				mutate: func(m *sourceMetadata) {
 					m.FetchedAt = "\u007f"
+				},
+				detailPart: "fetched_at must not contain C0/C1 control characters",
+			},
+			{
+				name: "fetched_at has DEL control at edge",
+				mutate: func(m *sourceMetadata) {
+					m.FetchedAt = "\u007f2026-05-23T00:00:00Z"
 				},
 				detailPart: "fetched_at must not contain C0/C1 control characters",
 			},
@@ -828,6 +863,13 @@ func TestSourceMetadataHelpers(t *testing.T) {
 				name: "skill_root_sha256 has DEL control only",
 				mutate: func(m *sourceMetadata) {
 					m.SkillRootSHA256 = "\u007f"
+				},
+				detailPart: "skill_root_sha256 must not contain C0/C1 control characters",
+			},
+			{
+				name: "skill_root_sha256 has DEL control at edge",
+				mutate: func(m *sourceMetadata) {
+					m.SkillRootSHA256 = "\u007faaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 				},
 				detailPart: "skill_root_sha256 must not contain C0/C1 control characters",
 			},
