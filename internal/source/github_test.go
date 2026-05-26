@@ -131,6 +131,63 @@ func TestParseGitHubSource(t *testing.T) {
 			})
 		}
 	})
+
+	t.Run("rejects unicode threat characters in owner and repo with explicit errors", func(t *testing.T) {
+		cases := []struct {
+			input       string
+			errContains string
+		}{
+			{
+				input:       "github:ow\u00a0ner/repo//skills/demo@8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
+				errContains: "owner must not contain whitespace characters",
+			},
+			{
+				input:       "github:owner/re\u00a0po//skills/demo@8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
+				errContains: "repo must not contain whitespace characters",
+			},
+			{
+				input:       "github:ow\u200bner/repo//skills/demo@8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
+				errContains: "owner must not contain zero-width characters",
+			},
+			{
+				input:       "github:owner/re\u200bpo//skills/demo@8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
+				errContains: "repo must not contain zero-width characters",
+			},
+			{
+				input:       "github:ow\u202ener/repo//skills/demo@8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
+				errContains: "owner must not contain Unicode bidi control characters",
+			},
+			{
+				input:       "github:owner/re\u202epo//skills/demo@8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
+				errContains: "repo must not contain Unicode bidi control characters",
+			},
+			{
+				input:       "github:ow\U000E0001ner/repo//skills/demo@8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
+				errContains: "owner must not contain Unicode tag characters",
+			},
+			{
+				input:       "github:owner/re\U000E0001po//skills/demo@8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
+				errContains: "repo must not contain Unicode tag characters",
+			},
+			{
+				input:       "github:ow\ufe0fner/repo//skills/demo@8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
+				errContains: "owner must not contain variation selector characters",
+			},
+			{
+				input:       "github:owner/re\ufe0fpo//skills/demo@8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
+				errContains: "repo must not contain variation selector characters",
+			},
+		}
+		for _, tc := range cases {
+			_, err := ParseGitHubSource(tc.input)
+			if err == nil {
+				t.Fatalf("expected parse error for %q", tc.input)
+			}
+			if !strings.Contains(err.Error(), tc.errContains) {
+				t.Fatalf("error = %q, want substring %q", err.Error(), tc.errContains)
+			}
+		}
+	})
 }
 
 func TestParseGitHubSourcePropertyNoPanic(t *testing.T) {

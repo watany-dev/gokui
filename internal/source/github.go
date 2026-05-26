@@ -95,6 +95,36 @@ func ParseGitHubSource(input string) (GitHubSpec, error) {
 	if owner == "" || repo == "" {
 		return GitHubSpec{}, fmt.Errorf("github source owner/repo must be non-empty")
 	}
+	if containsUnicodeWhitespace(owner) {
+		return GitHubSpec{}, fmt.Errorf("github source owner must not contain whitespace characters")
+	}
+	if containsUnicodeWhitespace(repo) {
+		return GitHubSpec{}, fmt.Errorf("github source repo must not contain whitespace characters")
+	}
+	if containsZeroWidthCharacter(owner) {
+		return GitHubSpec{}, fmt.Errorf("github source owner must not contain zero-width characters")
+	}
+	if containsZeroWidthCharacter(repo) {
+		return GitHubSpec{}, fmt.Errorf("github source repo must not contain zero-width characters")
+	}
+	if containsUnicodeBidiControl(owner) {
+		return GitHubSpec{}, fmt.Errorf("github source owner must not contain Unicode bidi control characters")
+	}
+	if containsUnicodeBidiControl(repo) {
+		return GitHubSpec{}, fmt.Errorf("github source repo must not contain Unicode bidi control characters")
+	}
+	if containsUnicodeTagCharacter(owner) {
+		return GitHubSpec{}, fmt.Errorf("github source owner must not contain Unicode tag characters")
+	}
+	if containsUnicodeTagCharacter(repo) {
+		return GitHubSpec{}, fmt.Errorf("github source repo must not contain Unicode tag characters")
+	}
+	if containsVariationSelectorCharacter(owner) {
+		return GitHubSpec{}, fmt.Errorf("github source owner must not contain variation selector characters")
+	}
+	if containsVariationSelectorCharacter(repo) {
+		return GitHubSpec{}, fmt.Errorf("github source repo must not contain variation selector characters")
+	}
 	if len(owner) > maxGitHubOwnerChars {
 		return GitHubSpec{}, fmt.Errorf("github source owner exceeds max length: %d", maxGitHubOwnerChars)
 	}
