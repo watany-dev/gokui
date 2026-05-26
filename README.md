@@ -322,6 +322,7 @@ Each `//path/to/skill` segment must not have leading/trailing whitespace or a
 trailing dot (`.`).
 The `//path/to/skill` segment must not contain Unicode bidi control characters.
 The `//path/to/skill` segment must not contain zero-width characters.
+The `//path/to/skill` segment must not contain whitespace characters.
 The `//path/to/skill` segment must not include Windows reserved device names
 (`con`, `prn`, `aux`, `nul`, `com1..com9`, `lpt1..lpt9`, `conin$`, `conout$`)
 as path segments (including superscript-digit variants like `COM¹`/`LPT²`).

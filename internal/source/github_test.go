@@ -59,6 +59,7 @@ func TestParseGitHubSource(t *testing.T) {
 			"github:owner/repo//skills/con@ref",
 			"github:owner/repo//skills/com1.txt@ref",
 			"github:owner/repo//skills/com¹.txt@ref",
+			"github:owner/repo//skills/my skill@ref",
 			"github:owner/repo//skills/ demo@ref",
 			"github:owner/repo//skills/demo.@ref",
 			"github:owner/repo//skills/\u202edemo@ref",
@@ -217,6 +218,15 @@ func TestNormalizeGitHubPath(t *testing.T) {
 		for _, in := range cases {
 			if _, err := normalizeGitHubPath(in); err == nil {
 				t.Fatalf("expected path error for zero-width path %q", in)
+			}
+		}
+	})
+
+	t.Run("rejects whitespace characters in path", func(t *testing.T) {
+		cases := []string{"skills/my skill", "skills/my\u00a0skill"}
+		for _, in := range cases {
+			if _, err := normalizeGitHubPath(in); err == nil {
+				t.Fatalf("expected path error for whitespace path %q", in)
 			}
 		}
 	})

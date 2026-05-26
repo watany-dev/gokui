@@ -5,6 +5,7 @@ import (
 	"path"
 	"regexp"
 	"strings"
+	"unicode"
 )
 
 var (
@@ -137,6 +138,9 @@ func normalizeGitHubPath(p string) (string, error) {
 	if strings.Contains(raw, "@") {
 		return "", fmt.Errorf("github source path must not contain @")
 	}
+	if containsUnicodeWhitespace(raw) {
+		return "", fmt.Errorf("github source path must not contain whitespace characters")
+	}
 	if strings.Contains(raw, ":") {
 		return "", fmt.Errorf("github source path must not contain colon character")
 	}
@@ -227,6 +231,15 @@ func containsZeroWidthCharacter(s string) bool {
 	for _, r := range s {
 		switch r {
 		case '\u200b', '\u200c', '\u200d', '\u2060', '\ufeff':
+			return true
+		}
+	}
+	return false
+}
+
+func containsUnicodeWhitespace(s string) bool {
+	for _, r := range s {
+		if unicode.IsSpace(r) {
 			return true
 		}
 	}
