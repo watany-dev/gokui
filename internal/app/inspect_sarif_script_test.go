@@ -83,3 +83,21 @@ func TestInspectSARIFScriptRejectsDirectoryLikeOutputPath(t *testing.T) {
 		t.Fatalf("expected directory-like path rejection message, got:\n%s", text)
 	}
 }
+
+func TestInspectSARIFScriptRejectsDotDirectorySuffixOutputPath(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("shell-script execution contract is exercised on POSIX in CI")
+	}
+
+	outPath := "inspect-results.sarif/."
+	cmd := exec.Command("bash", "../../scripts/generate-inspect-sarif.sh", outPath)
+
+	out, err := cmd.CombinedOutput()
+	if err == nil {
+		t.Fatalf("expected non-zero exit for inspect-sarif dot-directory-suffix output path\noutput:\n%s", out)
+	}
+	text := string(out)
+	if !strings.Contains(text, "must be a non-directory file path") {
+		t.Fatalf("expected dot-directory-suffix rejection message, got:\n%s", text)
+	}
+}

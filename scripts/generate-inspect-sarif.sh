@@ -81,7 +81,7 @@ assert_non_directory_file_path() {
   local path="$1"
   local label="$2"
   case "$path" in
-    */)
+    */|*/.|*/..)
       echo "${label} must be a non-directory file path: $path" >&2
       exit 1
       ;;

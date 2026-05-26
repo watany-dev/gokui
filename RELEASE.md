@@ -47,7 +47,8 @@ located under `.git/`.
 `make inspect-sarif` output paths must resolve under the repository root and
 must resolve outside `.git/`.
 `make inspect-sarif` output paths must not contain `..` path segments.
-`make inspect-sarif` output paths must be non-directory file paths (no trailing `/`).
+`make inspect-sarif` output paths must be non-directory file paths (no trailing `/`,
+`/.`, or `/..`).
 Output-path safety preflight checks run before format/test/race/vuln gate
 steps.
 
