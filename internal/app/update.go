@@ -1195,14 +1195,14 @@ func classifyUpdateSourcePrepareFailure(kind string, err error) (status string, 
 }
 
 func validateUpdateLockEnvelope(lock installLock, expectedSkillName string) error {
-	if strings.TrimSpace(lock.Schema) != lock.Schema {
-		return fmt.Errorf("lock schema must not contain leading or trailing whitespace")
-	}
 	if strings.IndexFunc(lock.Schema, isC0OrC1ControlRune) >= 0 {
 		return fmt.Errorf("lock schema must not contain C0/C1 control characters")
 	}
 	if containsSeverityOverrideDisallowedUnicode(lock.Schema) {
 		return fmt.Errorf("lock schema must not contain Unicode bidi, zero-width, tag, or variation-selector characters")
+	}
+	if strings.TrimSpace(lock.Schema) != lock.Schema {
+		return fmt.Errorf("lock schema must not contain leading or trailing whitespace")
 	}
 	if lock.Schema != lockSchemaVersion {
 		return fmt.Errorf("unsupported lock schema: %s", lock.Schema)
