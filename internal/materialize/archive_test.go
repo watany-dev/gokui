@@ -872,6 +872,23 @@ func TestRejectArchiveSourceSymlinkPathGuards(t *testing.T) {
 	})
 }
 
+func TestIsRootLevelPathComponent(t *testing.T) {
+	if isRootLevelPathComponent("relative/path") {
+		t.Fatal("relative path must not be treated as root-level component")
+	}
+	if isRootLevelPathComponent(string(os.PathSeparator)) {
+		t.Fatal("filesystem root must not be treated as root-level component")
+	}
+	rootChild := filepath.Join(string(os.PathSeparator), "var")
+	if !isRootLevelPathComponent(rootChild) {
+		t.Fatalf("expected root child to be treated as root-level component: %q", rootChild)
+	}
+	deeper := filepath.Join(rootChild, "tmp")
+	if isRootLevelPathComponent(deeper) {
+		t.Fatalf("deeper path must not be treated as root-level component: %q", deeper)
+	}
+}
+
 func TestWriteZipAndTarFileLimits(t *testing.T) {
 	t.Run("writeZipFile read failure from corrupted payload", func(t *testing.T) {
 		zipPath := filepath.Join(t.TempDir(), "corrupt.zip")

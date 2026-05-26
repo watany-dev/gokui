@@ -18,6 +18,9 @@ func rejectSymlinkPath(path string, label string, ruleID string) error {
 			return fmt.Errorf("failed to evaluate %s: %w", label, err)
 		}
 		if info.Mode()&os.ModeSymlink != 0 {
+			if isRootLevelPathComponent(candidate) {
+				continue
+			}
 			return fmt.Errorf("%s: %s must not be a symlink: %s", ruleID, label, path)
 		}
 	}
@@ -42,4 +45,16 @@ func symlinkCheckCandidates(path string) []string {
 	}
 
 	return candidates
+}
+
+func isRootLevelPathComponent(path string) bool {
+	cleanPath := filepath.Clean(path)
+	if !filepath.IsAbs(cleanPath) {
+		return false
+	}
+	parent := filepath.Dir(cleanPath)
+	if parent == cleanPath {
+		return false
+	}
+	return filepath.Dir(parent) == parent
 }

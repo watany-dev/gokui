@@ -325,6 +325,9 @@ func rejectArchiveSourceSymlinkPath(src string) error {
 			return fmt.Errorf("failed to evaluate archive source path: %w", err)
 		}
 		if info.Mode()&os.ModeSymlink != 0 {
+			if isRootLevelPathComponent(candidate) {
+				continue
+			}
 			return fmt.Errorf("%s: archive source must not be a symlink: %s", ruleArchiveSourceSymlinkDetected, src)
 		}
 	}
@@ -349,6 +352,18 @@ func symlinkCheckCandidates(path string) []string {
 	}
 
 	return candidates
+}
+
+func isRootLevelPathComponent(path string) bool {
+	cleanPath := filepath.Clean(path)
+	if !filepath.IsAbs(cleanPath) {
+		return false
+	}
+	parent := filepath.Dir(cleanPath)
+	if parent == cleanPath {
+		return false
+	}
+	return filepath.Dir(parent) == parent
 }
 
 func ensureArchiveSourceStableFromOpen(previous os.FileInfo, opened fileInfoStatter, src string) error {
