@@ -96,6 +96,9 @@ func ParseGitHubSource(input string) (GitHubSpec, error) {
 	if strings.HasSuffix(strings.ToLower(repo), ".git") {
 		return GitHubSpec{}, fmt.Errorf("github source repo must not include .git suffix")
 	}
+	if strings.Contains(repo, "..") {
+		return GitHubSpec{}, fmt.Errorf("github source repo must not contain consecutive dots")
+	}
 
 	skillPath, err := normalizeGitHubPath(parts[1])
 	if err != nil {

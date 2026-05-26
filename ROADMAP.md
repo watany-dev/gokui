@@ -38,6 +38,7 @@ tests/CI:
 - GitHub source parser rejection of non-canonical `//path` segments (`//`, `/./`, `/../`, trailing `/`)
 - GitHub source parser owner-format hardening (`_` disallowed; no leading/trailing `-`; no `--`)
 - GitHub source parser repo-format hardening (`.git` suffix disallowed)
+- GitHub source parser repo-format hardening (consecutive-dot `..` segments disallowed)
 - Atomic install with `.gokui-report.json` and `gokui.lock`
 - Built-in install policy profiles: `strict`, `team`, `research`
 - User policy loading from `~/.config/gokui/policy.toml` (`default_profile`)
