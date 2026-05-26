@@ -32,6 +32,7 @@ tests/CI:
 - Lock/install-report `severity_overrides` validation hardening with duplicate `rule_id` rejection
 - Lock/install-report `severity_overrides` `justification`/`approved_by` validation hardening with surrounding-whitespace rejection
 - Lock/install-report `severity_overrides` `justification`/`approved_by` validation hardening with Unicode bidi/zero-width/tag/variation-selector rejection
+- Lock/install-report `severity_overrides` `rule_id`/`previous_severity`/`effective_severity`/`source`/`applied_at` validation hardening with Unicode bidi/zero-width/tag/variation-selector rejection
 - Source metadata `schema`/`source_kind`/`resolved_ref`/`fetched_at`/`skill_root_sha256` validation hardening with C0/C1 control-character rejection
 - Source metadata `source_input` validation hardening with C0/C1 control-character rejection at metadata verification layer
 - Source metadata `source_input` validation hardening with Unicode bidi/zero-width/tag/variation-selector rejection at metadata verification layer

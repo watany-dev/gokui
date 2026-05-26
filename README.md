@@ -111,6 +111,9 @@ Lock/install report `severity_overrides` `justification`/`approved_by` fields
 must not contain leading or trailing whitespace.
 Lock/install report `severity_overrides` `justification`/`approved_by` fields
 must not contain Unicode bidi/zero-width/tag/variation-selector characters.
+Lock/install report `severity_overrides` `rule_id`/`previous_severity`/
+`effective_severity`/`source`/`applied_at` fields must not contain Unicode
+bidi/zero-width/tag/variation-selector characters.
 Install target entries also reject symlink path components.
 `lock verify` now validates installed files against `gokui.lock`, checks source
 field consistency (including strict GitHub source syntax and commit pinning),

@@ -1044,6 +1044,9 @@ func validateSeverityOverrideAudit(overrides []severityOverrideAudit) error {
 		if strings.IndexFunc(override.RuleID, isC0OrC1ControlRune) >= 0 {
 			return fmt.Errorf("entry %d: rule_id must not contain C0/C1 control characters", idx)
 		}
+		if containsSeverityOverrideDisallowedUnicode(override.RuleID) {
+			return fmt.Errorf("entry %d: rule_id must not contain Unicode bidi, zero-width, tag, or variation-selector characters", idx)
+		}
 		ruleID := strings.TrimSpace(override.RuleID)
 		if ruleID == "" {
 			return fmt.Errorf("entry %d: rule_id is empty", idx)
@@ -1061,6 +1064,9 @@ func validateSeverityOverrideAudit(overrides []severityOverrideAudit) error {
 		if strings.IndexFunc(override.PreviousSeverity, isC0OrC1ControlRune) >= 0 {
 			return fmt.Errorf("entry %d: previous_severity must not contain C0/C1 control characters", idx)
 		}
+		if containsSeverityOverrideDisallowedUnicode(override.PreviousSeverity) {
+			return fmt.Errorf("entry %d: previous_severity must not contain Unicode bidi, zero-width, tag, or variation-selector characters", idx)
+		}
 		previousSeverity := strings.TrimSpace(override.PreviousSeverity)
 		if previousSeverity == "" {
 			return fmt.Errorf("entry %d: previous_severity is empty", idx)
@@ -1073,6 +1079,9 @@ func validateSeverityOverrideAudit(overrides []severityOverrideAudit) error {
 		}
 		if strings.IndexFunc(override.EffectiveSeverity, isC0OrC1ControlRune) >= 0 {
 			return fmt.Errorf("entry %d: effective_severity must not contain C0/C1 control characters", idx)
+		}
+		if containsSeverityOverrideDisallowedUnicode(override.EffectiveSeverity) {
+			return fmt.Errorf("entry %d: effective_severity must not contain Unicode bidi, zero-width, tag, or variation-selector characters", idx)
 		}
 		effectiveSeverity := strings.TrimSpace(override.EffectiveSeverity)
 		if effectiveSeverity == "" {
@@ -1113,6 +1122,9 @@ func validateSeverityOverrideAudit(overrides []severityOverrideAudit) error {
 		if strings.IndexFunc(override.Source, isC0OrC1ControlRune) >= 0 {
 			return fmt.Errorf("entry %d: source must not contain C0/C1 control characters", idx)
 		}
+		if containsSeverityOverrideDisallowedUnicode(override.Source) {
+			return fmt.Errorf("entry %d: source must not contain Unicode bidi, zero-width, tag, or variation-selector characters", idx)
+		}
 		source := strings.TrimSpace(override.Source)
 		if source == "" {
 			return fmt.Errorf("entry %d: source is empty", idx)
@@ -1128,6 +1140,9 @@ func validateSeverityOverrideAudit(overrides []severityOverrideAudit) error {
 		}
 		if strings.IndexFunc(override.AppliedAt, isC0OrC1ControlRune) >= 0 {
 			return fmt.Errorf("entry %d: applied_at must not contain C0/C1 control characters", idx)
+		}
+		if containsSeverityOverrideDisallowedUnicode(override.AppliedAt) {
+			return fmt.Errorf("entry %d: applied_at must not contain Unicode bidi, zero-width, tag, or variation-selector characters", idx)
 		}
 		if strings.TrimSpace(override.AppliedAt) == "" {
 			return fmt.Errorf("entry %d: applied_at is empty", idx)

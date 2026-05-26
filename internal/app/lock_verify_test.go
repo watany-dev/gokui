@@ -2239,6 +2239,19 @@ func TestSeverityOverrideAuditHelpers(t *testing.T) {
 				detailPart: "rule_id must not contain C0/C1 control characters",
 			},
 			{
+				name: "rule_id has unicode obfuscation character",
+				override: severityOverrideAudit{
+					RuleID:            "PROMPT_OVERRIDE_\u200dLANGUAGE",
+					PreviousSeverity:  "high",
+					EffectiveSeverity: "medium",
+					Justification:     "x",
+					ApprovedBy:        "y",
+					Source:            "policy-file",
+					AppliedAt:         "2026-05-24T00:00:00Z",
+				},
+				detailPart: "rule_id must not contain Unicode bidi, zero-width, tag, or variation-selector characters",
+			},
+			{
 				name: "rule_id must be uppercase snake case",
 				override: severityOverrideAudit{
 					RuleID:            "prompt_override_language",
@@ -2278,6 +2291,19 @@ func TestSeverityOverrideAuditHelpers(t *testing.T) {
 				detailPart: "previous_severity must not contain C0/C1 control characters",
 			},
 			{
+				name: "previous severity has unicode obfuscation character",
+				override: severityOverrideAudit{
+					RuleID:            "PROMPT_OVERRIDE_LANGUAGE",
+					PreviousSeverity:  "high\u200d",
+					EffectiveSeverity: "medium",
+					Justification:     "x",
+					ApprovedBy:        "y",
+					Source:            "policy-file",
+					AppliedAt:         "2026-05-24T00:00:00Z",
+				},
+				detailPart: "previous_severity must not contain Unicode bidi, zero-width, tag, or variation-selector characters",
+			},
+			{
 				name: "empty effective severity",
 				override: severityOverrideAudit{
 					RuleID:           "PROMPT_OVERRIDE_LANGUAGE",
@@ -2301,6 +2327,19 @@ func TestSeverityOverrideAuditHelpers(t *testing.T) {
 					AppliedAt:         "2026-05-24T00:00:00Z",
 				},
 				detailPart: "effective_severity must be canonical severity",
+			},
+			{
+				name: "effective severity has unicode obfuscation character",
+				override: severityOverrideAudit{
+					RuleID:            "PROMPT_OVERRIDE_LANGUAGE",
+					PreviousSeverity:  "high",
+					EffectiveSeverity: "medium\u200d",
+					Justification:     "x",
+					ApprovedBy:        "y",
+					Source:            "policy-file",
+					AppliedAt:         "2026-05-24T00:00:00Z",
+				},
+				detailPart: "effective_severity must not contain Unicode bidi, zero-width, tag, or variation-selector characters",
 			},
 			{
 				name: "empty justification",
@@ -2443,6 +2482,19 @@ func TestSeverityOverrideAuditHelpers(t *testing.T) {
 				detailPart: "source must not contain C0/C1 control characters",
 			},
 			{
+				name: "source has unicode obfuscation character",
+				override: severityOverrideAudit{
+					RuleID:            "PROMPT_OVERRIDE_LANGUAGE",
+					PreviousSeverity:  "high",
+					EffectiveSeverity: "medium",
+					Justification:     "x",
+					ApprovedBy:        "y",
+					Source:            "policy-file\u200d",
+					AppliedAt:         "2026-05-24T00:00:00Z",
+				},
+				detailPart: "source must not contain Unicode bidi, zero-width, tag, or variation-selector characters",
+			},
+			{
 				name: "source must be canonical lowercase",
 				override: severityOverrideAudit{
 					RuleID:            "PROMPT_OVERRIDE_LANGUAGE",
@@ -2505,6 +2557,19 @@ func TestSeverityOverrideAuditHelpers(t *testing.T) {
 					AppliedAt:         "2026-05-24T00:00:00Z\u008f",
 				},
 				detailPart: "applied_at must not contain C0/C1 control characters",
+			},
+			{
+				name: "applied_at has unicode obfuscation character",
+				override: severityOverrideAudit{
+					RuleID:            "PROMPT_OVERRIDE_LANGUAGE",
+					PreviousSeverity:  "high",
+					EffectiveSeverity: "medium",
+					Justification:     "x",
+					ApprovedBy:        "y",
+					Source:            "policy-file",
+					AppliedAt:         "2026-05-24T00:00:00Z\u200d",
+				},
+				detailPart: "applied_at must not contain Unicode bidi, zero-width, tag, or variation-selector characters",
 			},
 			{
 				name: "applied_at has surrounding whitespace",
