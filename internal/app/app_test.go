@@ -1157,6 +1157,22 @@ func TestRun(t *testing.T) {
 		}
 	})
 
+	t.Run("inspect compact invalid github source writes stderr", func(t *testing.T) {
+		var stdout bytes.Buffer
+		var stderr bytes.Buffer
+
+		code := Run([]string{"inspect", "github:org/re\u200bpo//skills/x@8f3c2d1a4b5c6d7e8f901234567890abcdef1234", "--format", "compact"}, &stdout, &stderr, cfg)
+		if code != 1 {
+			t.Fatalf("Run() code = %d, want 1\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
+		}
+		if stdout.Len() != 0 {
+			t.Fatalf("stdout should be empty for compact error output, got %q", stdout.String())
+		}
+		if !strings.Contains(stderr.String(), "invalid github source") {
+			t.Fatalf("stderr should include github source error, got %q", stderr.String())
+		}
+	})
+
 	t.Run("inspect review-json emits neutralized structured report", func(t *testing.T) {
 		var stdout bytes.Buffer
 		var stderr bytes.Buffer
@@ -1770,6 +1786,22 @@ func TestRun(t *testing.T) {
 		}
 		if !strings.Contains(out, "findings=0") || !strings.Contains(out, "source_kind=local-dir") {
 			t.Fatalf("compact output should include deterministic fields, got %q", out)
+		}
+	})
+
+	t.Run("vet compact github source rejection writes stderr", func(t *testing.T) {
+		var stdout bytes.Buffer
+		var stderr bytes.Buffer
+
+		code := Run([]string{"vet", "github:org/re\u200bpo//skills/x@8f3c2d1a4b5c6d7e8f901234567890abcdef1234", "--format", "compact"}, &stdout, &stderr, cfg)
+		if code != 1 {
+			t.Fatalf("Run() code = %d, want 1\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
+		}
+		if stdout.Len() != 0 {
+			t.Fatalf("stdout should be empty for compact error output, got %q", stdout.String())
+		}
+		if !strings.Contains(stderr.String(), "vet does not accept github sources") {
+			t.Fatalf("stderr should include vet github rejection message, got %q", stderr.String())
 		}
 	})
 
