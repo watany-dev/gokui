@@ -1197,11 +1197,11 @@ func TestVerifyLockSourceChecks(t *testing.T) {
 	} else if !strings.Contains(detail, "must not contain C0/C1 control characters") {
 		t.Fatalf("input with DEL edge control characters should surface control detail, got %q", detail)
 	}
-	lock.Source.Input = "/tmp/skill\u200dpayload"
+	lock.Source.Input = sourceInput + "\u200dpayload"
 	if ok, _ := verifyLockSource(lock); ok {
 		t.Fatal("input with unicode obfuscation characters should fail")
 	}
-	lock.Source.Input = "/tmp/skill"
+	lock.Source.Input = sourceInput
 	lock.Source.Kind = " local-dir "
 	if ok, _ := verifyLockSource(lock); ok {
 		t.Fatal("kind with surrounding whitespace should fail")
@@ -1241,6 +1241,7 @@ func TestVerifyLockSourceChecks(t *testing.T) {
 		t.Fatal("kind with uppercase letters should fail")
 	}
 	lock.Source.Kind = "local-dir"
+	lock.Source.Input = sourceInput
 	lock.Source.Type = ""
 	if ok, detail := verifyLockSource(lock); ok {
 		t.Fatal("empty source type should fail")
