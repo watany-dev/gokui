@@ -678,6 +678,27 @@ func TestSourceMetadataHelpers(t *testing.T) {
 				detailPart: "source_kind must not contain C0/C1 control characters",
 			},
 			{
+				name: "source_kind is empty",
+				mutate: func(m *sourceMetadata) {
+					m.SourceKind = ""
+				},
+				detailPart: "source_kind is empty",
+			},
+			{
+				name: "source_kind has surrounding whitespace",
+				mutate: func(m *sourceMetadata) {
+					m.SourceKind = " github-source "
+				},
+				detailPart: "source_kind must not contain leading or trailing whitespace",
+			},
+			{
+				name: "source_kind must be canonical lowercase",
+				mutate: func(m *sourceMetadata) {
+					m.SourceKind = "GitHub-Source"
+				},
+				detailPart: "source_kind must be canonical lowercase",
+			},
+			{
 				name: "resolved_ref has C0/C1 control",
 				mutate: func(m *sourceMetadata) {
 					m.ResolvedRef = "8f3c2d1a4b5c6d7e8f901234567890abcdef12\u008f4"
@@ -690,6 +711,13 @@ func TestSourceMetadataHelpers(t *testing.T) {
 					m.FetchedAt = "2026-05-23T00:00:00\u008fZ"
 				},
 				detailPart: "fetched_at must not contain C0/C1 control characters",
+			},
+			{
+				name: "fetched_at has surrounding whitespace",
+				mutate: func(m *sourceMetadata) {
+					m.FetchedAt = " 2026-05-23T00:00:00Z "
+				},
+				detailPart: "fetched_at must not contain leading or trailing whitespace",
 			},
 			{
 				name: "skill_root_sha256 has C0/C1 control",

@@ -764,6 +764,30 @@ func TestSourceMetadataSourceInputControlCharHardeningDocumentationSync(t *testi
 	}
 }
 
+func TestSourceMetadataSourceKindFetchedAtCanonicalDocumentationSync(t *testing.T) {
+	readmeBytes, err := os.ReadFile("../../README.md")
+	if err != nil {
+		t.Fatalf("failed to read README.md: %v", err)
+	}
+	readme := string(readmeBytes)
+	roadmapBytes, err := os.ReadFile("../../ROADMAP.md")
+	if err != nil {
+		t.Fatalf("failed to read ROADMAP.md: %v", err)
+	}
+	roadmap := string(roadmapBytes)
+
+	requiredReadme := "Source metadata `source_kind` and `fetched_at` must be canonical without"
+	requiredReadmeContinuation := "leading/trailing whitespace (`source_kind` also requires lowercase)."
+	if !strings.Contains(readme, requiredReadme) || !strings.Contains(readme, requiredReadmeContinuation) {
+		t.Fatalf("README missing source-metadata source_kind/fetched_at canonical hardening line: %q ... %q", requiredReadme, requiredReadmeContinuation)
+	}
+
+	requiredRoadmap := "Source metadata `source_kind`/`fetched_at` canonical validation hardening with explicit surrounding-whitespace rejection (and lowercase canonicalization for `source_kind`)"
+	if !strings.Contains(roadmap, requiredRoadmap) {
+		t.Fatalf("ROADMAP missing source-metadata source_kind/fetched_at canonical hardening line: %q", requiredRoadmap)
+	}
+}
+
 func TestLockfileExampleSchemaSync(t *testing.T) {
 	readmeBytes, err := os.ReadFile("../../README.md")
 	if err != nil {

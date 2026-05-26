@@ -137,7 +137,17 @@ func validateSourceMetadata(meta sourceMetadata) error {
 	if strings.IndexFunc(meta.SourceKind, isC0OrC1ControlRune) >= 0 {
 		return fmt.Errorf("source metadata source_kind must not contain C0/C1 control characters")
 	}
-	if meta.SourceKind != "github-source" {
+	trimmedSourceKind := strings.TrimSpace(meta.SourceKind)
+	if trimmedSourceKind == "" {
+		return fmt.Errorf("source metadata source_kind is empty")
+	}
+	if trimmedSourceKind != meta.SourceKind {
+		return fmt.Errorf("source metadata source_kind must not contain leading or trailing whitespace")
+	}
+	if trimmedSourceKind != strings.ToLower(trimmedSourceKind) {
+		return fmt.Errorf("source metadata source_kind must be canonical lowercase")
+	}
+	if trimmedSourceKind != "github-source" {
 		return fmt.Errorf("source metadata source_kind is unsupported: %s", meta.SourceKind)
 	}
 	spec, err := srcpkg.ParseGitHubSource(meta.SourceInput)
@@ -172,10 +182,14 @@ func validateSourceMetadata(meta sourceMetadata) error {
 	if strings.IndexFunc(meta.FetchedAt, isC0OrC1ControlRune) >= 0 {
 		return fmt.Errorf("source metadata fetched_at must not contain C0/C1 control characters")
 	}
-	if strings.TrimSpace(meta.FetchedAt) == "" {
+	trimmedFetchedAt := strings.TrimSpace(meta.FetchedAt)
+	if trimmedFetchedAt == "" {
 		return fmt.Errorf("source metadata fetched_at is empty")
 	}
-	if _, err := time.Parse(time.RFC3339, meta.FetchedAt); err != nil {
+	if trimmedFetchedAt != meta.FetchedAt {
+		return fmt.Errorf("source metadata fetched_at must not contain leading or trailing whitespace")
+	}
+	if _, err := time.Parse(time.RFC3339, trimmedFetchedAt); err != nil {
 		return fmt.Errorf("source metadata fetched_at must be RFC3339")
 	}
 	if strings.IndexFunc(meta.SkillRootSHA256, isC0OrC1ControlRune) >= 0 {
