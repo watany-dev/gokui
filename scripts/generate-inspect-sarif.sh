@@ -5,7 +5,7 @@ set -o noclobber
 umask 077
 
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-out_path_input="${1:-inspect-results.sarif}"
+out_path_input="${1-inspect-results.sarif}"
 out_path="$out_path_input"
 if [[ "$out_path" != /* ]]; then
   out_path="$ROOT_DIR/$out_path"
@@ -122,6 +122,15 @@ assert_no_control_chars() {
   fi
 }
 
+assert_non_empty_path() {
+  local path="$1"
+  local label="$2"
+  if [ -z "$path" ]; then
+    echo "${label} must be non-empty" >&2
+    exit 1
+  fi
+}
+
 assert_non_directory_file_path() {
   local path="$1"
   local label="$2"
@@ -147,6 +156,7 @@ assert_sarif_output_extension() {
 
 assert_no_symlink_components "$ROOT_DIR" "repository root path"
 out_dir="$(dirname "$out_path")"
+assert_non_empty_path "$out_path_input" "inspect SARIF output path"
 assert_no_control_chars "$out_path_input" "inspect SARIF output path"
 assert_no_control_chars "$out_path" "inspect SARIF output path"
 assert_no_surrounding_whitespace "$out_path_input" "inspect SARIF output path"

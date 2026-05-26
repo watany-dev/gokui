@@ -220,3 +220,20 @@ func TestInspectSARIFScriptRejectsControlCharactersInOutputPath(t *testing.T) {
 		})
 	}
 }
+
+func TestInspectSARIFScriptRejectsEmptyOutputPathArgument(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("shell-script execution contract is exercised on POSIX in CI")
+	}
+
+	cmd := exec.Command("bash", "../../scripts/generate-inspect-sarif.sh", "")
+
+	out, err := cmd.CombinedOutput()
+	if err == nil {
+		t.Fatalf("expected non-zero exit for empty inspect-sarif output path argument\noutput:\n%s", out)
+	}
+	text := string(out)
+	if !strings.Contains(text, "must be non-empty") {
+		t.Fatalf("expected empty-path rejection message, got:\n%s", text)
+	}
+}
