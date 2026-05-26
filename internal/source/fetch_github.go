@@ -165,6 +165,10 @@ func downloadGitHubArchive(spec GitHubSpec, archivePath string) error {
 		}
 		return fmt.Errorf("failed to write github archive: %w", err)
 	}
+	if err := validateGzipArchiveFile(archivePath); err != nil {
+		_ = os.Remove(archivePath)
+		return err
+	}
 
 	return nil
 }
@@ -218,4 +222,21 @@ func validateGitHubArchiveResponseHeaders(resp *http.Response) error {
 
 func copyWithStrictLimit(dst io.Writer, src io.Reader, maxBytes int64) (int64, error) {
 	return limitio.CopyWithStrictLimit(dst, src, maxBytes)
+}
+
+func validateGzipArchiveFile(path string) error {
+	f, err := os.Open(path)
+	if err != nil {
+		return fmt.Errorf("failed to reopen github archive for validation: %w", err)
+	}
+	defer f.Close()
+
+	header := make([]byte, 3)
+	if _, err := io.ReadFull(f, header); err != nil {
+		return fmt.Errorf("github archive payload must be gzip: %w", err)
+	}
+	if header[0] != 0x1f || header[1] != 0x8b || header[2] != 0x08 {
+		return fmt.Errorf("github archive payload must be gzip")
+	}
+	return nil
 }

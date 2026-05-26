@@ -217,6 +217,27 @@ func TestFetchGitHubSkillErrors(t *testing.T) {
 		}
 	})
 
+	t.Run("downloadGitHubArchive rejects non-gzip payload and cleans up partial file", func(t *testing.T) {
+		githubCodeloadBaseURL = "https://mock.codeload.local"
+		githubHTTPClient = &http.Client{
+			Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+				resp := httpResponse(http.StatusOK, []byte("plain-tar-or-text"))
+				resp.Header.Set("Content-Type", "application/x-gzip")
+				return resp, nil
+			}),
+		}
+
+		spec := GitHubSpec{Owner: "o", Repo: "r", Path: "skills/x", Ref: "8f3c2d1a4b5c6d7e8f901234567890abcdef1234"}
+		outPath := filepath.Join(t.TempDir(), "archive.tar.gz")
+		err := downloadGitHubArchive(spec, outPath)
+		if err == nil || !strings.Contains(err.Error(), "payload must be gzip") {
+			t.Fatalf("expected gzip payload validation error, got %v", err)
+		}
+		if _, statErr := os.Stat(outPath); !errors.Is(statErr, os.ErrNotExist) {
+			t.Fatalf("expected invalid payload archive file to be removed, statErr=%v", statErr)
+		}
+	})
+
 	t.Run("downloadGitHubArchive rejects non-https base URL", func(t *testing.T) {
 		spec := GitHubSpec{Owner: "o", Repo: "r", Path: "skills/x", Ref: "8f3c2d1a4b5c6d7e8f901234567890abcdef1234"}
 		githubCodeloadBaseURL = "http://mock.codeload.local"
@@ -394,6 +415,9 @@ func TestFetchGitHubSkillErrors(t *testing.T) {
 
 	t.Run("downloadGitHubArchive allows redirect within same host", func(t *testing.T) {
 		spec := GitHubSpec{Owner: "o", Repo: "r", Path: "skills/x", Ref: "8f3c2d1a4b5c6d7e8f901234567890abcdef1234"}
+		archive := buildTarGz(t, map[string]string{
+			"repo-8f3c2d1a4b5c6d7e8f901234567890abcdef1234/skills/x/SKILL.md": "---\nname: x\ndescription: d\n---\n",
+		})
 		githubCodeloadBaseURL = "https://mock.codeload.local"
 		githubHTTPClient = &http.Client{
 			Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
@@ -403,7 +427,7 @@ func TestFetchGitHubSkillErrors(t *testing.T) {
 					resp.Header.Set("Location", "https://mock.codeload.local/redirected/archive.tar.gz")
 					return resp, nil
 				case "/redirected/archive.tar.gz":
-					return httpResponse(http.StatusOK, []byte("ok")), nil
+					return httpResponse(http.StatusOK, archive), nil
 				default:
 					return httpResponse(http.StatusNotFound, []byte("not found")), nil
 				}
@@ -465,6 +489,9 @@ func TestFetchGitHubSkillErrors(t *testing.T) {
 
 	t.Run("downloadGitHubArchive allows explicit default-port redirect", func(t *testing.T) {
 		spec := GitHubSpec{Owner: "o", Repo: "r", Path: "skills/x", Ref: "8f3c2d1a4b5c6d7e8f901234567890abcdef1234"}
+		archive := buildTarGz(t, map[string]string{
+			"repo-8f3c2d1a4b5c6d7e8f901234567890abcdef1234/skills/x/SKILL.md": "---\nname: x\ndescription: d\n---\n",
+		})
 		githubCodeloadBaseURL = "https://mock.codeload.local"
 		githubHTTPClient = &http.Client{
 			Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
@@ -474,7 +501,7 @@ func TestFetchGitHubSkillErrors(t *testing.T) {
 					resp.Header.Set("Location", "https://mock.codeload.local:443/redirected/archive.tar.gz")
 					return resp, nil
 				case "/redirected/archive.tar.gz":
-					return httpResponse(http.StatusOK, []byte("ok")), nil
+					return httpResponse(http.StatusOK, archive), nil
 				default:
 					return httpResponse(http.StatusNotFound, []byte("not found")), nil
 				}
