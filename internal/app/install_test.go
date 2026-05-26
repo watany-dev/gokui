@@ -3723,6 +3723,13 @@ func TestReadInstallLockAndProvenanceMatches(t *testing.T) {
 				detailPart: "source type must be canonical lowercase",
 			},
 			{
+				name: "empty source type",
+				mutate: func(l *installLock) {
+					l.Source.Type = ""
+				},
+				detailPart: "source type is empty",
+			},
+			{
 				name: "source type has C0/C1 control character",
 				mutate: func(l *installLock) {
 					l.Source.Type = "loca\u008fl"

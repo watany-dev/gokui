@@ -128,6 +128,8 @@ Lock names in `gokui.lock` must not contain Unicode
 bidi/zero-width/tag/variation-selector characters.
 Lock source kind/type fields in `gokui.lock` must not contain C0/C1 control
 characters for install/update/lock verify provenance checks.
+Lock source type in `gokui.lock` must not be empty for install/update/lock
+verify provenance checks.
 Lock source kind/type fields in `gokui.lock` must not contain Unicode
 bidi/zero-width/tag/variation-selector characters.
 Lock policy profile/decision fields in `gokui.lock` must not contain C0/C1

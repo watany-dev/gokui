@@ -1216,6 +1216,13 @@ func TestVerifyLockSourceChecks(t *testing.T) {
 		t.Fatal("kind with uppercase letters should fail")
 	}
 	lock.Source.Kind = "local-dir"
+	lock.Source.Type = ""
+	if ok, detail := verifyLockSource(lock); ok {
+		t.Fatal("empty source type should fail")
+	} else if !strings.Contains(detail, "lock source type is empty") {
+		t.Fatalf("empty source type should surface empty detail, got %q", detail)
+	}
+	lock.Source.Type = "local"
 	lock.Source.Type = " local "
 	if ok, _ := verifyLockSource(lock); ok {
 		t.Fatal("type with surrounding whitespace should fail")

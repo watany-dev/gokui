@@ -706,6 +706,9 @@ func verifyLockSource(lock installLock) (bool, string) {
 	if containsSeverityOverrideDisallowedUnicode(lock.Source.Type) {
 		return false, "lock source type must not contain Unicode bidi, zero-width, tag, or variation-selector characters"
 	}
+	if trimmedType == "" {
+		return false, "lock source type is empty"
+	}
 	if trimmedType != lock.Source.Type {
 		return false, "lock source type must not contain leading or trailing whitespace"
 	}

@@ -1603,6 +1603,9 @@ func validateInstallLockForProvenanceReuse(lock installLock, expectedSkillName s
 	if containsSeverityOverrideDisallowedUnicode(lock.Source.Type) {
 		return fmt.Errorf("lock source type must not contain Unicode bidi, zero-width, tag, or variation-selector characters")
 	}
+	if trimmedType == "" {
+		return fmt.Errorf("lock source type is empty")
+	}
 	if trimmedType != lock.Source.Type {
 		return fmt.Errorf("lock source type must not contain leading or trailing whitespace")
 	}

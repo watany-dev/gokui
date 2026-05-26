@@ -908,6 +908,17 @@ func evaluateUpdateSkill(item updateSkillItem, lock installLock, policyLoaded bo
 		}
 		return item, nil
 	}
+	if sourceType == "" {
+		item.Status = "ERROR"
+		item.ErrorCode = updateCodeLockfileInvalid
+		item.Message = "lock source type is empty"
+		item.RuleID = inferRuleIDForJSONError(item.Message)
+		item.Risk = updateRisk{
+			Previous: lock.Findings,
+			Current:  lock.Findings,
+		}
+		return item, nil
+	}
 	if sourceTypeRaw != sourceType {
 		item.Status = "ERROR"
 		item.ErrorCode = updateCodeLockfileInvalid
