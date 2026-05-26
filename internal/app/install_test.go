@@ -3793,6 +3793,13 @@ func TestReadInstallLockAndProvenanceMatches(t *testing.T) {
 				detailPart: "source type must not contain C0/C1 control characters",
 			},
 			{
+				name: "source type has DEL control character only",
+				mutate: func(l *installLock) {
+					l.Source.Type = "\u007f"
+				},
+				detailPart: "source type must not contain C0/C1 control characters",
+			},
+			{
 				name: "source type has unicode obfuscation character",
 				mutate: func(l *installLock) {
 					l.Source.Type = "local\u200d"
