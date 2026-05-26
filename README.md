@@ -320,6 +320,8 @@ skills.
 Parser bounds are also enforced for overall source length and owner/repo/path/ref
 segment lengths.
 GitHub source inputs must not contain ASCII control characters.
+GitHub source owners must follow canonical GitHub login format (no `_`, no
+leading/trailing `-`, and no `--`).
 Local directory inspect already enforces that `SKILL.md` exists at the skill
 root, rejects symlinked source paths/components or symlinked `SKILL.md`, and
 requires `SKILL.md` to be a regular file (not a directory/device/FIFO/socket).

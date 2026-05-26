@@ -297,6 +297,16 @@ func TestRunInstallErrorPaths(t *testing.T) {
 
 	stdout.Reset()
 	stderr.Reset()
+	code = runInstall([]string{"github:owner_name/repo//skill@8f3c2d1a4b5c6d7e8f901234567890abcdef1234", "--target", "codex", "--profile", "strict"}, &stdout, &stderr)
+	if code != 1 {
+		t.Fatalf("runInstall(invalid owner format) code = %d, want 1", code)
+	}
+	if !strings.Contains(stderr.String(), "invalid github source") {
+		t.Fatalf("stderr should include invalid github source for invalid owner format, got %q", stderr.String())
+	}
+
+	stdout.Reset()
+	stderr.Reset()
 	code = runInstall([]string{"github:org/repo//skill@\n8f3c2d1a4b5c6d7e8f901234567890abcdef1234", "--target", "codex", "--profile", "strict"}, &stdout, &stderr)
 	if code != 1 {
 		t.Fatalf("runInstall(control-char source) code = %d, want 1", code)

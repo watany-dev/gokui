@@ -8,9 +8,10 @@ import (
 )
 
 var (
-	githubRepoPartPattern = regexp.MustCompile(`^[A-Za-z0-9_.-]+$`)
-	commitRefPattern      = regexp.MustCompile(`^[0-9a-f]{40}$`)
-	commitRefHexPattern   = regexp.MustCompile(`^[0-9a-fA-F]{40}$`)
+	githubOwnerPartPattern = regexp.MustCompile(`^[A-Za-z0-9-]+$`)
+	githubRepoPartPattern  = regexp.MustCompile(`^[A-Za-z0-9_.-]+$`)
+	commitRefPattern       = regexp.MustCompile(`^[0-9a-f]{40}$`)
+	commitRefHexPattern    = regexp.MustCompile(`^[0-9a-fA-F]{40}$`)
 )
 
 const (
@@ -83,11 +84,14 @@ func ParseGitHubSource(input string) (GitHubSpec, error) {
 	if len(repo) > maxGitHubRepoChars {
 		return GitHubSpec{}, fmt.Errorf("github source repo exceeds max length: %d", maxGitHubRepoChars)
 	}
-	if !githubRepoPartPattern.MatchString(owner) || !githubRepoPartPattern.MatchString(repo) {
+	if !githubOwnerPartPattern.MatchString(owner) || !githubRepoPartPattern.MatchString(repo) {
 		return GitHubSpec{}, fmt.Errorf("github source owner/repo contains invalid characters")
 	}
 	if owner == "." || owner == ".." || repo == "." || repo == ".." {
 		return GitHubSpec{}, fmt.Errorf("github source owner/repo must not use dot segments")
+	}
+	if strings.HasPrefix(owner, "-") || strings.HasSuffix(owner, "-") || strings.Contains(owner, "--") {
+		return GitHubSpec{}, fmt.Errorf("github source owner must be canonical github login format")
 	}
 
 	skillPath, err := normalizeGitHubPath(parts[1])
