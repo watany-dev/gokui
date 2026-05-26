@@ -2951,6 +2951,19 @@ func TestSeverityOverrideAuditHelpers(t *testing.T) {
 				detailPart: "justification must not contain C0/C1 control characters",
 			},
 			{
+				name: "justification has DEL control character only",
+				override: severityOverrideAudit{
+					RuleID:            "PROMPT_OVERRIDE_LANGUAGE",
+					PreviousSeverity:  "high",
+					EffectiveSeverity: "medium",
+					Justification:     "\u007f",
+					ApprovedBy:        "y",
+					Source:            "policy-file",
+					AppliedAt:         "2026-05-24T00:00:00Z",
+				},
+				detailPart: "justification must not contain C0/C1 control characters",
+			},
+			{
 				name: "justification has surrounding whitespace",
 				override: severityOverrideAudit{
 					RuleID:            "PROMPT_OVERRIDE_LANGUAGE",
