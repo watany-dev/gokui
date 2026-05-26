@@ -982,14 +982,14 @@ func verifyInstallReport(skillPath string, lock installLock) (bool, string) {
 		return false, "install report installed must be true"
 	}
 	trimmedInstalledPath := strings.TrimSpace(report.InstalledPath)
-	if trimmedInstalledPath == "" {
-		return false, "install report installed path is empty"
-	}
 	if strings.IndexFunc(report.InstalledPath, isC0OrC1ControlRune) >= 0 {
 		return false, "install report installed path must not contain C0/C1 control characters"
 	}
 	if containsSeverityOverrideDisallowedUnicode(report.InstalledPath) {
 		return false, "install report installed path must not contain Unicode bidi, zero-width, tag, or variation-selector characters"
+	}
+	if trimmedInstalledPath == "" {
+		return false, "install report installed path is empty"
 	}
 	if trimmedInstalledPath != report.InstalledPath {
 		return false, "install report installed path must not contain leading or trailing whitespace"
