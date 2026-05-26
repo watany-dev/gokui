@@ -959,6 +959,29 @@ func TestRunInstallJSONOutput(t *testing.T) {
 		}
 	})
 
+	t.Run("json invalid github unicode-threat source uses source-prepare-failed code", func(t *testing.T) {
+		var stdout strings.Builder
+		var stderr strings.Builder
+		code := runInstall([]string{
+			"github:org/re\u200bpo//skills/x@8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
+			"--target", "codex",
+			"--profile", "strict",
+			"--format", "json",
+		}, &stdout, &stderr)
+		if code != 1 {
+			t.Fatalf("runInstall(json invalid github unicode-threat source) code = %d, want 1\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
+		}
+		if stderr.Len() != 0 {
+			t.Fatalf("stderr should be empty for json errors, got %q", stderr.String())
+		}
+		if !strings.Contains(stdout.String(), "\"error_code\": \""+installErrorCodeSourcePrepareFailed+"\"") {
+			t.Fatalf("stdout should include source-prepare-failed error code, got %q", stdout.String())
+		}
+		if strings.Contains(stdout.String(), "\"rule_id\":") {
+			t.Fatalf("stdout should omit rule_id for non-rule github source invalid errors, got %q", stdout.String())
+		}
+	})
+
 	t.Run("json source stat access error uses source-prepare-failed code", func(t *testing.T) {
 		if runtime.GOOS == "windows" {
 			t.Skip("permission behavior differs on windows")
@@ -2008,6 +2031,33 @@ func TestRunInstallSARIFOutput(t *testing.T) {
 		}
 		if sarif.Runs[0].Properties.Decision != "ERROR" {
 			t.Fatalf("decision = %q, want ERROR", sarif.Runs[0].Properties.Decision)
+		}
+	})
+
+	t.Run("sarif invalid github unicode-threat source uses source-prepare-failed rule", func(t *testing.T) {
+		var stdout strings.Builder
+		var stderr strings.Builder
+		code := runInstall([]string{
+			"github:org/re\u200bpo//skills/x@8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
+			"--target", "codex",
+			"--profile", "strict",
+			"--format", "sarif",
+		}, &stdout, &stderr)
+		if code != 1 {
+			t.Fatalf("runInstall(sarif invalid github unicode-threat source) code = %d, want 1\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
+		}
+		if stderr.Len() != 0 {
+			t.Fatalf("stderr should be empty for sarif errors, got %q", stderr.String())
+		}
+		var sarif inspectSARIFReport
+		if err := json.Unmarshal([]byte(stdout.String()), &sarif); err != nil {
+			t.Fatalf("sarif parse failed: %v", err)
+		}
+		if len(sarif.Runs) != 1 || len(sarif.Runs[0].Results) != 1 {
+			t.Fatalf("unexpected sarif structure: %+v", sarif)
+		}
+		if sarif.Runs[0].Results[0].RuleID != installErrorCodeSourcePrepareFailed {
+			t.Fatalf("rule id = %q, want %q", sarif.Runs[0].Results[0].RuleID, installErrorCodeSourcePrepareFailed)
 		}
 	})
 
