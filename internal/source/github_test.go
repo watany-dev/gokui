@@ -55,6 +55,7 @@ func TestParseGitHubSource(t *testing.T) {
 			"github:owner/repo///abs@ref",
 			"github:owner/repo//./@ref",
 			"github:owner/repo//skills/demo@shadow@ref",
+			"github:owner/repo//skills:demo@ref",
 			`github:owner/repo//skills\demo@ref`,
 			"github:owner/repo//path@ 8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
 			"github:owner/repo//path@8f3c2d1a4b5c6d7e8f901234567890abcdef1234 ",
