@@ -664,6 +664,13 @@ func TestSourceMetadataHelpers(t *testing.T) {
 				detailPart: "schema must not contain C0/C1 control characters",
 			},
 			{
+				name: "schema has surrounding whitespace",
+				mutate: func(m *sourceMetadata) {
+					m.Schema = " gokui.source/v1 "
+				},
+				detailPart: "schema must not contain leading or trailing whitespace",
+			},
+			{
 				name: "source_input has C0/C1 control",
 				mutate: func(m *sourceMetadata) {
 					m.SourceInput = "github:org/repo//skills/x@8f3c2d1a4b5c6d7e8f901234567890abcdef12\u008f4"

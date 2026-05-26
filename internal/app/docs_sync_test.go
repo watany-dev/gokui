@@ -1124,6 +1124,29 @@ func TestSourceMetadataSourceInputUnicodeHardeningDocumentationSync(t *testing.T
 	}
 }
 
+func TestSourceMetadataSchemaCanonicalDocumentationSync(t *testing.T) {
+	readmeBytes, err := os.ReadFile("../../README.md")
+	if err != nil {
+		t.Fatalf("failed to read README.md: %v", err)
+	}
+	readme := string(readmeBytes)
+	roadmapBytes, err := os.ReadFile("../../ROADMAP.md")
+	if err != nil {
+		t.Fatalf("failed to read ROADMAP.md: %v", err)
+	}
+	roadmap := string(roadmapBytes)
+
+	requiredReadme := "Source metadata `schema` must not contain leading/trailing whitespace."
+	if !strings.Contains(readme, requiredReadme) {
+		t.Fatalf("README missing source-metadata schema canonical hardening line: %q", requiredReadme)
+	}
+
+	requiredRoadmap := "Source metadata `schema` canonical validation hardening with explicit surrounding-whitespace rejection"
+	if !strings.Contains(roadmap, requiredRoadmap) {
+		t.Fatalf("ROADMAP missing source-metadata schema canonical hardening line: %q", requiredRoadmap)
+	}
+}
+
 func TestSourceMetadataSourceKindFetchedAtCanonicalDocumentationSync(t *testing.T) {
 	readmeBytes, err := os.ReadFile("../../README.md")
 	if err != nil {

@@ -180,6 +180,7 @@ For `github-source`, lock input must also be canonical
 The same canonical requirement applies to `.gokui-source.json`
 `source_input` during metadata validation. Source metadata also requires
 canonical lowercase/no-whitespace `resolved_ref` and `skill_root_sha256`.
+Source metadata `schema` must not contain leading/trailing whitespace.
 Source metadata `schema`/`source_kind`/`resolved_ref`/`fetched_at`/
 `skill_root_sha256` fields must not contain C0/C1 control characters.
 Source metadata `source_input` must also not contain C0/C1 control characters.
