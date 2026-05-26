@@ -950,6 +950,11 @@ func decodeInspectErrorPayload(raw []byte) inspectErrorReport {
 		},
 		Note: "vet failed while decoding inspect error report",
 	}
+	if !utf8.Valid(raw) {
+		out.Message = "inspect error payload must be valid UTF-8"
+		out.Note = "vet failed while decoding inspect error report (non-UTF-8 payload)"
+		return out
+	}
 	if err := json.Unmarshal(raw, &out); err != nil {
 		message := strings.TrimSpace(string(raw))
 		if message == "" {

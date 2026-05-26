@@ -1754,6 +1754,33 @@ func TestRun(t *testing.T) {
 		}
 	})
 
+	t.Run("vet inspect-error payload rejects non-utf8 in json", func(t *testing.T) {
+		var stdout bytes.Buffer
+		var stderr bytes.Buffer
+
+		origRunInspectForVet := runInspectForVet
+		t.Cleanup(func() { runInspectForVet = origRunInspectForVet })
+		runInspectForVet = func(args []string, stdout io.Writer, stderr io.Writer) int {
+			_, _ = stdout.Write([]byte{0xff})
+			return 1
+		}
+
+		fixturePath := filepath.FromSlash("../../fixtures/clean-skill")
+		code := Run([]string{"vet", fixturePath, "--format", "json"}, &stdout, &stderr, cfg)
+		if code != 1 {
+			t.Fatalf("Run() code = %d, want 1\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
+		}
+		if stderr.Len() != 0 {
+			t.Fatalf("stderr should be empty for json errors, got %q", stderr.String())
+		}
+		if !strings.Contains(stdout.String(), "\"error_code\": \""+inspectErrorCodeUnknown+"\"") {
+			t.Fatalf("stdout should include inspect unknown error code, got %q", stdout.String())
+		}
+		if !strings.Contains(stdout.String(), "inspect error payload must be valid UTF-8") {
+			t.Fatalf("stdout should include utf-8 payload error message, got %q", stdout.String())
+		}
+	})
+
 	t.Run("vet inspect-source errors are surfaced in human output", func(t *testing.T) {
 		var stdout bytes.Buffer
 		var stderr bytes.Buffer
