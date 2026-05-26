@@ -1804,6 +1804,13 @@ func TestVerifyInstallReportValidationBranches(t *testing.T) {
 			detailHas: "schema_version must not contain C0/C1 control characters",
 		},
 		{
+			name: "schema has C0/C1 control character at edge",
+			mutate: func(r *installReport) {
+				r.SchemaVersion = "\u00850.1.0-draft"
+			},
+			detailHas: "schema_version must not contain C0/C1 control characters",
+		},
+		{
 			name: "schema has surrounding whitespace",
 			mutate: func(r *installReport) {
 				r.SchemaVersion = " 0.1.0-draft "

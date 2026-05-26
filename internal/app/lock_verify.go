@@ -890,14 +890,14 @@ func verifyInstallReport(skillPath string, lock installLock) (bool, string) {
 	if trimmedSchemaVersion == "" {
 		return false, "install report schema_version is empty"
 	}
-	if trimmedSchemaVersion != report.SchemaVersion {
-		return false, "install report schema_version must not contain leading or trailing whitespace"
-	}
 	if strings.IndexFunc(report.SchemaVersion, isC0OrC1ControlRune) >= 0 {
 		return false, "install report schema_version must not contain C0/C1 control characters"
 	}
 	if containsSeverityOverrideDisallowedUnicode(report.SchemaVersion) {
 		return false, "install report schema_version must not contain Unicode bidi, zero-width, tag, or variation-selector characters"
+	}
+	if trimmedSchemaVersion != report.SchemaVersion {
+		return false, "install report schema_version must not contain leading or trailing whitespace"
 	}
 	if report.SchemaVersion != reportSchemaVersion {
 		return false, fmt.Sprintf("install report schema_version is unsupported: %s", report.SchemaVersion)
