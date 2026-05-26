@@ -1035,6 +1035,10 @@ func TestVerifyLockSourceChecks(t *testing.T) {
 	if ok, _ := verifyLockSource(lock); ok {
 		t.Fatal("github source input with path surrounding spaces should fail")
 	}
+	lock.Source.Input = "github:org/repo//skills//demo@abc1234a4b5c6d7e8f901234567890abcdef1234"
+	if ok, _ := verifyLockSource(lock); ok {
+		t.Fatal("github source input with non-canonical path segments should fail")
+	}
 
 	lock.Source.Input = "github:org/repo//skills/demo@main"
 	if ok, _ := verifyLockSource(lock); ok {
@@ -2078,6 +2082,78 @@ func TestSeverityOverrideAuditHelpers(t *testing.T) {
 			})
 		}
 	})
+}
+
+func TestLockFindingSummaryAndSeverityOverrideEqualityBranches(t *testing.T) {
+	if err := validateLockFindingSummary(lockFindingSummary{
+		Critical: 0,
+		High:     1,
+		Medium:   2,
+		Low:      3,
+	}); err != nil {
+		t.Fatalf("validateLockFindingSummary(valid) error = %v", err)
+	}
+
+	negCases := []struct {
+		name    string
+		summary lockFindingSummary
+		detail  string
+	}{
+		{
+			name:    "critical negative",
+			summary: lockFindingSummary{Critical: -1},
+			detail:  "critical count",
+		},
+		{
+			name:    "high negative",
+			summary: lockFindingSummary{High: -1},
+			detail:  "high count",
+		},
+		{
+			name:    "medium negative",
+			summary: lockFindingSummary{Medium: -1},
+			detail:  "medium count",
+		},
+		{
+			name:    "low negative",
+			summary: lockFindingSummary{Low: -1},
+			detail:  "low count",
+		},
+	}
+	for _, tc := range negCases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := validateLockFindingSummary(tc.summary)
+			if err == nil || !strings.Contains(err.Error(), tc.detail) {
+				t.Fatalf("expected %q validation error, got %v", tc.detail, err)
+			}
+		})
+	}
+
+	left := []severityOverrideAudit{
+		{
+			RuleID:            "PROMPT_OVERRIDE_LANGUAGE",
+			PreviousSeverity:  "high",
+			EffectiveSeverity: "medium",
+			Justification:     "approved",
+			ApprovedBy:        "security-reviewer",
+			Source:            "policy-file",
+			AppliedAt:         "2026-05-24T00:00:00Z",
+		},
+	}
+	right := []severityOverrideAudit{
+		{
+			RuleID:            "PROMPT_OVERRIDE_LANGUAGE",
+			PreviousSeverity:  "high",
+			EffectiveSeverity: "low",
+			Justification:     "approved",
+			ApprovedBy:        "security-reviewer",
+			Source:            "policy-file",
+			AppliedAt:         "2026-05-24T00:00:00Z",
+		},
+	}
+	if severityOverridesEqual(left, right) {
+		t.Fatal("severityOverridesEqual should be false for same-length slices with different entries")
+	}
 }
 
 func TestLockRelativePathProperties(t *testing.T) {

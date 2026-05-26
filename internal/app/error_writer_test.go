@@ -169,3 +169,155 @@ func TestStructuredErrorWritersHandleStdoutWriteFailure(t *testing.T) {
 		}
 	})
 }
+
+func TestStructuredErrorWritersPreserveExplicitRuleID(t *testing.T) {
+	const explicitRule = "EXPLICIT_RULE"
+
+	t.Run("inspect json and sarif", func(t *testing.T) {
+		report := inspectErrorReport{
+			SchemaVersion: reportSchemaVersion,
+			ErrorCode:     "",
+			RuleID:        explicitRule,
+			Message:       "inspect failed",
+			Source:        source{Input: "/tmp/skill", Kind: "local-dir"},
+			Note:          "test",
+		}
+
+		var stdout strings.Builder
+		var stderr strings.Builder
+		if code := writeInspectJSONError(&stdout, &stderr, report); code != 1 || stderr.Len() != 0 {
+			t.Fatalf("writeInspectJSONError() code=%d stderr=%q", code, stderr.String())
+		}
+		if !strings.Contains(stdout.String(), `"rule_id": "`+explicitRule+`"`) {
+			t.Fatalf("inspect json should preserve explicit rule_id, got %q", stdout.String())
+		}
+
+		stdout.Reset()
+		stderr.Reset()
+		if code := writeInspectSARIFError(&stdout, &stderr, report); code != 1 || stderr.Len() != 0 {
+			t.Fatalf("writeInspectSARIFError() code=%d stderr=%q", code, stderr.String())
+		}
+		if !strings.Contains(stdout.String(), `"ruleId": "`+explicitRule+`"`) {
+			t.Fatalf("inspect sarif should preserve explicit ruleId, got %q", stdout.String())
+		}
+	})
+
+	t.Run("fetch json and sarif", func(t *testing.T) {
+		report := fetchErrorReport{
+			SchemaVersion: reportSchemaVersion,
+			ErrorCode:     "",
+			RuleID:        explicitRule,
+			Message:       "fetch failed",
+			Source:        source{Input: "github:org/repo//skills/x@main", Kind: "github-source"},
+			Output:        "/tmp/out",
+			Note:          "test",
+		}
+
+		var stdout strings.Builder
+		var stderr strings.Builder
+		if code := writeFetchJSONError(&stdout, &stderr, report); code != 1 || stderr.Len() != 0 {
+			t.Fatalf("writeFetchJSONError() code=%d stderr=%q", code, stderr.String())
+		}
+		if !strings.Contains(stdout.String(), `"rule_id": "`+explicitRule+`"`) {
+			t.Fatalf("fetch json should preserve explicit rule_id, got %q", stdout.String())
+		}
+
+		stdout.Reset()
+		stderr.Reset()
+		if code := writeFetchSARIFError(&stdout, &stderr, report); code != 1 || stderr.Len() != 0 {
+			t.Fatalf("writeFetchSARIFError() code=%d stderr=%q", code, stderr.String())
+		}
+		if !strings.Contains(stdout.String(), `"ruleId": "`+explicitRule+`"`) {
+			t.Fatalf("fetch sarif should preserve explicit ruleId, got %q", stdout.String())
+		}
+	})
+
+	t.Run("install json and sarif", func(t *testing.T) {
+		report := installErrorReport{
+			SchemaVersion: reportSchemaVersion,
+			ErrorCode:     "",
+			RuleID:        explicitRule,
+			Message:       "install failed",
+			Source:        source{Input: "/tmp/skill", Kind: "local-dir"},
+			Target:        "custom:/tmp/skills",
+			PolicyProfile: policyProfileStrict,
+			Note:          "test",
+		}
+
+		var stdout strings.Builder
+		var stderr strings.Builder
+		if code := writeInstallJSONError(&stdout, &stderr, report); code != 1 || stderr.Len() != 0 {
+			t.Fatalf("writeInstallJSONError() code=%d stderr=%q", code, stderr.String())
+		}
+		if !strings.Contains(stdout.String(), `"rule_id": "`+explicitRule+`"`) {
+			t.Fatalf("install json should preserve explicit rule_id, got %q", stdout.String())
+		}
+
+		stdout.Reset()
+		stderr.Reset()
+		if code := writeInstallSARIFError(&stdout, &stderr, report); code != 1 || stderr.Len() != 0 {
+			t.Fatalf("writeInstallSARIFError() code=%d stderr=%q", code, stderr.String())
+		}
+		if !strings.Contains(stdout.String(), `"ruleId": "`+explicitRule+`"`) {
+			t.Fatalf("install sarif should preserve explicit ruleId, got %q", stdout.String())
+		}
+	})
+
+	t.Run("update json and sarif", func(t *testing.T) {
+		report := updateErrorReport{
+			SchemaVersion: reportSchemaVersion,
+			ErrorCode:     "",
+			RuleID:        explicitRule,
+			Message:       "update failed",
+			Target:        "/tmp/skills",
+			Note:          "test",
+		}
+
+		var stdout strings.Builder
+		var stderr strings.Builder
+		if code := writeUpdateJSONError(&stdout, &stderr, report); code != 1 || stderr.Len() != 0 {
+			t.Fatalf("writeUpdateJSONError() code=%d stderr=%q", code, stderr.String())
+		}
+		if !strings.Contains(stdout.String(), `"rule_id": "`+explicitRule+`"`) {
+			t.Fatalf("update json should preserve explicit rule_id, got %q", stdout.String())
+		}
+
+		stdout.Reset()
+		stderr.Reset()
+		if code := writeUpdateSARIFError(&stdout, &stderr, report); code != 1 || stderr.Len() != 0 {
+			t.Fatalf("writeUpdateSARIFError() code=%d stderr=%q", code, stderr.String())
+		}
+		if !strings.Contains(stdout.String(), `"ruleId": "`+explicitRule+`"`) {
+			t.Fatalf("update sarif should preserve explicit ruleId, got %q", stdout.String())
+		}
+	})
+
+	t.Run("lock verify json and sarif", func(t *testing.T) {
+		report := lockVerifyErrorReport{
+			SchemaVersion: reportSchemaVersion,
+			SkillPath:     "/tmp/skill",
+			ErrorCode:     "",
+			RuleID:        explicitRule,
+			Message:       "lock verify failed",
+			Note:          "test",
+		}
+
+		var stdout strings.Builder
+		var stderr strings.Builder
+		if code := writeLockVerifyJSONError(&stdout, &stderr, report); code != 1 || stderr.Len() != 0 {
+			t.Fatalf("writeLockVerifyJSONError() code=%d stderr=%q", code, stderr.String())
+		}
+		if !strings.Contains(stdout.String(), `"rule_id": "`+explicitRule+`"`) {
+			t.Fatalf("lock verify json should preserve explicit rule_id, got %q", stdout.String())
+		}
+
+		stdout.Reset()
+		stderr.Reset()
+		if code := writeLockVerifySARIFError(&stdout, &stderr, report); code != 1 || stderr.Len() != 0 {
+			t.Fatalf("writeLockVerifySARIFError() code=%d stderr=%q", code, stderr.String())
+		}
+		if !strings.Contains(stdout.String(), `"ruleId": "`+explicitRule+`"`) {
+			t.Fatalf("lock verify sarif should preserve explicit ruleId, got %q", stdout.String())
+		}
+	})
+}

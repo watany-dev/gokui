@@ -2447,6 +2447,44 @@ func TestRunUpdateDryRunRejectedAndError(t *testing.T) {
 		}
 	})
 
+	t.Run("github source with non-canonical path segments in lock is error", func(t *testing.T) {
+		targetRoot := filepath.Join(t.TempDir(), "skills")
+		if err := os.MkdirAll(filepath.Join(targetRoot, "github-noncanonical-path"), 0o755); err != nil {
+			t.Fatalf("mkdir github noncanonical-path skill dir: %v", err)
+		}
+		lock := installLock{
+			Schema:      "gokui.lock/v1",
+			Name:        "github-noncanonical-path",
+			InstalledAt: "2026-05-24T00:00:00Z",
+			Source: lockSource{
+				Type:  "github",
+				Input: "github:org/repo//skills//demo@8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
+				Kind:  "github-source",
+			},
+			Policy: lockPolicy{Profile: "strict", Decision: "pass"},
+		}
+		raw, err := json.MarshalIndent(lock, "", "  ")
+		if err != nil {
+			t.Fatalf("marshal lock: %v", err)
+		}
+		if err := os.WriteFile(filepath.Join(targetRoot, "github-noncanonical-path", installLockFile), raw, 0o644); err != nil {
+			t.Fatalf("write lock: %v", err)
+		}
+
+		var stdout strings.Builder
+		var stderr strings.Builder
+		code := runUpdate([]string{"--dry-run", "--target", "custom:" + targetRoot, "--format", "json"}, &stdout, &stderr)
+		if code != 1 {
+			t.Fatalf("runUpdate(non-canonical path github source) code = %d, want 1\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
+		}
+		if stderr.Len() != 0 {
+			t.Fatalf("stderr should be empty, got %q", stderr.String())
+		}
+		if !strings.Contains(stdout.String(), "\"error_code\": \""+updateCodeGitHubSourceBad+"\"") {
+			t.Fatalf("stdout should include invalid-source error_code, got %q", stdout.String())
+		}
+	})
+
 	t.Run("unsupported source kind in lock is lockfile invalid", func(t *testing.T) {
 		targetRoot := filepath.Join(t.TempDir(), "skills")
 		if err := os.MkdirAll(filepath.Join(targetRoot, "unknown-kind"), 0o755); err != nil {
@@ -2814,11 +2852,11 @@ func TestRunUpdateDryRunRejectedAndError(t *testing.T) {
 		if stderr.Len() != 0 {
 			t.Fatalf("stderr should be empty, got %q", stderr.String())
 		}
-		if !strings.Contains(stdout.String(), "\"error_code\": \""+updateCodeLockfileInvalid+"\"") {
-			t.Fatalf("stdout should include lockfile-invalid error_code, got %q", stdout.String())
+		if !strings.Contains(stdout.String(), "\"error_code\": \""+updateCodeGitHubSourceBad+"\"") {
+			t.Fatalf("stdout should include github-source-invalid error_code, got %q", stdout.String())
 		}
-		if !strings.Contains(stdout.String(), "github lock source input must be canonical") {
-			t.Fatalf("stdout should include github-canonical message, got %q", stdout.String())
+		if !strings.Contains(stdout.String(), "invalid github source in lockfile") {
+			t.Fatalf("stdout should include invalid github source message, got %q", stdout.String())
 		}
 	})
 
@@ -4932,6 +4970,119 @@ func TestValidateUpdateLockAgainstInstallReport(t *testing.T) {
 		err := validateUpdateLockAgainstInstallReport(fileAsRoot, lock)
 		if err == nil || !strings.Contains(err.Error(), "failed to evaluate install report for update baseline") {
 			t.Fatalf("expected install-report stat failure, got %v", err)
+		}
+	})
+}
+
+func TestValidateUpdateLockEnvelopeAndSkillSnapshotBranches(t *testing.T) {
+	valid := installLock{
+		Schema:      lockSchemaVersion,
+		Name:        "skill-a",
+		InstalledAt: "2026-05-24T00:00:00Z",
+		Policy: lockPolicy{
+			Profile:  "strict",
+			Decision: "pass",
+		},
+		Findings: lockFindingSummary{
+			Critical: 0,
+			High:     0,
+			Medium:   0,
+			Low:      0,
+		},
+		Skill: lockSkill{
+			RootSHA256: strings.Repeat("a", 64),
+			Files: []lockFileHash{
+				{Path: "SKILL.md", SHA256: strings.Repeat("b", 64), Bytes: 1},
+			},
+		},
+	}
+
+	t.Run("envelope success with explicit and empty expected name", func(t *testing.T) {
+		if err := validateUpdateLockEnvelope(valid, "skill-a"); err != nil {
+			t.Fatalf("validateUpdateLockEnvelope(explicit name) error = %v", err)
+		}
+		if err := validateUpdateLockEnvelope(valid, ""); err != nil {
+			t.Fatalf("validateUpdateLockEnvelope(empty expected name) error = %v", err)
+		}
+	})
+
+	t.Run("envelope rejects invalid findings summary", func(t *testing.T) {
+		mut := valid
+		mut.Findings.Critical = -1
+		if err := validateUpdateLockEnvelope(mut, "skill-a"); err == nil || !strings.Contains(err.Error(), "findings summary") {
+			t.Fatalf("expected findings-summary error, got %v", err)
+		}
+	})
+
+	t.Run("envelope rejects invalid severity override audit", func(t *testing.T) {
+		mut := valid
+		mut.Policy.SeverityOverrides = []severityOverrideAudit{
+			{
+				RuleID:            "bad-rule",
+				PreviousSeverity:  "high",
+				EffectiveSeverity: "medium",
+				Justification:     "test",
+				ApprovedBy:        "reviewer",
+				Source:            "policy-file",
+				AppliedAt:         "2026-05-24T00:00:00Z",
+			},
+		}
+		if err := validateUpdateLockEnvelope(mut, "skill-a"); err == nil || !strings.Contains(err.Error(), "severity_overrides") {
+			t.Fatalf("expected severity-override error, got %v", err)
+		}
+	})
+
+	t.Run("skill snapshot validates all failure branches", func(t *testing.T) {
+		if err := validateUpdateLockSkillSnapshot(valid); err != nil {
+			t.Fatalf("validateUpdateLockSkillSnapshot(valid) error = %v", err)
+		}
+
+		clone := func(in installLock) installLock {
+			out := in
+			out.Skill.Files = append([]lockFileHash(nil), in.Skill.Files...)
+			return out
+		}
+
+		mut := clone(valid)
+		mut.Skill.RootSHA256 = "bad"
+		if err := validateUpdateLockSkillSnapshot(mut); err == nil || !strings.Contains(err.Error(), "root_sha256") {
+			t.Fatalf("expected root digest error, got %v", err)
+		}
+
+		mut = clone(valid)
+		mut.Skill.Files = nil
+		if err := validateUpdateLockSkillSnapshot(mut); err == nil || !strings.Contains(err.Error(), "files is empty") {
+			t.Fatalf("expected empty-files error, got %v", err)
+		}
+
+		mut = clone(valid)
+		mut.Skill.Files[0].Path = ""
+		if err := validateUpdateLockSkillSnapshot(mut); err == nil || !strings.Contains(err.Error(), "file path is empty") {
+			t.Fatalf("expected empty-path error, got %v", err)
+		}
+
+		mut = clone(valid)
+		mut.Skill.Files[0].Path = "../SKILL.md"
+		if err := validateUpdateLockSkillSnapshot(mut); err == nil || !strings.Contains(err.Error(), "file path is invalid") {
+			t.Fatalf("expected invalid-path error, got %v", err)
+		}
+
+		mut = clone(valid)
+		mut.Skill.Files = append(mut.Skill.Files, mut.Skill.Files[0])
+		if err := validateUpdateLockSkillSnapshot(mut); err == nil || !strings.Contains(err.Error(), "duplicate lock file path") {
+			t.Fatalf("expected duplicate-path error, got %v", err)
+		}
+
+		mut = clone(valid)
+		mut.Skill.Files[0].SHA256 = "bad"
+		if err := validateUpdateLockSkillSnapshot(mut); err == nil || !strings.Contains(err.Error(), "file sha256 is invalid") {
+			t.Fatalf("expected file-sha error, got %v", err)
+		}
+
+		mut = clone(valid)
+		mut.Skill.Files[0].Bytes = -1
+		if err := validateUpdateLockSkillSnapshot(mut); err == nil || !strings.Contains(err.Error(), "file bytes is negative") {
+			t.Fatalf("expected file-bytes error, got %v", err)
 		}
 	})
 }

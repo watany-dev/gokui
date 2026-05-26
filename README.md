@@ -103,7 +103,7 @@ status-aware automation. Update target entries and URL/executable scan inputs
 must not contain symlink path entries, and URL/executable scan roots must be
 non-symlink directories.
 For `github-source`, lock input must also be canonical
-(`github:owner/repo//clean/path@ref`) after parser normalization.
+(`github:owner/repo//clean/path@ref`) with no implicit parser normalization.
 The same canonical requirement applies to `.gokui-source.json`
 `source_input` during metadata validation. Source metadata also requires
 canonical lowercase/no-whitespace `resolved_ref` and `skill_root_sha256`.

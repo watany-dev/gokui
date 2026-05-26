@@ -122,6 +122,9 @@ func normalizeGitHubPath(p string) (string, error) {
 	if clean == "." || clean == "" {
 		return "", fmt.Errorf("github source path must be non-empty")
 	}
+	if clean != raw {
+		return "", fmt.Errorf("github source path must be canonical without empty, dot, or trailing-slash segments")
+	}
 	if strings.HasPrefix(clean, "../") || clean == ".." {
 		return "", fmt.Errorf("github source path must not escape repository root")
 	}

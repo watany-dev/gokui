@@ -35,6 +35,7 @@ tests/CI:
 - GitHub source parser length bounds (input and owner/repo/path/ref segments)
 - GitHub source parser rejection of ASCII control characters in source input
 - GitHub source parser rejection of surrounding whitespace in `//path` segment
+- GitHub source parser rejection of non-canonical `//path` segments (`//`, `/./`, `/../`, trailing `/`)
 - Atomic install with `.gokui-report.json` and `gokui.lock`
 - Built-in install policy profiles: `strict`, `team`, `research`
 - User policy loading from `~/.config/gokui/policy.toml` (`default_profile`)

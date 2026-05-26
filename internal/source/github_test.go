@@ -30,6 +30,10 @@ func TestParseGitHubSource(t *testing.T) {
 			"github:owner/..//path@ref",
 			"github:owner/repo//@ref",
 			"github:owner/repo//../path@ref",
+			"github:owner/repo//skills//demo@ref",
+			"github:owner/repo//skills/./demo@ref",
+			"github:owner/repo//skills/demo/@ref",
+			"github:owner/repo//skills/demo/../other@ref",
 			"github:owner/repo//path",
 			"github:/repo//path@ref",
 			"github:owner/ repo//path@ref",
@@ -142,6 +146,15 @@ func TestNormalizeGitHubPath(t *testing.T) {
 		for _, in := range cases {
 			if _, err := normalizeGitHubPath(in); err == nil {
 				t.Fatalf("expected path-space error for %q", in)
+			}
+		}
+	})
+
+	t.Run("rejects non-canonical path segments", func(t *testing.T) {
+		cases := []string{"skills//demo", "skills/./demo", "skills/demo/", "skills/a/../demo"}
+		for _, in := range cases {
+			if _, err := normalizeGitHubPath(in); err == nil {
+				t.Fatalf("expected canonical-path error for %q", in)
 			}
 		}
 	})

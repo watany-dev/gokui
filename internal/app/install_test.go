@@ -317,6 +317,16 @@ func TestRunInstallErrorPaths(t *testing.T) {
 
 	stdout.Reset()
 	stderr.Reset()
+	code = runInstall([]string{"github:org/repo//skill//nested@8f3c2d1a4b5c6d7e8f901234567890abcdef1234", "--target", "codex", "--profile", "strict"}, &stdout, &stderr)
+	if code != 1 {
+		t.Fatalf("runInstall(non-canonical path source) code = %d, want 1", code)
+	}
+	if !strings.Contains(stderr.String(), "invalid github source") {
+		t.Fatalf("stderr should include invalid github source for non-canonical path source, got %q", stderr.String())
+	}
+
+	stdout.Reset()
+	stderr.Reset()
 	origFetch := fetchGitHubSkill
 	t.Cleanup(func() { fetchGitHubSkill = origFetch })
 	fakeSource := createSkillSourceForInstallTest(t, "mocked-github-skill")
@@ -3185,8 +3195,8 @@ func TestReadInstallLockAndProvenanceMatches(t *testing.T) {
 			mut := githubValid
 			mut.Source.Input = "github:org/repo//skills/./github-skill@8f3c2d1a4b5c6d7e8f901234567890abcdef1234"
 			err := validateInstallLockForProvenanceReuse(mut, "github-skill")
-			if err == nil || !strings.Contains(err.Error(), "github lock source input must be canonical") {
-				t.Fatalf("expected github canonical error, got %v", err)
+			if err == nil || !strings.Contains(err.Error(), "invalid github source input in lock") {
+				t.Fatalf("expected github canonical-path syntax error, got %v", err)
 			}
 		})
 
@@ -3214,6 +3224,15 @@ func TestReadInstallLockAndProvenanceMatches(t *testing.T) {
 			err := validateInstallLockForProvenanceReuse(mut, "github-skill")
 			if err == nil || !strings.Contains(err.Error(), "invalid github source input in lock") {
 				t.Fatalf("expected github source path-space syntax error, got %v", err)
+			}
+		})
+
+		t.Run("github source non-canonical path segments must be invalid", func(t *testing.T) {
+			mut := githubValid
+			mut.Source.Input = "github:org/repo//skills//github-skill@8f3c2d1a4b5c6d7e8f901234567890abcdef1234"
+			err := validateInstallLockForProvenanceReuse(mut, "github-skill")
+			if err == nil || !strings.Contains(err.Error(), "invalid github source input in lock") {
+				t.Fatalf("expected github source non-canonical path syntax error, got %v", err)
 			}
 		})
 	})
