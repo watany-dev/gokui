@@ -3457,6 +3457,13 @@ func TestReadInstallLockAndProvenanceMatches(t *testing.T) {
 				detailPart: "schema must not contain C0/C1 control characters",
 			},
 			{
+				name: "schema has DEL control character at edge",
+				mutate: func(l *installLock) {
+					l.Schema = "\u007fgokui.lock/v1"
+				},
+				detailPart: "schema must not contain C0/C1 control characters",
+			},
+			{
 				name: "schema has surrounding whitespace",
 				mutate: func(l *installLock) {
 					l.Schema = " gokui.lock/v1 "
