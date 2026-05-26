@@ -1103,6 +1103,18 @@ func TestVerifyLockSourceChecks(t *testing.T) {
 	if ok, _ := verifyLockSource(lock); ok {
 		t.Fatal("github source input with non-canonical path segments should fail")
 	}
+	lock.Source.Input = "github:org/repo//skills/demo@abc1234a4b5c6d7e8f90\u00a01234567890abcdef1234"
+	if ok, _ := verifyLockSource(lock); ok {
+		t.Fatal("github source input with unicode-whitespace ref should fail")
+	}
+	lock.Source.Input = "github:org/repo//skills/demo@abc1234a4b5c6d7e8f90\u200b1234567890abcdef1234"
+	if ok, _ := verifyLockSource(lock); ok {
+		t.Fatal("github source input with zero-width ref should fail")
+	}
+	lock.Source.Input = "github:org/repo//skills/demo@abc1234a4b5c6d7e8f90\u202e1234567890abcdef1234"
+	if ok, _ := verifyLockSource(lock); ok {
+		t.Fatal("github source input with bidi-control ref should fail")
+	}
 
 	lock.Source.Input = "github:org/repo//skills/demo@main"
 	if ok, _ := verifyLockSource(lock); ok {

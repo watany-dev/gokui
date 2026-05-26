@@ -246,6 +246,36 @@ func TestRunFetch(t *testing.T) {
 
 		stdout.Reset()
 		stderr.Reset()
+		code = runFetch([]string{"github:org/repo//skills/demo@8f3c2d1a4b5c6d7e8f90\u00a01234567890abcdef1234", "--out", t.TempDir()}, &stdout, &stderr)
+		if code != 1 {
+			t.Fatalf("runFetch(ref-unicode-whitespace source) code = %d, want 1", code)
+		}
+		if !strings.Contains(stderr.String(), "invalid github source") {
+			t.Fatalf("stderr should include invalid source message for ref-unicode-whitespace source, got %q", stderr.String())
+		}
+
+		stdout.Reset()
+		stderr.Reset()
+		code = runFetch([]string{"github:org/repo//skills/demo@8f3c2d1a4b5c6d7e8f90\u200b1234567890abcdef1234", "--out", t.TempDir()}, &stdout, &stderr)
+		if code != 1 {
+			t.Fatalf("runFetch(ref-zero-width source) code = %d, want 1", code)
+		}
+		if !strings.Contains(stderr.String(), "invalid github source") {
+			t.Fatalf("stderr should include invalid source message for ref-zero-width source, got %q", stderr.String())
+		}
+
+		stdout.Reset()
+		stderr.Reset()
+		code = runFetch([]string{"github:org/repo//skills/demo@8f3c2d1a4b5c6d7e8f90\u202e1234567890abcdef1234", "--out", t.TempDir()}, &stdout, &stderr)
+		if code != 1 {
+			t.Fatalf("runFetch(ref-bidi-control source) code = %d, want 1", code)
+		}
+		if !strings.Contains(stderr.String(), "invalid github source") {
+			t.Fatalf("stderr should include invalid source message for ref-bidi-control source, got %q", stderr.String())
+		}
+
+		stdout.Reset()
+		stderr.Reset()
 		code = runFetch([]string{"github:org/repo//skills/demo@shadow@8f3c2d1a4b5c6d7e8f901234567890abcdef1234", "--out", t.TempDir()}, &stdout, &stderr)
 		if code != 1 {
 			t.Fatalf("runFetch(path-at source) code = %d, want 1", code)

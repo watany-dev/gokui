@@ -56,6 +56,15 @@ func ParseGitHubSource(input string) (GitHubSpec, error) {
 	if strings.TrimSpace(ref) != ref {
 		return GitHubSpec{}, fmt.Errorf("github source ref must not contain surrounding spaces")
 	}
+	if containsUnicodeWhitespace(ref) {
+		return GitHubSpec{}, fmt.Errorf("github source ref must not contain whitespace characters")
+	}
+	if containsZeroWidthCharacter(ref) {
+		return GitHubSpec{}, fmt.Errorf("github source ref must not contain zero-width characters")
+	}
+	if containsUnicodeBidiControl(ref) {
+		return GitHubSpec{}, fmt.Errorf("github source ref must not contain Unicode bidi control characters")
+	}
 	if commitRefHexPattern.MatchString(ref) && !commitRefPattern.MatchString(ref) {
 		return GitHubSpec{}, fmt.Errorf("github source commit ref must be canonical lowercase 40-hex")
 	}

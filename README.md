@@ -315,6 +315,8 @@ GitHub source syntax is now strictly validated as
 require commit-pinned refs for GitHub sources and reject floating refs.
 Commit-pinned refs must use canonical lowercase 40-hex SHA form.
 Commit-pinned refs must not include surrounding whitespace.
+Ref values must not contain Unicode whitespace, zero-width, or bidi control
+characters.
 The `//path/to/skill` segment must not contain surrounding whitespace.
 The `//path/to/skill` segment must not contain `@`.
 The `//path/to/skill` segment must not contain `:`.
