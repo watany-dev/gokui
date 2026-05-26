@@ -134,14 +134,14 @@ func validateSourceMetadata(meta sourceMetadata) error {
 	if trimmedSourceInput == "" {
 		return fmt.Errorf("source metadata source_input is empty")
 	}
-	if trimmedSourceInput != meta.SourceInput {
-		return fmt.Errorf("source metadata source_input must not contain leading or trailing whitespace")
-	}
 	if strings.IndexFunc(meta.SourceInput, isC0OrC1ControlRune) >= 0 {
 		return fmt.Errorf("source metadata source_input must not contain C0/C1 control characters")
 	}
 	if containsSeverityOverrideDisallowedUnicode(meta.SourceInput) {
 		return fmt.Errorf("source metadata source_input must not contain Unicode bidi, zero-width, tag, or variation-selector characters")
+	}
+	if trimmedSourceInput != meta.SourceInput {
+		return fmt.Errorf("source metadata source_input must not contain leading or trailing whitespace")
 	}
 	if strings.IndexFunc(meta.SourceKind, isC0OrC1ControlRune) >= 0 {
 		return fmt.Errorf("source metadata source_kind must not contain C0/C1 control characters")

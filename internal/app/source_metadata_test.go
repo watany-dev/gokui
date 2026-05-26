@@ -678,6 +678,13 @@ func TestSourceMetadataHelpers(t *testing.T) {
 				detailPart: "source_input must not contain C0/C1 control characters",
 			},
 			{
+				name: "source_input has C0/C1 control at edge",
+				mutate: func(m *sourceMetadata) {
+					m.SourceInput = "\u0085github:org/repo//skills/x@8f3c2d1a4b5c6d7e8f901234567890abcdef1234"
+				},
+				detailPart: "source_input must not contain C0/C1 control characters",
+			},
+			{
 				name: "source_kind has C0/C1 control",
 				mutate: func(m *sourceMetadata) {
 					m.SourceKind = "github-source\u008f"
