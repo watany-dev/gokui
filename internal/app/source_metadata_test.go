@@ -739,6 +739,68 @@ func TestSourceMetadataHelpers(t *testing.T) {
 		}
 	})
 
+	t.Run("validate metadata rejects unicode obfuscation characters with explicit errors", func(t *testing.T) {
+		valid := sourceMetadata{
+			Schema:          "gokui.source/v1",
+			SourceInput:     "github:org/repo//skills/x@8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
+			SourceKind:      "github-source",
+			ResolvedRef:     "8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
+			FetchedAt:       "2026-05-23T00:00:00Z",
+			SkillRootSHA256: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+		}
+		cases := []struct {
+			name       string
+			mutate     func(*sourceMetadata)
+			detailPart string
+		}{
+			{
+				name: "schema has bidi control",
+				mutate: func(m *sourceMetadata) {
+					m.Schema = "gokui.source/v1\u202e"
+				},
+				detailPart: "schema must not contain Unicode bidi, zero-width, tag, or variation-selector characters",
+			},
+			{
+				name: "source_kind has zero-width character",
+				mutate: func(m *sourceMetadata) {
+					m.SourceKind = "github-source\u200d"
+				},
+				detailPart: "source_kind must not contain Unicode bidi, zero-width, tag, or variation-selector characters",
+			},
+			{
+				name: "resolved_ref has zero-width character",
+				mutate: func(m *sourceMetadata) {
+					m.ResolvedRef = "8f3c2d1a4b5c6d7e8f901234567890abcdef12\u200d34"
+				},
+				detailPart: "resolved_ref must not contain Unicode bidi, zero-width, tag, or variation-selector characters",
+			},
+			{
+				name: "fetched_at has tag character",
+				mutate: func(m *sourceMetadata) {
+					m.FetchedAt = "2026-05-23T00:00:00Z\U000E0001"
+				},
+				detailPart: "fetched_at must not contain Unicode bidi, zero-width, tag, or variation-selector characters",
+			},
+			{
+				name: "skill_root_sha256 has variation selector",
+				mutate: func(m *sourceMetadata) {
+					m.SkillRootSHA256 = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\ufe0f"
+				},
+				detailPart: "skill_root_sha256 must not contain Unicode bidi, zero-width, tag, or variation-selector characters",
+			},
+		}
+		for _, tc := range cases {
+			t.Run(tc.name, func(t *testing.T) {
+				mut := valid
+				tc.mutate(&mut)
+				err := validateSourceMetadata(mut)
+				if err == nil || !strings.Contains(err.Error(), tc.detailPart) {
+					t.Fatalf("expected validation detail %q, got err=%v", tc.detailPart, err)
+				}
+			})
+		}
+	})
+
 	t.Run("verify installed metadata errors", func(t *testing.T) {
 		dir := t.TempDir()
 		if err := verifyInstalledSourceMetadata(dir, source{Input: "x", Kind: "github-source"}); err == nil {

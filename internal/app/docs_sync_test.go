@@ -788,6 +788,31 @@ func TestSourceMetadataSourceKindFetchedAtCanonicalDocumentationSync(t *testing.
 	}
 }
 
+func TestSourceMetadataUnicodeHardeningDocumentationSync(t *testing.T) {
+	readmeBytes, err := os.ReadFile("../../README.md")
+	if err != nil {
+		t.Fatalf("failed to read README.md: %v", err)
+	}
+	readme := string(readmeBytes)
+	roadmapBytes, err := os.ReadFile("../../ROADMAP.md")
+	if err != nil {
+		t.Fatalf("failed to read ROADMAP.md: %v", err)
+	}
+	roadmap := string(roadmapBytes)
+
+	requiredReadme := "Source metadata `schema`/`source_kind`/`resolved_ref`/`fetched_at`/"
+	requiredReadmeContinuation := "`skill_root_sha256` must not contain Unicode bidi/zero-width/tag/"
+	requiredReadmeTail := "variation-selector characters."
+	if !strings.Contains(readme, requiredReadme) || !strings.Contains(readme, requiredReadmeContinuation) || !strings.Contains(readme, requiredReadmeTail) {
+		t.Fatalf("README missing source-metadata unicode hardening line: %q ... %q ... %q", requiredReadme, requiredReadmeContinuation, requiredReadmeTail)
+	}
+
+	requiredRoadmap := "Source metadata `schema`/`source_kind`/`resolved_ref`/`fetched_at`/`skill_root_sha256` validation hardening with Unicode bidi/zero-width/tag/variation-selector rejection"
+	if !strings.Contains(roadmap, requiredRoadmap) {
+		t.Fatalf("ROADMAP missing source-metadata unicode hardening line: %q", requiredRoadmap)
+	}
+}
+
 func TestLockfileExampleSchemaSync(t *testing.T) {
 	readmeBytes, err := os.ReadFile("../../README.md")
 	if err != nil {

@@ -155,6 +155,9 @@ Source metadata `schema`/`source_kind`/`resolved_ref`/`fetched_at`/
 Source metadata `source_input` must also not contain C0/C1 control characters.
 Source metadata `source_kind` and `fetched_at` must be canonical without
 leading/trailing whitespace (`source_kind` also requires lowercase).
+Source metadata `schema`/`source_kind`/`resolved_ref`/`fetched_at`/
+`skill_root_sha256` must not contain Unicode bidi/zero-width/tag/
+variation-selector characters.
 Update policy decisions also honor profile-specific `reject_severities`
 configured via user policy (`policy.toml`) or repository policy
 (`.gokui-policy.toml`) for `local-dir` sources.

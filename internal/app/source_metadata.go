@@ -121,6 +121,9 @@ func validateSourceMetadata(meta sourceMetadata) error {
 	if strings.IndexFunc(meta.Schema, isC0OrC1ControlRune) >= 0 {
 		return fmt.Errorf("source metadata schema must not contain C0/C1 control characters")
 	}
+	if containsSeverityOverrideDisallowedUnicode(meta.Schema) {
+		return fmt.Errorf("source metadata schema must not contain Unicode bidi, zero-width, tag, or variation-selector characters")
+	}
 	if meta.Schema != sourceMetadataSchemaVersion {
 		return fmt.Errorf("unsupported source metadata schema: %s", meta.Schema)
 	}
@@ -136,6 +139,9 @@ func validateSourceMetadata(meta sourceMetadata) error {
 	}
 	if strings.IndexFunc(meta.SourceKind, isC0OrC1ControlRune) >= 0 {
 		return fmt.Errorf("source metadata source_kind must not contain C0/C1 control characters")
+	}
+	if containsSeverityOverrideDisallowedUnicode(meta.SourceKind) {
+		return fmt.Errorf("source metadata source_kind must not contain Unicode bidi, zero-width, tag, or variation-selector characters")
 	}
 	trimmedSourceKind := strings.TrimSpace(meta.SourceKind)
 	if trimmedSourceKind == "" {
@@ -163,6 +169,9 @@ func validateSourceMetadata(meta sourceMetadata) error {
 	if strings.IndexFunc(meta.ResolvedRef, isC0OrC1ControlRune) >= 0 {
 		return fmt.Errorf("source metadata resolved_ref must not contain C0/C1 control characters")
 	}
+	if containsSeverityOverrideDisallowedUnicode(meta.ResolvedRef) {
+		return fmt.Errorf("source metadata resolved_ref must not contain Unicode bidi, zero-width, tag, or variation-selector characters")
+	}
 	trimmedResolvedRef := strings.TrimSpace(meta.ResolvedRef)
 	if trimmedResolvedRef == "" {
 		return fmt.Errorf("source metadata resolved_ref is empty")
@@ -182,6 +191,9 @@ func validateSourceMetadata(meta sourceMetadata) error {
 	if strings.IndexFunc(meta.FetchedAt, isC0OrC1ControlRune) >= 0 {
 		return fmt.Errorf("source metadata fetched_at must not contain C0/C1 control characters")
 	}
+	if containsSeverityOverrideDisallowedUnicode(meta.FetchedAt) {
+		return fmt.Errorf("source metadata fetched_at must not contain Unicode bidi, zero-width, tag, or variation-selector characters")
+	}
 	trimmedFetchedAt := strings.TrimSpace(meta.FetchedAt)
 	if trimmedFetchedAt == "" {
 		return fmt.Errorf("source metadata fetched_at is empty")
@@ -194,6 +206,9 @@ func validateSourceMetadata(meta sourceMetadata) error {
 	}
 	if strings.IndexFunc(meta.SkillRootSHA256, isC0OrC1ControlRune) >= 0 {
 		return fmt.Errorf("source metadata skill_root_sha256 must not contain C0/C1 control characters")
+	}
+	if containsSeverityOverrideDisallowedUnicode(meta.SkillRootSHA256) {
+		return fmt.Errorf("source metadata skill_root_sha256 must not contain Unicode bidi, zero-width, tag, or variation-selector characters")
 	}
 	if strings.TrimSpace(meta.SkillRootSHA256) == "" {
 		return fmt.Errorf("source metadata skill_root_sha256 is empty")
