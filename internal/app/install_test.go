@@ -3233,6 +3233,20 @@ func TestReadInstallLockAndProvenanceMatches(t *testing.T) {
 			t.Fatalf("expected unsupported schema error, got %v", err)
 		}
 
+		badUnicodeSchema := base
+		badUnicodeSchema.Schema = "gokui.lock/v1\u200d"
+		badUnicodeSchemaRaw, err := json.Marshal(badUnicodeSchema)
+		if err != nil {
+			t.Fatalf("marshal bad unicode schema lock: %v", err)
+		}
+		badUnicodeSchemaPath := filepath.Join(dir, "bad-unicode-schema.lock")
+		if err := os.WriteFile(badUnicodeSchemaPath, badUnicodeSchemaRaw, 0o644); err != nil {
+			t.Fatalf("write bad unicode schema lock: %v", err)
+		}
+		if _, err := readInstallLock(badUnicodeSchemaPath); err == nil || !strings.Contains(err.Error(), "install lockfile schema must not contain Unicode bidi, zero-width, tag, or variation-selector characters") {
+			t.Fatalf("expected unicode schema error, got %v", err)
+		}
+
 		if _, err := readInstallLock(filepath.Join(dir, "missing.lock")); err == nil || !strings.Contains(err.Error(), "failed to read install lockfile") {
 			t.Fatalf("expected read error for missing lockfile, got %v", err)
 		}
