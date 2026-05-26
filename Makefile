@@ -36,7 +36,7 @@ LDFLAGS := -s -w \
 	-X main.commit=$(COMMIT) \
 	-X main.date=$(DATE)
 
-.PHONY: build fmt fmt-check lint typecheck deadcode test test-race coverage vuln actionlint check beta-check beta-check-preflight release-check-preflight release-check release-check-offline release-evidence release-evidence-offline release-evidence-online release-evidence-beta inspect-sarif
+.PHONY: build fmt fmt-check lint typecheck deadcode test test-race coverage vuln actionlint check beta-check beta-check-preflight beta-ready release-check-preflight release-check release-check-offline release-evidence release-evidence-offline release-evidence-online release-evidence-beta release-evidence-beta-selfcheck inspect-sarif
 
 build:
 	$(GO) build -trimpath -buildvcs=true -ldflags='$(LDFLAGS)' -o $(BUILD_OUT) $(MAIN_PKG)
@@ -91,6 +91,15 @@ beta-check: beta-check-preflight
 	$(MAKE) test
 	$(MAKE) build BUILD_OUT=$(BETA_CHECK_BUILD_OUT)
 	$(MAKE) inspect-sarif INSPECT_SARIF_OUT=$(BETA_CHECK_SARIF_OUT)
+
+beta-ready:
+	@if [ -z "$$(git status --short)" ]; then \
+		echo "beta-ready: clean tree detected; running release-evidence-beta (includes beta-check)"; \
+		$(MAKE) release-evidence-beta; \
+	else \
+		echo "beta-ready: dirty tree detected; running release-evidence-beta-selfcheck (includes beta-check)"; \
+		$(MAKE) release-evidence-beta-selfcheck; \
+	fi
 
 release-check-preflight:
 	@set -e; \
@@ -260,6 +269,9 @@ release-evidence-online:
 
 release-evidence-beta:
 	./scripts/collect-release-evidence.sh --beta
+
+release-evidence-beta-selfcheck:
+	./scripts/release-evidence-beta-selfcheck.sh
 
 inspect-sarif:
 	./scripts/generate-inspect-sarif.sh "$(INSPECT_SARIF_OUT)"

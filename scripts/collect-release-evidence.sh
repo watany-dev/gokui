@@ -7,6 +7,10 @@ umask 077
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 OUT_DIR="$ROOT_DIR/releases/evidence"
 LOG_DIR="$OUT_DIR/logs"
+EVIDENCE_GOCACHE="${GOCACHE:-$ROOT_DIR/.cache/go-build}"
+EVIDENCE_GOMODCACHE="${GOMODCACHE:-$ROOT_DIR/.cache/gomod}"
+EVIDENCE_GOPATH="${GOPATH:-$ROOT_DIR/.cache/gopath}"
+EVIDENCE_XDG_CACHE_HOME="${XDG_CACHE_HOME:-$ROOT_DIR/.cache/xdg}"
 WITH_VULN=0
 AUDIT_KIND="offline-audit"
 EVIDENCE_MODE="offline"
@@ -19,6 +23,7 @@ Usage: $(basename "$0") [--with-vuln] [--beta]
 Options:
   --with-vuln   Also run 'make vuln' and record the result.
   --beta        Run beta gate ('make beta-check') instead of release-check-offline.
+                Cannot be combined with --with-vuln.
 USAGE
 }
 
@@ -105,6 +110,11 @@ while [ "$#" -gt 0 ]; do
   esac
   shift
 done
+
+if [ "$WITH_VULN" -eq 1 ] && [ "$GATE_STEP_NAME" = "beta-check" ]; then
+  echo "--with-vuln cannot be combined with --beta" >&2
+  exit 1
+fi
 
 assert_no_symlink_components "$OUT_DIR" "evidence directory"
 assert_no_symlink_components "$LOG_DIR" "evidence log directory"
@@ -214,19 +224,28 @@ run_git_clean_check() {
   echo "- Candidate commit SHA: ${COMMIT_SHA}"
   echo "- Host: $(uname -srm)"
   echo "- Go version: $(go version 2>/dev/null || echo unknown)"
+  echo "- GOCACHE: ${EVIDENCE_GOCACHE}"
+  echo "- GOMODCACHE: ${EVIDENCE_GOMODCACHE}"
+  echo "- GOPATH: ${EVIDENCE_GOPATH}"
+  echo "- XDG_CACHE_HOME: ${EVIDENCE_XDG_CACHE_HOME}"
   echo
   echo "## Automated Steps"
 } >&${EVIDENCE_FD}
 
 run_git_clean_check
-if [ "$GATE_STEP_NAME" = "beta-check" ]; then
-  run_step "$GATE_STEP_NAME" "GOCACHE=\"$ROOT_DIR/.cache/go-build\" GOMODCACHE=\"$ROOT_DIR/.cache/gomod\" GOPATH=\"$ROOT_DIR/.cache/gopath\" XDG_CACHE_HOME=\"$ROOT_DIR/.cache/xdg\" BETA_CHECK_BUILD_OUT=\"$ROOT_DIR/.cache/gokui-beta-evidence\" BETA_CHECK_SARIF_OUT=\"$ROOT_DIR/.cache/inspect-results-beta-evidence.sarif\" make beta-check" "$LOG_DIR/${BASENAME}-${GATE_STEP_NAME}.log"
+if [ "$FAILED_STEPS" -eq 0 ] && [ "$GATE_STEP_NAME" = "beta-check" ]; then
+  run_step "$GATE_STEP_NAME" "GOCACHE=\"$EVIDENCE_GOCACHE\" GOMODCACHE=\"$EVIDENCE_GOMODCACHE\" GOPATH=\"$EVIDENCE_GOPATH\" XDG_CACHE_HOME=\"$EVIDENCE_XDG_CACHE_HOME\" BETA_CHECK_BUILD_OUT=\"$ROOT_DIR/.cache/gokui-beta-evidence\" BETA_CHECK_SARIF_OUT=\"$ROOT_DIR/.cache/inspect-results-beta-evidence.sarif\" make beta-check" "$LOG_DIR/${BASENAME}-${GATE_STEP_NAME}.log"
+elif [ "$FAILED_STEPS" -eq 0 ]; then
+  run_step "$GATE_STEP_NAME" "GOCACHE=\"$EVIDENCE_GOCACHE\" GOMODCACHE=\"$EVIDENCE_GOMODCACHE\" GOPATH=\"$EVIDENCE_GOPATH\" XDG_CACHE_HOME=\"$EVIDENCE_XDG_CACHE_HOME\" BUILD_OUT=\"$ROOT_DIR/.cache/gokui-release-evidence\" make release-check-offline" "$LOG_DIR/${BASENAME}-${GATE_STEP_NAME}.log"
 else
-  run_step "$GATE_STEP_NAME" "GOCACHE=\"$ROOT_DIR/.cache/go-build\" GOMODCACHE=\"$ROOT_DIR/.cache/gomod\" GOPATH=\"$ROOT_DIR/.cache/gopath\" XDG_CACHE_HOME=\"$ROOT_DIR/.cache/xdg\" BUILD_OUT=\"$ROOT_DIR/.cache/gokui-release-evidence\" make release-check-offline" "$LOG_DIR/${BASENAME}-${GATE_STEP_NAME}.log"
+  {
+    echo "- ${GATE_STEP_NAME}: SKIPPED"
+    echo "  - reason: skipped because git status clean check failed"
+  } >&${EVIDENCE_FD}
 fi
 
 if [ "$WITH_VULN" -eq 1 ] && [ "$FAILED_STEPS" -eq 0 ]; then
-  run_step "vuln" "GOCACHE=\"$ROOT_DIR/.cache/go-build\" GOMODCACHE=\"$ROOT_DIR/.cache/gomod\" GOPATH=\"$ROOT_DIR/.cache/gopath\" XDG_CACHE_HOME=\"$ROOT_DIR/.cache/xdg\" make vuln" "$LOG_DIR/${BASENAME}-vuln.log"
+  run_step "vuln" "GOCACHE=\"$EVIDENCE_GOCACHE\" GOMODCACHE=\"$EVIDENCE_GOMODCACHE\" GOPATH=\"$EVIDENCE_GOPATH\" XDG_CACHE_HOME=\"$EVIDENCE_XDG_CACHE_HOME\" make vuln" "$LOG_DIR/${BASENAME}-vuln.log"
 elif [ "$WITH_VULN" -eq 1 ]; then
   {
     echo "- vuln: SKIPPED"

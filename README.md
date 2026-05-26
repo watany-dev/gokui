@@ -62,6 +62,29 @@ make release-evidence-beta
 
 This runs the beta gate and writes an evidence markdown record under
 `releases/evidence/` with a `-beta-audit.md` suffix.
+Beta evidence mode is intentionally offline-only; do not combine `--beta` and
+`--with-vuln` when invoking `scripts/collect-release-evidence.sh` directly.
+Evidence generation also requires a clean tracked/untracked working tree
+(`git status --short` must be empty).
+When local repository state or permissions make that impractical (for example
+read-only `.git` metadata), use:
+
+```sh
+make release-evidence-beta-selfcheck
+```
+
+This creates a temporary clean snapshot repository under `/tmp`, runs
+`beta-check` and `release-evidence-beta`, and prints the generated beta-audit
+evidence path.
+For a single command that chooses the right evidence path automatically:
+
+```sh
+make beta-ready
+```
+
+`beta-ready` chooses an evidence path by repository cleanliness:
+- clean tree: `make release-evidence-beta` (includes `beta-check`)
+- dirty tree: `make release-evidence-beta-selfcheck` (includes `beta-check`)
 
 Full pre-release gate (`make release-check`) remains the target before GA.
 
@@ -541,6 +564,9 @@ make release-evidence-online
 `release-check-offline` with `BUILD_OUT=.cache/gokui-release-evidence`, and
 their clean-tree check evaluates tracked and untracked (non-ignored) files
 (`git status --short`).
+Evidence scripts inherit `GOCACHE`, `GOMODCACHE`, `GOPATH`, and
+`XDG_CACHE_HOME` when explicitly set, otherwise they default to repository-local
+`.cache` paths.
 `make release-check`/`make release-check-offline` build to
 `.cache/gokui-release-check` and clean that artifact automatically.
 `release-check` validates output-path safety preflight checks before running
@@ -600,6 +626,27 @@ CI is configured to resolve the latest available patch release for the selected
 Go minor version (`actions/setup-go` with `check-latest: true`).
 `make vuln` also defaults to a minimum patched toolchain via
 `VULN_GOTOOLCHAIN=go1.26.3+auto` (override on demand).
+
+GitHub Actions release publication:
+
+- Beta pre-release: push tag `vX.Y.Z-beta.N` (example `v0.4.0-beta.1`)
+  - runs `.github/workflows/release-beta.yml`
+  - runs `make beta-ready`
+  - publishes a GitHub **pre-release** with auto-generated release notes
+- GA release: push tag `vX.Y.Z` (example `v0.4.0`)
+  - runs `.github/workflows/release-ga.yml`
+  - runs `make release-check` + `make release-evidence-online`
+  - requires manual approval on the `release` environment before publish
+  - publishes a GitHub release with auto-generated release notes
+
+Both release workflows publish all supported binary targets:
+
+- `gokui-darwin-amd64`
+- `gokui-darwin-arm64`
+- `gokui-linux-amd64`
+- `gokui-linux-arm64`
+- `gokui-windows-amd64.exe`
+- `SHA256SUMS`
 
 Release execution checklist: [RELEASE.md](RELEASE.md)
 

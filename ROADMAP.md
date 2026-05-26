@@ -27,6 +27,11 @@ stable contracts, and clear operational boundaries. Work is now split into:
   - beta-check build/SARIF outputs are isolated under `.cache/` by default.
 - Generate beta audit evidence via `make release-evidence-beta` to capture
   gate logs and release-candidate metadata.
+- Automate publication with GitHub Actions:
+  - beta tags (`vX.Y.Z-beta.N`) publish GitHub pre-releases with auto notes
+  - GA tags (`vX.Y.Z`) publish GitHub releases with auto notes
+  - GA publish requires protected `release` environment approval
+  - release assets cover all supported targets + `SHA256SUMS`
 
 ### Beta Exit Criteria
 

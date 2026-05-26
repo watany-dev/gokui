@@ -104,6 +104,27 @@ make release-evidence-beta
 
 This records a `-beta-audit.md` evidence file plus per-step logs under
 `releases/evidence/`.
+Beta evidence mode is offline-only and does not allow `--with-vuln`.
+Beta evidence generation also requires a clean tracked/untracked working tree
+(`git status --short` must be empty).
+If local repository state or permissions prevent that (for example read-only
+`.git` metadata), run:
+
+```sh
+make release-evidence-beta-selfcheck
+```
+
+This performs beta evidence generation in a temporary clean snapshot repository
+under `/tmp`.
+For a single command that auto-selects evidence mode by repository cleanliness:
+
+```sh
+make beta-ready
+```
+
+`beta-ready` chooses an evidence path by repository cleanliness:
+- clean tree: `make release-evidence-beta` (includes `beta-check`)
+- dirty tree: `make release-evidence-beta-selfcheck` (includes `beta-check`)
 
 ## 4) Offline Fallback
 
@@ -142,8 +163,9 @@ toolchain baseline.
 
 ## 6) Build Artifact Hygiene
 
-`gokui` is ignored as a local build artifact, so tracked-file clean checks are
-not affected by local binary rebuilds.
+`gokui` is ignored as a local build artifact, and `releases/beta/` is ignored
+as a local staging-artifact directory, so tracked-file clean checks are not
+affected by local beta packaging outputs.
 
 If you need an explicit cleanup or alternate path:
 
@@ -166,6 +188,9 @@ Record release evidence using:
 For evidence scripts, clean-tree checks include tracked and untracked
 (non-ignored) files (`git status --short`), and build output is isolated to
 `.cache/gokui-release-evidence`.
+Evidence scripts inherit `GOCACHE`, `GOMODCACHE`, `GOPATH`, and
+`XDG_CACHE_HOME` from the environment when set; otherwise they default to
+repository-local `.cache` paths.
 Evidence file names end with `-offline-audit.md` or `-online-audit.md`
 depending on whether `--with-vuln` is enabled.
 Evidence scripts fail closed when git `HEAD` commit SHA cannot be resolved as
@@ -201,3 +226,31 @@ At minimum, capture:
 - executed commands
 - pass/fail result per gate
 - vulnerability check result (or offline exception with follow-up run)
+
+## 8) GitHub Actions Publication
+
+Tag conventions:
+
+- Beta pre-release tag: `vX.Y.Z-beta.N` (for example `v0.4.0-beta.1`)
+- GA release tag: `vX.Y.Z` (for example `v0.4.0`)
+
+Workflows:
+
+- `.github/workflows/release-beta.yml`
+  - trigger: beta tags (or `workflow_dispatch`)
+  - gate: `make beta-ready`
+  - publication: GitHub pre-release with auto-generated release notes
+- `.github/workflows/release-ga.yml`
+  - trigger: GA tags (or `workflow_dispatch`)
+  - gate: `make release-check` and `make release-evidence-online`
+  - publication: GitHub release with auto-generated release notes
+  - publish job requires `release` environment approval
+
+Published assets include all supported targets and checksums:
+
+- `gokui-darwin-amd64`
+- `gokui-darwin-arm64`
+- `gokui-linux-amd64`
+- `gokui-linux-arm64`
+- `gokui-windows-amd64.exe`
+- `SHA256SUMS`

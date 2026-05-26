@@ -225,6 +225,70 @@ func TestStructuredErrorStreamContractDocumentationSync(t *testing.T) {
 	}
 }
 
+func TestBetaReleaseTrackDocumentationSync(t *testing.T) {
+	readmeBytes, err := os.ReadFile("../../README.md")
+	if err != nil {
+		t.Fatalf("failed to read README.md: %v", err)
+	}
+	readme := string(readmeBytes)
+	roadmapBytes, err := os.ReadFile("../../ROADMAP.md")
+	if err != nil {
+		t.Fatalf("failed to read ROADMAP.md: %v", err)
+	}
+	roadmap := string(roadmapBytes)
+	releaseBytes, err := os.ReadFile("../../RELEASE.md")
+	if err != nil {
+		t.Fatalf("failed to read RELEASE.md: %v", err)
+	}
+	releaseDoc := string(releaseBytes)
+
+	requiredReadme := []string{
+		"make beta-check",
+		"make release-evidence-beta",
+		"make release-evidence-beta-selfcheck",
+		"make beta-ready",
+		".cache/gokui-beta-check",
+		".cache/inspect-results-beta-check.sarif",
+		"`-beta-audit.md` suffix",
+		"do not combine `--beta` and",
+		"`--with-vuln`",
+		"`git status --short` must be empty",
+	}
+	for _, line := range requiredReadme {
+		if !strings.Contains(readme, line) {
+			t.Fatalf("README missing beta release track line: %q", line)
+		}
+	}
+
+	requiredRoadmap := []string{
+		"## Beta Release Track (Current Priority)",
+		"`make beta-check`",
+		"`make release-evidence-beta`",
+		"`README.md`, `ROADMAP.md`, and `RELEASE.md` are consistent.",
+	}
+	for _, line := range requiredRoadmap {
+		if !strings.Contains(roadmap, line) {
+			t.Fatalf("ROADMAP missing beta release track line: %q", line)
+		}
+	}
+
+	requiredRelease := []string{
+		"## 3) Beta Fast Path",
+		"make beta-check",
+		"make release-evidence-beta",
+		"make release-evidence-beta-selfcheck",
+		"make beta-ready",
+		"`-beta-audit.md` evidence file",
+		"Beta evidence mode is offline-only and does not allow `--with-vuln`.",
+		"`git status --short` must be empty",
+	}
+	for _, line := range requiredRelease {
+		if !strings.Contains(releaseDoc, line) {
+			t.Fatalf("RELEASE missing beta release track line: %q", line)
+		}
+	}
+}
+
 func TestGitHubSourceEncodingAndArchiveStreamHardeningDocumentationSync(t *testing.T) {
 	readmeBytes, err := os.ReadFile("../../README.md")
 	if err != nil {
@@ -1472,6 +1536,8 @@ func TestReleaseChecklistDocumentationSync(t *testing.T) {
 		"make release-evidence",
 		"make release-evidence-offline",
 		"make release-evidence-online",
+		"make release-evidence-beta-selfcheck",
+		"make beta-ready",
 		"make vuln",
 		"VULN_GOTOOLCHAIN=go1.26.3+auto",
 	}
@@ -1516,6 +1582,10 @@ func TestReleaseChecklistDocumentationSync(t *testing.T) {
 	}
 	if !strings.Contains(releaseDoc, ".cache/gokui-release-evidence") {
 		t.Fatal("RELEASE.md should document isolated BUILD_OUT path for evidence scripts")
+	}
+	if !strings.Contains(releaseDoc, "inherit `GOCACHE`, `GOMODCACHE`, `GOPATH`, and") ||
+		!strings.Contains(releaseDoc, "`XDG_CACHE_HOME` from the environment") {
+		t.Fatal("RELEASE.md should document environment-cache override behavior for evidence scripts")
 	}
 	if !strings.Contains(releaseDoc, ".cache/gokui-release-check") {
 		t.Fatal("RELEASE.md should document isolated release-check build output path")
@@ -1610,6 +1680,8 @@ func TestReleaseCheckDocumentationSync(t *testing.T) {
 		"make inspect-sarif",
 		"make release-evidence-offline",
 		"make release-evidence-online",
+		"Evidence scripts inherit `GOCACHE`, `GOMODCACHE`, `GOPATH`, and",
+		"`XDG_CACHE_HOME` when explicitly set",
 		"inspect-sarif smoke generation, and govulncheck",
 		"BUILD_OUT=.cache/gokui-release-evidence",
 		".cache/gokui-release-check",
@@ -1790,6 +1862,9 @@ func TestLocalBuildArtifactIgnoreSync(t *testing.T) {
 	if !strings.Contains(gitignore, "gokui") {
 		t.Fatal(".gitignore should ignore local gokui build artifact")
 	}
+	if !strings.Contains(gitignore, "releases/beta/") {
+		t.Fatal(".gitignore should ignore local beta release artifact staging directory")
+	}
 
 	releaseBytes, err := os.ReadFile("../../RELEASE.md")
 	if err != nil {
@@ -1798,6 +1873,9 @@ func TestLocalBuildArtifactIgnoreSync(t *testing.T) {
 	releaseDoc := string(releaseBytes)
 	if !strings.Contains(releaseDoc, "ignored as a local build artifact") {
 		t.Fatal("RELEASE.md should document gokui local-build ignore behavior")
+	}
+	if !strings.Contains(releaseDoc, "`releases/beta/` is ignored") {
+		t.Fatal("RELEASE.md should document local beta release artifact ignore behavior")
 	}
 }
 
@@ -1840,6 +1918,11 @@ func TestMakefileVulnToolchainBaselineSync(t *testing.T) {
 		"RELEASE_CHECK_REPO_ROOT_ABS := $(MAKEFILE_DIR_ABS)",
 		"beta-check-preflight:",
 		"beta-check: beta-check-preflight",
+		"beta-ready:",
+		`if [ -z "$$(git status --short)" ]; then \`,
+		`echo "beta-ready: clean tree detected; running release-evidence-beta (includes beta-check)"; \`,
+		`echo "beta-ready: dirty tree detected; running release-evidence-beta-selfcheck (includes beta-check)"; \`,
+		"$(MAKE) release-evidence-beta-selfcheck; \\",
 		"$(MAKE) -f $(lastword $(MAKEFILE_LIST)) release-check-preflight RELEASE_CHECK_ALLOW_EXISTING_OUTPUTS=1 RELEASE_CHECK_BUILD_OUT=$(BETA_CHECK_BUILD_OUT) RELEASE_CHECK_SARIF_OUT=$(BETA_CHECK_SARIF_OUT)",
 		`rm -f -- "$(BETA_CHECK_BUILD_OUT_ABS)" "$(BETA_CHECK_SARIF_OUT_ABS)"`,
 		"release-check-preflight:",
@@ -1893,6 +1976,10 @@ func TestMakefileVulnToolchainBaselineSync(t *testing.T) {
 		"./scripts/collect-release-evidence.sh",
 		"release-evidence-online:",
 		"./scripts/collect-release-evidence.sh --with-vuln",
+		"release-evidence-beta:",
+		"./scripts/collect-release-evidence.sh --beta",
+		"release-evidence-beta-selfcheck:",
+		"./scripts/release-evidence-beta-selfcheck.sh",
 	}
 	for _, line := range required {
 		if !strings.Contains(makefile, line) {
@@ -2020,8 +2107,18 @@ func TestReleaseEvidenceScriptExecutionContractSync(t *testing.T) {
 		`tmp_path="$(mktemp "$dir/.${base}.tmp.XXXXXX")"`,
 		`exec {fd}>>"$tmp_path"`,
 		`assert_no_symlink_components "$ROOT_DIR" "repository root path"`,
+		`EVIDENCE_GOCACHE="${GOCACHE:-$ROOT_DIR/.cache/go-build}"`,
+		`EVIDENCE_GOMODCACHE="${GOMODCACHE:-$ROOT_DIR/.cache/gomod}"`,
+		`EVIDENCE_GOPATH="${GOPATH:-$ROOT_DIR/.cache/gopath}"`,
+		`EVIDENCE_XDG_CACHE_HOME="${XDG_CACHE_HOME:-$ROOT_DIR/.cache/xdg}"`,
 		`EVIDENCE_MODE="offline"`,
 		`EVIDENCE_MODE="online"`,
+		`AUDIT_KIND="beta-audit"`,
+		`EVIDENCE_MODE="beta"`,
+		`GATE_STEP_NAME="beta-check"`,
+		`--beta)`,
+		`--with-vuln cannot be combined with --beta`,
+		`if [ "$WITH_VULN" -eq 1 ] && [ "$GATE_STEP_NAME" = "beta-check" ]; then`,
 		`assert_no_symlink_components "$OUT_DIR" "evidence directory"`,
 		`assert_no_symlink_components "$LOG_DIR" "evidence log directory"`,
 		`resolve_commit_sha()`,
@@ -2033,9 +2130,17 @@ func TestReleaseEvidenceScriptExecutionContractSync(t *testing.T) {
 		`assert_output_path_available "$log_path" "log path"`,
 		`create_temp_file_for_write "$LOG_DIR" "$log_basename" tmp_log_path log_fd`,
 		`echo "- Mode: ${EVIDENCE_MODE}"`,
+		`echo "- GOCACHE: ${EVIDENCE_GOCACHE}"`,
+		`echo "- GOMODCACHE: ${EVIDENCE_GOMODCACHE}"`,
+		`echo "- GOPATH: ${EVIDENCE_GOPATH}"`,
+		`echo "- XDG_CACHE_HOME: ${EVIDENCE_XDG_CACHE_HOME}"`,
 		`git status --short`,
-		`BETA_CHECK_BUILD_OUT=\"$ROOT_DIR/.cache/gokui-beta-evidence\" BETA_CHECK_SARIF_OUT=\"$ROOT_DIR/.cache/inspect-results-beta-evidence.sarif\" make beta-check`,
-		`BUILD_OUT=\"$ROOT_DIR/.cache/gokui-release-evidence\" make release-check-offline`,
+		`GOCACHE=\"$EVIDENCE_GOCACHE\" GOMODCACHE=\"$EVIDENCE_GOMODCACHE\" GOPATH=\"$EVIDENCE_GOPATH\" XDG_CACHE_HOME=\"$EVIDENCE_XDG_CACHE_HOME\" BETA_CHECK_BUILD_OUT=\"$ROOT_DIR/.cache/gokui-beta-evidence\" BETA_CHECK_SARIF_OUT=\"$ROOT_DIR/.cache/inspect-results-beta-evidence.sarif\" make beta-check`,
+		`GOCACHE=\"$EVIDENCE_GOCACHE\" GOMODCACHE=\"$EVIDENCE_GOMODCACHE\" GOPATH=\"$EVIDENCE_GOPATH\" XDG_CACHE_HOME=\"$EVIDENCE_XDG_CACHE_HOME\" BUILD_OUT=\"$ROOT_DIR/.cache/gokui-release-evidence\" make release-check-offline`,
+		`GOCACHE=\"$EVIDENCE_GOCACHE\" GOMODCACHE=\"$EVIDENCE_GOMODCACHE\" GOPATH=\"$EVIDENCE_GOPATH\" XDG_CACHE_HOME=\"$EVIDENCE_XDG_CACHE_HOME\" make vuln`,
+		`if [ "$FAILED_STEPS" -eq 0 ] && [ "$GATE_STEP_NAME" = "beta-check" ]; then`,
+		`- ${GATE_STEP_NAME}: SKIPPED`,
+		`skipped because git status clean check failed`,
 		`if [ "$WITH_VULN" -eq 1 ] && [ "$FAILED_STEPS" -eq 0 ]; then`,
 		`if [ "$FAILED_STEPS" -eq 0 ]; then`,
 		"preserve failing build artifact for investigation",
@@ -2106,6 +2211,37 @@ func TestReleaseEvidenceTemplateScriptHardeningSync(t *testing.T) {
 	}
 }
 
+func TestReleaseEvidenceBetaSelfcheckScriptSync(t *testing.T) {
+	scriptBytes, err := os.ReadFile("../../scripts/release-evidence-beta-selfcheck.sh")
+	if err != nil {
+		t.Fatalf("failed to read release-evidence-beta-selfcheck.sh: %v", err)
+	}
+	script := string(scriptBytes)
+
+	required := []string{
+		"set -o noclobber",
+		"umask 077",
+		`ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"`,
+		`WORK_DIR="$(mktemp -d "$WORK_ROOT/gokui-beta-selfcheck.XXXXXX")"`,
+		`--exclude=./releases/evidence`,
+		`--exclude=./releases/beta`,
+		"git init >/dev/null",
+		`git commit -m "beta selfcheck snapshot" >/dev/null`,
+		`export GOCACHE="$SNAPSHOT_DIR/.cache/go-build"`,
+		`export GOMODCACHE="${GOMODCACHE:-$SNAPSHOT_DIR/.cache/gomod}"`,
+		`make beta-check`,
+		`make release-evidence-beta`,
+		`created_evidence="$(find "$SNAPSHOT_DIR/releases/evidence" -maxdepth 1 -type f -name '*-beta-audit.md' | sort | tail -n 1)"`,
+		`echo "evidence file: $created_evidence"`,
+		`echo "beta selfcheck PASS"`,
+	}
+	for _, line := range required {
+		if !strings.Contains(script, line) {
+			t.Fatalf("release-evidence-beta-selfcheck script missing required line: %q", line)
+		}
+	}
+}
+
 func TestGitignoreReleaseEvidenceArtifactsSync(t *testing.T) {
 	gitignoreBytes, err := os.ReadFile("../../.gitignore")
 	if err != nil {
@@ -2114,6 +2250,9 @@ func TestGitignoreReleaseEvidenceArtifactsSync(t *testing.T) {
 	gitignore := string(gitignoreBytes)
 	if !strings.Contains(gitignore, "releases/evidence/") {
 		t.Fatal(".gitignore should ignore generated release evidence artifacts")
+	}
+	if !strings.Contains(gitignore, "releases/beta/") {
+		t.Fatal(".gitignore should ignore generated local beta release staging artifacts")
 	}
 }
 
