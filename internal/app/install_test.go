@@ -3513,6 +3513,13 @@ func TestReadInstallLockAndProvenanceMatches(t *testing.T) {
 				detailPart: "name must not contain C0/C1 control characters",
 			},
 			{
+				name: "name has C0/C1 control character at edge",
+				mutate: func(l *installLock) {
+					l.Name = "\u0085skill"
+				},
+				detailPart: "name must not contain C0/C1 control characters",
+			},
+			{
 				name: "name has unicode obfuscation character",
 				mutate: func(l *installLock) {
 					l.Name = "skill\u200d"

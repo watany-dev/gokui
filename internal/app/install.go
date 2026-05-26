@@ -1493,14 +1493,14 @@ func validateInstallLockForProvenanceReuse(lock installLock, expectedSkillName s
 	if trimmedName == "" {
 		return fmt.Errorf("lock name is empty")
 	}
-	if trimmedName != lock.Name {
-		return fmt.Errorf("lock name must not contain leading or trailing whitespace")
-	}
 	if strings.IndexFunc(lock.Name, isC0OrC1ControlRune) >= 0 {
 		return fmt.Errorf("lock name must not contain C0/C1 control characters")
 	}
 	if containsSeverityOverrideDisallowedUnicode(lock.Name) {
 		return fmt.Errorf("lock name must not contain Unicode bidi, zero-width, tag, or variation-selector characters")
+	}
+	if trimmedName != lock.Name {
+		return fmt.Errorf("lock name must not contain leading or trailing whitespace")
 	}
 	if expectedSkillName != "" && lock.Name != expectedSkillName {
 		return fmt.Errorf("lock name does not match target skill directory: lock=%s target=%s", lock.Name, expectedSkillName)
