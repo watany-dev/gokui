@@ -3,6 +3,40 @@
 This roadmap follows gokui's core position: it is a quarantine gate for Agent
 Skill bundles, not a convenience-first package manager.
 
+## Beta Release Track (Current Priority)
+
+Current priority is to ship a practical beta release with strong default safety,
+stable contracts, and clear operational boundaries. Work is now split into:
+
+- Beta-now scope (must be release-ready now)
+- Post-beta backlog (tracked hardening expansion)
+
+### Beta-now Scope
+
+- Keep command surface stable:
+  - `fetch`, `inspect`, `vet`, `install`, `update --dry-run`, `lock verify`
+- Preserve quarantine-first behavior and commit-pinned GitHub source handling.
+- Preserve machine-readable output and error contracts (`json`/`sarif`/`compact`).
+- Require a fast beta release gate via `make beta-check`:
+  - `make check`
+  - `make test`
+  - `make build`
+  - `make inspect-sarif`
+
+### Beta Exit Criteria
+
+- `make beta-check` passes on release commit.
+- `README.md`, `ROADMAP.md`, and `RELEASE.md` are consistent.
+- Release artifact provenance and lock/report integrity checks remain enabled by default.
+- Known limitations and deferred hardening are explicitly documented.
+
+### Post-beta Backlog (Tracked, Not Blocking Beta)
+
+- Additional validation-order parity sweeps and edge-case corpus expansion.
+- Further scanner signal depth and deobfuscation coverage additions.
+- Performance tuning and UX refinements that do not change security posture.
+- GA gate requirement remains `make release-check` (including race/vuln steps).
+
 ## Current Implementation Snapshot (May 24, 2026)
 
 The following items are implemented in the current codebase and validated by

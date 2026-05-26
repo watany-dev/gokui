@@ -26,6 +26,28 @@ machine-readable top-level `error_code` for automation. In SARIF mode, fatal
 inspect and `vet` failures emit a single structured error result. For GitHub
 sources, inspect requires commit-pinned refs; floating refs are rejected before
 source preparation.
+
+### Beta Release Focus (Current)
+
+The current priority is shipping a usable beta, not indefinite hardening churn.
+For beta, gokui keeps the strict quarantine-first model and stable machine-readable
+contracts, while deferring additional low-level hardening parity sweeps to a
+tracked backlog in [`ROADMAP.md`](./ROADMAP.md).
+
+Minimum beta release gate:
+
+```sh
+make beta-check
+```
+
+`beta-check` runs the fast release gate:
+- `make check`
+- `make test`
+- `make build`
+- `make inspect-sarif`
+
+Full pre-release gate (`make release-check`) remains the target before GA.
+
 `fetch`, `inspect`, `vet`, `install`, `update`, and `lock verify` also support `--format compact` for single-line CI summaries.
 `inspect` and `vet` also support `--format review-json`, a neutralized structured
 export for optional human/AI-assisted review pipelines.

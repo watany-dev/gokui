@@ -73,7 +73,24 @@ To override the isolated release-check build artifact path:
 make release-check RELEASE_CHECK_BUILD_OUT=.cache/custom/gokui-release-check
 ```
 
-## 3) Offline Fallback
+## 3) Beta Fast Path
+
+For beta releases where rapid iteration is preferred over full GA depth, run:
+
+```sh
+make beta-check
+```
+
+This runs:
+- `make check`
+- `make test`
+- `make build`
+- `make inspect-sarif`
+
+This is the minimum gate for beta publication. Before GA promotion, run the full
+`make release-check`.
+
+## 4) Offline Fallback
 
 If vulnerability DB/network access is temporarily unavailable:
 
@@ -91,7 +108,7 @@ with network access and record the result. The default target runs with
 `VULN_GOTOOLCHAIN=go1.26.3+auto` so standard-library checks use a patched
 toolchain baseline.
 
-## 4) Contract Spot-Checks
+## 5) Contract Spot-Checks
 
 - JSON error contracts:
   - `fetch`, `inspect`, `install`, `update`, `lock verify`
@@ -108,7 +125,7 @@ toolchain baseline.
   - policy rejection / drift: `2` (where applicable)
 - Documentation sync tests in `internal/app/docs_sync_test.go` and related contract tests.
 
-## 5) Build Artifact Hygiene
+## 6) Build Artifact Hygiene
 
 `gokui` is ignored as a local build artifact, so tracked-file clean checks are
 not affected by local binary rebuilds.
@@ -121,7 +138,7 @@ rm -f gokui
 make build BUILD_OUT=.cache/gokui-local
 ```
 
-## 6) Release Evidence Record
+## 7) Release Evidence Record
 
 Record release evidence using:
 
