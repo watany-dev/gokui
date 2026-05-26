@@ -414,6 +414,14 @@ func TestSourceMetadataHelpers(t *testing.T) {
 			},
 			{
 				Schema:          "gokui.source/v1",
+				SourceInput:     "github:org/repo//skills/\u200bdemo@8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
+				SourceKind:      "github-source",
+				ResolvedRef:     "8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
+				FetchedAt:       "2026-05-23T00:00:00Z",
+				SkillRootSHA256: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+			},
+			{
+				Schema:          "gokui.source/v1",
 				SourceInput:     "github:org/repo//skills/ x@8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
 				SourceKind:      "github-source",
 				ResolvedRef:     "8f3c2d1a4b5c6d7e8f901234567890abcdef1234",

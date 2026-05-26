@@ -1075,6 +1075,10 @@ func TestVerifyLockSourceChecks(t *testing.T) {
 	if ok, _ := verifyLockSource(lock); ok {
 		t.Fatal("github source input with path bidi-control should fail")
 	}
+	lock.Source.Input = "github:org/repo//skills/\u200bdemo@abc1234a4b5c6d7e8f901234567890abcdef1234"
+	if ok, _ := verifyLockSource(lock); ok {
+		t.Fatal("github source input with path zero-width char should fail")
+	}
 	lock.Source.Input = "github:org/repo//skills/ demo@abc1234a4b5c6d7e8f901234567890abcdef1234"
 	if ok, _ := verifyLockSource(lock); ok {
 		t.Fatal("github source input with path-segment leading space should fail")

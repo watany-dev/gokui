@@ -40,6 +40,7 @@ tests/CI:
 - GitHub source parser rejection of `:` in `//path` segment
 - GitHub source parser rejection of path segments with surrounding whitespace or trailing dot
 - GitHub source parser rejection of Unicode bidi control characters in path segments
+- GitHub source parser rejection of zero-width characters in path segments
 - GitHub source parser rejection of Windows reserved device-name path segments
 - GitHub source parser rejection of Windows reserved superscript-device path segments (`COM¹`/`LPT²` forms)
 - GitHub source parser rejection of non-canonical `//path` segments (`//`, `/./`, `/../`, trailing `/`)

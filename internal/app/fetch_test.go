@@ -296,6 +296,16 @@ func TestRunFetch(t *testing.T) {
 
 		stdout.Reset()
 		stderr.Reset()
+		code = runFetch([]string{"github:org/repo//skills/\u200bdemo@8f3c2d1a4b5c6d7e8f901234567890abcdef1234", "--out", t.TempDir()}, &stdout, &stderr)
+		if code != 1 {
+			t.Fatalf("runFetch(path-zero-width source) code = %d, want 1", code)
+		}
+		if !strings.Contains(stderr.String(), "invalid github source") {
+			t.Fatalf("stderr should include invalid source message for path-zero-width source, got %q", stderr.String())
+		}
+
+		stdout.Reset()
+		stderr.Reset()
 		code = runFetch([]string{"github:org/repo//skills/ demo@8f3c2d1a4b5c6d7e8f901234567890abcdef1234", "--out", t.TempDir()}, &stdout, &stderr)
 		if code != 1 {
 			t.Fatalf("runFetch(path-segment-space source) code = %d, want 1", code)
