@@ -782,10 +782,10 @@ func verifyLockStructure(lock installLock) (bool, string) {
 	if trimmedProfile == "" {
 		return false, "lock policy profile is empty"
 	}
-	if strings.IndexFunc(trimmedProfile, isC0OrC1ControlRune) >= 0 {
+	if strings.IndexFunc(lock.Policy.Profile, isC0OrC1ControlRune) >= 0 {
 		return false, "lock policy profile must not contain C0/C1 control characters"
 	}
-	if containsSeverityOverrideDisallowedUnicode(trimmedProfile) {
+	if containsSeverityOverrideDisallowedUnicode(lock.Policy.Profile) {
 		return false, "lock policy profile must not contain Unicode bidi, zero-width, tag, or variation-selector characters"
 	}
 	normalizedProfile := normalizePolicyProfile(trimmedProfile)
