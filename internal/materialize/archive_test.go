@@ -889,6 +889,25 @@ func TestIsRootLevelPathComponent(t *testing.T) {
 	}
 }
 
+func TestRejectArchiveSourceSymlinkPathAllowsRootLevelSymlinkComponent(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("absolute root-level symlink layout differs on windows")
+	}
+
+	info, err := os.Lstat("/bin")
+	if err != nil {
+		t.Skipf("skip: lstat /bin failed: %v", err)
+	}
+	if info.Mode()&os.ModeSymlink == 0 {
+		t.Skip("/bin is not a symlink on this environment")
+	}
+
+	src := filepath.Join("/bin", "gokui-root-level-symlink-guard-test.tar")
+	if err := rejectArchiveSourceSymlinkPath(src); err != nil {
+		t.Fatalf("expected root-level symlink component to be allowed, got %v", err)
+	}
+}
+
 func TestWriteZipAndTarFileLimits(t *testing.T) {
 	t.Run("writeZipFile read failure from corrupted payload", func(t *testing.T) {
 		zipPath := filepath.Join(t.TempDir(), "corrupt.zip")

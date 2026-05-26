@@ -240,6 +240,25 @@ func TestIsRootLevelPathComponent(t *testing.T) {
 	}
 }
 
+func TestRejectSymlinkPathAllowsRootLevelSymlinkComponent(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("absolute root-level symlink layout differs on windows")
+	}
+
+	info, err := os.Lstat("/bin")
+	if err != nil {
+		t.Skipf("skip: lstat /bin failed: %v", err)
+	}
+	if info.Mode()&os.ModeSymlink == 0 {
+		t.Skip("/bin is not a symlink on this environment")
+	}
+
+	path := filepath.Join("/bin", "gokui-root-level-symlink-guard-test.toml")
+	if err := rejectSymlinkPath(path); err != nil {
+		t.Fatalf("expected root-level symlink component to be allowed, got %v", err)
+	}
+}
+
 func TestNormalizeProfileConfigs(t *testing.T) {
 	got := normalizeProfileConfigs(nil)
 	if got != nil {
