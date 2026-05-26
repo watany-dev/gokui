@@ -267,6 +267,32 @@ func TestFetchGitHubSkillErrors(t *testing.T) {
 		}
 	})
 
+	t.Run("downloadGitHubArchive rejects gzip payload with trailing bytes and cleans up partial file", func(t *testing.T) {
+		goodArchive := buildTarGz(t, map[string]string{
+			"repo-8f3c2d1a4b5c6d7e8f901234567890abcdef1234/skills/x/SKILL.md": "---\nname: x\ndescription: d\n---\n",
+		})
+		tainted := append(append([]byte{}, goodArchive...), []byte("trailing")...)
+
+		githubCodeloadBaseURL = "https://mock.codeload.local"
+		githubHTTPClient = &http.Client{
+			Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+				resp := httpResponse(http.StatusOK, tainted)
+				resp.Header.Set("Content-Type", "application/x-gzip")
+				return resp, nil
+			}),
+		}
+
+		spec := GitHubSpec{Owner: "o", Repo: "r", Path: "skills/x", Ref: "8f3c2d1a4b5c6d7e8f901234567890abcdef1234"}
+		outPath := filepath.Join(t.TempDir(), "archive.tar.gz")
+		err := downloadGitHubArchive(spec, outPath)
+		if err == nil || !strings.Contains(err.Error(), "single gzip stream without trailing bytes") {
+			t.Fatalf("expected trailing-bytes gzip validation error, got %v", err)
+		}
+		if _, statErr := os.Stat(outPath); !errors.Is(statErr, os.ErrNotExist) {
+			t.Fatalf("expected trailing-bytes archive file to be removed, statErr=%v", statErr)
+		}
+	})
+
 	t.Run("downloadGitHubArchive rejects non-https base URL", func(t *testing.T) {
 		spec := GitHubSpec{Owner: "o", Repo: "r", Path: "skills/x", Ref: "8f3c2d1a4b5c6d7e8f901234567890abcdef1234"}
 		githubCodeloadBaseURL = "http://mock.codeload.local"
@@ -692,6 +718,21 @@ func TestValidateGzipArchiveFile(t *testing.T) {
 		err := validateGzipArchiveFile(path)
 		if err == nil || !strings.Contains(err.Error(), "github archive payload must be gzip") {
 			t.Fatalf("expected short payload error, got %v", err)
+		}
+	})
+
+	t.Run("trailing bytes are rejected for strict single-stream validation", func(t *testing.T) {
+		archive := buildTarGz(t, map[string]string{
+			"repo-8f3c2d1a4b5c6d7e8f901234567890abcdef1234/skills/x/SKILL.md": "---\nname: x\ndescription: d\n---\n",
+		})
+		path := filepath.Join(t.TempDir(), "trailing.tar.gz")
+		payload := append(append([]byte{}, archive...), []byte("tail")...)
+		if err := os.WriteFile(path, payload, 0o644); err != nil {
+			t.Fatalf("write trailing payload: %v", err)
+		}
+		err := validateGzipArchiveFile(path)
+		if err == nil || !strings.Contains(err.Error(), "single gzip stream without trailing bytes") {
+			t.Fatalf("expected trailing-bytes validation error, got %v", err)
 		}
 	})
 }

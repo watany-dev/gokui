@@ -1,7 +1,7 @@
 package source
 
 import (
-	"bytes"
+	"bufio"
 	"compress/gzip"
 	"fmt"
 	"io"
@@ -233,23 +233,31 @@ func validateGzipArchiveFile(path string) error {
 	}
 	defer f.Close()
 
-	header := make([]byte, 3)
-	if _, err := io.ReadFull(f, header); err != nil {
+	buffered := bufio.NewReader(f)
+	header, err := buffered.Peek(3)
+	if err != nil {
 		return fmt.Errorf("github archive payload must be gzip: %w", err)
 	}
 	if header[0] != 0x1f || header[1] != 0x8b || header[2] != 0x08 {
 		return fmt.Errorf("github archive payload must be gzip")
 	}
-	gz, err := gzip.NewReader(io.MultiReader(bytes.NewReader(header), f))
+	gz, err := gzip.NewReader(buffered)
 	if err != nil {
 		return fmt.Errorf("github archive payload must be gzip: %w", err)
 	}
+	gz.Multistream(false)
 	if _, err := io.Copy(io.Discard, gz); err != nil {
 		_ = gz.Close()
 		return fmt.Errorf("github archive payload must be valid gzip stream: %w", err)
 	}
 	if err := gz.Close(); err != nil {
 		return fmt.Errorf("github archive payload must be valid gzip stream: %w", err)
+	}
+	if _, err := buffered.ReadByte(); err != io.EOF {
+		if err != nil {
+			return fmt.Errorf("failed to validate github archive trailing bytes: %w", err)
+		}
+		return fmt.Errorf("github archive payload must be a single gzip stream without trailing bytes")
 	}
 	return nil
 }
