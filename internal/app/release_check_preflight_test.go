@@ -26,7 +26,7 @@ func runReleaseCheckPreflight(t *testing.T, env map[string]string) (int, string)
 
 	var exitErr *exec.ExitError
 	if !strings.Contains(err.Error(), "exit status") {
-		t.Fatalf("beta-check-preflight execution error: %v\noutput:\n%s", err, out)
+		t.Fatalf("release-check-preflight execution error: %v\noutput:\n%s", err, out)
 	}
 	if ok := errors.As(err, &exitErr); !ok {
 		t.Fatalf("release-check-preflight returned non-exit error: %v\noutput:\n%s", err, out)
@@ -165,6 +165,25 @@ func TestBetaCheckPreflightRejectsGitPathFromBetaOutputVars(t *testing.T) {
 	}
 	if !strings.Contains(out, "build output path must be a non-root file path outside .git") {
 		t.Fatalf("expected .git build output rejection message, got:\n%s", out)
+	}
+}
+
+func TestBetaCheckPreflightIgnoresInvalidReleaseCheckOutputEnv(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("preflight path contracts are exercised on POSIX in CI")
+	}
+
+	betaBuildOut := releaseCheckRepoLocalPath(t, "beta-build.out")
+	betaSarifOut := releaseCheckRepoLocalPath(t, "beta-inspect.sarif")
+
+	exitCode, out := runBetaCheckPreflight(t, map[string]string{
+		"BETA_CHECK_BUILD_OUT":    betaBuildOut,
+		"BETA_CHECK_SARIF_OUT":    betaSarifOut,
+		"RELEASE_CHECK_BUILD_OUT": ".",
+		"RELEASE_CHECK_SARIF_OUT": "/",
+	})
+	if exitCode != 0 {
+		t.Fatalf("expected zero exit when only RELEASE_CHECK_* env values are invalid\noutput:\n%s", out)
 	}
 }
 
