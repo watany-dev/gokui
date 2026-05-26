@@ -93,6 +93,9 @@ func ParseGitHubSource(input string) (GitHubSpec, error) {
 	if strings.HasPrefix(owner, "-") || strings.HasSuffix(owner, "-") || strings.Contains(owner, "--") {
 		return GitHubSpec{}, fmt.Errorf("github source owner must be canonical github login format")
 	}
+	if strings.HasSuffix(strings.ToLower(repo), ".git") {
+		return GitHubSpec{}, fmt.Errorf("github source repo must not include .git suffix")
+	}
 
 	skillPath, err := normalizeGitHubPath(parts[1])
 	if err != nil {

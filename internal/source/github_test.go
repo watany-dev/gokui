@@ -43,6 +43,8 @@ func TestParseGitHubSource(t *testing.T) {
 			"github:-owner/repo//path@ref",
 			"github:owner-/repo//path@ref",
 			"github:owner--name/repo//path@ref",
+			"github:owner/repo.git//path@ref",
+			"github:owner/repo.GIT//path@ref",
 			"github:owner/repo//path@",
 			"github:owner/repo//@",
 			"github:owner/repo///abs@ref",
