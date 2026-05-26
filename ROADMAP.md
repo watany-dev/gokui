@@ -72,6 +72,7 @@ tests/CI:
 - automated online release evidence collection mode (includes vuln step)
 - release-evidence template path/output hardening (symlink path-component rejection, restrictive template-output file permissions, and staged temporary output finalized atomically)
 - release-evidence output/log path hardening (symlink path-component rejection, restrictive evidence/log file permissions, fail-closed output/log collision checks, staged temporary evidence/log outputs finalized atomically with collision cleanup, descriptor-backed writes, and failure-artifact retention)
+- release-evidence commit provenance hardening (fail-closed git `HEAD` resolution with canonical lowercase 40-hex commit SHA enforcement)
 - inspect-sarif output path hardening (repository-root-only and outside-`.git` output enforcement, `..` path-segment rejection, symlink path-component rejection, restrictive SARIF file permissions, fail-closed output-collision checks, and atomic file creation with descriptor-backed writes)
 - release script repository-root path hardening (reject symlinked repository-root execution paths)
 - release-evidence gate hardening with isolated build output (`BUILD_OUT`) and tracked/untracked clean-tree checks (`git status --short`)

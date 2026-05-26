@@ -421,6 +421,8 @@ For the complete release-check code table, see
 
 Generated evidence filenames end with `-offline-audit.md` or
 `-online-audit.md` based on mode.
+Release evidence scripts fail closed when git `HEAD` commit SHA cannot be
+resolved as canonical lowercase 40-hex.
 
 CI is configured to resolve the latest available patch release for the selected
 Go minor version (`actions/setup-go` with `check-latest: true`).

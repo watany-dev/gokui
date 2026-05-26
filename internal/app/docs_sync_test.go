@@ -534,6 +534,10 @@ func TestReleaseChecklistDocumentationSync(t *testing.T) {
 	if !strings.Contains(releaseDoc, "RC_CLEANUP_REMOVE_FAILED_SUMMARY") {
 		t.Fatal("RELEASE.md should document cleanup failure summary machine-readable error code")
 	}
+	if !strings.Contains(releaseDoc, "fail closed when git `HEAD` commit SHA cannot be resolved") ||
+		!strings.Contains(releaseDoc, "canonical lowercase 40-hex") {
+		t.Fatal("RELEASE.md should document fail-closed canonical git HEAD commit SHA requirement for evidence scripts")
+	}
 	if !strings.Contains(releaseDoc, "| Release-check code | Typical trigger |") {
 		t.Fatal("RELEASE.md should include release-check machine-readable code table")
 	}
@@ -585,6 +589,8 @@ func TestReleaseCheckDocumentationSync(t *testing.T) {
 		"for investigation and skip subsequent vuln/cleanup steps",
 		"RC_CLEANUP_REMOVE_FAILED",
 		"RC_CLEANUP_REMOVE_FAILED_SUMMARY",
+		"fail closed when git `HEAD` commit SHA cannot be",
+		"canonical lowercase 40-hex",
 		"`Automation Error Codes` -> `release-check`",
 		"git status --short",
 		"-offline-audit.md",
@@ -917,6 +923,10 @@ func TestReleaseEvidenceScriptExecutionContractSync(t *testing.T) {
 		`EVIDENCE_MODE="online"`,
 		`assert_no_symlink_components "$OUT_DIR" "evidence directory"`,
 		`assert_no_symlink_components "$LOG_DIR" "evidence log directory"`,
+		`resolve_commit_sha()`,
+		`git -C "$ROOT_DIR" rev-parse HEAD`,
+		`COMMIT_SHA="$(resolve_commit_sha)"`,
+		`git HEAD commit SHA must be lowercase 40-hex`,
 		`assert_output_path_available "$OUT_PATH" "evidence path"`,
 		`create_temp_file_for_write "$OUT_DIR" "$OUT_BASENAME" TMP_EVIDENCE_PATH EVIDENCE_FD`,
 		`assert_output_path_available "$log_path" "log path"`,
@@ -950,6 +960,9 @@ func TestReleaseEvidenceScriptExecutionContractSync(t *testing.T) {
 	if outDirCheck > mkdirLine || logDirCheck > mkdirLine {
 		t.Fatal("collect-release-evidence.sh should reject symlinked OUT_DIR/LOG_DIR before mkdir -p")
 	}
+	if strings.Contains(script, `COMMIT_SHA="$(git -C "$ROOT_DIR" rev-parse HEAD 2>/dev/null || echo unknown)"`) {
+		t.Fatal("collect-release-evidence.sh should fail closed when git HEAD commit cannot be resolved")
+	}
 }
 
 func TestReleaseEvidenceTemplateScriptHardeningSync(t *testing.T) {
@@ -970,6 +983,10 @@ func TestReleaseEvidenceTemplateScriptHardeningSync(t *testing.T) {
 		`assert_no_symlink_components "$ROOT_DIR" "repository root path"`,
 		`assert_no_symlink_components "$TEMPLATE_PATH" "release evidence template path"`,
 		`assert_no_symlink_components "$OUT_DIR" "release evidence output directory"`,
+		`resolve_commit_sha()`,
+		`git -C "$ROOT_DIR" rev-parse HEAD`,
+		`COMMIT_SHA="$(resolve_commit_sha)"`,
+		`git HEAD commit SHA must be lowercase 40-hex`,
 		`assert_output_path_available "$OUT_PATH" "release evidence output path"`,
 		`create_temp_file_for_write "$OUT_DIR" "$OUT_BASENAME" TMP_EVIDENCE_PATH EVIDENCE_FD`,
 		`mv -n "$TMP_EVIDENCE_PATH" "$OUT_PATH"`,
@@ -980,6 +997,9 @@ func TestReleaseEvidenceTemplateScriptHardeningSync(t *testing.T) {
 		if !strings.Contains(script, line) {
 			t.Fatalf("new-release-evidence.sh missing hardening line: %q", line)
 		}
+	}
+	if strings.Contains(script, `COMMIT_SHA="$(git -C "$ROOT_DIR" rev-parse HEAD 2>/dev/null || echo unknown)"`) {
+		t.Fatal("new-release-evidence.sh should fail closed when git HEAD commit cannot be resolved")
 	}
 }
 
@@ -1048,6 +1068,7 @@ func TestRoadmapReleaseEvidenceHardeningSync(t *testing.T) {
 		"automated online release evidence collection mode (includes vuln step)",
 		"release-evidence template path/output hardening (symlink path-component rejection, restrictive template-output file permissions, and staged temporary output finalized atomically)",
 		"release-evidence output/log path hardening (symlink path-component rejection, restrictive evidence/log file permissions, fail-closed output/log collision checks, staged temporary evidence/log outputs finalized atomically with collision cleanup, descriptor-backed writes, and failure-artifact retention)",
+		"release-evidence commit provenance hardening (fail-closed git `HEAD` resolution with canonical lowercase 40-hex commit SHA enforcement)",
 		"inspect-sarif output path hardening (repository-root-only and outside-`.git` output enforcement, `..` path-segment rejection, symlink path-component rejection, restrictive SARIF file permissions, fail-closed output-collision checks, and atomic file creation with descriptor-backed writes)",
 		"release script repository-root path hardening (reject symlinked repository-root execution paths)",
 		"release-evidence gate hardening with isolated build output (`BUILD_OUT`) and tracked/untracked clean-tree checks (`git status --short`)",

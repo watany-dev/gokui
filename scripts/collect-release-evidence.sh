@@ -61,6 +61,22 @@ assert_output_path_available() {
   fi
 }
 
+resolve_commit_sha() {
+  local commit_sha
+  if ! commit_sha="$(git -C "$ROOT_DIR" rev-parse HEAD 2>/dev/null)"; then
+    echo "failed to resolve candidate commit SHA from git HEAD" >&2
+    exit 1
+  fi
+  case "$commit_sha" in
+    [0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]) ;;
+    *)
+      echo "git HEAD commit SHA must be lowercase 40-hex: $commit_sha" >&2
+      exit 1
+      ;;
+  esac
+  printf '%s\n' "$commit_sha"
+}
+
 assert_no_symlink_components "$ROOT_DIR" "repository root path"
 
 while [ "$#" -gt 0 ]; do
@@ -88,7 +104,7 @@ assert_no_symlink_components "$LOG_DIR" "evidence log directory"
 mkdir -p "$OUT_DIR" "$LOG_DIR"
 
 TS="$(date -u +%Y%m%dT%H%M%SZ)"
-COMMIT_SHA="$(git -C "$ROOT_DIR" rev-parse HEAD 2>/dev/null || echo unknown)"
+COMMIT_SHA="$(resolve_commit_sha)"
 BASENAME="${TS}-${COMMIT_SHA}-${AUDIT_KIND}"
 OUT_PATH="$OUT_DIR/${BASENAME}.md"
 assert_output_path_available "$OUT_PATH" "evidence path"

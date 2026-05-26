@@ -115,6 +115,8 @@ For evidence scripts, clean-tree checks include tracked and untracked
 `.cache/gokui-release-evidence`.
 Evidence file names end with `-offline-audit.md` or `-online-audit.md`
 depending on whether `--with-vuln` is enabled.
+Evidence scripts fail closed when git `HEAD` commit SHA cannot be resolved as
+canonical lowercase 40-hex.
 Release scripts fail closed when repository-root/output/log paths include
 symlink components or expected output/log files already exist.
 Evidence and SARIF outputs are created atomically and written via open file
