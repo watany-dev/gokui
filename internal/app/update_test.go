@@ -5382,6 +5382,55 @@ func TestEvaluateUpdateSkillAdditionalBranches(t *testing.T) {
 		}
 	})
 
+	t.Run("lock source input with unicode obfuscation characters is lockfile invalid", func(t *testing.T) {
+		lock := installLock{
+			Schema:      "gokui.lock/v1",
+			Name:        "unicode-source-input",
+			InstalledAt: "2026-05-24T00:00:00Z",
+			Source: lockSource{
+				Type:  "local",
+				Input: "/tmp/skill\u200dpayload",
+				Kind:  "local-dir",
+			},
+			Skill: lockSkill{
+				RootSHA256: strings.Repeat("a", 64),
+				Files: []lockFileHash{
+					{Path: "SKILL.md", SHA256: strings.Repeat("b", 64), Bytes: 1},
+				},
+			},
+			Policy: lockPolicy{
+				Profile:  policyProfileStrict,
+				Decision: "pass",
+			},
+		}
+		item := updateSkillItem{
+			Name: "unicode-source-input",
+			Path: t.TempDir(),
+			Source: source{
+				Input: lock.Source.Input,
+				Kind:  lock.Source.Kind,
+			},
+			Diff: updateDiff{
+				Added:   []string{},
+				Removed: []string{},
+				Changed: []string{},
+			},
+		}
+		got, err := evaluateUpdateSkill(item, lock, false, policypkg.Config{})
+		if err != nil {
+			t.Fatalf("evaluateUpdateSkill() error = %v", err)
+		}
+		if got.Status != "ERROR" {
+			t.Fatalf("status = %q, want ERROR", got.Status)
+		}
+		if got.ErrorCode != updateCodeLockfileInvalid {
+			t.Fatalf("error_code = %q, want %q", got.ErrorCode, updateCodeLockfileInvalid)
+		}
+		if !strings.Contains(got.Message, "lock source input must not contain Unicode bidi, zero-width, tag, or variation-selector characters") {
+			t.Fatalf("message = %q", got.Message)
+		}
+	})
+
 	t.Run("empty lock source kind is lockfile invalid", func(t *testing.T) {
 		targetRoot := filepath.Join(t.TempDir(), "skills")
 		if err := os.MkdirAll(targetRoot, 0o755); err != nil {

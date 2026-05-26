@@ -1560,6 +1560,9 @@ func validateInstallLockForProvenanceReuse(lock installLock, expectedSkillName s
 	if strings.IndexFunc(trimmedInput, isC0OrC1ControlRune) >= 0 {
 		return fmt.Errorf("lock source input must not contain C0/C1 control characters")
 	}
+	if containsSeverityOverrideDisallowedUnicode(trimmedInput) {
+		return fmt.Errorf("lock source input must not contain Unicode bidi, zero-width, tag, or variation-selector characters")
+	}
 	if detectSourceKind(trimmedInput) != trimmedKind {
 		return fmt.Errorf("lock source kind does not match source input")
 	}

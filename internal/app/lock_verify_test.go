@@ -1051,6 +1051,10 @@ func TestVerifyLockSourceChecks(t *testing.T) {
 	if ok, _ := verifyLockSource(lock); ok {
 		t.Fatal("input with C1 control characters should fail")
 	}
+	lock.Source.Input = "/tmp/skill\u200dpayload"
+	if ok, _ := verifyLockSource(lock); ok {
+		t.Fatal("input with unicode obfuscation characters should fail")
+	}
 	lock.Source.Input = "/tmp/skill"
 	lock.Source.Kind = " local-dir "
 	if ok, _ := verifyLockSource(lock); ok {

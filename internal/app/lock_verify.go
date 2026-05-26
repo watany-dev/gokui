@@ -674,6 +674,9 @@ func verifyLockSource(lock installLock) (bool, string) {
 	if strings.IndexFunc(trimmedInput, isC0OrC1ControlRune) >= 0 {
 		return false, "lock source input must not contain C0/C1 control characters"
 	}
+	if containsSeverityOverrideDisallowedUnicode(trimmedInput) {
+		return false, "lock source input must not contain Unicode bidi, zero-width, tag, or variation-selector characters"
+	}
 	detectedKind := detectSourceKind(trimmedInput)
 	if trimmedKind != detectedKind {
 		return false, fmt.Sprintf("lock source kind does not match source input: kind=%s detected=%s", trimmedKind, detectedKind)
