@@ -3408,6 +3408,13 @@ func TestReadInstallLockAndProvenanceMatches(t *testing.T) {
 				detailPart: "schema must not contain C0/C1 control characters",
 			},
 			{
+				name: "schema has unicode obfuscation character",
+				mutate: func(l *installLock) {
+					l.Schema = "gokui.lock/v1\u200d"
+				},
+				detailPart: "schema must not contain Unicode bidi, zero-width, tag, or variation-selector characters",
+			},
+			{
 				name: "name has surrounding whitespace",
 				mutate: func(l *installLock) {
 					l.Name = " skill "

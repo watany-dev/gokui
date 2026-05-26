@@ -839,6 +839,30 @@ func TestLockSchemaControlCharHardeningDocumentationSync(t *testing.T) {
 	}
 }
 
+func TestLockSchemaUnicodeHardeningDocumentationSync(t *testing.T) {
+	readmeBytes, err := os.ReadFile("../../README.md")
+	if err != nil {
+		t.Fatalf("failed to read README.md: %v", err)
+	}
+	readme := string(readmeBytes)
+	roadmapBytes, err := os.ReadFile("../../ROADMAP.md")
+	if err != nil {
+		t.Fatalf("failed to read ROADMAP.md: %v", err)
+	}
+	roadmap := string(roadmapBytes)
+
+	requiredReadme := "Lock `schema` in `gokui.lock` must not contain Unicode"
+	requiredReadmeContinuation := "bidi/zero-width/tag/variation-selector characters."
+	if !strings.Contains(readme, requiredReadme) || !strings.Contains(readme, requiredReadmeContinuation) {
+		t.Fatalf("README missing lock schema unicode hardening line: %q ... %q", requiredReadme, requiredReadmeContinuation)
+	}
+
+	requiredRoadmap := "Lock `schema` validation hardening with Unicode bidi/zero-width/tag/variation-selector rejection for install/update and lock-verify schema checks"
+	if !strings.Contains(roadmap, requiredRoadmap) {
+		t.Fatalf("ROADMAP missing lock schema unicode hardening line: %q", requiredRoadmap)
+	}
+}
+
 func TestSeverityOverridesControlCharHardeningDocumentationSync(t *testing.T) {
 	readmeBytes, err := os.ReadFile("../../README.md")
 	if err != nil {
