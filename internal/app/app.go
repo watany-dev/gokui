@@ -199,6 +199,7 @@ const (
 	ruleInspectSourceSymlink          = "INSPECT_SOURCE_SYMLINK_DETECTED"
 	ruleSkillFrontmatterSymlink       = "SKILL_FRONTMATTER_SYMLINK_DETECTED"
 	ruleSkillFrontmatterSpecialFile   = "SKILL_FRONTMATTER_SPECIAL_FILE"
+	ruleSkillFrontmatterInvalidUTF8   = "SKILL_FRONTMATTER_INVALID_UTF8"
 	ruleSkillFrontmatterSourceChanged = "SKILL_FRONTMATTER_SOURCE_CHANGED_DURING_READ"
 )
 
@@ -1397,6 +1398,9 @@ func validateSkillFrontmatter(skillPath string) (skillFrontmatter, error) {
 			return skillFrontmatter{}, fmt.Errorf("%s: SKILL.md exceeds size limit: %s", ruleSkillFrontmatterTooLarge, skillPath)
 		}
 		return skillFrontmatter{}, fmt.Errorf("failed to read SKILL.md: %s", skillPath)
+	}
+	if !utf8.Valid(content.Bytes()) {
+		return skillFrontmatter{}, fmt.Errorf("%s: SKILL.md must be valid UTF-8: %s", ruleSkillFrontmatterInvalidUTF8, skillPath)
 	}
 
 	text := strings.ReplaceAll(content.String(), "\r\n", "\n")

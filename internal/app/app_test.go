@@ -2840,6 +2840,34 @@ func TestRun(t *testing.T) {
 		}
 	})
 
+	t.Run("inspect surfaces non-utf8 skill frontmatter rule_id in json error", func(t *testing.T) {
+		var stdout bytes.Buffer
+		var stderr bytes.Buffer
+
+		skillRoot := filepath.Join(t.TempDir(), "non-utf8-frontmatter-skill")
+		if err := os.MkdirAll(skillRoot, 0o755); err != nil {
+			t.Fatalf("mkdir skill root: %v", err)
+		}
+		invalid := append([]byte("---\nname: non-utf8-frontmatter-skill\ndescription: Use when validating utf-8 frontmatter rejection.\n---\n"), 0xff)
+		if err := os.WriteFile(filepath.Join(skillRoot, "SKILL.md"), invalid, 0o644); err != nil {
+			t.Fatalf("write invalid utf-8 SKILL.md: %v", err)
+		}
+
+		code := Run([]string{"inspect", skillRoot, "--format", "json"}, &stdout, &stderr, cfg)
+		if code != 1 {
+			t.Fatalf("Run() code = %d, want 1\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
+		}
+		if stderr.Len() != 0 {
+			t.Fatalf("stderr should be empty for json output, got %q", stderr.String())
+		}
+		if !strings.Contains(stdout.String(), "\"error_code\": \""+inspectErrorCodeSourcePrepareFailed+"\"") {
+			t.Fatalf("stdout should include source-prepare-failed error_code, got %q", stdout.String())
+		}
+		if !strings.Contains(stdout.String(), "\"rule_id\": \""+ruleSkillFrontmatterInvalidUTF8+"\"") {
+			t.Fatalf("stdout should include frontmatter utf-8 rule_id, got %q", stdout.String())
+		}
+	})
+
 	t.Run("inspect validates tar.gz archive source", func(t *testing.T) {
 		var stdout bytes.Buffer
 		var stderr bytes.Buffer
@@ -3976,6 +4004,18 @@ func TestValidateSkillFrontmatter(t *testing.T) {
 		_, err := validateSkillFrontmatter(path)
 		if err == nil || !strings.Contains(err.Error(), ruleSkillFrontmatterTooLarge) {
 			t.Fatalf("expected oversized frontmatter error, got %v", err)
+		}
+	})
+
+	t.Run("rejects non-utf8 skill file", func(t *testing.T) {
+		path := filepath.Join(t.TempDir(), "SKILL.md")
+		invalid := append([]byte("---\nname: valid-skill\ndescription: Use when validating utf-8 rejection.\n---\n"), 0xff)
+		if err := os.WriteFile(path, invalid, 0o644); err != nil {
+			t.Fatalf("write invalid utf-8 SKILL.md: %v", err)
+		}
+		_, err := validateSkillFrontmatter(path)
+		if err == nil || !strings.Contains(err.Error(), ruleSkillFrontmatterInvalidUTF8) {
+			t.Fatalf("expected invalid utf-8 frontmatter error, got %v", err)
 		}
 	})
 
