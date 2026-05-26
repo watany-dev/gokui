@@ -609,6 +609,28 @@ func TestSourceMetadataHelpers(t *testing.T) {
 		}
 	})
 
+	t.Run("validate metadata rejects non-utf8 source input", func(t *testing.T) {
+		sourceInput := "github:org/repo//skills/x@8f3c2d1a4b5c6d7e8f901234567890abcdef1234"
+		invalidSourceInput := string(append([]byte(sourceInput), 0xff))
+		err := validateSourceMetadata(sourceMetadata{
+			Schema:          "gokui.source/v1",
+			SourceInput:     invalidSourceInput,
+			SourceKind:      "github-source",
+			ResolvedRef:     "8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
+			FetchedAt:       "2026-05-23T00:00:00Z",
+			SkillRootSHA256: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+		})
+		if err == nil {
+			t.Fatal("expected invalid source_input utf-8 error")
+		}
+		if !strings.Contains(err.Error(), "source metadata has invalid github source input") {
+			t.Fatalf("expected metadata source_input context, got %v", err)
+		}
+		if !strings.Contains(err.Error(), "github source must be valid UTF-8") {
+			t.Fatalf("expected utf-8 validation detail, got %v", err)
+		}
+	})
+
 	t.Run("verify installed metadata errors", func(t *testing.T) {
 		dir := t.TempDir()
 		if err := verifyInstalledSourceMetadata(dir, source{Input: "x", Kind: "github-source"}); err == nil {
