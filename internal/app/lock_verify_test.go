@@ -3221,6 +3221,19 @@ func TestSeverityOverrideAuditHelpers(t *testing.T) {
 				detailPart: "applied_at must not contain C0/C1 control characters",
 			},
 			{
+				name: "applied_at has DEL control character only",
+				override: severityOverrideAudit{
+					RuleID:            "PROMPT_OVERRIDE_LANGUAGE",
+					PreviousSeverity:  "high",
+					EffectiveSeverity: "medium",
+					Justification:     "x",
+					ApprovedBy:        "y",
+					Source:            "policy-file",
+					AppliedAt:         "\u007f",
+				},
+				detailPart: "applied_at must not contain C0/C1 control characters",
+			},
+			{
 				name: "applied_at has unicode obfuscation character",
 				override: severityOverrideAudit{
 					RuleID:            "PROMPT_OVERRIDE_LANGUAGE",
