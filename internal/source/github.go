@@ -155,6 +155,12 @@ func normalizeGitHubPath(p string) (string, error) {
 		return "", fmt.Errorf("github source path must not escape repository root")
 	}
 	for _, segment := range strings.Split(clean, "/") {
+		if strings.TrimSpace(segment) != segment {
+			return "", fmt.Errorf("github source path segments must not contain surrounding spaces")
+		}
+		if strings.HasSuffix(segment, ".") {
+			return "", fmt.Errorf("github source path segments must not end with dot")
+		}
 		if isWindowsReservedPathSegment(segment) {
 			return "", fmt.Errorf("github source path must not contain Windows reserved device-name segments")
 		}

@@ -58,6 +58,8 @@ func TestParseGitHubSource(t *testing.T) {
 			"github:owner/repo//skills:demo@ref",
 			"github:owner/repo//skills/con@ref",
 			"github:owner/repo//skills/com1.txt@ref",
+			"github:owner/repo//skills/ demo@ref",
+			"github:owner/repo//skills/demo.@ref",
 			`github:owner/repo//skills\demo@ref`,
 			"github:owner/repo//path@ 8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
 			"github:owner/repo//path@8f3c2d1a4b5c6d7e8f901234567890abcdef1234 ",
@@ -185,6 +187,15 @@ func TestNormalizeGitHubPath(t *testing.T) {
 		for _, in := range cases {
 			if _, err := normalizeGitHubPath(in); err == nil {
 				t.Fatalf("expected path error for reserved segment %q", in)
+			}
+		}
+	})
+
+	t.Run("rejects path segments with surrounding spaces or trailing dot", func(t *testing.T) {
+		cases := []string{"skills/ demo", "skills/demo.", "skills/\tdemo"}
+		for _, in := range cases {
+			if _, err := normalizeGitHubPath(in); err == nil {
+				t.Fatalf("expected path error for segment form %q", in)
 			}
 		}
 	})

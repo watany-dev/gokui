@@ -38,6 +38,7 @@ tests/CI:
 - GitHub source parser rejection of surrounding whitespace in `//path` segment
 - GitHub source parser rejection of `@` in `//path` segment
 - GitHub source parser rejection of `:` in `//path` segment
+- GitHub source parser rejection of path segments with surrounding whitespace or trailing dot
 - GitHub source parser rejection of Windows reserved device-name path segments
 - GitHub source parser rejection of non-canonical `//path` segments (`//`, `/./`, `/../`, trailing `/`)
 - GitHub source parser owner-format hardening (uppercase letters and `_` disallowed; no leading/trailing `-`; no `--`)

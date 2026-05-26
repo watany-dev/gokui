@@ -318,6 +318,8 @@ Commit-pinned refs must not include surrounding whitespace.
 The `//path/to/skill` segment must not contain surrounding whitespace.
 The `//path/to/skill` segment must not contain `@`.
 The `//path/to/skill` segment must not contain `:`.
+Each `//path/to/skill` segment must not have leading/trailing whitespace or a
+trailing dot (`.`).
 The `//path/to/skill` segment must not include Windows reserved device names
 (`con`, `prn`, `aux`, `nul`, `com1..com9`, `lpt1..lpt9`, `conin$`, `conout$`)
 as path segments.
