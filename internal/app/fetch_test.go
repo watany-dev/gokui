@@ -173,6 +173,16 @@ func TestRunFetch(t *testing.T) {
 		if !strings.Contains(stderr.String(), "invalid github source") {
 			t.Fatalf("stderr should include invalid source message for control-char source, got %q", stderr.String())
 		}
+
+		stdout.Reset()
+		stderr.Reset()
+		code = runFetch([]string{"github:org/repo// skills/demo@8f3c2d1a4b5c6d7e8f901234567890abcdef1234", "--out", t.TempDir()}, &stdout, &stderr)
+		if code != 1 {
+			t.Fatalf("runFetch(path-space source) code = %d, want 1", code)
+		}
+		if !strings.Contains(stderr.String(), "invalid github source") {
+			t.Fatalf("stderr should include invalid source message for path-space source, got %q", stderr.String())
+		}
 	})
 
 	t.Run("propagates fetch and collision errors", func(t *testing.T) {
@@ -507,6 +517,14 @@ func TestRunFetch(t *testing.T) {
 		code = runFetch([]string{"github:org/repo//skills/x@\n8f3c2d1a4b5c6d7e8f901234567890abcdef1234", "--out", t.TempDir(), "--format", "json"}, &stdout, &stderr)
 		if code != 1 || !strings.Contains(stdout.String(), fetchErrorCodeSourceInvalid) {
 			t.Fatalf("expected source invalid code for control-char source, got code=%d stdout=%q stderr=%q", code, stdout.String(), stderr.String())
+		}
+		stdout.Reset()
+		stderr.Reset()
+
+		// surrounding whitespace in path
+		code = runFetch([]string{"github:org/repo// skills/x@8f3c2d1a4b5c6d7e8f901234567890abcdef1234", "--out", t.TempDir(), "--format", "json"}, &stdout, &stderr)
+		if code != 1 || !strings.Contains(stdout.String(), fetchErrorCodeSourceInvalid) {
+			t.Fatalf("expected source invalid code for path-space source, got code=%d stdout=%q stderr=%q", code, stdout.String(), stderr.String())
 		}
 		stdout.Reset()
 		stderr.Reset()

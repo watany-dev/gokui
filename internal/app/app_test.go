@@ -3932,6 +3932,27 @@ func TestRunInspectGitHubSourceRejectsControlCharacterInput(t *testing.T) {
 	}
 }
 
+func TestRunInspectGitHubSourceRejectsPathWithSurroundingSpaces(t *testing.T) {
+	cfg := Config{
+		Version: "v0.1.0",
+		Commit:  "abc123",
+		Date:    "2026-05-22T00:00:00Z",
+	}
+
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	code := Run([]string{"inspect", "github:org/repo// skills/x@8f3c2d1a4b5c6d7e8f901234567890abcdef1234", "--format", "json"}, &stdout, &stderr, cfg)
+	if code != 1 {
+		t.Fatalf("Run() code = %d, want 1", code)
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("stderr should be empty, got %q", stderr.String())
+	}
+	if !strings.Contains(stdout.String(), "\"error_code\": \""+inspectErrorCodeSourceInvalid+"\"") {
+		t.Fatalf("stdout should include source-invalid error code, got %q", stdout.String())
+	}
+}
+
 func TestRunInspectGitHubSourceCommitPinnedEvaluatesContent(t *testing.T) {
 	cfg := Config{
 		Version: "v0.1.0",
@@ -4335,6 +4356,21 @@ func TestRunInspectJSONErrorCodes(t *testing.T) {
 		}
 		if !strings.Contains(stderr.String(), "invalid github source") {
 			t.Fatalf("stderr should include github source error for control-char input, got %q", stderr.String())
+		}
+	})
+
+	t.Run("github source with path surrounding spaces in human mode writes stderr", func(t *testing.T) {
+		var stdout bytes.Buffer
+		var stderr bytes.Buffer
+		code := Run([]string{"inspect", "github:org/repo// skills/clean-skill@8f3c2d1a4b5c6d7e8f901234567890abcdef1234"}, &stdout, &stderr, cfg)
+		if code != 1 {
+			t.Fatalf("Run() code = %d, want 1", code)
+		}
+		if stdout.Len() != 0 {
+			t.Fatalf("stdout should be empty, got %q", stdout.String())
+		}
+		if !strings.Contains(stderr.String(), "invalid github source") {
+			t.Fatalf("stderr should include github source error for path-space input, got %q", stderr.String())
 		}
 	})
 

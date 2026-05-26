@@ -46,6 +46,8 @@ func TestParseGitHubSource(t *testing.T) {
 			"github:owner/repo//path@\n8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
 			"github:owner/repo//skills/\x1fhelper@8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
 			"github:owner\x7f/repo//path@8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
+			"github:owner/repo// skills/path@8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
+			"github:owner/repo//skills/path @8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
 		}
 		for _, in := range cases {
 			if _, err := ParseGitHubSource(in); err == nil {
@@ -131,6 +133,15 @@ func TestNormalizeGitHubPath(t *testing.T) {
 		for _, in := range cases {
 			if _, err := normalizeGitHubPath(in); err == nil {
 				t.Fatalf("expected path error for %q", in)
+			}
+		}
+	})
+
+	t.Run("rejects surrounding spaces in path", func(t *testing.T) {
+		cases := []string{" skills/demo", "skills/demo ", "\tskills/demo"}
+		for _, in := range cases {
+			if _, err := normalizeGitHubPath(in); err == nil {
+				t.Fatalf("expected path-space error for %q", in)
 			}
 		}
 	})

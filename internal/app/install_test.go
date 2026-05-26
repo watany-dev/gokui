@@ -307,6 +307,16 @@ func TestRunInstallErrorPaths(t *testing.T) {
 
 	stdout.Reset()
 	stderr.Reset()
+	code = runInstall([]string{"github:org/repo// skill@8f3c2d1a4b5c6d7e8f901234567890abcdef1234", "--target", "codex", "--profile", "strict"}, &stdout, &stderr)
+	if code != 1 {
+		t.Fatalf("runInstall(path-space source) code = %d, want 1", code)
+	}
+	if !strings.Contains(stderr.String(), "invalid github source") {
+		t.Fatalf("stderr should include invalid github source for path-space source, got %q", stderr.String())
+	}
+
+	stdout.Reset()
+	stderr.Reset()
 	origFetch := fetchGitHubSkill
 	t.Cleanup(func() { fetchGitHubSkill = origFetch })
 	fakeSource := createSkillSourceForInstallTest(t, "mocked-github-skill")

@@ -105,6 +105,9 @@ func ParseGitHubSource(input string) (GitHubSpec, error) {
 
 func normalizeGitHubPath(p string) (string, error) {
 	raw := strings.TrimSpace(p)
+	if raw != p {
+		return "", fmt.Errorf("github source path must not contain surrounding spaces")
+	}
 	if raw == "" {
 		return "", fmt.Errorf("github source path must be non-empty")
 	}
