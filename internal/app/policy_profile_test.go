@@ -26,14 +26,14 @@ func TestPolicyProfileHelpers(t *testing.T) {
 }
 
 func TestDefaultRejectSeveritySetForProfile(t *testing.T) {
-	strictSet := defaultRejectSeveritySetForProfile(policyProfileStrict)
+	strictSet := policypkg.ProfileStrict.DefaultRejectSeverities()
 	if _, ok := strictSet["high"]; !ok {
 		t.Fatal("strict set should include high")
 	}
 	if _, ok := strictSet["critical"]; !ok {
 		t.Fatal("strict set should include critical")
 	}
-	researchSet := defaultRejectSeveritySetForProfile(policyProfileResearch)
+	researchSet := policypkg.ProfileResearch.DefaultRejectSeverities()
 	if _, ok := researchSet["high"]; ok {
 		t.Fatal("research set should not include high")
 	}
