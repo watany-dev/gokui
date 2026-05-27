@@ -31,5 +31,8 @@ func shouldApplyRepositoryPolicy(sourceKind string) bool {
 
 func effectiveRejectSeveritySetForProfile(profile string, policyLoaded bool, cfg policypkg.Config) (map[string]struct{}, error) {
 	set, err := policypkg.EffectiveRejectSeverities(policypkg.NormalizeProfile(profile), policyLoaded, cfg)
-	return map[string]struct{}(set), err
+	if err != nil {
+		return nil, err
+	}
+	return set.Strings(), nil
 }

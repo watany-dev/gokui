@@ -136,7 +136,7 @@ func validateAuditSeverity(idx int, field string, value string) error {
 	if err := validateAuditText(idx, field, value, true); err != nil {
 		return err
 	}
-	if !isCanonicalSeverity(value) {
+	if !Severity(value).IsCanonical() {
 		return fmt.Errorf("entry %d: %s must be canonical severity (critical|high|medium|low)", idx, field)
 	}
 	return nil
@@ -157,15 +157,6 @@ func validateAuditText(idx int, field string, value string, required bool) error
 		return fmt.Errorf("entry %d: %s must not contain leading or trailing whitespace", idx, field)
 	}
 	return nil
-}
-
-func isCanonicalSeverity(in string) bool {
-	switch in {
-	case "critical", "high", "medium", "low":
-		return true
-	default:
-		return false
-	}
 }
 
 func isAllowedSeverityOverrideSource(in string) bool {

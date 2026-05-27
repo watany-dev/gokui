@@ -13,8 +13,6 @@ const (
 	ProfileResearch Profile = "research"
 )
 
-type SeveritySet map[string]struct{}
-
 func ParseProfile(in string) (Profile, error) {
 	profile := NormalizeProfile(in)
 	if !profile.IsSupported() {
@@ -55,11 +53,11 @@ func (p Profile) IsSupported() bool {
 
 func (p Profile) DefaultRejectSeverities() SeveritySet {
 	out := SeveritySet{
-		"critical": {},
+		SeverityCritical: {},
 	}
 	switch NormalizeProfile(p.String()) {
 	case ProfileStrict, ProfileTeam:
-		out["high"] = struct{}{}
+		out[SeverityHigh] = struct{}{}
 	}
 	return out
 }
@@ -81,14 +79,13 @@ func EffectiveRejectSeverities(profile Profile, policyLoaded bool, cfg Config) (
 
 	out := make(SeveritySet, len(overrideCfg.RejectSeverities))
 	for _, sev := range overrideCfg.RejectSeverities {
-		switch sev {
-		case "critical", "high", "medium", "low":
-			out[sev] = struct{}{}
-		default:
+		severity, err := ParseSeverity(sev)
+		if err != nil {
 			return nil, fmt.Errorf("profile %s has invalid reject severity: %s", normalized, sev)
 		}
+		out[severity] = struct{}{}
 	}
-	if _, ok := out["critical"]; !ok {
+	if _, ok := out[SeverityCritical]; !ok {
 		return nil, fmt.Errorf("profile %s reject_severities must include critical", normalized)
 	}
 	return out, nil
