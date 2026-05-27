@@ -10,13 +10,13 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
-	"strconv"
 	"strings"
 	"unicode/utf8"
 
 	"github.com/watany-dev/gokui/internal/cli/exitcode"
 	"github.com/watany-dev/gokui/internal/materialize"
 	policypkg "github.com/watany-dev/gokui/internal/policy"
+	reportpkg "github.com/watany-dev/gokui/internal/report"
 	"github.com/watany-dev/gokui/internal/scan"
 	skillpkg "github.com/watany-dev/gokui/internal/skill"
 	srcpkg "github.com/watany-dev/gokui/internal/source"
@@ -1279,9 +1279,7 @@ func buildInspectReviewReport(report inspectReport) inspectReviewReport {
 }
 
 func neutralizeReviewText(text string) string {
-	valid := strings.ToValidUTF8(text, "\uFFFD")
-	quoted := strconv.QuoteToASCII(valid)
-	return quoted[1 : len(quoted)-1]
+	return reportpkg.NeutralizeReviewText(text)
 }
 
 func detectSourceKind(input string) string {
