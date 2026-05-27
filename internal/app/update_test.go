@@ -156,6 +156,78 @@ func TestClassifyUpdateSourcePrepareFailure(t *testing.T) {
 	})
 }
 
+func TestFailUpdateSkillItem(t *testing.T) {
+	lock := installLock{
+		Findings: lockFindingSummary{
+			Critical: 1,
+			High:     2,
+			Medium:   3,
+			Low:      4,
+		},
+	}
+	item := updateSkillItem{Name: "demo"}
+
+	got := failUpdateSkillItem(item, lock, "ERROR", updateCodeLockfileInvalid, "LOCKFILE_INVALID_UTF8: lock policy decision must be canonical lowercase pass")
+	if got.Name != item.Name {
+		t.Fatalf("name = %q, want %q", got.Name, item.Name)
+	}
+	if got.Status != "ERROR" || got.ErrorCode != updateCodeLockfileInvalid {
+		t.Fatalf("status/code = %q/%q", got.Status, got.ErrorCode)
+	}
+	if got.Message != "LOCKFILE_INVALID_UTF8: lock policy decision must be canonical lowercase pass" {
+		t.Fatalf("message = %q", got.Message)
+	}
+	if got.RuleID != "LOCKFILE_INVALID_UTF8" {
+		t.Fatalf("rule_id = %q, want LOCKFILE_INVALID_UTF8", got.RuleID)
+	}
+	if got.Risk.Previous != lock.Findings || got.Risk.Current != lock.Findings {
+		t.Fatalf("risk summary mismatch: %+v", got.Risk)
+	}
+}
+
+func TestValidateUpdateLockEnvelopeAdditionalBranches(t *testing.T) {
+	valid := installLock{
+		Schema:      lockSchemaVersion,
+		Name:        "demo",
+		InstalledAt: "2026-05-24T00:00:00Z",
+		Policy: lockPolicy{
+			SeverityOverrides: []severityOverrideAudit{},
+		},
+	}
+
+	cases := []struct {
+		name   string
+		mutate func(*installLock)
+		want   string
+	}{
+		{
+			name:   "name surrounding whitespace",
+			mutate: func(lock *installLock) { lock.Name = " demo " },
+			want:   "lock name must not contain leading or trailing whitespace",
+		},
+		{
+			name:   "installed_at empty",
+			mutate: func(lock *installLock) { lock.InstalledAt = "" },
+			want:   "lock installed_at is empty",
+		},
+		{
+			name:   "installed_at surrounding whitespace",
+			mutate: func(lock *installLock) { lock.InstalledAt = " 2026-05-24T00:00:00Z " },
+			want:   "lock installed_at must not contain leading or trailing whitespace",
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			lock := valid
+			tc.mutate(&lock)
+			err := validateUpdateLockEnvelope(lock, "")
+			if err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("expected %q error, got %v", tc.want, err)
+			}
+		})
+	}
+}
+
 func TestBuildUpdateSARIFReport(t *testing.T) {
 	t.Run("builds rules and results from findings and status errors", func(t *testing.T) {
 		report := updateReport{
@@ -4640,6 +4712,17 @@ func TestUpdateHelpers(t *testing.T) {
 		}
 	})
 
+	t.Run("relative path messages", func(t *testing.T) {
+		root := t.TempDir()
+		path := filepath.Join(root, "nested", "SKILL.md")
+		if got := relativePathForMessage(path, root); got != "nested/SKILL.md" {
+			t.Fatalf("relativePathForMessage() = %q, want nested/SKILL.md", got)
+		}
+		if got := relativePathForMessage("relative/SKILL.md", root); got != "relative/SKILL.md" {
+			t.Fatalf("relativePathForMessage() fallback = %q, want relative/SKILL.md", got)
+		}
+	})
+
 	t.Run("collectURLs and executable collection errors", func(t *testing.T) {
 		_, err := collectURLs(filepath.Join(t.TempDir(), "missing"))
 		if err == nil {
@@ -4781,6 +4864,32 @@ func TestUpdateHelpers(t *testing.T) {
 		_, err := collectExecutableFiles(root)
 		if err == nil || !strings.Contains(err.Error(), ruleUpdateExecutableScanSymlink) {
 			t.Fatalf("expected executable-scan symlink rejection, got %v", err)
+		}
+	})
+
+	t.Run("collectExecutableFiles returns executable relative paths", func(t *testing.T) {
+		if runtime.GOOS == "windows" {
+			t.Skip("executable mode bits differ on windows")
+		}
+
+		root := t.TempDir()
+		binDir := filepath.Join(root, "bin")
+		if err := os.Mkdir(binDir, 0o755); err != nil {
+			t.Fatalf("mkdir bin: %v", err)
+		}
+		if err := os.WriteFile(filepath.Join(binDir, "run.sh"), []byte("#!/bin/sh\n"), 0o755); err != nil {
+			t.Fatalf("write executable: %v", err)
+		}
+		if err := os.WriteFile(filepath.Join(root, "README.md"), []byte("not executable"), 0o644); err != nil {
+			t.Fatalf("write non-executable: %v", err)
+		}
+
+		got, err := collectExecutableFiles(root)
+		if err != nil {
+			t.Fatalf("collectExecutableFiles() error = %v", err)
+		}
+		if len(got) != 1 || got[0] != "bin/run.sh" {
+			t.Fatalf("collectExecutableFiles() = %+v, want [bin/run.sh]", got)
 		}
 	})
 

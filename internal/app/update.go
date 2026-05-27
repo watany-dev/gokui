@@ -642,388 +642,124 @@ func isUpdateTargetReadError(err error) bool {
 func evaluateUpdateSkill(item updateSkillItem, lock installLock, policyLoaded bool, cfg policypkg.Config) (updateSkillItem, error) {
 	item.RiskScore = computeUpdateRiskScore(lock.Findings, lock.Findings, updateRiskSignalInputs{})
 	if err := validateUpdateLockEnvelope(lock, item.Name); err != nil {
-		item.Status = "ERROR"
-		item.ErrorCode = updateCodeLockfileInvalid
-		item.Message = err.Error()
-		item.RuleID = inferRuleIDForJSONError(item.Message)
-		item.Risk = updateRisk{
-			Previous: lock.Findings,
-			Current:  lock.Findings,
-		}
-		return item, nil
+		return failUpdateSkillItem(item, lock, "ERROR", updateCodeLockfileInvalid, err.Error()), nil
 	}
 	policyProfileRaw := lock.Policy.Profile
 	if strings.IndexFunc(policyProfileRaw, isC0OrC1ControlRune) >= 0 {
-		item.Status = "ERROR"
-		item.ErrorCode = updateCodeLockfileInvalid
-		item.Message = "lock policy profile must not contain C0/C1 control characters"
-		item.RuleID = inferRuleIDForJSONError(item.Message)
-		item.Risk = updateRisk{
-			Previous: lock.Findings,
-			Current:  lock.Findings,
-		}
-		return item, nil
+		return failUpdateSkillItem(item, lock, "ERROR", updateCodeLockfileInvalid, "lock policy profile must not contain C0/C1 control characters"), nil
 	}
 	if containsSeverityOverrideDisallowedUnicode(policyProfileRaw) {
-		item.Status = "ERROR"
-		item.ErrorCode = updateCodeLockfileInvalid
-		item.Message = "lock policy profile must not contain Unicode bidi, zero-width, tag, or variation-selector characters"
-		item.RuleID = inferRuleIDForJSONError(item.Message)
-		item.Risk = updateRisk{
-			Previous: lock.Findings,
-			Current:  lock.Findings,
-		}
-		return item, nil
+		return failUpdateSkillItem(item, lock, "ERROR", updateCodeLockfileInvalid, "lock policy profile must not contain Unicode bidi, zero-width, tag, or variation-selector characters"), nil
 	}
 	policyProfile := normalizePolicyProfile(policyProfileRaw)
 	if policyProfileRaw != policyProfile {
-		item.Status = "ERROR"
-		item.ErrorCode = updateCodeLockfileInvalid
-		item.Message = "lock policy profile must be canonical lowercase without surrounding whitespace"
-		item.RuleID = inferRuleIDForJSONError(item.Message)
-		item.Risk = updateRisk{
-			Previous: lock.Findings,
-			Current:  lock.Findings,
-		}
-		return item, nil
+		return failUpdateSkillItem(item, lock, "ERROR", updateCodeLockfileInvalid, "lock policy profile must be canonical lowercase without surrounding whitespace"), nil
 	}
 	if !isSupportedPolicyProfile(policyProfile) {
-		item.Status = "ERROR"
-		item.ErrorCode = updateCodeLockfileInvalid
-		item.Message = fmt.Sprintf("unsupported policy profile in lockfile: %s", policyProfileRaw)
-		item.RuleID = inferRuleIDForJSONError(item.Message)
-		item.Risk = updateRisk{
-			Previous: lock.Findings,
-			Current:  lock.Findings,
-		}
-		return item, nil
+		return failUpdateSkillItem(item, lock, "ERROR", updateCodeLockfileInvalid, fmt.Sprintf("unsupported policy profile in lockfile: %s", policyProfileRaw)), nil
 	}
 	policyDecisionRaw := lock.Policy.Decision
 	trimmedPolicyDecision := strings.TrimSpace(policyDecisionRaw)
 	if strings.IndexFunc(policyDecisionRaw, isC0OrC1ControlRune) >= 0 {
-		item.Status = "ERROR"
-		item.ErrorCode = updateCodeLockfileInvalid
-		item.Message = "lock policy decision must not contain C0/C1 control characters"
-		item.RuleID = inferRuleIDForJSONError(item.Message)
-		item.Risk = updateRisk{
-			Previous: lock.Findings,
-			Current:  lock.Findings,
-		}
-		return item, nil
+		return failUpdateSkillItem(item, lock, "ERROR", updateCodeLockfileInvalid, "lock policy decision must not contain C0/C1 control characters"), nil
 	}
 	if containsSeverityOverrideDisallowedUnicode(policyDecisionRaw) {
-		item.Status = "ERROR"
-		item.ErrorCode = updateCodeLockfileInvalid
-		item.Message = "lock policy decision must not contain Unicode bidi, zero-width, tag, or variation-selector characters"
-		item.RuleID = inferRuleIDForJSONError(item.Message)
-		item.Risk = updateRisk{
-			Previous: lock.Findings,
-			Current:  lock.Findings,
-		}
-		return item, nil
+		return failUpdateSkillItem(item, lock, "ERROR", updateCodeLockfileInvalid, "lock policy decision must not contain Unicode bidi, zero-width, tag, or variation-selector characters"), nil
 	}
 	if trimmedPolicyDecision != policyDecisionRaw {
-		item.Status = "ERROR"
-		item.ErrorCode = updateCodeLockfileInvalid
-		item.Message = "lock policy decision must not contain leading or trailing whitespace"
-		item.RuleID = inferRuleIDForJSONError(item.Message)
-		item.Risk = updateRisk{
-			Previous: lock.Findings,
-			Current:  lock.Findings,
-		}
-		return item, nil
+		return failUpdateSkillItem(item, lock, "ERROR", updateCodeLockfileInvalid, "lock policy decision must not contain leading or trailing whitespace"), nil
 	}
 	if policyDecisionRaw != "pass" {
-		item.Status = "ERROR"
-		item.ErrorCode = updateCodeLockfileInvalid
-		item.Message = "lock policy decision must be canonical lowercase pass"
-		item.RuleID = inferRuleIDForJSONError(item.Message)
-		item.Risk = updateRisk{
-			Previous: lock.Findings,
-			Current:  lock.Findings,
-		}
-		return item, nil
+		return failUpdateSkillItem(item, lock, "ERROR", updateCodeLockfileInvalid, "lock policy decision must be canonical lowercase pass"), nil
 	}
 	sourceInputRaw := lock.Source.Input
 	sourceInput := strings.TrimSpace(sourceInputRaw)
 	if strings.IndexFunc(sourceInputRaw, isC0OrC1ControlRune) >= 0 {
-		item.Status = "ERROR"
-		item.ErrorCode = updateCodeLockfileInvalid
-		item.Message = "lock source input must not contain C0/C1 control characters"
-		item.RuleID = inferRuleIDForJSONError(item.Message)
-		item.Risk = updateRisk{
-			Previous: lock.Findings,
-			Current:  lock.Findings,
-		}
-		return item, nil
+		return failUpdateSkillItem(item, lock, "ERROR", updateCodeLockfileInvalid, "lock source input must not contain C0/C1 control characters"), nil
 	}
 	if containsSeverityOverrideDisallowedUnicode(sourceInputRaw) && detectSourceKind(sourceInput) != "github-source" {
-		item.Status = "ERROR"
-		item.ErrorCode = updateCodeLockfileInvalid
-		item.Message = "lock source input must not contain Unicode bidi, zero-width, tag, or variation-selector characters"
-		item.RuleID = inferRuleIDForJSONError(item.Message)
-		item.Risk = updateRisk{
-			Previous: lock.Findings,
-			Current:  lock.Findings,
-		}
-		return item, nil
+		return failUpdateSkillItem(item, lock, "ERROR", updateCodeLockfileInvalid, "lock source input must not contain Unicode bidi, zero-width, tag, or variation-selector characters"), nil
 	}
 	if sourceInput == "" {
-		item.Status = "ERROR"
-		item.ErrorCode = updateCodeLockfileInvalid
-		item.Message = "lock source input is empty"
-		item.RuleID = inferRuleIDForJSONError(item.Message)
-		item.Risk = updateRisk{
-			Previous: lock.Findings,
-			Current:  lock.Findings,
-		}
-		return item, nil
+		return failUpdateSkillItem(item, lock, "ERROR", updateCodeLockfileInvalid, "lock source input is empty"), nil
 	}
 	if sourceInputRaw != sourceInput {
-		item.Status = "ERROR"
-		item.ErrorCode = updateCodeLockfileInvalid
-		item.Message = "lock source input must not contain leading or trailing whitespace"
-		item.RuleID = inferRuleIDForJSONError(item.Message)
-		item.Risk = updateRisk{
-			Previous: lock.Findings,
-			Current:  lock.Findings,
-		}
-		return item, nil
+		return failUpdateSkillItem(item, lock, "ERROR", updateCodeLockfileInvalid, "lock source input must not contain leading or trailing whitespace"), nil
 	}
 	kindRaw := lock.Source.Kind
 	kind := strings.TrimSpace(kindRaw)
 	detectedKind := detectSourceKind(sourceInput)
 	if strings.IndexFunc(kindRaw, isC0OrC1ControlRune) >= 0 {
-		item.Status = "ERROR"
-		item.ErrorCode = updateCodeLockfileInvalid
-		item.Message = "lock source kind must not contain C0/C1 control characters"
-		item.RuleID = inferRuleIDForJSONError(item.Message)
-		item.Risk = updateRisk{
-			Previous: lock.Findings,
-			Current:  lock.Findings,
-		}
-		return item, nil
+		return failUpdateSkillItem(item, lock, "ERROR", updateCodeLockfileInvalid, "lock source kind must not contain C0/C1 control characters"), nil
 	}
 	if containsSeverityOverrideDisallowedUnicode(kindRaw) {
-		item.Status = "ERROR"
-		item.ErrorCode = updateCodeLockfileInvalid
-		item.Message = "lock source kind must not contain Unicode bidi, zero-width, tag, or variation-selector characters"
-		item.RuleID = inferRuleIDForJSONError(item.Message)
-		item.Risk = updateRisk{
-			Previous: lock.Findings,
-			Current:  lock.Findings,
-		}
-		return item, nil
+		return failUpdateSkillItem(item, lock, "ERROR", updateCodeLockfileInvalid, "lock source kind must not contain Unicode bidi, zero-width, tag, or variation-selector characters"), nil
 	}
 	if kind == "" {
-		item.Status = "ERROR"
-		item.ErrorCode = updateCodeLockfileInvalid
-		item.Message = "lock source kind is empty"
-		item.RuleID = inferRuleIDForJSONError(item.Message)
-		item.Risk = updateRisk{
-			Previous: lock.Findings,
-			Current:  lock.Findings,
-		}
-		return item, nil
+		return failUpdateSkillItem(item, lock, "ERROR", updateCodeLockfileInvalid, "lock source kind is empty"), nil
 	}
 	if kindRaw != kind {
-		item.Status = "ERROR"
-		item.ErrorCode = updateCodeLockfileInvalid
-		item.Message = "lock source kind must not contain leading or trailing whitespace"
-		item.RuleID = inferRuleIDForJSONError(item.Message)
-		item.Risk = updateRisk{
-			Previous: lock.Findings,
-			Current:  lock.Findings,
-		}
-		return item, nil
+		return failUpdateSkillItem(item, lock, "ERROR", updateCodeLockfileInvalid, "lock source kind must not contain leading or trailing whitespace"), nil
 	}
 	if kind != strings.ToLower(kind) {
-		item.Status = "ERROR"
-		item.ErrorCode = updateCodeLockfileInvalid
-		item.Message = "lock source kind must be canonical lowercase"
-		item.RuleID = inferRuleIDForJSONError(item.Message)
-		item.Risk = updateRisk{
-			Previous: lock.Findings,
-			Current:  lock.Findings,
-		}
-		return item, nil
+		return failUpdateSkillItem(item, lock, "ERROR", updateCodeLockfileInvalid, "lock source kind must be canonical lowercase"), nil
 	}
 	expectedType := sourceTypeFromKind(kind)
 	if expectedType == "unknown" {
-		item.Status = "ERROR"
-		item.ErrorCode = updateCodeLockfileInvalid
-		item.Message = fmt.Sprintf("unsupported source kind in lockfile: %s", kind)
-		item.RuleID = inferRuleIDForJSONError(item.Message)
-		item.Risk = updateRisk{
-			Previous: lock.Findings,
-			Current:  lock.Findings,
-		}
-		return item, nil
+		return failUpdateSkillItem(item, lock, "ERROR", updateCodeLockfileInvalid, fmt.Sprintf("unsupported source kind in lockfile: %s", kind)), nil
 	}
 	if expectedType != "github" {
 		cleanedInput := filepath.Clean(sourceInput)
 		if sourceInput != cleanedInput {
-			item.Status = "ERROR"
-			item.ErrorCode = updateCodeLockfileInvalid
-			item.Message = "lock source input must be a canonical cleaned path for local/archive sources"
-			item.RuleID = inferRuleIDForJSONError(item.Message)
-			item.Risk = updateRisk{
-				Previous: lock.Findings,
-				Current:  lock.Findings,
-			}
-			return item, nil
+			return failUpdateSkillItem(item, lock, "ERROR", updateCodeLockfileInvalid, "lock source input must be a canonical cleaned path for local/archive sources"), nil
 		}
 	}
 	if kind != detectedKind {
-		item.Status = "ERROR"
-		item.ErrorCode = updateCodeSourceMetadataBad
-		item.Message = fmt.Sprintf("lock source kind does not match source input: kind=%s detected=%s", kind, detectedKind)
-		item.RuleID = inferRuleIDForJSONError(item.Message)
-		item.Risk = updateRisk{
-			Previous: lock.Findings,
-			Current:  lock.Findings,
-		}
-		return item, nil
+		return failUpdateSkillItem(item, lock, "ERROR", updateCodeSourceMetadataBad, fmt.Sprintf("lock source kind does not match source input: kind=%s detected=%s", kind, detectedKind)), nil
 	}
 	sourceTypeRaw := lock.Source.Type
 	sourceType := strings.TrimSpace(sourceTypeRaw)
 	if strings.IndexFunc(sourceTypeRaw, isC0OrC1ControlRune) >= 0 {
-		item.Status = "ERROR"
-		item.ErrorCode = updateCodeLockfileInvalid
-		item.Message = "lock source type must not contain C0/C1 control characters"
-		item.RuleID = inferRuleIDForJSONError(item.Message)
-		item.Risk = updateRisk{
-			Previous: lock.Findings,
-			Current:  lock.Findings,
-		}
-		return item, nil
+		return failUpdateSkillItem(item, lock, "ERROR", updateCodeLockfileInvalid, "lock source type must not contain C0/C1 control characters"), nil
 	}
 	if containsSeverityOverrideDisallowedUnicode(sourceTypeRaw) {
-		item.Status = "ERROR"
-		item.ErrorCode = updateCodeLockfileInvalid
-		item.Message = "lock source type must not contain Unicode bidi, zero-width, tag, or variation-selector characters"
-		item.RuleID = inferRuleIDForJSONError(item.Message)
-		item.Risk = updateRisk{
-			Previous: lock.Findings,
-			Current:  lock.Findings,
-		}
-		return item, nil
+		return failUpdateSkillItem(item, lock, "ERROR", updateCodeLockfileInvalid, "lock source type must not contain Unicode bidi, zero-width, tag, or variation-selector characters"), nil
 	}
 	if sourceType == "" {
-		item.Status = "ERROR"
-		item.ErrorCode = updateCodeLockfileInvalid
-		item.Message = "lock source type is empty"
-		item.RuleID = inferRuleIDForJSONError(item.Message)
-		item.Risk = updateRisk{
-			Previous: lock.Findings,
-			Current:  lock.Findings,
-		}
-		return item, nil
+		return failUpdateSkillItem(item, lock, "ERROR", updateCodeLockfileInvalid, "lock source type is empty"), nil
 	}
 	if sourceTypeRaw != sourceType {
-		item.Status = "ERROR"
-		item.ErrorCode = updateCodeLockfileInvalid
-		item.Message = "lock source type must not contain leading or trailing whitespace"
-		item.RuleID = inferRuleIDForJSONError(item.Message)
-		item.Risk = updateRisk{
-			Previous: lock.Findings,
-			Current:  lock.Findings,
-		}
-		return item, nil
+		return failUpdateSkillItem(item, lock, "ERROR", updateCodeLockfileInvalid, "lock source type must not contain leading or trailing whitespace"), nil
 	}
 	if sourceType != strings.ToLower(sourceType) {
-		item.Status = "ERROR"
-		item.ErrorCode = updateCodeLockfileInvalid
-		item.Message = "lock source type must be canonical lowercase"
-		item.RuleID = inferRuleIDForJSONError(item.Message)
-		item.Risk = updateRisk{
-			Previous: lock.Findings,
-			Current:  lock.Findings,
-		}
-		return item, nil
+		return failUpdateSkillItem(item, lock, "ERROR", updateCodeLockfileInvalid, "lock source type must be canonical lowercase"), nil
 	}
 	if sourceType != expectedType {
-		item.Status = "ERROR"
-		item.ErrorCode = updateCodeLockfileInvalid
-		item.Message = fmt.Sprintf("source type mismatch for kind %s: expected %s, got %s", kind, expectedType, sourceType)
-		item.RuleID = inferRuleIDForJSONError(item.Message)
-		item.Risk = updateRisk{
-			Previous: lock.Findings,
-			Current:  lock.Findings,
-		}
-		return item, nil
+		return failUpdateSkillItem(item, lock, "ERROR", updateCodeLockfileInvalid, fmt.Sprintf("source type mismatch for kind %s: expected %s, got %s", kind, expectedType, sourceType)), nil
 	}
 	if kind == "github-source" {
 		spec, parseErr := srcpkg.ParseGitHubSource(sourceInput)
 		if parseErr != nil {
-			item.Status = "ERROR"
-			item.ErrorCode = updateCodeGitHubSourceBad
-			item.Message = fmt.Sprintf("invalid github source in lockfile: %v", parseErr)
-			item.RuleID = inferRuleIDForJSONError(item.Message)
-			item.Risk = updateRisk{
-				Previous: lock.Findings,
-				Current:  lock.Findings,
-			}
-			return item, nil
+			return failUpdateSkillItem(item, lock, "ERROR", updateCodeGitHubSourceBad, fmt.Sprintf("invalid github source in lockfile: %v", parseErr)), nil
 		}
 		if sourceInput != canonicalGitHubSourceInput(spec) {
-			item.Status = "ERROR"
-			item.ErrorCode = updateCodeLockfileInvalid
-			item.Message = "github lock source input must be canonical"
-			item.RuleID = inferRuleIDForJSONError(item.Message)
-			item.Risk = updateRisk{
-				Previous: lock.Findings,
-				Current:  lock.Findings,
-			}
-			return item, nil
+			return failUpdateSkillItem(item, lock, "ERROR", updateCodeLockfileInvalid, "github lock source input must be canonical"), nil
 		}
 		if !srcpkg.IsCommitPinnedRef(spec.Ref) {
-			item.Status = "REJECTED"
-			item.ErrorCode = updateCodeGitHubRefFloating
-			item.Message = "floating github refs are not eligible for update; commit-pinned ref required"
-			item.RuleID = inferRuleIDForJSONError(item.Message)
-			item.Risk = updateRisk{
-				Previous: lock.Findings,
-				Current:  lock.Findings,
-			}
-			return item, nil
+			return failUpdateSkillItem(item, lock, "REJECTED", updateCodeGitHubRefFloating, "floating github refs are not eligible for update; commit-pinned ref required"), nil
 		}
 		if err := verifyInstalledSourceMetadata(item.Path, source{
 			Input: sourceInput,
 			Kind:  kind,
 		}); err != nil {
-			item.Status = "ERROR"
-			item.ErrorCode = updateCodeSourceMetadataBad
-			item.Message = err.Error()
-			item.RuleID = inferRuleIDForJSONError(item.Message)
-			item.Risk = updateRisk{
-				Previous: lock.Findings,
-				Current:  lock.Findings,
-			}
-			return item, nil
+			return failUpdateSkillItem(item, lock, "ERROR", updateCodeSourceMetadataBad, err.Error()), nil
 		}
 	}
 	if err := validateUpdateLockSkillSnapshot(lock); err != nil {
-		item.Status = "ERROR"
-		item.ErrorCode = updateCodeLockfileInvalid
-		item.Message = err.Error()
-		item.RuleID = inferRuleIDForJSONError(item.Message)
-		item.Risk = updateRisk{
-			Previous: lock.Findings,
-			Current:  lock.Findings,
-		}
-		return item, nil
+		return failUpdateSkillItem(item, lock, "ERROR", updateCodeLockfileInvalid, err.Error()), nil
 	}
 	if err := validateUpdateLockAgainstInstallReport(item.Path, lock); err != nil {
-		item.Status = "ERROR"
-		item.ErrorCode = updateCodeLockfileInvalid
-		item.Message = err.Error()
-		item.RuleID = inferRuleIDForJSONError(item.Message)
-		item.Risk = updateRisk{
-			Previous: lock.Findings,
-			Current:  lock.Findings,
-		}
-		return item, nil
+		return failUpdateSkillItem(item, lock, "ERROR", updateCodeLockfileInvalid, err.Error()), nil
 	}
 
 	skillRoot, cleanup, err := preparePolicyEvaluationSource(sourceInput, kind)
@@ -1033,15 +769,7 @@ func evaluateUpdateSkill(item updateSkillItem, lock installLock, policyLoaded bo
 	if err != nil {
 		message := err.Error()
 		status, code := classifyUpdateSourcePrepareFailure(kind, err)
-		item.Status = status
-		item.ErrorCode = code
-		item.Message = message
-		item.RuleID = inferRuleIDForJSONError(item.Message)
-		item.Risk = updateRisk{
-			Previous: lock.Findings,
-			Current:  lock.Findings,
-		}
-		return item, nil
+		return failUpdateSkillItem(item, lock, status, code, message), nil
 	}
 
 	effectivePolicy := cfg
@@ -1049,15 +777,7 @@ func evaluateUpdateSkill(item updateSkillItem, lock installLock, policyLoaded bo
 	if shouldApplyRepositoryPolicy(kind) {
 		repoPolicy, repoPolicyFound, repoPolicyErr := loadRepositoryPolicyConfig(skillRoot)
 		if repoPolicyErr != nil {
-			item.Status = "ERROR"
-			item.ErrorCode = updateCodeEvaluationError
-			item.Message = repoPolicyErr.Error()
-			item.RuleID = inferRuleIDForJSONError(item.Message)
-			item.Risk = updateRisk{
-				Previous: lock.Findings,
-				Current:  lock.Findings,
-			}
-			return item, nil
+			return failUpdateSkillItem(item, lock, "ERROR", updateCodeEvaluationError, repoPolicyErr.Error()), nil
 		}
 		if repoPolicyFound {
 			effectivePolicy = repoPolicy
@@ -1067,15 +787,7 @@ func evaluateUpdateSkill(item updateSkillItem, lock installLock, policyLoaded bo
 
 	rejectSet, err := effectiveRejectSeveritySetForProfile(policyProfile, effectivePolicyLoaded, effectivePolicy)
 	if err != nil {
-		item.Status = "ERROR"
-		item.ErrorCode = updateCodeEvaluationError
-		item.Message = err.Error()
-		item.RuleID = inferRuleIDForJSONError(item.Message)
-		item.Risk = updateRisk{
-			Previous: lock.Findings,
-			Current:  lock.Findings,
-		}
-		return item, nil
+		return failUpdateSkillItem(item, lock, "ERROR", updateCodeEvaluationError, err.Error()), nil
 	}
 
 	findings, _, _, err := evaluateSkillWithOverrides(skillRoot, policyProfile, nil, rejectSet)
@@ -1204,6 +916,18 @@ func classifyUpdateSourcePrepareFailure(kind string, err error) (status string, 
 		return "REJECTED", updateCodeGitHubRefFloating
 	}
 	return status, code
+}
+
+func failUpdateSkillItem(item updateSkillItem, lock installLock, status string, code string, message string) updateSkillItem {
+	item.Status = status
+	item.ErrorCode = code
+	item.Message = message
+	item.RuleID = inferRuleIDForJSONError(item.Message)
+	item.Risk = updateRisk{
+		Previous: lock.Findings,
+		Current:  lock.Findings,
+	}
+	return item
 }
 
 func validateUpdateLockEnvelope(lock installLock, expectedSkillName string) error {
