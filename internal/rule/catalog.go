@@ -49,6 +49,11 @@ var (
 		Severity:    SeverityCritical,
 		Description: "disallowed control character detected in text",
 	}
+	NFKCChangesText = Rule{
+		ID:          "NFKC_CHANGES_TEXT",
+		Severity:    SeverityMedium,
+		Description: "Unicode compatibility normalization changes text",
+	}
 	MixedScriptFilename = Rule{
 		ID:          "MIXED_SCRIPT_FILENAME",
 		Severity:    SeverityMedium,
@@ -98,6 +103,7 @@ var catalog = []Rule{
 	VariationSelectorInText,
 	ZeroWidthCharInText,
 	ControlCharInText,
+	NFKCChangesText,
 	MixedScriptFilename,
 	ConfusableFilename,
 	LinkSpoofingURLMismatch,

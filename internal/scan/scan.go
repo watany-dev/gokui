@@ -10,6 +10,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/watany-dev/gokui/internal/limitio"
+	"github.com/watany-dev/gokui/internal/rule"
 )
 
 const maxScanFileBytes = 500_000
@@ -138,13 +139,7 @@ func scanTextFile(target scanTarget) ([]Finding, error) {
 
 		normalized, changed := normalizeLineNFKC(line)
 		if changed {
-			findings = append(findings, Finding{
-				ID:       "NFKC_CHANGES_TEXT",
-				Severity: "medium",
-				File:     target.Relative,
-				Line:     lineNum,
-				Summary:  "Unicode compatibility normalization changes text",
-			})
+			findings = append(findings, newFinding(rule.NFKCChangesText, target.Relative, lineNum, "Unicode compatibility normalization changes text"))
 		}
 		for _, variant := range scanLineVariants(lines, i, line, normalized, changed) {
 			findings = append(findings, scanVariantThreatFindings(variant, target, lineNum)...)

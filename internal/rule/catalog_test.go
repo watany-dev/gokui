@@ -14,6 +14,7 @@ func TestCatalogIncludesScanRules(t *testing.T) {
 		{VariationSelectorInText, "VARIATION_SELECTOR_IN_TEXT", SeverityCritical},
 		{ZeroWidthCharInText, "ZERO_WIDTH_CHAR_IN_TEXT", SeverityCritical},
 		{ControlCharInText, "CONTROL_CHAR_IN_TEXT", SeverityCritical},
+		{NFKCChangesText, "NFKC_CHANGES_TEXT", SeverityMedium},
 		{MixedScriptFilename, "MIXED_SCRIPT_FILENAME", SeverityMedium},
 		{ConfusableFilename, "CONFUSABLE_FILENAME", SeverityHigh},
 		{LinkSpoofingURLMismatch, "LINK_SPOOFING_URL_MISMATCH", SeverityHigh},

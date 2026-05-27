@@ -6,6 +6,8 @@ import (
 	"strings"
 	"unicode"
 	"unicode/utf8"
+
+	"github.com/watany-dev/gokui/internal/rule"
 )
 
 func scanDecodedVariantThreatFindings(line string, target scanTarget, lineNum int, depth int) []Finding {
@@ -34,13 +36,7 @@ func scanDecodedVariantThreatFindings(line string, target scanTarget, lineNum in
 			}
 			normalized, changed := normalizeLineNFKC(decodedLine)
 			if changed {
-				findings = append(findings, Finding{
-					ID:       "NFKC_CHANGES_TEXT",
-					Severity: "medium",
-					File:     target.Relative,
-					Line:     lineNum,
-					Summary:  "Unicode compatibility normalization changes text",
-				})
+				findings = append(findings, newFinding(rule.NFKCChangesText, target.Relative, lineNum, "Unicode compatibility normalization changes text"))
 			}
 			findings = append(findings, classifyUnicodeThreats(decodedLine, target.Relative, lineNum)...)
 			for _, variant := range lineVariants(decodedLine, normalized, changed) {
