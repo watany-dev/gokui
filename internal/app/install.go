@@ -15,6 +15,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/watany-dev/gokui/internal/cli/exitcode"
 	"github.com/watany-dev/gokui/internal/limitio"
 	policypkg "github.com/watany-dev/gokui/internal/policy"
 	"github.com/watany-dev/gokui/internal/safefs"
@@ -192,7 +193,7 @@ func runInstall(args []string, stdout io.Writer, stderr io.Writer) int {
 			})
 		}
 		_, _ = fmt.Fprintf(stderr, "%s\n\n%s\n", err.Error(), usage())
-		return 1
+		return exitcode.Error.Int()
 	}
 	loadedPolicy, foundPolicy, policyErr := loadUserPolicyConfig()
 	if policyErr != nil {
@@ -209,10 +210,10 @@ func runInstall(args []string, stdout io.Writer, stderr io.Writer) int {
 			PolicyProfile: parsed.Profile,
 			Note:          "failed to load user policy profile",
 		}) {
-			return 1
+			return exitcode.Error.Int()
 		}
 		_, _ = fmt.Fprintln(stderr, policyErr.Error())
-		return 1
+		return exitcode.Error.Int()
 	}
 	sourceKind := detectSourceKind(parsed.Source)
 
@@ -232,10 +233,10 @@ func runInstall(args []string, stdout io.Writer, stderr io.Writer) int {
 					PolicyProfile: parsed.Profile,
 					Note:          "install source must exist before policy evaluation",
 				}) {
-					return 1
+					return exitcode.Error.Int()
 				}
 				_, _ = fmt.Fprintf(stderr, "install source not found: %s\n", parsed.Source)
-				return 1
+				return exitcode.Error.Int()
 			}
 			accessErr := fmt.Sprintf("failed to access install source: %v", statErr)
 			if emitInstallStructuredError(parsed.Format, stdout, stderr, installErrorReport{
@@ -251,10 +252,10 @@ func runInstall(args []string, stdout io.Writer, stderr io.Writer) int {
 				PolicyProfile: parsed.Profile,
 				Note:          "install source access check failed",
 			}) {
-				return 1
+				return exitcode.Error.Int()
 			}
 			_, _ = fmt.Fprintln(stderr, accessErr)
-			return 1
+			return exitcode.Error.Int()
 		}
 	}
 
@@ -276,10 +277,10 @@ func runInstall(args []string, stdout io.Writer, stderr io.Writer) int {
 			PolicyProfile: parsed.Profile,
 			Note:          "install source preparation failed",
 		}) {
-			return 1
+			return exitcode.Error.Int()
 		}
 		_, _ = fmt.Fprintln(stderr, err.Error())
-		return 1
+		return exitcode.Error.Int()
 	}
 
 	effectivePolicy := loadedPolicy
@@ -300,10 +301,10 @@ func runInstall(args []string, stdout io.Writer, stderr io.Writer) int {
 				PolicyProfile: parsed.Profile,
 				Note:          "failed to load repository policy profile",
 			}) {
-				return 1
+				return exitcode.Error.Int()
 			}
 			_, _ = fmt.Fprintln(stderr, repoPolicyErr.Error())
-			return 1
+			return exitcode.Error.Int()
 		}
 		if repoPolicyFound {
 			effectivePolicy = repoPolicy
@@ -329,10 +330,10 @@ func runInstall(args []string, stdout io.Writer, stderr io.Writer) int {
 			PolicyProfile: parsed.Profile,
 			Note:          "install policy profile validation failed",
 		}) {
-			return 1
+			return exitcode.Error.Int()
 		}
 		_, _ = fmt.Fprintf(stderr, "unsupported profile: %s (supported: %s)\n", parsed.Profile, supportedPolicyProfilesCSV())
-		return 1
+		return exitcode.Error.Int()
 	}
 	if err := validateInstallOverridesPolicy(parsed.Profile, parsed.Overrides, effectivePolicyLoaded, effectivePolicy); err != nil {
 		if emitInstallStructuredError(parsed.Format, stdout, stderr, installErrorReport{
@@ -348,10 +349,10 @@ func runInstall(args []string, stdout io.Writer, stderr io.Writer) int {
 			PolicyProfile: parsed.Profile,
 			Note:          "install override policy validation failed",
 		}) {
-			return 1
+			return exitcode.Error.Int()
 		}
 		_, _ = fmt.Fprintln(stderr, err.Error())
-		return 1
+		return exitcode.Error.Int()
 	}
 
 	rejectSet, err := effectiveRejectSeveritySetForProfile(parsed.Profile, effectivePolicyLoaded, effectivePolicy)
@@ -369,10 +370,10 @@ func runInstall(args []string, stdout io.Writer, stderr io.Writer) int {
 			PolicyProfile: parsed.Profile,
 			Note:          "policy reject_severities configuration is invalid",
 		}) {
-			return 1
+			return exitcode.Error.Int()
 		}
 		_, _ = fmt.Fprintln(stderr, err.Error())
-		return 1
+		return exitcode.Error.Int()
 	}
 
 	findings, decision, overrides, err := evaluateSkillWithOverrides(skillRoot, parsed.Profile, parsed.Overrides, rejectSet)
@@ -390,10 +391,10 @@ func runInstall(args []string, stdout io.Writer, stderr io.Writer) int {
 			PolicyProfile: parsed.Profile,
 			Note:          "install policy evaluation failed",
 		}) {
-			return 1
+			return exitcode.Error.Int()
 		}
 		_, _ = fmt.Fprintln(stderr, err.Error())
-		return 1
+		return exitcode.Error.Int()
 	}
 
 	installSource, err := resolveSourceForInstall(skillRoot, parsed.Source, sourceKind)
@@ -411,10 +412,10 @@ func runInstall(args []string, stdout io.Writer, stderr io.Writer) int {
 			PolicyProfile: parsed.Profile,
 			Note:          "install source metadata validation failed",
 		}) {
-			return 1
+			return exitcode.Error.Int()
 		}
 		_, _ = fmt.Fprintln(stderr, err.Error())
-		return 1
+		return exitcode.Error.Int()
 	}
 
 	report := installReport{
@@ -435,19 +436,19 @@ func runInstall(args []string, stdout io.Writer, stderr io.Writer) int {
 			out, err := json.MarshalIndent(report, "", "  ")
 			if err != nil {
 				_, _ = fmt.Fprintln(stderr, "failed to render install report")
-				return 1
+				return exitcode.Error.Int()
 			}
 			_, _ = fmt.Fprintf(stdout, "%s\n", out)
-			return 2
+			return exitcode.Rejected.Int()
 		}
 		if parsed.Format == "sarif" {
 			out, _ := json.MarshalIndent(buildInstallSARIFReport(report, parsed.Target), "", "  ")
 			_, _ = fmt.Fprintf(stdout, "%s\n", out)
-			return 2
+			return exitcode.Rejected.Int()
 		}
 		if parsed.Format == "compact" {
 			_, _ = fmt.Fprintf(stdout, "%s\n", buildInstallCompactSummary(report, parsed.Target))
-			return 2
+			return exitcode.Rejected.Int()
 		}
 		_, _ = fmt.Fprintln(stdout, "gokui install report (pre-release)")
 		_, _ = fmt.Fprintf(stdout, "source: %s (%s)\n", report.Source.Input, report.Source.Kind)
@@ -457,7 +458,7 @@ func runInstall(args []string, stdout io.Writer, stderr io.Writer) int {
 		for _, finding := range report.Findings {
 			_, _ = fmt.Fprintf(stdout, "- [%s] %s %s:%d %s\n", strings.ToUpper(finding.Severity), finding.ID, finding.File, finding.Line, finding.Summary)
 		}
-		return 2
+		return exitcode.Rejected.Int()
 	}
 
 	targetRoot, targetErr := resolveInstallTarget(parsed.Target)
@@ -472,10 +473,10 @@ func runInstall(args []string, stdout io.Writer, stderr io.Writer) int {
 			PolicyProfile: parsed.Profile,
 			Note:          "install target validation failed",
 		}) {
-			return 1
+			return exitcode.Error.Int()
 		}
 		_, _ = fmt.Fprintln(stderr, targetErr.Error())
-		return 1
+		return exitcode.Error.Int()
 	}
 	if err := rejectSymlinkPath(targetRoot, "install target root", ruleInstallTargetSymlink); err != nil {
 		if emitInstallStructuredError(parsed.Format, stdout, stderr, installErrorReport{
@@ -488,10 +489,10 @@ func runInstall(args []string, stdout io.Writer, stderr io.Writer) int {
 			PolicyProfile: parsed.Profile,
 			Note:          "install target validation failed",
 		}) {
-			return 1
+			return exitcode.Error.Int()
 		}
 		_, _ = fmt.Fprintln(stderr, err.Error())
-		return 1
+		return exitcode.Error.Int()
 	}
 
 	if err := os.MkdirAll(targetRoot, 0o755); err != nil {
@@ -505,10 +506,10 @@ func runInstall(args []string, stdout io.Writer, stderr io.Writer) int {
 			PolicyProfile: parsed.Profile,
 			Note:          "install target preparation failed",
 		}) {
-			return 1
+			return exitcode.Error.Int()
 		}
 		_, _ = fmt.Fprintf(stderr, "failed to create install target root: %v\n", err)
-		return 1
+		return exitcode.Error.Int()
 	}
 
 	skillName := filepath.Base(filepath.Clean(skillRoot))
@@ -524,10 +525,10 @@ func runInstall(args []string, stdout io.Writer, stderr io.Writer) int {
 			PolicyProfile: parsed.Profile,
 			Note:          "install write step failed",
 		}) {
-			return 1
+			return exitcode.Error.Int()
 		}
 		_, _ = fmt.Fprintln(stderr, err.Error())
-		return 1
+		return exitcode.Error.Int()
 	}
 	report.Installed = true
 	report.InstalledPath = installedPath
@@ -535,19 +536,19 @@ func runInstall(args []string, stdout io.Writer, stderr io.Writer) int {
 		out, err := json.MarshalIndent(report, "", "  ")
 		if err != nil {
 			_, _ = fmt.Fprintln(stderr, "failed to render install report")
-			return 1
+			return exitcode.Error.Int()
 		}
 		_, _ = fmt.Fprintf(stdout, "%s\n", out)
-		return 0
+		return exitcode.OK.Int()
 	}
 	if parsed.Format == "sarif" {
 		out, _ := json.MarshalIndent(buildInstallSARIFReport(report, parsed.Target), "", "  ")
 		_, _ = fmt.Fprintf(stdout, "%s\n", out)
-		return 0
+		return exitcode.OK.Int()
 	}
 	if parsed.Format == "compact" {
 		_, _ = fmt.Fprintf(stdout, "%s\n", buildInstallCompactSummary(report, parsed.Target))
-		return 0
+		return exitcode.OK.Int()
 	}
 
 	_, _ = fmt.Fprintln(stdout, "gokui install report (pre-release)")
@@ -562,7 +563,7 @@ func runInstall(args []string, stdout io.Writer, stderr io.Writer) int {
 	default:
 		_, _ = fmt.Fprintf(stdout, "installed: %s\n", installedPath)
 	}
-	return 0
+	return exitcode.OK.Int()
 }
 
 func parseInstallArgs(args []string) (installArgs, error) {
@@ -774,10 +775,10 @@ func writeInstallJSONError(stdout io.Writer, stderr io.Writer, report installErr
 	out, err := json.MarshalIndent(report, "", "  ")
 	if err != nil {
 		_, _ = fmt.Fprintln(stderr, "failed to render install error report")
-		return 1
+		return exitcode.Error.Int()
 	}
 	_, _ = fmt.Fprintf(stdout, "%s\n", out)
-	return 1
+	return exitcode.Error.Int()
 }
 
 func writeInstallSARIFError(stdout io.Writer, stderr io.Writer, report installErrorReport) int {
@@ -789,10 +790,10 @@ func writeInstallSARIFError(stdout io.Writer, stderr io.Writer, report installEr
 	out, err := json.MarshalIndent(buildInstallSARIFErrorReport(report), "", "  ")
 	if err != nil {
 		_, _ = fmt.Fprintln(stderr, "failed to render install sarif error report")
-		return 1
+		return exitcode.Error.Int()
 	}
 	_, _ = fmt.Fprintf(stdout, "%s\n", out)
-	return 1
+	return exitcode.Error.Int()
 }
 
 func buildInstallSARIFErrorReport(report installErrorReport) inspectSARIFReport {

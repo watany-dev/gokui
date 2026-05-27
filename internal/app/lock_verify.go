@@ -15,6 +15,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
+	"github.com/watany-dev/gokui/internal/cli/exitcode"
 	"github.com/watany-dev/gokui/internal/limitio"
 	policypkg "github.com/watany-dev/gokui/internal/policy"
 	"github.com/watany-dev/gokui/internal/safefs"
@@ -120,7 +121,7 @@ func runLockVerify(args []string, stdout io.Writer, stderr io.Writer) int {
 			})
 		}
 		_, _ = fmt.Fprintf(stderr, "%s\n\n%s\n", err.Error(), usage())
-		return 1
+		return exitcode.Error.Int()
 	}
 
 	report, verifyErr := verifyLock(parsed.Path)
@@ -140,21 +141,21 @@ func runLockVerify(args []string, stdout io.Writer, stderr io.Writer) int {
 			return writeLockVerifySARIFError(stdout, stderr, errorReport)
 		}
 		_, _ = fmt.Fprintln(stderr, verifyErr.Error())
-		return 1
+		return exitcode.Error.Int()
 	}
 
 	if parsed.Format == "json" {
 		out, err := json.MarshalIndent(report, "", "  ")
 		if err != nil {
 			_, _ = fmt.Fprintln(stderr, "failed to render lock verify report")
-			return 1
+			return exitcode.Error.Int()
 		}
 		_, _ = fmt.Fprintf(stdout, "%s\n", out)
 	} else if parsed.Format == "sarif" {
 		out, err := json.MarshalIndent(buildLockVerifySARIFReport(report), "", "  ")
 		if err != nil {
 			_, _ = fmt.Fprintln(stderr, "failed to render lock verify sarif report")
-			return 1
+			return exitcode.Error.Int()
 		}
 		_, _ = fmt.Fprintf(stdout, "%s\n", out)
 	} else if parsed.Format == "compact" {
@@ -182,9 +183,9 @@ func runLockVerify(args []string, stdout io.Writer, stderr io.Writer) int {
 	}
 
 	if report.Status == "VERIFIED" {
-		return 0
+		return exitcode.OK.Int()
 	}
-	return 2
+	return exitcode.Rejected.Int()
 }
 
 func lockVerifyArgsRequestJSON(args []string) bool {
@@ -398,10 +399,10 @@ func writeLockVerifyJSONError(stdout io.Writer, stderr io.Writer, report lockVer
 	out, err := json.MarshalIndent(report, "", "  ")
 	if err != nil {
 		_, _ = fmt.Fprintln(stderr, "failed to render lock verify error report")
-		return 1
+		return exitcode.Error.Int()
 	}
 	_, _ = fmt.Fprintf(stdout, "%s\n", out)
-	return 1
+	return exitcode.Error.Int()
 }
 
 func writeLockVerifySARIFError(stdout io.Writer, stderr io.Writer, report lockVerifyErrorReport) int {
@@ -413,10 +414,10 @@ func writeLockVerifySARIFError(stdout io.Writer, stderr io.Writer, report lockVe
 	out, err := json.MarshalIndent(buildLockVerifySARIFErrorReport(report), "", "  ")
 	if err != nil {
 		_, _ = fmt.Fprintln(stderr, "failed to render lock verify sarif error report")
-		return 1
+		return exitcode.Error.Int()
 	}
 	_, _ = fmt.Fprintf(stdout, "%s\n", out)
-	return 1
+	return exitcode.Error.Int()
 }
 
 func buildLockVerifySARIFErrorReport(report lockVerifyErrorReport) inspectSARIFReport {

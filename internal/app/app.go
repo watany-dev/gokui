@@ -14,6 +14,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"github.com/watany-dev/gokui/internal/cli/exitcode"
 	"github.com/watany-dev/gokui/internal/limitio"
 	"github.com/watany-dev/gokui/internal/materialize"
 	policypkg "github.com/watany-dev/gokui/internal/policy"
@@ -220,12 +221,12 @@ func BuildVersionString(cfg Config) string {
 func Run(args []string, stdout io.Writer, stderr io.Writer, cfg Config) int {
 	if len(args) == 0 {
 		_, _ = fmt.Fprintln(stderr, usage())
-		return 1
+		return exitcode.Error.Int()
 	}
 
 	if len(args) == 1 && args[0] == "version" {
 		_, _ = fmt.Fprintln(stdout, BuildVersionString(cfg))
-		return 0
+		return exitcode.OK.Int()
 	}
 
 	switch args[0] {
@@ -244,11 +245,11 @@ func Run(args []string, stdout io.Writer, stderr io.Writer, cfg Config) int {
 			return runLockVerify(args[2:], stdout, stderr)
 		}
 		_, _ = fmt.Fprintf(stderr, "unknown command: %s\n\n%s\n", strings.Join(args, " "), usage())
-		return 1
+		return exitcode.Error.Int()
 	}
 
 	_, _ = fmt.Fprintf(stderr, "unknown command: %s\n\n%s\n", strings.Join(args, " "), usage())
-	return 1
+	return exitcode.Error.Int()
 }
 
 func usage() string {
@@ -293,7 +294,7 @@ func runVet(args []string, stdout io.Writer, stderr io.Writer) int {
 			return writeInspectJSONError(stdout, stderr, report)
 		}
 		_, _ = fmt.Fprintf(stderr, "%s\n\n%s\n", err.Error(), usage())
-		return 1
+		return exitcode.Error.Int()
 	}
 
 	sourceKind := detectSourceKind(input)
@@ -310,10 +311,10 @@ func runVet(args []string, stdout io.Writer, stderr io.Writer) int {
 			},
 			Note: "vet supports only local sources",
 		}) {
-			return 1
+			return exitcode.Error.Int()
 		}
 		_, _ = fmt.Fprintf(stderr, "%s\n\n%s\n", msg, usage())
-		return 1
+		return exitcode.Error.Int()
 	}
 	profile = normalizePolicyProfile(profile)
 
@@ -330,10 +331,10 @@ func runVet(args []string, stdout io.Writer, stderr io.Writer) int {
 			},
 			Note: "vet failed while loading policy configuration",
 		}) {
-			return 1
+			return exitcode.Error.Int()
 		}
 		_, _ = fmt.Fprintln(stderr, policyErr.Error())
-		return 1
+		return exitcode.Error.Int()
 	}
 	effectivePolicy := userPolicy
 	effectivePolicyLoaded := policyLoaded
@@ -351,10 +352,10 @@ func runVet(args []string, stdout io.Writer, stderr io.Writer) int {
 				},
 				Note: "vet failed while loading repository policy configuration",
 			}) {
-				return 1
+				return exitcode.Error.Int()
 			}
 			_, _ = fmt.Fprintln(stderr, repoPolicyErr.Error())
-			return 1
+			return exitcode.Error.Int()
 		}
 		if repoPolicyFound {
 			effectivePolicy = repoPolicy
@@ -378,10 +379,10 @@ func runVet(args []string, stdout io.Writer, stderr io.Writer) int {
 			},
 			Note: "vet policy profile validation failed",
 		}) {
-			return 1
+			return exitcode.Error.Int()
 		}
 		_, _ = fmt.Fprintf(stderr, "%s\n\n%s\n", msg, usage())
-		return 1
+		return exitcode.Error.Int()
 	}
 	rejectSet, rejectSetErr := effectiveRejectSeveritySetForProfile(profile, effectivePolicyLoaded, effectivePolicy)
 	if rejectSetErr != nil {
@@ -396,10 +397,10 @@ func runVet(args []string, stdout io.Writer, stderr io.Writer) int {
 			},
 			Note: "vet policy reject_severities configuration is invalid",
 		}) {
-			return 1
+			return exitcode.Error.Int()
 		}
 		_, _ = fmt.Fprintln(stderr, rejectSetErr.Error())
-		return 1
+		return exitcode.Error.Int()
 	}
 
 	var inspectStdout bytes.Buffer
@@ -408,10 +409,10 @@ func runVet(args []string, stdout io.Writer, stderr io.Writer) int {
 	if inspectCode == 1 {
 		errorReport := decodeInspectErrorPayload(inspectStdout.Bytes())
 		if emitInspectStructuredError(format, stdout, stderr, errorReport) {
-			return 1
+			return exitcode.Error.Int()
 		}
 		_, _ = fmt.Fprintln(stderr, errorReport.Message)
-		return 1
+		return exitcode.Error.Int()
 	}
 
 	report := buildVetReportFromInspectJSON(inspectStdout.Bytes(), input, sourceKind, profile, rejectSet)
@@ -420,33 +421,33 @@ func runVet(args []string, stdout io.Writer, stderr io.Writer) int {
 		out, _ := json.MarshalIndent(report, "", "  ")
 		_, _ = fmt.Fprintf(stdout, "%s\n", out)
 		if report.Decision == "REJECTED" {
-			return 2
+			return exitcode.Rejected.Int()
 		}
-		return 0
+		return exitcode.OK.Int()
 	}
 	if format == "review-json" {
 		out, _ := json.MarshalIndent(buildInspectReviewReport(report), "", "  ")
 		_, _ = fmt.Fprintf(stdout, "%s\n", out)
 		if report.Decision == "REJECTED" {
-			return 2
+			return exitcode.Rejected.Int()
 		}
-		return 0
+		return exitcode.OK.Int()
 	}
 	if format == "sarif" {
 		out, _ := json.MarshalIndent(buildInspectSARIFReport(report), "", "  ")
 		_, _ = fmt.Fprintf(stdout, "%s\n", out)
 		if report.Decision == "REJECTED" {
-			return 2
+			return exitcode.Rejected.Int()
 		}
-		return 0
+		return exitcode.OK.Int()
 	}
 	if format == "compact" {
 		summary := strings.Replace(buildInspectCompactSummary(report), "inspect ", "vet ", 1)
 		_, _ = fmt.Fprintf(stdout, "%s\n", summary)
 		if report.Decision == "REJECTED" {
-			return 2
+			return exitcode.Rejected.Int()
 		}
-		return 0
+		return exitcode.OK.Int()
 	}
 
 	_, _ = fmt.Fprintln(stdout, "gokui vet report (pre-release)")
@@ -457,9 +458,9 @@ func runVet(args []string, stdout io.Writer, stderr io.Writer) int {
 		_, _ = fmt.Fprintf(stdout, "- [%s] %s %s:%d %s\n", strings.ToUpper(finding.Severity), finding.ID, finding.File, finding.Line, finding.Summary)
 	}
 	if report.Decision == "REJECTED" {
-		return 2
+		return exitcode.Rejected.Int()
 	}
-	return 0
+	return exitcode.OK.Int()
 }
 
 func buildVetReportFromInspectJSON(raw []byte, input string, sourceKind string, profile string, rejectSet map[string]struct{}) inspectReport {
@@ -517,7 +518,7 @@ func runInspect(args []string, stdout io.Writer, stderr io.Writer) int {
 			return writeInspectJSONError(stdout, stderr, report)
 		}
 		_, _ = fmt.Fprintf(stderr, "%s\n\n%s\n", err.Error(), usage())
-		return 1
+		return exitcode.Error.Int()
 	}
 	structuredOutput := format == "json" || format == "sarif" || format == "review-json"
 
@@ -540,7 +541,7 @@ func runInspect(args []string, stdout io.Writer, stderr io.Writer) int {
 					})
 				}
 				_, _ = fmt.Fprintf(stderr, "inspect source not found: %s\n", input)
-				return 1
+				return exitcode.Error.Int()
 			}
 			accessErr := fmt.Sprintf("failed to access inspect source: %v", statErr)
 			if structuredOutput {
@@ -557,7 +558,7 @@ func runInspect(args []string, stdout io.Writer, stderr io.Writer) int {
 				})
 			}
 			_, _ = fmt.Fprintln(stderr, accessErr)
-			return 1
+			return exitcode.Error.Int()
 		}
 	}
 
@@ -581,7 +582,7 @@ func runInspect(args []string, stdout io.Writer, stderr io.Writer) int {
 				})
 			}
 			_, _ = fmt.Fprintf(stderr, "invalid github source: %v\n", parseErr)
-			return 1
+			return exitcode.Error.Int()
 		}
 		if !srcpkg.IsCommitPinnedRef(spec.Ref) {
 			msg := "inspect github source requires a commit-pinned ref (e.g. @8f3c2d1a4b5c6d7e8f901234567890abcdef1234)"
@@ -599,7 +600,7 @@ func runInspect(args []string, stdout io.Writer, stderr io.Writer) int {
 				})
 			}
 			_, _ = fmt.Fprintln(stderr, msg)
-			return 1
+			return exitcode.Error.Int()
 		}
 		skillRoot, cleanup, prepErr := preparePolicyEvaluationSource(input, sourceKind)
 		if cleanup != nil {
@@ -620,7 +621,7 @@ func runInspect(args []string, stdout io.Writer, stderr io.Writer) int {
 				})
 			}
 			_, _ = fmt.Fprintln(stderr, prepErr.Error())
-			return 1
+			return exitcode.Error.Int()
 		}
 		scanFindings, scanErr := scan.ScanSkillRoot(skillRoot)
 		if scanErr != nil {
@@ -638,7 +639,7 @@ func runInspect(args []string, stdout io.Writer, stderr io.Writer) int {
 				})
 			}
 			_, _ = fmt.Fprintln(stderr, scanErr.Error())
-			return 1
+			return exitcode.Error.Int()
 		}
 		findings, decision = toInspectFindings(scanFindings)
 		note = "pre-release inspect includes structural and markdown checks (github commit-pinned source)"
@@ -666,7 +667,7 @@ func runInspect(args []string, stdout io.Writer, stderr io.Writer) int {
 				})
 			}
 			_, _ = fmt.Fprintln(stderr, validateErr.Error())
-			return 1
+			return exitcode.Error.Int()
 		}
 		scanFindings, scanErr := scan.ScanSkillRoot(skillRoot)
 		if scanErr != nil {
@@ -684,7 +685,7 @@ func runInspect(args []string, stdout io.Writer, stderr io.Writer) int {
 				})
 			}
 			_, _ = fmt.Fprintln(stderr, scanErr.Error())
-			return 1
+			return exitcode.Error.Int()
 		}
 		findings, decision = toInspectFindings(scanFindings)
 	}
@@ -705,44 +706,44 @@ func runInspect(args []string, stdout io.Writer, stderr io.Writer) int {
 		out, marshalErr := json.MarshalIndent(report, "", "  ")
 		if marshalErr != nil {
 			_, _ = fmt.Fprintln(stderr, "failed to render inspect report")
-			return 1
+			return exitcode.Error.Int()
 		}
 		_, _ = fmt.Fprintf(stdout, "%s\n", out)
 		if report.Decision == "REJECTED" {
-			return 2
+			return exitcode.Rejected.Int()
 		}
-		return 0
+		return exitcode.OK.Int()
 	}
 	if format == "review-json" {
 		out, marshalErr := json.MarshalIndent(buildInspectReviewReport(report), "", "  ")
 		if marshalErr != nil {
 			_, _ = fmt.Fprintln(stderr, "failed to render inspect review report")
-			return 1
+			return exitcode.Error.Int()
 		}
 		_, _ = fmt.Fprintf(stdout, "%s\n", out)
 		if report.Decision == "REJECTED" {
-			return 2
+			return exitcode.Rejected.Int()
 		}
-		return 0
+		return exitcode.OK.Int()
 	}
 	if format == "sarif" {
 		out, marshalErr := json.MarshalIndent(buildInspectSARIFReport(report), "", "  ")
 		if marshalErr != nil {
 			_, _ = fmt.Fprintln(stderr, "failed to render inspect SARIF report")
-			return 1
+			return exitcode.Error.Int()
 		}
 		_, _ = fmt.Fprintf(stdout, "%s\n", out)
 		if report.Decision == "REJECTED" {
-			return 2
+			return exitcode.Rejected.Int()
 		}
-		return 0
+		return exitcode.OK.Int()
 	}
 	if format == "compact" {
 		_, _ = fmt.Fprintf(stdout, "%s\n", buildInspectCompactSummary(report))
 		if report.Decision == "REJECTED" {
-			return 2
+			return exitcode.Rejected.Int()
 		}
-		return 0
+		return exitcode.OK.Int()
 	}
 
 	_, _ = fmt.Fprintln(stdout, "gokui inspect report (pre-release)")
@@ -753,9 +754,9 @@ func runInspect(args []string, stdout io.Writer, stderr io.Writer) int {
 		_, _ = fmt.Fprintf(stdout, "- [%s] %s %s:%d %s\n", strings.ToUpper(finding.Severity), finding.ID, finding.File, finding.Line, finding.Summary)
 	}
 	if report.Decision == "REJECTED" {
-		return 2
+		return exitcode.Rejected.Int()
 	}
-	return 0
+	return exitcode.OK.Int()
 }
 
 func toInspectFindings(scanFindings []scan.Finding) ([]inspectFinding, string) {
@@ -1130,10 +1131,10 @@ func writeInspectJSONError(stdout io.Writer, stderr io.Writer, report inspectErr
 	out, err := json.MarshalIndent(report, "", "  ")
 	if err != nil {
 		_, _ = fmt.Fprintln(stderr, "failed to render inspect error report")
-		return 1
+		return exitcode.Error.Int()
 	}
 	_, _ = fmt.Fprintf(stdout, "%s\n", out)
-	return 1
+	return exitcode.Error.Int()
 }
 
 func writeInspectSARIFError(stdout io.Writer, stderr io.Writer, report inspectErrorReport) int {
@@ -1145,10 +1146,10 @@ func writeInspectSARIFError(stdout io.Writer, stderr io.Writer, report inspectEr
 	out, err := json.MarshalIndent(buildInspectSARIFErrorReport(report), "", "  ")
 	if err != nil {
 		_, _ = fmt.Fprintln(stderr, "failed to render inspect SARIF error report")
-		return 1
+		return exitcode.Error.Int()
 	}
 	_, _ = fmt.Fprintf(stdout, "%s\n", out)
-	return 1
+	return exitcode.Error.Int()
 }
 
 func buildInspectSARIFErrorReport(report inspectErrorReport) inspectSARIFReport {
@@ -1216,7 +1217,7 @@ func emitInspectStructuredError(format string, stdout io.Writer, stderr io.Write
 
 func emitInspectStructuredErrorCode(format string, stdout io.Writer, stderr io.Writer, report inspectErrorReport) int {
 	_ = emitInspectStructuredError(format, stdout, stderr, report)
-	return 1
+	return exitcode.Error.Int()
 }
 
 func inferRuleIDFromMessage(message string) string {

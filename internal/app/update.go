@@ -14,6 +14,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/watany-dev/gokui/internal/cli/exitcode"
 	"github.com/watany-dev/gokui/internal/limitio"
 	policypkg "github.com/watany-dev/gokui/internal/policy"
 	"github.com/watany-dev/gokui/internal/safefs"
@@ -189,7 +190,7 @@ func runUpdate(args []string, stdout io.Writer, stderr io.Writer) int {
 			})
 		}
 		_, _ = fmt.Fprintf(stderr, "%s\n\n%s\n", err.Error(), usage())
-		return 1
+		return exitcode.Error.Int()
 	}
 
 	targetRoot, err := resolveInstallTarget(parsed.Target)
@@ -202,10 +203,10 @@ func runUpdate(args []string, stdout io.Writer, stderr io.Writer) int {
 			Target:        parsed.Target,
 			Note:          "update target validation failed",
 		}) {
-			return 1
+			return exitcode.Error.Int()
 		}
 		_, _ = fmt.Fprintln(stderr, err.Error())
-		return 1
+		return exitcode.Error.Int()
 	}
 	if err := rejectSymlinkPath(targetRoot, "update target root", ruleUpdateTargetSymlink); err != nil {
 		if emitUpdateStructuredError(parsed.Format, stdout, stderr, updateErrorReport{
@@ -216,10 +217,10 @@ func runUpdate(args []string, stdout io.Writer, stderr io.Writer) int {
 			Target:        parsed.Target,
 			Note:          "update target validation failed",
 		}) {
-			return 1
+			return exitcode.Error.Int()
 		}
 		_, _ = fmt.Fprintln(stderr, err.Error())
-		return 1
+		return exitcode.Error.Int()
 	}
 
 	userPolicy, policyLoaded, policyErr := loadUserPolicyConfig()
@@ -232,10 +233,10 @@ func runUpdate(args []string, stdout io.Writer, stderr io.Writer) int {
 			Target:        targetRoot,
 			Note:          "update failed while loading policy configuration",
 		}) {
-			return 1
+			return exitcode.Error.Int()
 		}
 		_, _ = fmt.Fprintln(stderr, policyErr.Error())
-		return 1
+		return exitcode.Error.Int()
 	}
 
 	report, err := buildUpdateReport(targetRoot, policyLoaded, userPolicy)
@@ -252,10 +253,10 @@ func runUpdate(args []string, stdout io.Writer, stderr io.Writer) int {
 			Target:        targetRoot,
 			Note:          "update report generation failed",
 		}) {
-			return 1
+			return exitcode.Error.Int()
 		}
 		_, _ = fmt.Fprintln(stderr, err.Error())
-		return 1
+		return exitcode.Error.Int()
 	}
 
 	if parsed.Format == "json" {
@@ -292,12 +293,12 @@ func runUpdate(args []string, stdout io.Writer, stderr io.Writer) int {
 	}
 
 	if report.Summary.Errors > 0 {
-		return 1
+		return exitcode.Error.Int()
 	}
 	if report.Summary.Rejected > 0 {
-		return 2
+		return exitcode.Rejected.Int()
 	}
-	return 0
+	return exitcode.OK.Int()
 }
 
 func updateArgsRequestJSON(args []string) bool {
@@ -345,10 +346,10 @@ func writeUpdateJSONError(stdout io.Writer, stderr io.Writer, report updateError
 	out, err := json.MarshalIndent(report, "", "  ")
 	if err != nil {
 		_, _ = fmt.Fprintln(stderr, "failed to render update error report")
-		return 1
+		return exitcode.Error.Int()
 	}
 	_, _ = fmt.Fprintf(stdout, "%s\n", out)
-	return 1
+	return exitcode.Error.Int()
 }
 
 func writeUpdateSARIFError(stdout io.Writer, stderr io.Writer, report updateErrorReport) int {
@@ -360,10 +361,10 @@ func writeUpdateSARIFError(stdout io.Writer, stderr io.Writer, report updateErro
 	out, err := json.MarshalIndent(buildUpdateSARIFErrorReport(report), "", "  ")
 	if err != nil {
 		_, _ = fmt.Fprintln(stderr, "failed to render update sarif error report")
-		return 1
+		return exitcode.Error.Int()
 	}
 	_, _ = fmt.Fprintf(stdout, "%s\n", out)
-	return 1
+	return exitcode.Error.Int()
 }
 
 func buildUpdateSARIFErrorReport(report updateErrorReport) inspectSARIFReport {

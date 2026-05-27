@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/watany-dev/gokui/internal/cli/exitcode"
 	srcpkg "github.com/watany-dev/gokui/internal/source"
 )
 
@@ -85,7 +86,7 @@ func runFetch(args []string, stdout io.Writer, stderr io.Writer) int {
 			return writeFetchSARIFError(stdout, stderr, report)
 		}
 		_, _ = fmt.Fprintf(stderr, "%s\n\n%s\n", err.Error(), usage())
-		return 1
+		return exitcode.Error.Int()
 	}
 
 	sourceKind := detectSourceKind(parsed.Source)
@@ -102,10 +103,10 @@ func runFetch(args []string, stdout io.Writer, stderr io.Writer) int {
 			Output: parsed.Out,
 			Note:   "fetch supports github-source only in this release",
 		}) {
-			return 1
+			return exitcode.Error.Int()
 		}
 		_, _ = fmt.Fprintln(stderr, "fetch currently supports github sources only")
-		return 1
+		return exitcode.Error.Int()
 	}
 
 	spec, err := srcpkg.ParseGitHubSource(parsed.Source)
@@ -122,10 +123,10 @@ func runFetch(args []string, stdout io.Writer, stderr io.Writer) int {
 			Output: parsed.Out,
 			Note:   "fetch source syntax validation failed",
 		}) {
-			return 1
+			return exitcode.Error.Int()
 		}
 		_, _ = fmt.Fprintf(stderr, "invalid github source: %v\n", err)
-		return 1
+		return exitcode.Error.Int()
 	}
 	if !srcpkg.IsCommitPinnedRef(spec.Ref) {
 		if emitFetchStructuredError(parsed.Format, stdout, stderr, fetchErrorReport{
@@ -140,10 +141,10 @@ func runFetch(args []string, stdout io.Writer, stderr io.Writer) int {
 			Output: parsed.Out,
 			Note:   "floating refs are not allowed for fetch",
 		}) {
-			return 1
+			return exitcode.Error.Int()
 		}
 		_, _ = fmt.Fprintln(stderr, "fetch requires a commit-pinned ref (e.g. @8f3c2d1a4b5c6d7e8f901234567890abcdef1234)")
-		return 1
+		return exitcode.Error.Int()
 	}
 
 	skillRoot, cleanup, err := fetchGitHubSkill(spec)
@@ -163,10 +164,10 @@ func runFetch(args []string, stdout io.Writer, stderr io.Writer) int {
 			Output: parsed.Out,
 			Note:   "failed while downloading or materializing source",
 		}) {
-			return 1
+			return exitcode.Error.Int()
 		}
 		_, _ = fmt.Fprintln(stderr, err.Error())
-		return 1
+		return exitcode.Error.Int()
 	}
 
 	meta, err := validateSkillFrontmatter(filepath.Join(skillRoot, "SKILL.md"))
@@ -183,10 +184,10 @@ func runFetch(args []string, stdout io.Writer, stderr io.Writer) int {
 			Output: parsed.Out,
 			Note:   "fetched source failed skill frontmatter validation",
 		}) {
-			return 1
+			return exitcode.Error.Int()
 		}
 		_, _ = fmt.Fprintln(stderr, err.Error())
-		return 1
+		return exitcode.Error.Int()
 	}
 
 	outRoot := filepath.Clean(parsed.Out)
@@ -203,10 +204,10 @@ func runFetch(args []string, stdout io.Writer, stderr io.Writer) int {
 			Output: parsed.Out,
 			Note:   "output root validation failed",
 		}) {
-			return 1
+			return exitcode.Error.Int()
 		}
 		_, _ = fmt.Fprintln(stderr, err.Error())
-		return 1
+		return exitcode.Error.Int()
 	}
 	if err := os.MkdirAll(outRoot, 0o755); err != nil {
 		if emitFetchStructuredError(parsed.Format, stdout, stderr, fetchErrorReport{
@@ -221,10 +222,10 @@ func runFetch(args []string, stdout io.Writer, stderr io.Writer) int {
 			Output: parsed.Out,
 			Note:   "output directory creation failed",
 		}) {
-			return 1
+			return exitcode.Error.Int()
 		}
 		_, _ = fmt.Fprintf(stderr, "failed to prepare fetch output root: %v\n", err)
-		return 1
+		return exitcode.Error.Int()
 	}
 
 	dest, err := fetchSkillAtomicFunc(skillRoot, outRoot, meta.Name)
@@ -241,10 +242,10 @@ func runFetch(args []string, stdout io.Writer, stderr io.Writer) int {
 			Output: parsed.Out,
 			Note:   "failed while staging fetched files to output root",
 		}) {
-			return 1
+			return exitcode.Error.Int()
 		}
 		_, _ = fmt.Fprintln(stderr, err.Error())
-		return 1
+		return exitcode.Error.Int()
 	}
 	_, rootHash, err := buildFileDigestsFiltered(dest, map[string]struct{}{
 		sourceMetadataFile: {},
@@ -262,10 +263,10 @@ func runFetch(args []string, stdout io.Writer, stderr io.Writer) int {
 			Output: dest,
 			Note:   "failed while computing fetched source digest",
 		}) {
-			return 1
+			return exitcode.Error.Int()
 		}
 		_, _ = fmt.Fprintln(stderr, err.Error())
-		return 1
+		return exitcode.Error.Int()
 	}
 	if err := writeSourceMetaFunc(dest, sourceMetadata{
 		Schema:          sourceMetadataSchemaVersion,
@@ -287,10 +288,10 @@ func runFetch(args []string, stdout io.Writer, stderr io.Writer) int {
 			Output: dest,
 			Note:   "failed while writing source metadata",
 		}) {
-			return 1
+			return exitcode.Error.Int()
 		}
 		_, _ = fmt.Fprintln(stderr, err.Error())
-		return 1
+		return exitcode.Error.Int()
 	}
 
 	report := fetchReport{
@@ -307,23 +308,23 @@ func runFetch(args []string, stdout io.Writer, stderr io.Writer) int {
 	if parsed.Format == "json" {
 		out, _ := json.MarshalIndent(report, "", "  ")
 		_, _ = fmt.Fprintf(stdout, "%s\n", out)
-		return 0
+		return exitcode.OK.Int()
 	}
 	if parsed.Format == "sarif" {
 		out, _ := json.MarshalIndent(buildFetchSARIFReport(report), "", "  ")
 		_, _ = fmt.Fprintf(stdout, "%s\n", out)
-		return 0
+		return exitcode.OK.Int()
 	}
 	if parsed.Format == "compact" {
 		_, _ = fmt.Fprintf(stdout, "%s\n", buildFetchCompactSummary(report))
-		return 0
+		return exitcode.OK.Int()
 	}
 
 	_, _ = fmt.Fprintln(stdout, "gokui fetch report (pre-release)")
 	_, _ = fmt.Fprintf(stdout, "source: %s (%s)\n", report.Source.Input, report.Source.Kind)
 	_, _ = fmt.Fprintf(stdout, "decision: %s\n", report.Decision)
 	_, _ = fmt.Fprintf(stdout, "output: %s\n", report.Output)
-	return 0
+	return exitcode.OK.Int()
 }
 
 func fetchArgsRequestJSON(args []string) bool {
@@ -377,10 +378,10 @@ func writeFetchJSONError(stdout io.Writer, stderr io.Writer, report fetchErrorRe
 	out, err := json.MarshalIndent(report, "", "  ")
 	if err != nil {
 		_, _ = fmt.Fprintln(stderr, "failed to render fetch error report")
-		return 1
+		return exitcode.Error.Int()
 	}
 	_, _ = fmt.Fprintf(stdout, "%s\n", out)
-	return 1
+	return exitcode.Error.Int()
 }
 
 func writeFetchSARIFError(stdout io.Writer, stderr io.Writer, report fetchErrorReport) int {
@@ -392,10 +393,10 @@ func writeFetchSARIFError(stdout io.Writer, stderr io.Writer, report fetchErrorR
 	out, err := json.MarshalIndent(buildFetchSARIFErrorReport(report), "", "  ")
 	if err != nil {
 		_, _ = fmt.Fprintln(stderr, "failed to render fetch SARIF error report")
-		return 1
+		return exitcode.Error.Int()
 	}
 	_, _ = fmt.Fprintf(stdout, "%s\n", out)
-	return 1
+	return exitcode.Error.Int()
 }
 
 func emitFetchStructuredError(format string, stdout io.Writer, stderr io.Writer, report fetchErrorReport) bool {
