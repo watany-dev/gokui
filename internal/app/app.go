@@ -1023,16 +1023,7 @@ func buildInspectSARIFReport(report inspectReport) inspectSARIFReport {
 }
 
 func inspectSeverityToSARIFLevel(severity string) string {
-	switch severity {
-	case "critical", "high":
-		return "error"
-	case "medium":
-		return "warning"
-	case "low":
-		return "note"
-	default:
-		return "warning"
-	}
+	return reportpkg.SARIFLevelForSeverity(severity)
 }
 
 func inspectArgsRequestJSON(args []string) bool {
