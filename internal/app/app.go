@@ -1060,33 +1060,14 @@ func buildInspectSARIFErrorReport(report inspectErrorReport) inspectSARIFReport 
 	if report.RuleID != "" {
 		ruleID = report.RuleID
 	}
-	return inspectSARIFReport{
-		Version: reportpkg.SARIFVersion,
-		Schema:  reportpkg.SARIFSchema,
-		Runs: []inspectSARIFRun{
-			{
-				Tool: inspectSARIFTool{
-					Driver: inspectSARIFDriver{
-						Name:    reportpkg.SARIFDriverName,
-						Version: reportpkg.SARIFDriverVersion,
-						Rules:   []inspectSARIFRule{reportpkg.SARIFRuleForError(ruleID, report.ErrorCode)},
-					},
-				},
-				Results: []inspectSARIFResult{reportpkg.SARIFResultForError(ruleID, report.Message)},
-				Invocations: []inspectSARIFInvocation{
-					{ExecutionSuccessful: false},
-				},
-				Properties: inspectSARIFProperties{
-					SchemaVersion: report.SchemaVersion,
-					PreRelease:    true,
-					SourceInput:   report.Source.Input,
-					SourceKind:    report.Source.Kind,
-					Decision:      report.Status,
-					Note:          fmt.Sprintf("%s; error_code=%s", report.Note, report.ErrorCode),
-				},
-			},
-		},
-	}
+	return reportpkg.SARIFErrorDocument(ruleID, report.ErrorCode, report.Message, inspectSARIFProperties{
+		SchemaVersion: report.SchemaVersion,
+		PreRelease:    true,
+		SourceInput:   report.Source.Input,
+		SourceKind:    report.Source.Kind,
+		Decision:      report.Status,
+		Note:          fmt.Sprintf("%s; error_code=%s", report.Note, report.ErrorCode),
+	})
 }
 
 func emitInspectStructuredError(format string, stdout io.Writer, stderr io.Writer, report inspectErrorReport) bool {

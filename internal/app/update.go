@@ -373,33 +373,14 @@ func buildUpdateSARIFErrorReport(report updateErrorReport) inspectSARIFReport {
 	if report.RuleID != "" {
 		ruleID = report.RuleID
 	}
-	return inspectSARIFReport{
-		Version: reportpkg.SARIFVersion,
-		Schema:  reportpkg.SARIFSchema,
-		Runs: []inspectSARIFRun{
-			{
-				Tool: inspectSARIFTool{
-					Driver: inspectSARIFDriver{
-						Name:    reportpkg.SARIFDriverName,
-						Version: reportpkg.SARIFDriverVersion,
-						Rules:   []inspectSARIFRule{reportpkg.SARIFRuleForError(ruleID, report.ErrorCode)},
-					},
-				},
-				Results: []inspectSARIFResult{reportpkg.SARIFResultForError(ruleID, report.Message)},
-				Invocations: []inspectSARIFInvocation{
-					{ExecutionSuccessful: false},
-				},
-				Properties: inspectSARIFProperties{
-					SchemaVersion: report.SchemaVersion,
-					PreRelease:    true,
-					SourceInput:   report.Target,
-					SourceKind:    "update-target",
-					Decision:      report.Status,
-					Note:          fmt.Sprintf("%s; error_code=%s", report.Note, report.ErrorCode),
-				},
-			},
-		},
-	}
+	return reportpkg.SARIFErrorDocument(ruleID, report.ErrorCode, report.Message, inspectSARIFProperties{
+		SchemaVersion: report.SchemaVersion,
+		PreRelease:    true,
+		SourceInput:   report.Target,
+		SourceKind:    "update-target",
+		Decision:      report.Status,
+		Note:          fmt.Sprintf("%s; error_code=%s", report.Note, report.ErrorCode),
+	})
 }
 
 func emitUpdateStructuredError(format string, stdout io.Writer, stderr io.Writer, report updateErrorReport) bool {

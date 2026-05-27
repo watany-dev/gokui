@@ -36,3 +36,26 @@ func SARIFResultForError(ruleID string, message string) SARIFResult {
 		Message: SARIFMessageContainer{Text: message},
 	}
 }
+
+func SARIFErrorDocument(ruleID string, errorCode string, message string, properties SARIFProperties) SARIFDocument {
+	return SARIFDocument{
+		Version: SARIFVersion,
+		Schema:  SARIFSchema,
+		Runs: []SARIFRun{
+			{
+				Tool: SARIFTool{
+					Driver: SARIFDriver{
+						Name:    SARIFDriverName,
+						Version: SARIFDriverVersion,
+						Rules:   []SARIFRule{SARIFRuleForError(ruleID, errorCode)},
+					},
+				},
+				Results: []SARIFResult{SARIFResultForError(ruleID, message)},
+				Invocations: []SARIFInvocation{
+					{ExecutionSuccessful: false},
+				},
+				Properties: properties,
+			},
+		},
+	}
+}
