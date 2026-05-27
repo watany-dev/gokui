@@ -40,3 +40,13 @@ func InspectCompactSummary(decision string, sourceKind string, sourceInput strin
 		sourceInput,
 	)
 }
+
+func FetchCompactSummary(decision string, sourceKind string, sourceInput string, output string) string {
+	return fmt.Sprintf(
+		"fetch decision=%s source_kind=%s source=%q output=%q",
+		decision,
+		sourceKind,
+		sourceInput,
+		output,
+	)
+}

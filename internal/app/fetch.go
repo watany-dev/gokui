@@ -485,13 +485,7 @@ func buildFetchSARIFErrorReport(report fetchErrorReport) inspectSARIFReport {
 }
 
 func buildFetchCompactSummary(report fetchReport) string {
-	return fmt.Sprintf(
-		"fetch decision=%s source_kind=%s source=%q output=%q",
-		report.Decision,
-		report.Source.Kind,
-		report.Source.Input,
-		report.Output,
-	)
+	return reportpkg.FetchCompactSummary(report.Decision, report.Source.Kind, report.Source.Input, report.Output)
 }
 
 func fetchSkillAtomic(skillRoot string, outRoot string, skillName string) (string, error) {

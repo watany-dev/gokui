@@ -31,3 +31,18 @@ func TestInspectCompactSummary(t *testing.T) {
 		}
 	}
 }
+
+func TestFetchCompactSummary(t *testing.T) {
+	got := FetchCompactSummary("FETCHED", "github-source", "github:org/repo//skill@abc", "/tmp/q/skill")
+	required := []string{
+		"fetch decision=FETCHED",
+		"source_kind=github-source",
+		`source="github:org/repo//skill@abc"`,
+		`output="/tmp/q/skill"`,
+	}
+	for _, token := range required {
+		if !strings.Contains(got, token) {
+			t.Fatalf("summary should include %q, got %q", token, got)
+		}
+	}
+}
