@@ -54,6 +54,21 @@ var (
 		Severity:    SeverityMedium,
 		Description: "Unicode compatibility normalization changes text",
 	}
+	UnknownFileType = Rule{
+		ID:          "UNKNOWN_FILE_TYPE",
+		Severity:    SeverityMedium,
+		Description: "binary or unclassified file",
+	}
+	LargeTextFile = Rule{
+		ID:          "LARGE_TEXT_FILE",
+		Severity:    SeverityMedium,
+		Description: "unusually large text file for scan",
+	}
+	NonUTF8Text = Rule{
+		ID:          "NON_UTF8_TEXT",
+		Severity:    SeverityHigh,
+		Description: "text scan input must be valid UTF-8",
+	}
 	MixedScriptFilename = Rule{
 		ID:          "MIXED_SCRIPT_FILENAME",
 		Severity:    SeverityMedium,
@@ -104,6 +119,9 @@ var catalog = []Rule{
 	ZeroWidthCharInText,
 	ControlCharInText,
 	NFKCChangesText,
+	UnknownFileType,
+	LargeTextFile,
+	NonUTF8Text,
 	MixedScriptFilename,
 	ConfusableFilename,
 	LinkSpoofingURLMismatch,

@@ -51,13 +51,7 @@ func ScanSkillRoot(skillRoot string) ([]Finding, error) {
 	for _, target := range targets {
 		findings = append(findings, classifyPathRisks(target.Relative)...)
 		if target.Kind == "unknown" {
-			findings = append(findings, Finding{
-				ID:       "UNKNOWN_FILE_TYPE",
-				Severity: "medium",
-				File:     target.Relative,
-				Line:     1,
-				Summary:  "unclassified file type requires manual review",
-			})
+			findings = append(findings, newFinding(rule.UnknownFileType, target.Relative, 1, "unclassified file type requires manual review"))
 			continue
 		}
 		fileFindings, err := scanTextFile(target)
@@ -104,25 +98,13 @@ func scanTextFile(target scanTarget) ([]Finding, error) {
 	var contentBuf bytes.Buffer
 	if _, err := limitio.CopyWithStrictLimit(&contentBuf, in, maxScanFileBytes); err != nil {
 		if errors.Is(err, limitio.ErrSizeExceeded) {
-			return []Finding{{
-				ID:       "LARGE_TEXT_FILE",
-				Severity: "medium",
-				File:     target.Relative,
-				Line:     1,
-				Summary:  "text file exceeds scan size limit",
-			}}, nil
+			return []Finding{newFinding(rule.LargeTextFile, target.Relative, 1, "text file exceeds scan size limit")}, nil
 		}
 		return nil, fmt.Errorf("failed to read scan file %s: %w", target.Relative, err)
 	}
 	content := contentBuf.Bytes()
 	if target.Kind != "unknown" && !utf8.Valid(content) {
-		return []Finding{{
-			ID:       "NON_UTF8_TEXT",
-			Severity: "high",
-			File:     target.Relative,
-			Line:     1,
-			Summary:  "text scan input must be valid UTF-8",
-		}}, nil
+		return []Finding{newFinding(rule.NonUTF8Text, target.Relative, 1, "text scan input must be valid UTF-8")}, nil
 	}
 
 	lines := strings.Split(strings.ReplaceAll(string(content), "\r\n", "\n"), "\n")
