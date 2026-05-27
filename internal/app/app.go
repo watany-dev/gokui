@@ -17,6 +17,7 @@ import (
 	"github.com/watany-dev/gokui/internal/materialize"
 	policypkg "github.com/watany-dev/gokui/internal/policy"
 	reportpkg "github.com/watany-dev/gokui/internal/report"
+	rulepkg "github.com/watany-dev/gokui/internal/rule"
 	"github.com/watany-dev/gokui/internal/scan"
 	skillpkg "github.com/watany-dev/gokui/internal/skill"
 	srcpkg "github.com/watany-dev/gokui/internal/source"
@@ -104,8 +105,6 @@ type inspectFinding struct {
 type severityOverrideAudit = policypkg.SeverityOverrideAudit
 
 var (
-	ruleIDPrefixPattern            = regexp.MustCompile(`^([A-Z][A-Z0-9_]+):\s`)
-	ruleIDAnywherePattern          = regexp.MustCompile(`(?:^|[^A-Z0-9_])([A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+):\s`)
 	errorCodePattern               = regexp.MustCompile(`^[A-Z0-9_]+$`)
 	maxSkillFrontmatterBytes int64 = 1_000_000
 	errInspectSourceNotFound       = skillpkg.ErrInspectSourceNotFound
@@ -1091,23 +1090,8 @@ func emitInspectStructuredErrorCode(format string, stdout io.Writer, stderr io.W
 	return exitcode.Error.Int()
 }
 
-func inferRuleIDFromMessage(message string) string {
-	match := ruleIDPrefixPattern.FindStringSubmatch(strings.TrimSpace(message))
-	if len(match) != 2 {
-		return ""
-	}
-	return match[1]
-}
-
 func inferRuleIDForJSONError(message string) string {
-	if id := inferRuleIDFromMessage(message); id != "" {
-		return id
-	}
-	match := ruleIDAnywherePattern.FindStringSubmatch(message)
-	if len(match) != 2 {
-		return ""
-	}
-	return match[1]
+	return rulepkg.InferIDForJSONError(message)
 }
 
 func normalizeJSONErrorCode(code string, fallback string) string {
