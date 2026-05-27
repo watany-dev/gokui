@@ -148,57 +148,27 @@ func scanVariantThreatFindings(variant string, target scanTarget, lineNum int) [
 		curlSourceStdinMatch = curlPipeSourceStdInExecPattern.MatchString(normalizedAssignDefaults)
 	}
 	if curlPipePattern.MatchString(variant) || curlSourceStdinMatch || curlSubshellExecPattern.MatchString(variant) || curlBacktickExecPattern.MatchString(variant) || curlDotSubshellExecPattern.MatchString(variant) || curlDotBacktickExecPattern.MatchString(variant) || powerShellRemoteEvalPattern.MatchString(variant) || powerShellFetchEvalPattern.MatchString(variant) || pythonRemoteExecPattern.MatchString(variant) || nodeRemoteEvalPattern.MatchString(variant) || nodeRemoteFunctionExecPattern.MatchString(variant) || rubyRemoteEvalPattern.MatchString(variant) {
-		findings = append(findings, Finding{
-			ID:       "CURL_PIPE_SHELL",
-			Severity: "critical",
-			File:     target.Relative,
-			Line:     lineNum,
-			Summary:  "network output reaches shell/interpreter execution",
-		})
+		findings = append(findings, newFinding(rule.CurlPipeShell, target.Relative, lineNum, "network output reaches shell/interpreter execution"))
 	}
 	base64SourceStdinMatch := base64PipeSourceStdInExec.MatchString(variant)
 	if !base64SourceStdinMatch && normalizedAssignDefaults != variant {
 		base64SourceStdinMatch = base64PipeSourceStdInExec.MatchString(normalizedAssignDefaults)
 	}
 	if base64PipeExec.MatchString(variant) || base64SourceStdinMatch || base64SubshellExec.MatchString(variant) || base64DotSubshellExec.MatchString(variant) || powerShellFromBase64ExecPattern.MatchString(variant) || pythonBase64ExecPattern.MatchString(variant) || nodeBase64EvalPattern.MatchString(variant) || perlBase64EvalPattern.MatchString(variant) || rubyBase64EvalPattern.MatchString(variant) {
-		findings = append(findings, Finding{
-			ID:       "BASE64_PIPE_EXEC",
-			Severity: "critical",
-			File:     target.Relative,
-			Line:     lineNum,
-			Summary:  "decoded payload reaches interpreter execution",
-		})
+		findings = append(findings, newFinding(rule.Base64PipeExec, target.Relative, lineNum, "decoded payload reaches interpreter execution"))
 	}
 	hexSourceStdinMatch := hexPipeSourceStdInExec.MatchString(variant)
 	if !hexSourceStdinMatch && normalizedAssignDefaults != variant {
 		hexSourceStdinMatch = hexPipeSourceStdInExec.MatchString(normalizedAssignDefaults)
 	}
 	if hexPipeExec.MatchString(variant) || hexSourceStdinMatch || hexSubshellExec.MatchString(variant) || hexDotSubshellExec.MatchString(variant) || powerShellFromHexExecPattern.MatchString(variant) || pythonHexExecPattern.MatchString(variant) || nodeHexEvalPattern.MatchString(variant) || perlHexEvalPattern.MatchString(variant) || rubyHexEvalPattern.MatchString(variant) {
-		findings = append(findings, Finding{
-			ID:       "HEX_PIPE_EXEC",
-			Severity: "critical",
-			File:     target.Relative,
-			Line:     lineNum,
-			Summary:  "hex-decoded payload reaches interpreter execution",
-		})
+		findings = append(findings, newFinding(rule.HexPipeExec, target.Relative, lineNum, "hex-decoded payload reaches interpreter execution"))
 	}
 	if encodedCmdExec.MatchString(variant) || encodedCmdExecVariableArg.MatchString(variant) || hasEncodedCommandExecLine(variant) {
-		findings = append(findings, Finding{
-			ID:       "ENCODED_COMMAND_EXEC",
-			Severity: "critical",
-			File:     target.Relative,
-			Line:     lineNum,
-			Summary:  "encoded command execution flag detected",
-		})
+		findings = append(findings, newFinding(rule.EncodedCommandExec, target.Relative, lineNum, "encoded command execution flag detected"))
 	}
 	if hasChmodExecChain(variant) {
-		findings = append(findings, Finding{
-			ID:       "CHMOD_EXEC_CHAIN",
-			Severity: "critical",
-			File:     target.Relative,
-			Line:     lineNum,
-			Summary:  "chmod +x followed by execution of the same local artifact",
-		})
+		findings = append(findings, newFinding(rule.ChmodExecChain, target.Relative, lineNum, "chmod +x followed by execution of the same local artifact"))
 	}
 	if hasHomeConfigWrite(variant) {
 		findings = append(findings, Finding{

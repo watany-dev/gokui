@@ -69,6 +69,31 @@ var (
 		Severity:    SeverityHigh,
 		Description: "text scan input must be valid UTF-8",
 	}
+	CurlPipeShell = Rule{
+		ID:          "CURL_PIPE_SHELL",
+		Severity:    SeverityCritical,
+		Description: "network fetch output reaches shell, interpreter, or eval",
+	}
+	Base64PipeExec = Rule{
+		ID:          "BASE64_PIPE_EXEC",
+		Severity:    SeverityCritical,
+		Description: "decoded payload reaches shell, interpreter, or eval",
+	}
+	HexPipeExec = Rule{
+		ID:          "HEX_PIPE_EXEC",
+		Severity:    SeverityCritical,
+		Description: "hex-decoded payload reaches shell, interpreter, or eval",
+	}
+	EncodedCommandExec = Rule{
+		ID:          "ENCODED_COMMAND_EXEC",
+		Severity:    SeverityCritical,
+		Description: "encoded command execution flag detected",
+	}
+	ChmodExecChain = Rule{
+		ID:          "CHMOD_EXEC_CHAIN",
+		Severity:    SeverityCritical,
+		Description: "chmod +x followed by execution of the same local artifact",
+	}
 	MixedScriptFilename = Rule{
 		ID:          "MIXED_SCRIPT_FILENAME",
 		Severity:    SeverityMedium,
@@ -122,6 +147,11 @@ var catalog = []Rule{
 	UnknownFileType,
 	LargeTextFile,
 	NonUTF8Text,
+	CurlPipeShell,
+	Base64PipeExec,
+	HexPipeExec,
+	EncodedCommandExec,
+	ChmodExecChain,
 	MixedScriptFilename,
 	ConfusableFilename,
 	LinkSpoofingURLMismatch,
