@@ -199,7 +199,7 @@ func writeZipFile(file *zip.File, outPath string, maxBytes int64) (int64, error)
 		return 0, fmt.Errorf("failed to create output file %s: %w", outPath, err)
 	}
 
-	written, err := copyWithStrictLimit(out, rc, maxBytes)
+	written, err := limitio.CopyWithStrictLimit(out, rc, maxBytes)
 	if err != nil {
 		_ = out.Close()
 		if limitio.IsSizeExceeded(err) {
@@ -389,7 +389,7 @@ func writeTarFile(header *tar.Header, tarReader *tar.Reader, outPath string, max
 		return 0, fmt.Errorf("failed to create output file %s: %w", outPath, err)
 	}
 
-	written, err := copyWithStrictLimit(out, tarReader, maxBytes)
+	written, err := limitio.CopyWithStrictLimit(out, tarReader, maxBytes)
 	if err != nil {
 		_ = out.Close()
 		if limitio.IsSizeExceeded(err) {
@@ -404,10 +404,6 @@ func writeTarFile(header *tar.Header, tarReader *tar.Reader, outPath string, max
 		return 0, fmt.Errorf("failed to close extracted file %s: %w", header.Name, err)
 	}
 	return written, nil
-}
-
-func copyWithStrictLimit(dst io.Writer, src io.Reader, maxBytes int64) (int64, error) {
-	return limitio.CopyWithStrictLimit(dst, src, maxBytes)
 }
 
 func safeJoin(root, name string) (string, error) {

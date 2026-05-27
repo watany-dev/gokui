@@ -1098,49 +1098,24 @@ func copyTreeNormalized(srcRoot string, dstRoot string) error {
 		if err := os.MkdirAll(filepath.Dir(destPath), 0o755); err != nil {
 			return fmt.Errorf("failed to create install directory: %w", err)
 		}
-		written, err := copyFileWithModeChecked(path, destPath, 0o644, maxCopyBytes, srcInfo)
+		written, err := limitio.CopyFileWithModeChecked(path, destPath, 0o644, maxCopyBytes, srcInfo, ensureInstallSourceStableFromOpen)
 		if err != nil {
+			if limitio.IsSizeExceeded(err) {
+				return fmt.Errorf("%s: install source file exceeds size limit during copy: %s", ruleInstallSourceFileTooLarge, path)
+			}
+			if strings.HasPrefix(err.Error(), "failed to open source file") ||
+				strings.HasPrefix(err.Error(), "failed to create destination file") ||
+				strings.Contains(err.Error(), ruleInstallSourceChanged) {
+				return err
+			}
+			if !strings.HasPrefix(err.Error(), "failed to copy file contents") {
+				return fmt.Errorf("failed to copy file contents: %w", err)
+			}
 			return err
 		}
 		totalBytes += written
 		return nil
 	})
-}
-
-func copyFileWithModeChecked(src string, dst string, mode os.FileMode, maxBytes int64, expectedInfo os.FileInfo) (int64, error) {
-	in, err := os.Open(src)
-	if err != nil {
-		return 0, fmt.Errorf("failed to open source file: %w", err)
-	}
-	defer in.Close()
-	if expectedInfo != nil {
-		if err := ensureInstallSourceStableFromOpen(expectedInfo, in, src); err != nil {
-			return 0, err
-		}
-	}
-
-	out, err := os.OpenFile(dst, os.O_CREATE|os.O_EXCL|os.O_WRONLY, mode)
-	if err != nil {
-		return 0, fmt.Errorf("failed to create destination file: %w", err)
-	}
-	defer func() {
-		_ = out.Close()
-	}()
-
-	written, err := copyWithStrictLimit(out, in, maxBytes)
-	if err != nil {
-		_ = out.Close()
-		_ = os.Remove(dst)
-		if limitio.IsSizeExceeded(err) {
-			return 0, fmt.Errorf("%s: install source file exceeds size limit during copy: %s", ruleInstallSourceFileTooLarge, src)
-		}
-		return 0, fmt.Errorf("failed to copy file contents: %w", err)
-	}
-	return written, nil
-}
-
-func copyWithStrictLimit(dst io.Writer, src io.Reader, maxBytes int64) (int64, error) {
-	return limitio.CopyWithStrictLimit(dst, src, maxBytes)
 }
 
 func writeInstallMetadata(stagedSkill string, report installReport) error {
@@ -1301,7 +1276,7 @@ func buildFileDigestsFiltered(root string, exclude map[string]struct{}) ([]lockF
 		if totalBytes > installMaxDigestTotalBytes {
 			return fmt.Errorf("%s: digest input exceeds max total bytes: %d", ruleInstallDigestTotalBytesExceeded, installMaxDigestTotalBytes)
 		}
-		sum, size, err := hashFileWithLimitChecked(path, installMaxDigestFileBytes, info)
+		sum, size, err := limitio.HashSHA256FileWithLimitChecked(path, installMaxDigestFileBytes, info, ensureInstallDigestStableFromOpen)
 		if err != nil {
 			if errors.Is(err, limitio.ErrSizeExceeded) {
 				return fmt.Errorf("%s: digest input file exceeds size limit: %s", ruleInstallDigestFileTooLarge, rel)
@@ -1345,34 +1320,6 @@ func ensureInstallTreeRoot(root string, label string, symlinkRuleID string, spec
 		return fmt.Errorf("%s: %s root must be a directory: %s", specialRuleID, label, root)
 	}
 	return nil
-}
-
-func hashFileWithLimitChecked(path string, maxBytes int64, expectedInfo os.FileInfo) (sum string, size int64, err error) {
-	f, err := os.Open(path)
-	if err != nil {
-		return "", 0, fmt.Errorf("failed to open file for hashing: %w", err)
-	}
-	defer f.Close()
-	if expectedInfo != nil {
-		if err := ensureInstallDigestStableFromOpen(expectedInfo, f, path); err != nil {
-			return "", 0, err
-		}
-	}
-
-	hasher := sha256.New()
-	var n int64
-	if maxBytes >= 0 {
-		n, err = limitio.CopyWithStrictLimit(hasher, f, maxBytes)
-	} else {
-		n, err = io.Copy(hasher, f)
-	}
-	if err != nil {
-		if errors.Is(err, limitio.ErrSizeExceeded) {
-			return "", 0, err
-		}
-		return "", 0, fmt.Errorf("failed to hash file: %w", err)
-	}
-	return hex.EncodeToString(hasher.Sum(nil)), n, nil
 }
 
 func ensureInstallSourceStableFromOpen(previous os.FileInfo, opened fileInfoStatter, src string) error {

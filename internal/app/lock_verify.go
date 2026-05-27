@@ -93,9 +93,7 @@ type lockVerifyDriftInfo struct {
 	UnexpectedFiles []string `json:"unexpected_files"`
 }
 
-type fileInfoStatter interface {
-	Stat() (os.FileInfo, error)
-}
+type fileInfoStatter = limitio.FileInfoStatter
 
 func runLockVerify(args []string, stdout io.Writer, stderr io.Writer) int {
 	requestedJSON := lockVerifyArgsRequestJSON(args)

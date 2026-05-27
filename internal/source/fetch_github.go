@@ -232,7 +232,7 @@ func (f *GitHubFetcher) downloadGitHubArchive(spec GitHubSpec, archivePath strin
 		return fmt.Errorf("failed to create github archive file: %w", err)
 	}
 
-	_, err = copyWithStrictLimit(out, resp.Body, maxBytes)
+	_, err = limitio.CopyWithStrictLimit(out, resp.Body, maxBytes)
 	if err != nil {
 		_ = out.Close()
 		_ = os.Remove(archivePath)
@@ -298,10 +298,6 @@ func validateGitHubArchiveResponseHeaders(resp *http.Response) error {
 	default:
 		return fmt.Errorf("%s: github archive response has unsupported content type: %s", ruleGitHubArchiveType, mediaType)
 	}
-}
-
-func copyWithStrictLimit(dst io.Writer, src io.Reader, maxBytes int64) (int64, error) {
-	return limitio.CopyWithStrictLimit(dst, src, maxBytes)
 }
 
 func validateGzipArchiveFile(path string) error {
