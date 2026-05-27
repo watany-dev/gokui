@@ -114,6 +114,31 @@ var (
 		Severity:    SeverityHigh,
 		Description: "floating runtime tool execution",
 	}
+	FakePrereqExecution = Rule{
+		ID:          "FAKE_PREREQ_EXECUTION",
+		Severity:    SeverityCritical,
+		Description: "prerequisite language plus download/run instruction",
+	}
+	ExternalBinaryDownload = Rule{
+		ID:          "EXTERNAL_BINARY_DOWNLOAD",
+		Severity:    SeverityHigh,
+		Description: "release asset or binary download instruction",
+	}
+	PromptOverrideLanguage = Rule{
+		ID:          "PROMPT_OVERRIDE_LANGUAGE",
+		Severity:    SeverityHigh,
+		Description: "instruction text asks to ignore or override prior prompts",
+	}
+	PasswordProtectedArchive = Rule{
+		ID:          "PASSWORD_PROTECTED_ARCHIVE",
+		Severity:    SeverityHigh,
+		Description: "password-protected archive instruction",
+	}
+	RawHTMLMarkup = Rule{
+		ID:          "RAW_HTML_MARKUP",
+		Severity:    SeverityMedium,
+		Description: "raw HTML markup in markdown",
+	}
 	MixedScriptFilename = Rule{
 		ID:          "MIXED_SCRIPT_FILENAME",
 		Severity:    SeverityMedium,
@@ -176,6 +201,11 @@ var catalog = []Rule{
 	SecretExfil,
 	AllowedToolsBashWildcard,
 	UnpinnedRuntimeTool,
+	FakePrereqExecution,
+	ExternalBinaryDownload,
+	PromptOverrideLanguage,
+	PasswordProtectedArchive,
+	RawHTMLMarkup,
 	MixedScriptFilename,
 	ConfusableFilename,
 	LinkSpoofingURLMismatch,

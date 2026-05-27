@@ -188,49 +188,19 @@ func scanVariantThreatFindings(variant string, target scanTarget, lineNum int) [
 		return findings
 	}
 	if fakePrereqPattern.MatchString(variant) {
-		findings = append(findings, Finding{
-			ID:       "FAKE_PREREQ_EXECUTION",
-			Severity: "critical",
-			File:     target.Relative,
-			Line:     lineNum,
-			Summary:  "prerequisite text asks to download and run code",
-		})
+		findings = append(findings, newFinding(rule.FakePrereqExecution, target.Relative, lineNum, "prerequisite text asks to download and run code"))
 	}
 	if externalBinaryPattern.MatchString(variant) {
-		findings = append(findings, Finding{
-			ID:       "EXTERNAL_BINARY_DOWNLOAD",
-			Severity: "high",
-			File:     target.Relative,
-			Line:     lineNum,
-			Summary:  "external binary archive download instruction detected",
-		})
+		findings = append(findings, newFinding(rule.ExternalBinaryDownload, target.Relative, lineNum, "external binary archive download instruction detected"))
 	}
 	if promptOverridePattern.MatchString(variant) || hasPromptOverrideApproximatePhrase(variant) {
-		findings = append(findings, Finding{
-			ID:       "PROMPT_OVERRIDE_LANGUAGE",
-			Severity: "high",
-			File:     target.Relative,
-			Line:     lineNum,
-			Summary:  "prompt override language detected",
-		})
+		findings = append(findings, newFinding(rule.PromptOverrideLanguage, target.Relative, lineNum, "prompt override language detected"))
 	}
 	if passwordArchivePattern.MatchString(variant) {
-		findings = append(findings, Finding{
-			ID:       "PASSWORD_PROTECTED_ARCHIVE",
-			Severity: "high",
-			File:     target.Relative,
-			Line:     lineNum,
-			Summary:  "password-protected archive instruction detected",
-		})
+		findings = append(findings, newFinding(rule.PasswordProtectedArchive, target.Relative, lineNum, "password-protected archive instruction detected"))
 	}
 	if rawHTMLPattern.MatchString(variant) {
-		findings = append(findings, Finding{
-			ID:       "RAW_HTML_MARKUP",
-			Severity: "medium",
-			File:     target.Relative,
-			Line:     lineNum,
-			Summary:  "raw HTML markup detected in markdown content",
-		})
+		findings = append(findings, newFinding(rule.RawHTMLMarkup, target.Relative, lineNum, "raw HTML markup detected in markdown content"))
 	}
 	findings = append(findings, classifyMarkdownLinkSpoofing(variant, target.Relative, lineNum)...)
 	return findings
