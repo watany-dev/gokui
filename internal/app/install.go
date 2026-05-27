@@ -811,23 +811,10 @@ func buildInstallSARIFErrorReport(report installErrorReport) inspectSARIFReport 
 					Driver: inspectSARIFDriver{
 						Name:    reportpkg.SARIFDriverName,
 						Version: reportpkg.SARIFDriverVersion,
-						Rules: []inspectSARIFRule{
-							{
-								ID: ruleID,
-								ShortDescription: inspectSARIFMessageContainer{
-									Text: report.ErrorCode,
-								},
-							},
-						},
+						Rules:   []inspectSARIFRule{reportpkg.SARIFRuleForError(ruleID, report.ErrorCode)},
 					},
 				},
-				Results: []inspectSARIFResult{
-					{
-						RuleID:  ruleID,
-						Level:   "error",
-						Message: inspectSARIFMessageContainer{Text: report.Message},
-					},
-				},
+				Results: []inspectSARIFResult{reportpkg.SARIFResultForError(ruleID, report.Message)},
 				Invocations: []inspectSARIFInvocation{
 					{ExecutionSuccessful: false},
 				},

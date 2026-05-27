@@ -19,3 +19,20 @@ func SARIFLevelForSeverity(severity string) string {
 		return "warning"
 	}
 }
+
+func SARIFRuleForError(ruleID string, errorCode string) SARIFRule {
+	return SARIFRule{
+		ID: ruleID,
+		ShortDescription: SARIFMessageContainer{
+			Text: errorCode,
+		},
+	}
+}
+
+func SARIFResultForError(ruleID string, message string) SARIFResult {
+	return SARIFResult{
+		RuleID:  ruleID,
+		Level:   "error",
+		Message: SARIFMessageContainer{Text: message},
+	}
+}

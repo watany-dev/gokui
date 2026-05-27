@@ -34,3 +34,14 @@ func TestSARIFMetadataConstants(t *testing.T) {
 		t.Fatalf("SARIFDriverVersion = %q", SARIFDriverVersion)
 	}
 }
+
+func TestSARIFErrorHelpers(t *testing.T) {
+	rule := SARIFRuleForError("RULE_ONE", "ERROR_ONE")
+	if rule.ID != "RULE_ONE" || rule.ShortDescription.Text != "ERROR_ONE" {
+		t.Fatalf("SARIFRuleForError() = %+v", rule)
+	}
+	result := SARIFResultForError("RULE_ONE", "failed")
+	if result.RuleID != "RULE_ONE" || result.Level != "error" || result.Message.Text != "failed" {
+		t.Fatalf("SARIFResultForError() = %+v", result)
+	}
+}
