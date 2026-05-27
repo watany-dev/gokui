@@ -64,74 +64,19 @@ type inspectReviewSummary struct {
 	Low      int `json:"low"`
 }
 
-type inspectSARIFReport struct {
-	Version string            `json:"version"`
-	Schema  string            `json:"$schema"`
-	Runs    []inspectSARIFRun `json:"runs"`
-}
-
-type inspectSARIFRun struct {
-	Tool        inspectSARIFTool         `json:"tool"`
-	Results     []inspectSARIFResult     `json:"results"`
-	Invocations []inspectSARIFInvocation `json:"invocations,omitempty"`
-	Properties  inspectSARIFProperties   `json:"properties"`
-}
-
-type inspectSARIFTool struct {
-	Driver inspectSARIFDriver `json:"driver"`
-}
-
-type inspectSARIFDriver struct {
-	Name    string             `json:"name"`
-	Version string             `json:"version"`
-	Rules   []inspectSARIFRule `json:"rules,omitempty"`
-}
-
-type inspectSARIFRule struct {
-	ID               string                       `json:"id"`
-	ShortDescription inspectSARIFMessageContainer `json:"shortDescription"`
-}
-
-type inspectSARIFMessageContainer struct {
-	Text string `json:"text"`
-}
-
-type inspectSARIFResult struct {
-	RuleID    string                       `json:"ruleId"`
-	Level     string                       `json:"level"`
-	Message   inspectSARIFMessageContainer `json:"message"`
-	Locations []inspectSARIFLocation       `json:"locations,omitempty"`
-}
-
-type inspectSARIFLocation struct {
-	PhysicalLocation inspectSARIFPhysicalLocation `json:"physicalLocation"`
-}
-
-type inspectSARIFPhysicalLocation struct {
-	ArtifactLocation inspectSARIFArtifactLocation `json:"artifactLocation"`
-	Region           *inspectSARIFRegion          `json:"region,omitempty"`
-}
-
-type inspectSARIFArtifactLocation struct {
-	URI string `json:"uri"`
-}
-
-type inspectSARIFRegion struct {
-	StartLine int `json:"startLine"`
-}
-
-type inspectSARIFInvocation struct {
-	ExecutionSuccessful bool `json:"executionSuccessful"`
-}
-
-type inspectSARIFProperties struct {
-	SchemaVersion string `json:"schema_version"`
-	PreRelease    bool   `json:"pre_release"`
-	SourceInput   string `json:"source_input"`
-	SourceKind    string `json:"source_kind"`
-	Decision      string `json:"decision"`
-	Note          string `json:"note"`
-}
+type inspectSARIFReport = reportpkg.SARIFDocument
+type inspectSARIFRun = reportpkg.SARIFRun
+type inspectSARIFTool = reportpkg.SARIFTool
+type inspectSARIFDriver = reportpkg.SARIFDriver
+type inspectSARIFRule = reportpkg.SARIFRule
+type inspectSARIFMessageContainer = reportpkg.SARIFMessageContainer
+type inspectSARIFResult = reportpkg.SARIFResult
+type inspectSARIFLocation = reportpkg.SARIFLocation
+type inspectSARIFPhysicalLocation = reportpkg.SARIFPhysicalLocation
+type inspectSARIFArtifactLocation = reportpkg.SARIFArtifactLocation
+type inspectSARIFRegion = reportpkg.SARIFRegion
+type inspectSARIFInvocation = reportpkg.SARIFInvocation
+type inspectSARIFProperties = reportpkg.SARIFProperties
 
 type inspectErrorReport struct {
 	SchemaVersion string `json:"schema_version"`
