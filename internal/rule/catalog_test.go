@@ -2,12 +2,14 @@ package rule
 
 import "testing"
 
-func TestCatalogIncludesURLRules(t *testing.T) {
+func TestCatalogIncludesScanRules(t *testing.T) {
 	cases := []struct {
 		rule Rule
 		id   string
 		sev  Severity
 	}{
+		{MixedScriptFilename, "MIXED_SCRIPT_FILENAME", SeverityMedium},
+		{ConfusableFilename, "CONFUSABLE_FILENAME", SeverityHigh},
 		{RawIPURL, "RAW_IP_URL", SeverityHigh},
 		{URLShortener, "URL_SHORTENER", SeverityMedium},
 		{PasteSiteURL, "PASTE_SITE_URL", SeverityMedium},

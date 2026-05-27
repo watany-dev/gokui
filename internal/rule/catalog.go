@@ -19,6 +19,16 @@ type Rule struct {
 }
 
 var (
+	MixedScriptFilename = Rule{
+		ID:          "MIXED_SCRIPT_FILENAME",
+		Severity:    SeverityMedium,
+		Description: "filename uses mixed scripts",
+	}
+	ConfusableFilename = Rule{
+		ID:          "CONFUSABLE_FILENAME",
+		Severity:    SeverityHigh,
+		Description: "filename or directory name mixes ASCII with confusable non-ASCII homoglyphs",
+	}
 	RawIPURL = Rule{
 		ID:          "RAW_IP_URL",
 		Severity:    SeverityHigh,
@@ -47,6 +57,8 @@ var (
 )
 
 var catalog = []Rule{
+	MixedScriptFilename,
+	ConfusableFilename,
 	RawIPURL,
 	URLShortener,
 	PasteSiteURL,

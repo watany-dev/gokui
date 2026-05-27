@@ -5,6 +5,7 @@ import (
 	"strings"
 	"unicode"
 
+	"github.com/watany-dev/gokui/internal/rule"
 	"golang.org/x/text/unicode/norm"
 )
 
@@ -30,22 +31,20 @@ func classifyPathRisks(relPath string) []Finding {
 		}
 	}
 	if hasMixedScript {
-		findings = append(findings, Finding{
-			ID:       "MIXED_SCRIPT_FILENAME",
-			Severity: "medium",
-			File:     filepath.ToSlash(relPath),
-			Line:     1,
-			Summary:  "path contains mixed writing scripts in filename or directory name",
-		})
+		findings = append(findings, newFinding(
+			rule.MixedScriptFilename,
+			filepath.ToSlash(relPath),
+			1,
+			"path contains mixed writing scripts in filename or directory name",
+		))
 	}
 	if hasConfusable {
-		findings = append(findings, Finding{
-			ID:       "CONFUSABLE_FILENAME",
-			Severity: "high",
-			File:     filepath.ToSlash(relPath),
-			Line:     1,
-			Summary:  "path mixes ASCII with confusable non-ASCII characters in filename or directory name",
-		})
+		findings = append(findings, newFinding(
+			rule.ConfusableFilename,
+			filepath.ToSlash(relPath),
+			1,
+			"path mixes ASCII with confusable non-ASCII characters in filename or directory name",
+		))
 	}
 	return findings
 }
