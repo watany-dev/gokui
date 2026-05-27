@@ -16,9 +16,46 @@ import (
 	"testing"
 	"testing/quick"
 
+	skillpkg "github.com/watany-dev/gokui/internal/skill"
 	srcpkg "github.com/watany-dev/gokui/internal/source"
 	yaml "go.yaml.in/yaml/v4"
 )
+
+func validateSkillFrontmatter(skillPath string) (skillpkg.Frontmatter, error) {
+	return skillpkg.ValidateFrontmatter(skillPath, maxSkillFrontmatterBytes)
+}
+
+func ensureSkillFrontmatterStableFile(previous os.FileInfo, current os.FileInfo, skillPath string) error {
+	return skillpkg.EnsureFrontmatterStableFile(previous, current, skillPath)
+}
+
+func parseFrontmatterYAML(frontmatter string) (*yaml.Node, error) {
+	return skillpkg.ParseFrontmatterYAML(frontmatter)
+}
+
+func validateFrontmatterYAML(node *yaml.Node) error {
+	return skillpkg.ValidateFrontmatterYAML(node)
+}
+
+func isCustomYAMLTag(tag string) bool {
+	return skillpkg.IsCustomYAMLTag(tag)
+}
+
+func validateNoDuplicateKeys(root *yaml.Node) error {
+	return skillpkg.ValidateNoDuplicateKeys(root)
+}
+
+func frontmatterStringField(root *yaml.Node, field string) (string, bool) {
+	return skillpkg.FrontmatterStringField(root, field)
+}
+
+func validateSkillName(name string) error {
+	return skillpkg.ValidateName(name)
+}
+
+func validateSkillDescription(description string) error {
+	return skillpkg.ValidateDescription(description)
+}
 
 func parseCompactFetchOutputPath(line string) (string, bool) {
 	parts := strings.SplitN(line, ` output=`, 2)

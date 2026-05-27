@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/watany-dev/gokui/internal/cli/exitcode"
+	skillpkg "github.com/watany-dev/gokui/internal/skill"
 	srcpkg "github.com/watany-dev/gokui/internal/source"
 )
 
@@ -170,7 +171,7 @@ func runFetch(args []string, stdout io.Writer, stderr io.Writer) int {
 		return exitcode.Error.Int()
 	}
 
-	meta, err := validateSkillFrontmatter(filepath.Join(skillRoot, "SKILL.md"))
+	meta, err := skillpkg.ValidateFrontmatter(filepath.Join(skillRoot, "SKILL.md"), maxSkillFrontmatterBytes)
 	if err != nil {
 		if emitFetchStructuredError(parsed.Format, stdout, stderr, fetchErrorReport{
 			SchemaVersion: reportSchemaVersion,

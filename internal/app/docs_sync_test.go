@@ -2274,6 +2274,7 @@ func TestRoadmapRuleIDsAreImplemented(t *testing.T) {
 	implFiles := []string{
 		"../../internal/materialize/archive.go",
 		"../../internal/app/app.go",
+		"../../internal/skill/frontmatter.go",
 	}
 	var implText strings.Builder
 	if err := filepath.WalkDir("../../internal/scan", func(path string, d os.DirEntry, walkErr error) error {
