@@ -667,30 +667,19 @@ func buildInstallSARIFReport(report installReport, target string) inspectSARIFRe
 }
 
 func buildInstallCompactSummary(report installReport, target string) string {
-	critical := 0
-	high := 0
-	medium := 0
-	low := 0
+	severities := make([]string, 0, len(report.Findings))
 	for _, finding := range report.Findings {
-		switch finding.Severity {
-		case "critical":
-			critical++
-		case "high":
-			high++
-		case "medium":
-			medium++
-		case "low":
-			low++
-		}
+		severities = append(severities, finding.Severity)
 	}
+	counts := reportpkg.CountSeverities(severities)
 	return fmt.Sprintf(
 		"install decision=%s findings=%d critical=%d high=%d medium=%d low=%d overrides=%d installed=%t profile=%s target=%q source_kind=%s source=%q error_code=%s",
 		report.Decision,
 		len(report.Findings),
-		critical,
-		high,
-		medium,
-		low,
+		counts.Critical,
+		counts.High,
+		counts.Medium,
+		counts.Low,
 		len(report.SeverityOverrides),
 		report.Installed,
 		report.PolicyProfile,
