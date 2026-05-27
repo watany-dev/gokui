@@ -1,6 +1,23 @@
 package scan
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/watany-dev/gokui/internal/rule"
+)
+
+func newFinding(r rule.Rule, file string, line int, summary string) Finding {
+	if _, ok := rule.Lookup(r.ID); !ok {
+		panic("unregistered scan rule: " + r.ID)
+	}
+	return Finding{
+		ID:       r.ID,
+		Severity: string(r.Severity),
+		File:     file,
+		Line:     line,
+		Summary:  summary,
+	}
+}
 
 func deduplicateFindings(in []Finding) []Finding {
 	seen := make(map[string]struct{}, len(in))

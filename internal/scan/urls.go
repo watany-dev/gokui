@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/watany-dev/gokui/internal/rule"
 	"golang.org/x/net/idna"
 )
 
@@ -27,49 +28,19 @@ func classifyURLRisks(line string, relPath string, lineNum int, isMarkdown bool)
 		}
 
 		if ip := parseRawIPHost(host); ip != nil {
-			out = append(out, Finding{
-				ID:       "RAW_IP_URL",
-				Severity: "high",
-				File:     relPath,
-				Line:     lineNum,
-				Summary:  "URL points to a raw IP host",
-			})
+			out = append(out, newFinding(rule.RawIPURL, relPath, lineNum, "URL points to a raw IP host"))
 		}
 		if matchesDomainSet(host, urlShortenerHosts) {
-			out = append(out, Finding{
-				ID:       "URL_SHORTENER",
-				Severity: "medium",
-				File:     relPath,
-				Line:     lineNum,
-				Summary:  "URL shortener host detected",
-			})
+			out = append(out, newFinding(rule.URLShortener, relPath, lineNum, "URL shortener host detected"))
 		}
 		if matchesDomainSet(host, pasteSiteHosts) {
-			out = append(out, Finding{
-				ID:       "PASTE_SITE_URL",
-				Severity: "medium",
-				File:     relPath,
-				Line:     lineNum,
-				Summary:  "paste site URL detected",
-			})
+			out = append(out, newFinding(rule.PasteSiteURL, relPath, lineNum, "paste site URL detected"))
 		}
 		if isGitHubReleaseAssetURL(host, parsed.Path) {
-			out = append(out, Finding{
-				ID:       "RELEASE_ASSET_URL",
-				Severity: "medium",
-				File:     relPath,
-				Line:     lineNum,
-				Summary:  "release asset URL detected",
-			})
+			out = append(out, newFinding(rule.ReleaseAssetURL, relPath, lineNum, "release asset URL detected"))
 		}
 		if isMarkdown && isRemoteImageLine(line) && isImagePath(parsed.Path) {
-			out = append(out, Finding{
-				ID:       "REMOTE_IMAGE_URL",
-				Severity: "medium",
-				File:     relPath,
-				Line:     lineNum,
-				Summary:  "remote image URL detected in markdown content",
-			})
+			out = append(out, newFinding(rule.RemoteImageURL, relPath, lineNum, "remote image URL detected in markdown content"))
 		}
 	}
 	return out

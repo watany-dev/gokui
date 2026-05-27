@@ -1,0 +1,49 @@
+package rule
+
+import "testing"
+
+func TestCatalogIncludesURLRules(t *testing.T) {
+	cases := []struct {
+		rule Rule
+		id   string
+		sev  Severity
+	}{
+		{RawIPURL, "RAW_IP_URL", SeverityHigh},
+		{URLShortener, "URL_SHORTENER", SeverityMedium},
+		{PasteSiteURL, "PASTE_SITE_URL", SeverityMedium},
+		{ReleaseAssetURL, "RELEASE_ASSET_URL", SeverityMedium},
+		{RemoteImageURL, "REMOTE_IMAGE_URL", SeverityMedium},
+	}
+
+	for _, tc := range cases {
+		if tc.rule.ID != tc.id {
+			t.Fatalf("rule ID = %q, want %q", tc.rule.ID, tc.id)
+		}
+		if tc.rule.Severity != tc.sev {
+			t.Fatalf("%s severity = %q, want %q", tc.id, tc.rule.Severity, tc.sev)
+		}
+		if tc.rule.Description == "" {
+			t.Fatalf("%s description must not be empty", tc.id)
+		}
+		got, ok := Lookup(tc.id)
+		if !ok {
+			t.Fatalf("Lookup(%q) did not find rule", tc.id)
+		}
+		if got != tc.rule {
+			t.Fatalf("Lookup(%q) = %+v, want %+v", tc.id, got, tc.rule)
+		}
+	}
+}
+
+func TestCatalogRuleIDsAreUnique(t *testing.T) {
+	seen := map[string]struct{}{}
+	for _, r := range catalog {
+		if r.ID == "" {
+			t.Fatal("catalog rule ID must not be empty")
+		}
+		if _, ok := seen[r.ID]; ok {
+			t.Fatalf("duplicate rule ID %q", r.ID)
+		}
+		seen[r.ID] = struct{}{}
+	}
+}

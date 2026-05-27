@@ -2277,17 +2277,19 @@ func TestRoadmapRuleIDsAreImplemented(t *testing.T) {
 		"../../internal/skill/frontmatter.go",
 	}
 	var implText strings.Builder
-	if err := filepath.WalkDir("../../internal/scan", func(path string, d os.DirEntry, walkErr error) error {
-		if walkErr != nil {
-			return walkErr
-		}
-		if d.IsDir() || filepath.Ext(path) != ".go" || strings.HasSuffix(path, "_test.go") {
+	for _, dir := range []string{"../../internal/rule", "../../internal/scan"} {
+		if err := filepath.WalkDir(dir, func(path string, d os.DirEntry, walkErr error) error {
+			if walkErr != nil {
+				return walkErr
+			}
+			if d.IsDir() || filepath.Ext(path) != ".go" || strings.HasSuffix(path, "_test.go") {
+				return nil
+			}
+			implFiles = append(implFiles, path)
 			return nil
+		}); err != nil {
+			t.Fatalf("failed to list implementation files in %s: %v", dir, err)
 		}
-		implFiles = append(implFiles, path)
-		return nil
-	}); err != nil {
-		t.Fatalf("failed to list scan implementation files: %v", err)
 	}
 	sort.Strings(implFiles)
 	for _, path := range implFiles {
