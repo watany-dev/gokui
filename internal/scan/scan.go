@@ -171,40 +171,16 @@ func scanVariantThreatFindings(variant string, target scanTarget, lineNum int) [
 		findings = append(findings, newFinding(rule.ChmodExecChain, target.Relative, lineNum, "chmod +x followed by execution of the same local artifact"))
 	}
 	if hasHomeConfigWrite(variant) {
-		findings = append(findings, Finding{
-			ID:       "WRITES_HOME_CONFIG",
-			Severity: "high",
-			File:     target.Relative,
-			Line:     lineNum,
-			Summary:  "writes to shell/ssh/cron/launch-agent configuration path",
-		})
+		findings = append(findings, newFinding(rule.WritesHomeConfig, target.Relative, lineNum, "writes to shell/ssh/cron/launch-agent configuration path"))
 	}
 	if hasSecretExfilLine(variant) {
-		findings = append(findings, Finding{
-			ID:       "SECRET_EXFIL",
-			Severity: "critical",
-			File:     target.Relative,
-			Line:     lineNum,
-			Summary:  "secret path access combined with network exfiltration command",
-		})
+		findings = append(findings, newFinding(rule.SecretExfil, target.Relative, lineNum, "secret path access combined with network exfiltration command"))
 	}
 	if hasBashWildcardPermission(variant) {
-		findings = append(findings, Finding{
-			ID:       "ALLOWED_TOOLS_BASH_WILDCARD",
-			Severity: "high",
-			File:     target.Relative,
-			Line:     lineNum,
-			Summary:  "broad Bash wildcard permission detected",
-		})
+		findings = append(findings, newFinding(rule.AllowedToolsBashWildcard, target.Relative, lineNum, "broad Bash wildcard permission detected"))
 	}
 	if isUnpinnedRuntimeToolLine(variant) {
-		findings = append(findings, Finding{
-			ID:       "UNPINNED_RUNTIME_TOOL",
-			Severity: "high",
-			File:     target.Relative,
-			Line:     lineNum,
-			Summary:  "unpinned runtime tool execution detected",
-		})
+		findings = append(findings, newFinding(rule.UnpinnedRuntimeTool, target.Relative, lineNum, "unpinned runtime tool execution detected"))
 	}
 	findings = append(findings, classifyURLRisks(variant, target.Relative, lineNum, target.Kind == "markdown")...)
 

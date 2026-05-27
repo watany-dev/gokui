@@ -94,6 +94,26 @@ var (
 		Severity:    SeverityCritical,
 		Description: "chmod +x followed by execution of the same local artifact",
 	}
+	WritesHomeConfig = Rule{
+		ID:          "WRITES_HOME_CONFIG",
+		Severity:    SeverityHigh,
+		Description: "writes to shell rc, ssh, cron, launch agents, or similar",
+	}
+	SecretExfil = Rule{
+		ID:          "SECRET_EXFIL",
+		Severity:    SeverityCritical,
+		Description: "secret read combined with network send",
+	}
+	AllowedToolsBashWildcard = Rule{
+		ID:          "ALLOWED_TOOLS_BASH_WILDCARD",
+		Severity:    SeverityHigh,
+		Description: "broad Bash or wildcard tool permission",
+	}
+	UnpinnedRuntimeTool = Rule{
+		ID:          "UNPINNED_RUNTIME_TOOL",
+		Severity:    SeverityHigh,
+		Description: "floating runtime tool execution",
+	}
 	MixedScriptFilename = Rule{
 		ID:          "MIXED_SCRIPT_FILENAME",
 		Severity:    SeverityMedium,
@@ -152,6 +172,10 @@ var catalog = []Rule{
 	HexPipeExec,
 	EncodedCommandExec,
 	ChmodExecChain,
+	WritesHomeConfig,
+	SecretExfil,
+	AllowedToolsBashWildcard,
+	UnpinnedRuntimeTool,
 	MixedScriptFilename,
 	ConfusableFilename,
 	LinkSpoofingURLMismatch,
