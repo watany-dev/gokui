@@ -17,6 +17,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/watany-dev/gokui/internal/limitio"
+	"github.com/watany-dev/gokui/internal/safefs"
 	srcpkg "github.com/watany-dev/gokui/internal/source"
 )
 
@@ -1007,34 +1008,30 @@ func verifyInstallReport(skillPath string, lock installLock) (bool, string) {
 	return true, fmt.Sprintf("schema=%s decision=%s", report.SchemaVersion, report.Decision)
 }
 
-func ensureLockfileStableFile(previous os.FileInfo, current os.FileInfo, lockPath string) error {
-	if os.SameFile(previous, current) {
-		return nil
-	}
-	return fmt.Errorf("%s: %w (file changed during read): %s", ruleLockfileSourceChanged, errLockfileReadFailed, lockPath)
-}
-
 func ensureLockfileStableFromOpen(previous os.FileInfo, opened fileInfoStatter, lockPath string) error {
-	current, err := opened.Stat()
-	if err != nil {
-		return fmt.Errorf("%w: %s", errLockfileReadFailed, lockPath)
-	}
-	return ensureLockfileStableFile(previous, current, lockPath)
-}
-
-func ensureInstallReportStableFile(previous os.FileInfo, current os.FileInfo, reportPath string) error {
-	if os.SameFile(previous, current) {
-		return nil
-	}
-	return fmt.Errorf("%s: install report file changed during read: %s", ruleInstallReportSourceChanged, reportPath)
+	return safefs.Sentinel{
+		Previous: previous,
+		Path:     lockPath,
+		StatError: func(path string) error {
+			return fmt.Errorf("%w: %s", errLockfileReadFailed, path)
+		},
+		ChangedError: func(path string) error {
+			return fmt.Errorf("%s: %w (file changed during read): %s", ruleLockfileSourceChanged, errLockfileReadFailed, path)
+		},
+	}.CheckOpened(opened)
 }
 
 func ensureInstallReportStableFromOpen(previous os.FileInfo, opened fileInfoStatter, reportPath string) error {
-	current, err := opened.Stat()
-	if err != nil {
-		return fmt.Errorf("failed to read install report: %s", reportPath)
-	}
-	return ensureInstallReportStableFile(previous, current, reportPath)
+	return safefs.Sentinel{
+		Previous: previous,
+		Path:     reportPath,
+		StatError: func(path string) error {
+			return fmt.Errorf("failed to read install report: %s", path)
+		},
+		ChangedError: func(path string) error {
+			return fmt.Errorf("%s: install report file changed during read: %s", ruleInstallReportSourceChanged, path)
+		},
+	}.CheckOpened(opened)
 }
 
 func isCanonicalSHA256Hex(in string) bool {

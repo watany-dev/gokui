@@ -17,6 +17,7 @@ import (
 
 	"github.com/watany-dev/gokui/internal/limitio"
 	policypkg "github.com/watany-dev/gokui/internal/policy"
+	"github.com/watany-dev/gokui/internal/safefs"
 	"github.com/watany-dev/gokui/internal/scan"
 	srcpkg "github.com/watany-dev/gokui/internal/source"
 )
@@ -1309,39 +1310,38 @@ func buildFileDigestsFiltered(root string, exclude map[string]struct{}) ([]lockF
 }
 
 func ensureInstallTreeRoot(root string, label string, symlinkRuleID string, specialRuleID string) error {
-	rootInfo, err := os.Lstat(root)
-	if err != nil {
-		return err
-	}
-	if rootInfo.Mode()&os.ModeSymlink != 0 {
-		return fmt.Errorf("%s: %s root must not be a symlink: %s", symlinkRuleID, label, root)
-	}
-	if !rootInfo.IsDir() {
-		return fmt.Errorf("%s: %s root must be a directory: %s", specialRuleID, label, root)
-	}
-	return nil
+	return safefs.RootCheck{
+		Root:          root,
+		Label:         label,
+		SymlinkRuleID: symlinkRuleID,
+		SpecialRuleID: specialRuleID,
+	}.Validate()
 }
 
 func ensureInstallSourceStableFromOpen(previous os.FileInfo, opened fileInfoStatter, src string) error {
-	current, err := opened.Stat()
-	if err != nil {
-		return fmt.Errorf("failed to open source file: %s", src)
-	}
-	if os.SameFile(previous, current) {
-		return nil
-	}
-	return fmt.Errorf("%s: install source file changed during copy: %s", ruleInstallSourceChanged, src)
+	return safefs.Sentinel{
+		Previous: previous,
+		Path:     src,
+		StatError: func(path string) error {
+			return fmt.Errorf("failed to open source file: %s", path)
+		},
+		ChangedError: func(path string) error {
+			return fmt.Errorf("%s: install source file changed during copy: %s", ruleInstallSourceChanged, path)
+		},
+	}.CheckOpened(opened)
 }
 
 func ensureInstallDigestStableFromOpen(previous os.FileInfo, opened fileInfoStatter, path string) error {
-	current, err := opened.Stat()
-	if err != nil {
-		return fmt.Errorf("failed to open file for hashing: %s", path)
-	}
-	if os.SameFile(previous, current) {
-		return nil
-	}
-	return fmt.Errorf("%s: digest input file changed during hash: %s", ruleInstallDigestSourceChanged, path)
+	return safefs.Sentinel{
+		Previous: previous,
+		Path:     path,
+		StatError: func(path string) error {
+			return fmt.Errorf("failed to open file for hashing: %s", path)
+		},
+		ChangedError: func(path string) error {
+			return fmt.Errorf("%s: digest input file changed during hash: %s", ruleInstallDigestSourceChanged, path)
+		},
+	}.CheckOpened(opened)
 }
 
 func readInstallLock(path string) (installLock, error) {
@@ -1398,14 +1398,16 @@ func readInstallLock(path string) (installLock, error) {
 }
 
 func ensureInstallLockStableFromOpen(previous os.FileInfo, opened fileInfoStatter, path string) error {
-	current, err := opened.Stat()
-	if err != nil {
-		return fmt.Errorf("failed to read install lockfile: %s", path)
-	}
-	if os.SameFile(previous, current) {
-		return nil
-	}
-	return fmt.Errorf("%s: install lockfile changed during read: %s", ruleLockfileSourceChanged, path)
+	return safefs.Sentinel{
+		Previous: previous,
+		Path:     path,
+		StatError: func(path string) error {
+			return fmt.Errorf("failed to read install lockfile: %s", path)
+		},
+		ChangedError: func(path string) error {
+			return fmt.Errorf("%s: install lockfile changed during read: %s", ruleLockfileSourceChanged, path)
+		},
+	}.CheckOpened(opened)
 }
 
 func provenanceMatches(existing installLock, incoming installLock) bool {

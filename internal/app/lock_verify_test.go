@@ -691,27 +691,6 @@ func TestLockVerifyStableFileHelpers(t *testing.T) {
 	if err != nil {
 		t.Fatalf("lstat first file: %v", err)
 	}
-	secondInfo, err := os.Lstat(secondPath)
-	if err != nil {
-		t.Fatalf("lstat second file: %v", err)
-	}
-
-	if err := ensureLockfileStableFile(firstInfo, firstInfo, firstPath); err != nil {
-		t.Fatalf("same lockfile identity should pass, got %v", err)
-	}
-	err = ensureLockfileStableFile(firstInfo, secondInfo, secondPath)
-	if err == nil || !strings.Contains(err.Error(), ruleLockfileSourceChanged) || !strings.Contains(err.Error(), "failed to read lockfile") {
-		t.Fatalf("expected lockfile source-changed read error, got %v", err)
-	}
-
-	if err := ensureInstallReportStableFile(firstInfo, firstInfo, firstPath); err != nil {
-		t.Fatalf("same install-report identity should pass, got %v", err)
-	}
-	err = ensureInstallReportStableFile(firstInfo, secondInfo, secondPath)
-	if err == nil || !strings.Contains(err.Error(), ruleInstallReportSourceChanged) {
-		t.Fatalf("expected install-report source-changed error, got %v", err)
-	}
-
 	if err := ensureLockfileStableFromOpen(firstInfo, errorStatter{err: errors.New("stat fail")}, firstPath); err == nil || !strings.Contains(err.Error(), "failed to read lockfile") {
 		t.Fatalf("expected lockfile stat error, got %v", err)
 	}
@@ -729,6 +708,20 @@ func TestLockVerifyStableFileHelpers(t *testing.T) {
 	}
 	if err := ensureInstallReportStableFromOpen(firstInfo, opened, firstPath); err != nil {
 		t.Fatalf("same opened install report should pass, got %v", err)
+	}
+
+	changed, err := os.Open(secondPath)
+	if err != nil {
+		t.Fatalf("open second file: %v", err)
+	}
+	defer changed.Close()
+	err = ensureLockfileStableFromOpen(firstInfo, changed, secondPath)
+	if err == nil || !strings.Contains(err.Error(), ruleLockfileSourceChanged) || !strings.Contains(err.Error(), "failed to read lockfile") {
+		t.Fatalf("expected lockfile source-changed read error, got %v", err)
+	}
+	err = ensureInstallReportStableFromOpen(firstInfo, changed, secondPath)
+	if err == nil || !strings.Contains(err.Error(), ruleInstallReportSourceChanged) {
+		t.Fatalf("expected install-report source-changed error, got %v", err)
 	}
 }
 

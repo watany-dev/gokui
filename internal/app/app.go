@@ -16,6 +16,7 @@ import (
 
 	"github.com/watany-dev/gokui/internal/limitio"
 	"github.com/watany-dev/gokui/internal/materialize"
+	"github.com/watany-dev/gokui/internal/safefs"
 	"github.com/watany-dev/gokui/internal/scan"
 	srcpkg "github.com/watany-dev/gokui/internal/source"
 	yaml "go.yaml.in/yaml/v4"
@@ -1454,10 +1455,13 @@ func validateSkillFrontmatter(skillPath string) (skillFrontmatter, error) {
 }
 
 func ensureSkillFrontmatterStableFile(previous os.FileInfo, current os.FileInfo, skillPath string) error {
-	if os.SameFile(previous, current) {
-		return nil
-	}
-	return fmt.Errorf("%s: SKILL.md changed during read: %s", ruleSkillFrontmatterSourceChanged, skillPath)
+	return safefs.Sentinel{
+		Previous: previous,
+		Path:     skillPath,
+		ChangedError: func(path string) error {
+			return fmt.Errorf("%s: SKILL.md changed during read: %s", ruleSkillFrontmatterSourceChanged, path)
+		},
+	}.CheckCurrent(current)
 }
 
 func parseFrontmatterYAML(frontmatter string) (*yaml.Node, error) {

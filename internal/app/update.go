@@ -16,6 +16,7 @@ import (
 
 	"github.com/watany-dev/gokui/internal/limitio"
 	policypkg "github.com/watany-dev/gokui/internal/policy"
+	"github.com/watany-dev/gokui/internal/safefs"
 	srcpkg "github.com/watany-dev/gokui/internal/source"
 )
 
@@ -1496,15 +1497,22 @@ func ensureURLScanRegularFile(info os.FileInfo, path string, root string) error 
 	return fmt.Errorf("%s: URL scan input contains non-regular file: %s", ruleUpdateURLScanSpecialFile, path)
 }
 
-func ensureURLScanStableFile(previous os.FileInfo, current os.FileInfo, path string, root string) error {
-	if os.SameFile(previous, current) {
-		return nil
-	}
+func relativePathForMessage(path string, root string) string {
 	rel, relErr := filepath.Rel(root, path)
 	if relErr == nil {
-		path = filepath.ToSlash(rel)
+		return filepath.ToSlash(rel)
 	}
-	return fmt.Errorf("%s: URL scan source changed during read: %s", ruleUpdateURLScanSourceChanged, path)
+	return path
+}
+
+func ensureURLScanStableFile(previous os.FileInfo, current os.FileInfo, path string, root string) error {
+	return safefs.Sentinel{
+		Previous: previous,
+		Path:     relativePathForMessage(path, root),
+		ChangedError: func(path string) error {
+			return fmt.Errorf("%s: URL scan source changed during read: %s", ruleUpdateURLScanSourceChanged, path)
+		},
+	}.CheckCurrent(current)
 }
 
 func collectExecutableFiles(root string) ([]string, error) {
@@ -1581,17 +1589,13 @@ func readURLScanContent(r io.Reader, path string, root string) (string, error) {
 }
 
 func ensureUpdateScanRoot(root string, label string, symlinkRuleID string, specialRuleID string) error {
-	rootInfo, err := os.Lstat(root)
-	if err != nil {
-		return fmt.Errorf("failed to stat %s root: %w", label, err)
-	}
-	if rootInfo.Mode()&os.ModeSymlink != 0 {
-		return fmt.Errorf("%s: %s root must not be a symlink: %s", symlinkRuleID, label, root)
-	}
-	if !rootInfo.IsDir() {
-		return fmt.Errorf("%s: %s root must be a directory: %s", specialRuleID, label, root)
-	}
-	return nil
+	return safefs.RootCheck{
+		Root:            root,
+		Label:           label,
+		SymlinkRuleID:   symlinkRuleID,
+		SpecialRuleID:   specialRuleID,
+		StatErrorPrefix: fmt.Sprintf("failed to stat %s root", label),
+	}.Validate()
 }
 
 func mapKeysSorted(set map[string]struct{}) []string {
