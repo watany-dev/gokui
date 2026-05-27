@@ -2,6 +2,7 @@ package app
 
 import (
 	"os"
+	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
@@ -2271,11 +2272,23 @@ func TestRoadmapRuleIDsAreImplemented(t *testing.T) {
 	}
 
 	implFiles := []string{
-		"../../internal/scan/scan.go",
 		"../../internal/materialize/archive.go",
 		"../../internal/app/app.go",
 	}
 	var implText strings.Builder
+	if err := filepath.WalkDir("../../internal/scan", func(path string, d os.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if d.IsDir() || filepath.Ext(path) != ".go" || strings.HasSuffix(path, "_test.go") {
+			return nil
+		}
+		implFiles = append(implFiles, path)
+		return nil
+	}); err != nil {
+		t.Fatalf("failed to list scan implementation files: %v", err)
+	}
+	sort.Strings(implFiles)
 	for _, path := range implFiles {
 		b, readErr := os.ReadFile(path)
 		if readErr != nil {
