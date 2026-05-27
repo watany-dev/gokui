@@ -156,6 +156,9 @@ func TestFrontmatterYAMLHelpers(t *testing.T) {
 	if err := ValidateFrontmatterYAML(nil); err == nil || !strings.Contains(err.Error(), "frontmatter root must be a YAML mapping") {
 		t.Fatalf("expected nil root error, got %v", err)
 	}
+	if err := ValidateFrontmatterYAML(&yaml.Node{Kind: yaml.AliasNode}); err == nil || !strings.Contains(err.Error(), "aliases are not allowed") {
+		t.Fatalf("expected alias error, got %v", err)
+	}
 	if IsCustomYAMLTag("") || IsCustomYAMLTag("!!str") || !IsCustomYAMLTag("!custom") {
 		t.Fatal("custom YAML tag classification mismatch")
 	}

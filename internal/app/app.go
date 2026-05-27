@@ -163,13 +163,13 @@ var (
 	ruleIDAnywherePattern          = regexp.MustCompile(`(?:^|[^A-Z0-9_])([A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+):\s`)
 	errorCodePattern               = regexp.MustCompile(`^[A-Z0-9_]+$`)
 	maxSkillFrontmatterBytes int64 = 1_000_000
-	errInspectSourceNotFound       = errors.New("inspect source not found")
+	errInspectSourceNotFound       = skillpkg.ErrInspectSourceNotFound
 	runInspectForVet               = runInspect
 )
 
 const ruleSkillFrontmatterTooLarge = skillpkg.RuleFrontmatterTooLarge
 const (
-	ruleInspectSourceSymlink          = "INSPECT_SOURCE_SYMLINK_DETECTED"
+	ruleInspectSourceSymlink          = skillpkg.RuleInspectSourceSymlink
 	ruleSkillFrontmatterSymlink       = skillpkg.RuleFrontmatterSymlink
 	ruleSkillFrontmatterSpecialFile   = skillpkg.RuleFrontmatterSpecialFile
 	ruleSkillFrontmatterInvalidUTF8   = skillpkg.RuleFrontmatterInvalidUTF8
@@ -1299,43 +1299,7 @@ func detectSourceKind(input string) string {
 }
 
 func validateLocalDirInspectSource(input string) error {
-	if err := rejectSymlinkPath(input, "inspect local source", ruleInspectSourceSymlink); err != nil {
-		return err
-	}
-	info, lstatErr := os.Lstat(input)
-	if lstatErr != nil {
-		return fmt.Errorf("%w: %s", errInspectSourceNotFound, input)
-	}
-	if info.Mode()&os.ModeSymlink != 0 {
-		return fmt.Errorf("%s: inspect local source must not be a symlink: %s", ruleInspectSourceSymlink, input)
-	}
-	if !info.IsDir() {
-		return fmt.Errorf("inspect local source must be a directory: %s", input)
-	}
-
-	skillPath := filepath.Join(input, "SKILL.md")
-	if err := rejectSymlinkPath(skillPath, "inspect local source SKILL.md", ruleSkillFrontmatterSymlink); err != nil {
-		return err
-	}
-	skillInfo, skillErr := os.Lstat(skillPath)
-	if skillErr != nil {
-		return fmt.Errorf("inspect local dir must contain SKILL.md at root: %s", input)
-	}
-	if skillInfo.Mode()&os.ModeSymlink != 0 {
-		return fmt.Errorf("%s: inspect local source SKILL.md must not be a symlink: %s", ruleSkillFrontmatterSymlink, skillPath)
-	}
-
-	meta, err := skillpkg.ValidateFrontmatter(skillPath, maxSkillFrontmatterBytes)
-	if err != nil {
-		return err
-	}
-
-	dirName := filepath.Base(filepath.Clean(input))
-	if dirName != meta.Name {
-		return fmt.Errorf("frontmatter name must match directory name: name=%s dir=%s", meta.Name, dirName)
-	}
-
-	return nil
+	return skillpkg.ValidateLocalDirInspectSource(input, maxSkillFrontmatterBytes)
 }
 
 func isInspectSourceNotFoundError(err error) bool {
