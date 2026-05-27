@@ -8,6 +8,12 @@ func TestCatalogIncludesScanRules(t *testing.T) {
 		id   string
 		sev  Severity
 	}{
+		{ANSIOSCEscapeInText, "ANSI_OSC_ESCAPE_IN_TEXT", SeverityCritical},
+		{UnicodeTagInInstructions, "UNICODE_TAG_IN_INSTRUCTIONS", SeverityCritical},
+		{BidiControlInText, "BIDI_CONTROL_IN_TEXT", SeverityCritical},
+		{VariationSelectorInText, "VARIATION_SELECTOR_IN_TEXT", SeverityCritical},
+		{ZeroWidthCharInText, "ZERO_WIDTH_CHAR_IN_TEXT", SeverityCritical},
+		{ControlCharInText, "CONTROL_CHAR_IN_TEXT", SeverityCritical},
 		{MixedScriptFilename, "MIXED_SCRIPT_FILENAME", SeverityMedium},
 		{ConfusableFilename, "CONFUSABLE_FILENAME", SeverityHigh},
 		{LinkSpoofingURLMismatch, "LINK_SPOOFING_URL_MISMATCH", SeverityHigh},

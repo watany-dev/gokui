@@ -19,6 +19,36 @@ type Rule struct {
 }
 
 var (
+	ANSIOSCEscapeInText = Rule{
+		ID:          "ANSI_OSC_ESCAPE_IN_TEXT",
+		Severity:    SeverityCritical,
+		Description: "ANSI/OSC escape sequence detected in text",
+	}
+	UnicodeTagInInstructions = Rule{
+		ID:          "UNICODE_TAG_IN_INSTRUCTIONS",
+		Severity:    SeverityCritical,
+		Description: "Unicode Tags in instruction text",
+	}
+	BidiControlInText = Rule{
+		ID:          "BIDI_CONTROL_IN_TEXT",
+		Severity:    SeverityCritical,
+		Description: "bidi override or isolate controls in text",
+	}
+	VariationSelectorInText = Rule{
+		ID:          "VARIATION_SELECTOR_IN_TEXT",
+		Severity:    SeverityCritical,
+		Description: "variation selector detected in text",
+	}
+	ZeroWidthCharInText = Rule{
+		ID:          "ZERO_WIDTH_CHAR_IN_TEXT",
+		Severity:    SeverityCritical,
+		Description: "zero-width character detected in text",
+	}
+	ControlCharInText = Rule{
+		ID:          "CONTROL_CHAR_IN_TEXT",
+		Severity:    SeverityCritical,
+		Description: "disallowed control character detected in text",
+	}
 	MixedScriptFilename = Rule{
 		ID:          "MIXED_SCRIPT_FILENAME",
 		Severity:    SeverityMedium,
@@ -62,6 +92,12 @@ var (
 )
 
 var catalog = []Rule{
+	ANSIOSCEscapeInText,
+	UnicodeTagInInstructions,
+	BidiControlInText,
+	VariationSelectorInText,
+	ZeroWidthCharInText,
+	ControlCharInText,
 	MixedScriptFilename,
 	ConfusableFilename,
 	LinkSpoofingURLMismatch,

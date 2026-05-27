@@ -1,6 +1,10 @@
 package scan
 
-import "strings"
+import (
+	"strings"
+
+	"github.com/watany-dev/gokui/internal/rule"
+)
 
 func classifyUnicodeThreats(line string, relPath string, lineNum int) []Finding {
 	out := make([]Finding, 0, 6)
@@ -13,65 +17,29 @@ func classifyUnicodeThreats(line string, relPath string, lineNum int) []Finding 
 
 	if hasANSIOSCEscape(line) {
 		hasANSIOSC = true
-		out = append(out, Finding{
-			ID:       "ANSI_OSC_ESCAPE_IN_TEXT",
-			Severity: "critical",
-			File:     relPath,
-			Line:     lineNum,
-			Summary:  "ANSI/OSC escape sequence detected in text",
-		})
+		out = append(out, newFinding(rule.ANSIOSCEscapeInText, relPath, lineNum, "ANSI/OSC escape sequence detected in text"))
 	}
 
 	for _, r := range line {
 		if !hasUnicodeTag && r >= 0xE0000 && r <= 0xE007F {
 			hasUnicodeTag = true
-			out = append(out, Finding{
-				ID:       "UNICODE_TAG_IN_INSTRUCTIONS",
-				Severity: "critical",
-				File:     relPath,
-				Line:     lineNum,
-				Summary:  "Unicode Tags detected in text",
-			})
+			out = append(out, newFinding(rule.UnicodeTagInInstructions, relPath, lineNum, "Unicode Tags detected in text"))
 		}
 		if !hasBidi && isBidiControlRune(r) {
 			hasBidi = true
-			out = append(out, Finding{
-				ID:       "BIDI_CONTROL_IN_TEXT",
-				Severity: "critical",
-				File:     relPath,
-				Line:     lineNum,
-				Summary:  "bidi control character detected in text",
-			})
+			out = append(out, newFinding(rule.BidiControlInText, relPath, lineNum, "bidi control character detected in text"))
 		}
 		if !hasVariationSelector && isVariationSelectorRune(r) {
 			hasVariationSelector = true
-			out = append(out, Finding{
-				ID:       "VARIATION_SELECTOR_IN_TEXT",
-				Severity: "critical",
-				File:     relPath,
-				Line:     lineNum,
-				Summary:  "variation selector detected in text",
-			})
+			out = append(out, newFinding(rule.VariationSelectorInText, relPath, lineNum, "variation selector detected in text"))
 		}
 		if !hasZeroWidth && isZeroWidthRune(r) {
 			hasZeroWidth = true
-			out = append(out, Finding{
-				ID:       "ZERO_WIDTH_CHAR_IN_TEXT",
-				Severity: "critical",
-				File:     relPath,
-				Line:     lineNum,
-				Summary:  "zero-width character detected in text",
-			})
+			out = append(out, newFinding(rule.ZeroWidthCharInText, relPath, lineNum, "zero-width character detected in text"))
 		}
 		if !hasControl && isDisallowedControlRune(r) {
 			hasControl = true
-			out = append(out, Finding{
-				ID:       "CONTROL_CHAR_IN_TEXT",
-				Severity: "critical",
-				File:     relPath,
-				Line:     lineNum,
-				Summary:  "disallowed control character detected in text",
-			})
+			out = append(out, newFinding(rule.ControlCharInText, relPath, lineNum, "disallowed control character detected in text"))
 		}
 		if hasUnicodeTag && hasBidi && hasZeroWidth && hasControl && hasVariationSelector && hasANSIOSC {
 			break
