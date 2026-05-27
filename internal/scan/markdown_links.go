@@ -4,8 +4,11 @@ import (
 	neturl "net/url"
 	"strings"
 
+	"github.com/watany-dev/gokui/internal/rule"
 	"golang.org/x/net/idna"
 )
+
+const markdownLinkSpoofingSummary = "markdown link label host differs from link target host"
 
 func classifyMarkdownLinkSpoofing(line string, relPath string, lineNum int) []Finding {
 	matches := markdownLinkPattern.FindAllStringSubmatchIndex(line, -1)
@@ -35,13 +38,7 @@ func classifyMarkdownLinkSpoofing(line string, relPath string, lineNum int) []Fi
 		if normalizeHost(displayHost) == normalizeHost(targetHost) {
 			continue
 		}
-		out = append(out, Finding{
-			ID:       "LINK_SPOOFING_URL_MISMATCH",
-			Severity: "high",
-			File:     relPath,
-			Line:     lineNum,
-			Summary:  "markdown link label host differs from link target host",
-		})
+		out = append(out, newFinding(rule.LinkSpoofingURLMismatch, relPath, lineNum, markdownLinkSpoofingSummary))
 	}
 	return out
 }
@@ -112,13 +109,7 @@ func classifyMarkdownReferenceLinkSpoofing(line string, relPath string, lineNum 
 		if normalizeHost(displayHost) == normalizeHost(targetHost) {
 			continue
 		}
-		out = append(out, Finding{
-			ID:       "LINK_SPOOFING_URL_MISMATCH",
-			Severity: "high",
-			File:     relPath,
-			Line:     lineNum,
-			Summary:  "markdown link label host differs from link target host",
-		})
+		out = append(out, newFinding(rule.LinkSpoofingURLMismatch, relPath, lineNum, markdownLinkSpoofingSummary))
 	}
 	shortcutMatches := markdownShortcutReferencePattern.FindAllStringSubmatchIndex(line, -1)
 	for _, match := range shortcutMatches {
@@ -149,13 +140,7 @@ func classifyMarkdownReferenceLinkSpoofing(line string, relPath string, lineNum 
 		if normalizeHost(displayHost) == normalizeHost(targetHost) {
 			continue
 		}
-		out = append(out, Finding{
-			ID:       "LINK_SPOOFING_URL_MISMATCH",
-			Severity: "high",
-			File:     relPath,
-			Line:     lineNum,
-			Summary:  "markdown link label host differs from link target host",
-		})
+		out = append(out, newFinding(rule.LinkSpoofingURLMismatch, relPath, lineNum, markdownLinkSpoofingSummary))
 	}
 
 	if len(out) == 0 {

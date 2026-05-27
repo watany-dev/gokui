@@ -29,6 +29,11 @@ var (
 		Severity:    SeverityHigh,
 		Description: "filename or directory name mixes ASCII with confusable non-ASCII homoglyphs",
 	}
+	LinkSpoofingURLMismatch = Rule{
+		ID:          "LINK_SPOOFING_URL_MISMATCH",
+		Severity:    SeverityHigh,
+		Description: "markdown link display host differs from actual link target host",
+	}
 	RawIPURL = Rule{
 		ID:          "RAW_IP_URL",
 		Severity:    SeverityHigh,
@@ -59,6 +64,7 @@ var (
 var catalog = []Rule{
 	MixedScriptFilename,
 	ConfusableFilename,
+	LinkSpoofingURLMismatch,
 	RawIPURL,
 	URLShortener,
 	PasteSiteURL,

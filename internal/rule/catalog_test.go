@@ -10,6 +10,7 @@ func TestCatalogIncludesScanRules(t *testing.T) {
 	}{
 		{MixedScriptFilename, "MIXED_SCRIPT_FILENAME", SeverityMedium},
 		{ConfusableFilename, "CONFUSABLE_FILENAME", SeverityHigh},
+		{LinkSpoofingURLMismatch, "LINK_SPOOFING_URL_MISMATCH", SeverityHigh},
 		{RawIPURL, "RAW_IP_URL", SeverityHigh},
 		{URLShortener, "URL_SHORTENER", SeverityMedium},
 		{PasteSiteURL, "PASTE_SITE_URL", SeverityMedium},
