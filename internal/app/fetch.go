@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/watany-dev/gokui/internal/cli/exitcode"
+	reportpkg "github.com/watany-dev/gokui/internal/report"
 	skillpkg "github.com/watany-dev/gokui/internal/skill"
 	srcpkg "github.com/watany-dev/gokui/internal/source"
 )
@@ -474,14 +475,14 @@ func buildFetchSARIFErrorReport(report fetchErrorReport) inspectSARIFReport {
 		ruleID = report.RuleID
 	}
 	return inspectSARIFReport{
-		Version: "2.1.0",
-		Schema:  "https://json.schemastore.org/sarif-2.1.0.json",
+		Version: reportpkg.SARIFVersion,
+		Schema:  reportpkg.SARIFSchema,
 		Runs: []inspectSARIFRun{
 			{
 				Tool: inspectSARIFTool{
 					Driver: inspectSARIFDriver{
-						Name:    "gokui",
-						Version: "pre-release",
+						Name:    reportpkg.SARIFDriverName,
+						Version: reportpkg.SARIFDriverVersion,
 						Rules: []inspectSARIFRule{
 							{
 								ID: ruleID,

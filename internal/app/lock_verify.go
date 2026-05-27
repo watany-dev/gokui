@@ -18,6 +18,7 @@ import (
 	"github.com/watany-dev/gokui/internal/cli/exitcode"
 	"github.com/watany-dev/gokui/internal/limitio"
 	policypkg "github.com/watany-dev/gokui/internal/policy"
+	reportpkg "github.com/watany-dev/gokui/internal/report"
 	"github.com/watany-dev/gokui/internal/safefs"
 	srcpkg "github.com/watany-dev/gokui/internal/source"
 )
@@ -341,14 +342,14 @@ func buildLockVerifySARIFReport(report lockVerifyReport) inspectSARIFReport {
 	})
 
 	return inspectSARIFReport{
-		Version: "2.1.0",
-		Schema:  "https://json.schemastore.org/sarif-2.1.0.json",
+		Version: reportpkg.SARIFVersion,
+		Schema:  reportpkg.SARIFSchema,
 		Runs: []inspectSARIFRun{
 			{
 				Tool: inspectSARIFTool{
 					Driver: inspectSARIFDriver{
-						Name:    "gokui",
-						Version: "pre-release",
+						Name:    reportpkg.SARIFDriverName,
+						Version: reportpkg.SARIFDriverVersion,
 						Rules:   rules,
 					},
 				},
@@ -426,14 +427,14 @@ func buildLockVerifySARIFErrorReport(report lockVerifyErrorReport) inspectSARIFR
 		ruleID = report.RuleID
 	}
 	return inspectSARIFReport{
-		Version: "2.1.0",
-		Schema:  "https://json.schemastore.org/sarif-2.1.0.json",
+		Version: reportpkg.SARIFVersion,
+		Schema:  reportpkg.SARIFSchema,
 		Runs: []inspectSARIFRun{
 			{
 				Tool: inspectSARIFTool{
 					Driver: inspectSARIFDriver{
-						Name:    "gokui",
-						Version: "pre-release",
+						Name:    reportpkg.SARIFDriverName,
+						Version: reportpkg.SARIFDriverVersion,
 						Rules: []inspectSARIFRule{
 							{
 								ID: ruleID,

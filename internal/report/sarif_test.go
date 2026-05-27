@@ -19,3 +19,18 @@ func TestSARIFLevelForSeverity(t *testing.T) {
 		}
 	}
 }
+
+func TestSARIFMetadataConstants(t *testing.T) {
+	if SARIFVersion != "2.1.0" {
+		t.Fatalf("SARIFVersion = %q", SARIFVersion)
+	}
+	if SARIFSchema != "https://json.schemastore.org/sarif-2.1.0.json" {
+		t.Fatalf("SARIFSchema = %q", SARIFSchema)
+	}
+	if SARIFDriverName != "gokui" {
+		t.Fatalf("SARIFDriverName = %q", SARIFDriverName)
+	}
+	if SARIFDriverVersion != "pre-release" {
+		t.Fatalf("SARIFDriverVersion = %q", SARIFDriverVersion)
+	}
+}

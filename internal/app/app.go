@@ -994,14 +994,14 @@ func buildInspectSARIFReport(report inspectReport) inspectSARIFReport {
 	}
 
 	return inspectSARIFReport{
-		Version: "2.1.0",
-		Schema:  "https://json.schemastore.org/sarif-2.1.0.json",
+		Version: reportpkg.SARIFVersion,
+		Schema:  reportpkg.SARIFSchema,
 		Runs: []inspectSARIFRun{
 			{
 				Tool: inspectSARIFTool{
 					Driver: inspectSARIFDriver{
-						Name:    "gokui",
-						Version: "pre-release",
+						Name:    reportpkg.SARIFDriverName,
+						Version: reportpkg.SARIFDriverVersion,
 						Rules:   rules,
 					},
 				},
@@ -1116,14 +1116,14 @@ func buildInspectSARIFErrorReport(report inspectErrorReport) inspectSARIFReport 
 		ruleID = report.RuleID
 	}
 	return inspectSARIFReport{
-		Version: "2.1.0",
-		Schema:  "https://json.schemastore.org/sarif-2.1.0.json",
+		Version: reportpkg.SARIFVersion,
+		Schema:  reportpkg.SARIFSchema,
 		Runs: []inspectSARIFRun{
 			{
 				Tool: inspectSARIFTool{
 					Driver: inspectSARIFDriver{
-						Name:    "gokui",
-						Version: "pre-release",
+						Name:    reportpkg.SARIFDriverName,
+						Version: reportpkg.SARIFDriverVersion,
 						Rules: []inspectSARIFRule{
 							{
 								ID: ruleID,
