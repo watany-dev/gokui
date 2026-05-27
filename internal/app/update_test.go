@@ -4528,7 +4528,7 @@ func TestSortSeverityOverrides(t *testing.T) {
 			{RuleID: "RULE_A", AppliedAt: "2026-01-01T00:00:00Z", Source: "zeta"},
 			{RuleID: "RULE_A", AppliedAt: "2026-01-01T00:00:00Z", Source: "alpha"},
 		}
-		got := sortSeverityOverrides(in)
+		got := []severityOverrideAudit(policypkg.SeverityOverrideAuditSet(in).Sorted())
 
 		if got[0].RuleID != "RULE_A" || got[0].AppliedAt != "2026-01-01T00:00:00Z" || got[0].Source != "alpha" {
 			t.Fatalf("got[0]=%+v, want RULE_A/2026-01-01/alpha", got[0])
@@ -4550,9 +4550,9 @@ func TestSortSeverityOverrides(t *testing.T) {
 	})
 
 	t.Run("empty input returns empty slice", func(t *testing.T) {
-		got := sortSeverityOverrides(nil)
+		got := policypkg.SeverityOverrideAuditSet(nil).Sorted()
 		if len(got) != 0 {
-			t.Fatalf("len(sortSeverityOverrides(nil)) = %d, want 0", len(got))
+			t.Fatalf("len(SeverityOverrideAuditSet(nil).Sorted()) = %d, want 0", len(got))
 		}
 	})
 }

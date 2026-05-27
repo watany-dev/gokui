@@ -606,7 +606,7 @@ func buildUpdateReport(targetRoot string, policyLoaded bool, cfg policypkg.Confi
 			Input: lock.Source.Input,
 			Kind:  lock.Source.Kind,
 		}
-		item.SeverityOverrides = cloneSeverityOverrides(lock.Policy.SeverityOverrides)
+		item.SeverityOverrides = []severityOverrideAudit(policypkg.SeverityOverrideAuditSet(lock.Policy.SeverityOverrides).Clone())
 
 		enriched, err := evaluateUpdateSkill(item, lock, policyLoaded, cfg)
 		if err != nil {
@@ -1106,9 +1106,9 @@ func evaluateUpdateSkill(item updateSkillItem, lock installLock, policyLoaded bo
 		}
 	}
 	item.Decision = decision
-	item.SeverityOverrides = sortSeverityOverrides(mapValuesSeverityOverrides(activeByRule))
-	previousOverrideIDs := mapKeysSortedSeverityOverrideAudit(configuredByRule)
-	currentOverrideIDs := mapKeysSortedSeverityOverrideAudit(activeByRule)
+	item.SeverityOverrides = []severityOverrideAudit(policypkg.AuditValues(activeByRule).Sorted())
+	previousOverrideIDs := policypkg.SortedAuditMapKeys(configuredByRule)
+	currentOverrideIDs := policypkg.SortedAuditMapKeys(activeByRule)
 	item.SeverityOverrideDiff = updateSeverityOverrideDiff{
 		Added:   setDiff(currentOverrideIDs, previousOverrideIDs),
 		Removed: setDiff(previousOverrideIDs, currentOverrideIDs),
@@ -1255,7 +1255,7 @@ func validateUpdateLockEnvelope(lock installLock, expectedSkillName string) erro
 	if err := validateLockFindingSummary(lock.Findings); err != nil {
 		return fmt.Errorf("lock findings summary is invalid: %v", err)
 	}
-	if err := validateSeverityOverrideAudit(lock.Policy.SeverityOverrides); err != nil {
+	if err := policypkg.SeverityOverrideAuditSet(lock.Policy.SeverityOverrides).Validate(); err != nil {
 		return fmt.Errorf("lock policy severity_overrides is invalid: %v", err)
 	}
 	return nil
@@ -1605,37 +1605,6 @@ func mapKeysSorted(set map[string]struct{}) []string {
 	}
 	sort.Strings(out)
 	return out
-}
-
-func mapValuesSeverityOverrides(in map[string]severityOverrideAudit) []severityOverrideAudit {
-	out := make([]severityOverrideAudit, 0, len(in))
-	for _, override := range in {
-		out = append(out, override)
-	}
-	return out
-}
-
-func sortSeverityOverrides(in []severityOverrideAudit) []severityOverrideAudit {
-	out := cloneSeverityOverrides(in)
-	sort.Slice(out, func(i, j int) bool {
-		if out[i].RuleID != out[j].RuleID {
-			return out[i].RuleID < out[j].RuleID
-		}
-		if out[i].AppliedAt != out[j].AppliedAt {
-			return out[i].AppliedAt < out[j].AppliedAt
-		}
-		return out[i].Source < out[j].Source
-	})
-	return out
-}
-
-func mapKeysSortedSeverityOverrideAudit(in map[string]severityOverrideAudit) []string {
-	keys := make([]string, 0, len(in))
-	for ruleID := range in {
-		keys = append(keys, ruleID)
-	}
-	sort.Strings(keys)
-	return keys
 }
 
 func setDiff(current []string, previous []string) []string {

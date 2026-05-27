@@ -1207,7 +1207,7 @@ func buildInstallLock(stagedSkill string, report installReport) (installLock, er
 		Policy: lockPolicy{
 			Profile:           report.PolicyProfile,
 			Decision:          strings.ToLower(report.Decision),
-			SeverityOverrides: cloneSeverityOverrides(report.SeverityOverrides),
+			SeverityOverrides: []severityOverrideAudit(policypkg.SeverityOverrideAuditSet(report.SeverityOverrides).Clone()),
 		},
 		Findings: summary,
 	}, nil
@@ -1508,7 +1508,7 @@ func validateInstallLockForProvenanceReuse(lock installLock, expectedSkillName s
 	if err := validateLockFindingSummary(lock.Findings); err != nil {
 		return fmt.Errorf("lock findings summary is invalid: %v", err)
 	}
-	if err := validateSeverityOverrideAudit(lock.Policy.SeverityOverrides); err != nil {
+	if err := policypkg.SeverityOverrideAuditSet(lock.Policy.SeverityOverrides).Validate(); err != nil {
 		return fmt.Errorf("lock policy severity_overrides is invalid: %v", err)
 	}
 

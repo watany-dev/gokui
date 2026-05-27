@@ -10,6 +10,8 @@ import (
 	"strings"
 	"testing"
 	"testing/quick"
+
+	policypkg "github.com/watany-dev/gokui/internal/policy"
 )
 
 type errorStatter struct {
@@ -2880,14 +2882,14 @@ func TestSeverityOverrideAuditHelpers(t *testing.T) {
 		},
 	}
 
-	if err := validateSeverityOverrideAudit(valid); err != nil {
-		t.Fatalf("validateSeverityOverrideAudit(valid) error = %v", err)
+	if err := policypkg.SeverityOverrideAuditSet(valid).Validate(); err != nil {
+		t.Fatalf("SeverityOverrideAuditSet(valid).Validate() error = %v", err)
 	}
-	if !severityOverridesEqual(valid, valid) {
-		t.Fatal("severityOverridesEqual(valid, valid) should be true")
+	if !policypkg.SeverityOverrideAuditSet(valid).Equal(policypkg.SeverityOverrideAuditSet(valid)) {
+		t.Fatal("SeverityOverrideAuditSet(valid).Equal(valid) should be true")
 	}
-	if severityOverridesEqual(valid, nil) {
-		t.Fatal("severityOverridesEqual(valid, nil) should be false")
+	if policypkg.SeverityOverrideAuditSet(valid).Equal(nil) {
+		t.Fatal("SeverityOverrideAuditSet(valid).Equal(nil) should be false")
 	}
 
 	t.Run("rejects invalid entries", func(t *testing.T) {
@@ -3660,7 +3662,7 @@ func TestSeverityOverrideAuditHelpers(t *testing.T) {
 
 		for _, tc := range cases {
 			t.Run(tc.name, func(t *testing.T) {
-				err := validateSeverityOverrideAudit([]severityOverrideAudit{tc.override})
+				err := policypkg.SeverityOverrideAuditSet{tc.override}.Validate()
 				if err == nil || !strings.Contains(err.Error(), tc.detailPart) {
 					t.Fatalf("expected validation detail %q, got err=%v", tc.detailPart, err)
 				}
@@ -3689,7 +3691,7 @@ func TestSeverityOverrideAuditHelpers(t *testing.T) {
 				AppliedAt:         "2026-05-24T01:00:00Z",
 			},
 		}
-		err := validateSeverityOverrideAudit(dup)
+		err := policypkg.SeverityOverrideAuditSet(dup).Validate()
 		if err == nil || !strings.Contains(err.Error(), "duplicate rule_id is not allowed") {
 			t.Fatalf("expected duplicate rule_id validation error, got %v", err)
 		}
@@ -3763,8 +3765,8 @@ func TestLockFindingSummaryAndSeverityOverrideEqualityBranches(t *testing.T) {
 			AppliedAt:         "2026-05-24T00:00:00Z",
 		},
 	}
-	if severityOverridesEqual(left, right) {
-		t.Fatal("severityOverridesEqual should be false for same-length slices with different entries")
+	if policypkg.SeverityOverrideAuditSet(left).Equal(policypkg.SeverityOverrideAuditSet(right)) {
+		t.Fatal("SeverityOverrideAuditSet.Equal should be false for same-length slices with different entries")
 	}
 }
 
