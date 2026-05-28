@@ -240,25 +240,54 @@ func Run(args []string, stdout io.Writer, stderr io.Writer, cfg Config) int {
 		return 1
 	}
 
+	if args[0] == "help" || args[0] == "--help" || args[0] == "-h" {
+		return runHelp(args[1:], stdout, stderr)
+	}
+
 	if len(args) == 1 && args[0] == "version" {
 		_, _ = fmt.Fprintln(stdout, BuildVersionString(cfg))
 		return 0
 	}
 
 	switch args[0] {
+	case "version":
+		if hasHelpFlag(args[1:]) {
+			return runHelp([]string{"version"}, stdout, stderr)
+		}
 	case "fetch":
+		if hasHelpFlag(args[1:]) {
+			return runHelp([]string{"fetch"}, stdout, stderr)
+		}
 		return runFetch(args[1:], stdout, stderr)
 	case "inspect":
+		if hasHelpFlag(args[1:]) {
+			return runHelp([]string{"inspect"}, stdout, stderr)
+		}
 		return runInspect(args[1:], stdout, stderr)
 	case "vet":
+		if hasHelpFlag(args[1:]) {
+			return runHelp([]string{"vet"}, stdout, stderr)
+		}
 		return runVet(args[1:], stdout, stderr)
 	case "install":
+		if hasHelpFlag(args[1:]) {
+			return runHelp([]string{"install"}, stdout, stderr)
+		}
 		return runInstall(args[1:], stdout, stderr)
 	case "update":
+		if hasHelpFlag(args[1:]) {
+			return runHelp([]string{"update"}, stdout, stderr)
+		}
 		return runUpdate(args[1:], stdout, stderr)
 	case "lock":
 		if len(args) >= 2 && args[1] == "verify" {
+			if hasHelpFlag(args[2:]) {
+				return runHelp([]string{"lock", "verify"}, stdout, stderr)
+			}
 			return runLockVerify(args[2:], stdout, stderr)
+		}
+		if hasHelpFlag(args[1:]) {
+			return runHelp([]string{"lock", "verify"}, stdout, stderr)
 		}
 		_, _ = fmt.Fprintf(stderr, "unknown command: %s\n\n%s\n", strings.Join(args, " "), usage())
 		return 1
