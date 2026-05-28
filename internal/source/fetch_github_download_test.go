@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/watany-dev/gokui/internal/rule"
 )
 
 func TestDownloadGitHubArchiveErrors(t *testing.T) {
@@ -131,7 +133,7 @@ func TestDownloadGitHubArchiveErrors(t *testing.T) {
 		)
 
 		err := fetcher.downloadGitHubArchive(spec, filepath.Join(t.TempDir(), "archive.tar.gz"))
-		if err == nil || !strings.Contains(err.Error(), ruleGitHubArchiveScheme) {
+		if err == nil || !strings.Contains(err.Error(), rule.GitHubArchiveSchemeInvalid.ID) {
 			t.Fatalf("expected non-https scheme error, got %v", err)
 		}
 	})
@@ -193,7 +195,7 @@ func TestDownloadGitHubArchiveErrors(t *testing.T) {
 		}))
 
 		err := fetcher.downloadGitHubArchive(spec, filepath.Join(t.TempDir(), "archive.tar.gz"))
-		if err == nil || !strings.Contains(err.Error(), ruleGitHubArchiveType) {
+		if err == nil || !strings.Contains(err.Error(), rule.GitHubArchiveContentTypeInvalid.ID) {
 			t.Fatalf("expected content-type validation error, got %v", err)
 		}
 	})
@@ -207,7 +209,7 @@ func TestDownloadGitHubArchiveErrors(t *testing.T) {
 		}))
 
 		err := fetcher.downloadGitHubArchive(spec, filepath.Join(t.TempDir(), "archive.tar.gz"))
-		if err == nil || !strings.Contains(err.Error(), ruleGitHubArchiveType) {
+		if err == nil || !strings.Contains(err.Error(), rule.GitHubArchiveContentTypeInvalid.ID) {
 			t.Fatalf("expected unsupported content-type error, got %v", err)
 		}
 	})
@@ -221,7 +223,7 @@ func TestDownloadGitHubArchiveErrors(t *testing.T) {
 		}))
 
 		err := fetcher.downloadGitHubArchive(spec, filepath.Join(t.TempDir(), "archive.tar.gz"))
-		if err == nil || !strings.Contains(err.Error(), ruleGitHubArchiveCoding) {
+		if err == nil || !strings.Contains(err.Error(), rule.GitHubArchiveContentEncodingInvalid.ID) {
 			t.Fatalf("expected content-encoding validation error, got %v", err)
 		}
 	})
@@ -242,7 +244,7 @@ func TestDownloadGitHubArchiveErrors(t *testing.T) {
 		}))
 
 		err := fetcher.downloadGitHubArchive(spec, filepath.Join(t.TempDir(), "archive.tar.gz"))
-		if err == nil || !strings.Contains(err.Error(), ruleGitHubRedirectHost) {
+		if err == nil || !strings.Contains(err.Error(), rule.GitHubArchiveRedirectHostMismatch.ID) {
 			t.Fatalf("expected redirect-host mismatch error, got %v", err)
 		}
 	})
@@ -263,7 +265,7 @@ func TestDownloadGitHubArchiveErrors(t *testing.T) {
 		}))
 
 		err := fetcher.downloadGitHubArchive(spec, filepath.Join(t.TempDir(), "archive.tar.gz"))
-		if err == nil || !strings.Contains(err.Error(), ruleGitHubRedirectScheme) {
+		if err == nil || !strings.Contains(err.Error(), rule.GitHubArchiveRedirectSchemeInvalid.ID) {
 			t.Fatalf("expected redirect-scheme mismatch error, got %v", err)
 		}
 	})
@@ -307,7 +309,7 @@ func TestDownloadGitHubArchiveErrors(t *testing.T) {
 		}))
 
 		err := fetcher.downloadGitHubArchive(spec, filepath.Join(t.TempDir(), "archive.tar.gz"))
-		if err == nil || !strings.Contains(err.Error(), ruleGitHubRedirectPort) {
+		if err == nil || !strings.Contains(err.Error(), rule.GitHubArchiveRedirectPortMismatch.ID) {
 			t.Fatalf("expected redirect-port mismatch error, got %v", err)
 		}
 	})
@@ -328,7 +330,7 @@ func TestDownloadGitHubArchiveErrors(t *testing.T) {
 		}))
 
 		err := fetcher.downloadGitHubArchive(spec, filepath.Join(t.TempDir(), "archive.tar.gz"))
-		if err == nil || !strings.Contains(err.Error(), ruleGitHubRedirectAuth) {
+		if err == nil || !strings.Contains(err.Error(), rule.GitHubArchiveRedirectUserinfoDisallowed.ID) {
 			t.Fatalf("expected redirect-userinfo disallowed error, got %v", err)
 		}
 	})

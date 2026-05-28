@@ -7,6 +7,8 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+
+	rulepkg "github.com/watany-dev/gokui/internal/rule"
 )
 
 func TestVerifyInstallReportFailures(t *testing.T) {
@@ -111,18 +113,15 @@ func TestVerifyInstallReportValidationBranches(t *testing.T) {
 			t.Fatalf("write invalid utf-8 report: %v", err)
 		}
 		ok, detail := verifyInstallReport(skillPath, lock)
-		if ok || !strings.Contains(detail, ruleInstallReportInvalidUTF8) {
+		if ok || !strings.Contains(detail, rulepkg.InstallReportInvalidUTF8.ID) {
 			t.Fatalf("expected invalid utf-8 report failure, got ok=%v detail=%q", ok, detail)
 		}
 	})
 
 	t.Run("oversized report", func(t *testing.T) {
-		origLimit := maxInstallReportFileBytes
-		maxInstallReportFileBytes = 8
-		t.Cleanup(func() { maxInstallReportFileBytes = origLimit })
 		writeReport(t, `{"schema_version":"0.1.0-draft"}`)
-		ok, detail := verifyInstallReport(skillPath, lock)
-		if ok || !strings.Contains(detail, ruleInstallReportTooLarge) {
+		ok, detail := verifyInstallReportWithLimit(skillPath, lock, 8)
+		if ok || !strings.Contains(detail, rulepkg.InstallReportTooLarge.ID) {
 			t.Fatalf("expected oversized report failure, got ok=%v detail=%q", ok, detail)
 		}
 	})
@@ -136,7 +135,7 @@ func TestVerifyInstallReportValidationBranches(t *testing.T) {
 			t.Fatalf("mkdir report path: %v", err)
 		}
 		ok, detail := verifyInstallReport(skillPath, lock)
-		if ok || !strings.Contains(detail, ruleInstallReportSpecialFile) {
+		if ok || !strings.Contains(detail, rulepkg.InstallReportSpecialFile.ID) {
 			t.Fatalf("expected special-file failure for directory report path, got ok=%v detail=%q", ok, detail)
 		}
 		if err := os.Remove(reportPath); err != nil {
@@ -160,7 +159,7 @@ func TestVerifyInstallReportValidationBranches(t *testing.T) {
 			t.Fatalf("create report symlink: %v", err)
 		}
 		ok, detail := verifyInstallReport(skillPath, lock)
-		if ok || !strings.Contains(detail, ruleInstallReportSymlink) {
+		if ok || !strings.Contains(detail, rulepkg.InstallReportSymlink.ID) {
 			t.Fatalf("expected report symlink rejection, got ok=%v detail=%q", ok, detail)
 		}
 		if err := os.Remove(reportPath); err != nil {
@@ -206,7 +205,7 @@ func TestVerifyInstallReportValidationBranches(t *testing.T) {
 		}
 
 		ok, detail := verifyInstallReport(filepath.Join(linkParent, "skill"), lock)
-		if ok || !strings.Contains(detail, ruleInstallReportSymlink) {
+		if ok || !strings.Contains(detail, rulepkg.InstallReportSymlink.ID) {
 			t.Fatalf("expected ancestor report symlink rejection, got ok=%v detail=%q", ok, detail)
 		}
 	})

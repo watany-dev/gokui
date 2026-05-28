@@ -12,7 +12,7 @@ func newFinding(r rule.Rule, file string, line int, summary string) Finding {
 	}
 	return Finding{
 		ID:       r.ID,
-		Severity: string(r.Severity),
+		Severity: r.Severity,
 		File:     file,
 		Line:     line,
 		Summary:  summary,
@@ -35,5 +35,5 @@ func deduplicateFindings(in []Finding) []Finding {
 
 // IsRejectable returns true when finding severity should reject under strict mode.
 func IsRejectable(f Finding) bool {
-	return f.Severity == "critical" || f.Severity == "high"
+	return f.Severity == rule.SeverityCritical || f.Severity == rule.SeverityHigh
 }

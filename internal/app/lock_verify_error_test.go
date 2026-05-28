@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	reportpkg "github.com/watany-dev/gokui/internal/report"
 	"strings"
 	"testing"
 )
@@ -97,7 +98,7 @@ func TestWriteLockVerifySARIFErrorPreservesExplicitRuleID(t *testing.T) {
 	if code != 1 {
 		t.Fatalf("writeLockVerifySARIFError() code = %d, want 1", code)
 	}
-	var sarif inspectSARIFReport
+	var sarif reportpkg.SARIFDocument
 	if err := json.Unmarshal([]byte(stdout.String()), &sarif); err != nil {
 		t.Fatalf("sarif parse failed: %v", err)
 	}

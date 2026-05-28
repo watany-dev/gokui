@@ -2,6 +2,8 @@ package app
 
 import (
 	"errors"
+	formatpkg "github.com/watany-dev/gokui/internal/cli/format"
+	policypkg "github.com/watany-dev/gokui/internal/policy"
 	"strings"
 	"testing"
 )
@@ -84,7 +86,7 @@ func TestStructuredErrorWritersHandleStdoutWriteFailure(t *testing.T) {
 			Message:       "write failed",
 			Source:        source{Input: "/tmp/skill", Kind: "local-dir"},
 			Target:        "custom:/tmp/skills",
-			PolicyProfile: policyProfileStrict,
+			PolicyProfile: policypkg.ProfileStrict.String(),
 			Note:          "test",
 		})
 		if code != 1 {
@@ -101,7 +103,7 @@ func TestStructuredErrorWritersHandleStdoutWriteFailure(t *testing.T) {
 			Message:       "write failed",
 			Source:        source{Input: "/tmp/skill", Kind: "local-dir"},
 			Target:        "custom:/tmp/skills",
-			PolicyProfile: policyProfileStrict,
+			PolicyProfile: policypkg.ProfileStrict.String(),
 			Note:          "test",
 		})
 		if code != 1 {
@@ -240,7 +242,7 @@ func TestStructuredErrorWritersPreserveExplicitRuleID(t *testing.T) {
 			Message:       "install failed",
 			Source:        source{Input: "/tmp/skill", Kind: "local-dir"},
 			Target:        "custom:/tmp/skills",
-			PolicyProfile: policyProfileStrict,
+			PolicyProfile: policypkg.ProfileStrict.String(),
 			Note:          "test",
 		}
 
@@ -320,4 +322,77 @@ func TestStructuredErrorWritersPreserveExplicitRuleID(t *testing.T) {
 			t.Fatalf("lock verify sarif should preserve explicit ruleId, got %q", stdout.String())
 		}
 	})
+}
+
+func TestNormalizeStructuredErrorFields(t *testing.T) {
+	status, code, ruleID := normalizeStructuredErrorFields("bad-code", "", "wrap: RULE_FROM_MESSAGE: failed", "FALLBACK_CODE")
+	if status != "ERROR" {
+		t.Fatalf("status = %q, want ERROR", status)
+	}
+	if code != "FALLBACK_CODE" {
+		t.Fatalf("code = %q, want fallback", code)
+	}
+	if ruleID != "RULE_FROM_MESSAGE" {
+		t.Fatalf("ruleID = %q, want inferred rule", ruleID)
+	}
+
+	status, code, ruleID = normalizeStructuredErrorFields("KNOWN_CODE", "EXPLICIT_RULE", "OTHER_RULE: ignored", "FALLBACK_CODE")
+	if status != "ERROR" || code != "KNOWN_CODE" || ruleID != "EXPLICIT_RULE" {
+		t.Fatalf("explicit fields not preserved: status=%q code=%q ruleID=%q", status, code, ruleID)
+	}
+}
+
+func TestEmitStructuredError(t *testing.T) {
+	var jsonCalls int
+	var sarifCalls int
+	writeJSON := func() { jsonCalls++ }
+	writeSARIF := func() { sarifCalls++ }
+
+	if !emitStructuredError(formatpkg.JSON, writeJSON, writeSARIF) {
+		t.Fatal("json format should be handled")
+	}
+	if jsonCalls != 1 || sarifCalls != 0 {
+		t.Fatalf("json/sarif calls = %d/%d, want 1/0", jsonCalls, sarifCalls)
+	}
+
+	if !emitStructuredError(formatpkg.SARIF, writeJSON, writeSARIF) {
+		t.Fatal("sarif format should be handled")
+	}
+	if jsonCalls != 1 || sarifCalls != 1 {
+		t.Fatalf("json/sarif calls = %d/%d, want 1/1", jsonCalls, sarifCalls)
+	}
+
+	if emitStructuredError(formatpkg.Human, writeJSON, writeSARIF) {
+		t.Fatal("human format should not be handled")
+	}
+	if jsonCalls != 1 || sarifCalls != 1 {
+		t.Fatalf("default branch should not call writers, got %d/%d", jsonCalls, sarifCalls)
+	}
+}
+
+func TestNormalizeCommandDepsDefaults(t *testing.T) {
+	vet := normalizeVetDeps(vetDeps{})
+	if vet.LoadUserPolicy == nil || vet.LoadRepositoryPolicy == nil || vet.PrepareInspectSource == nil {
+		t.Fatal("normalizeVetDeps should fill all defaults")
+	}
+
+	inspect := normalizeInspectDeps(inspectDeps{})
+	if inspect.PrepareEvaluationSource == nil || inspect.PrepareInspectSource == nil {
+		t.Fatal("normalizeInspectDeps should fill all defaults")
+	}
+
+	fetch := normalizeFetchDeps(fetchDeps{})
+	if fetch.FetchGitHubSkill == nil || fetch.FetchSkillAtomic == nil || fetch.WriteSourceMetadata == nil || fetch.Now == nil {
+		t.Fatal("normalizeFetchDeps should fill all defaults")
+	}
+
+	install := normalizeInstallDeps(installDeps{})
+	if install.LoadUserPolicy == nil || install.LoadRepositoryPolicy == nil || install.PrepareEvaluationSource == nil {
+		t.Fatal("normalizeInstallDeps should fill all defaults")
+	}
+
+	update := normalizeUpdateDeps(updateDeps{})
+	if update.LoadUserPolicy == nil || update.LoadRepositoryPolicy == nil || update.PrepareEvaluationSource == nil {
+		t.Fatal("normalizeUpdateDeps should fill all defaults")
+	}
 }

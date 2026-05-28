@@ -46,3 +46,89 @@ func TestFetchCompactSummary(t *testing.T) {
 		}
 	}
 }
+
+func TestInstallCompactSummary(t *testing.T) {
+	got := InstallCompactSummary(InstallCompactInput{
+		Decision:      "REJECTED",
+		Severities:    []string{"critical", "high", "medium", "low", "info"},
+		Overrides:     1,
+		Installed:     false,
+		PolicyProfile: "strict",
+		Target:        "custom:/tmp/skills",
+		SourceKind:    "local-dir",
+		SourceInput:   "/tmp/skill",
+		ErrorCode:     "POLICY_REJECTED",
+	})
+	required := []string{
+		"install decision=REJECTED",
+		"findings=5",
+		"critical=1",
+		"high=1",
+		"medium=1",
+		"low=1",
+		"overrides=1",
+		"installed=false",
+		"profile=strict",
+		`target="custom:/tmp/skills"`,
+		"source_kind=local-dir",
+		`source="/tmp/skill"`,
+		"error_code=POLICY_REJECTED",
+	}
+	for _, token := range required {
+		if !strings.Contains(got, token) {
+			t.Fatalf("summary should include %q, got %q", token, got)
+		}
+	}
+}
+
+func TestUpdateCompactSummary(t *testing.T) {
+	got := UpdateCompactSummary(UpdateCompactInput{
+		Total:    5,
+		UpToDate: 1,
+		Changed:  2,
+		Rejected: 1,
+		Skipped:  0,
+		Errors:   1,
+		Target:   "codex",
+	})
+	required := []string{
+		"update total=5",
+		"up_to_date=1",
+		"changed=2",
+		"rejected=1",
+		"skipped=0",
+		"errors=1",
+		`target="codex"`,
+	}
+	for _, token := range required {
+		if !strings.Contains(got, token) {
+			t.Fatalf("summary should include %q, got %q", token, got)
+		}
+	}
+}
+
+func TestLockVerifyCompactSummary(t *testing.T) {
+	got := LockVerifyCompactSummary(LockVerifyCompactInput{
+		Status:          "DRIFTED",
+		Checks:          3,
+		Failed:          2,
+		MissingFiles:    1,
+		ChangedFiles:    1,
+		UnexpectedFiles: 2,
+		Path:            "/tmp/skills/demo",
+	})
+	required := []string{
+		"lock_verify status=DRIFTED",
+		"checks=3",
+		"failed=2",
+		"missing=1",
+		"changed=1",
+		"unexpected=2",
+		`path="/tmp/skills/demo"`,
+	}
+	for _, token := range required {
+		if !strings.Contains(got, token) {
+			t.Fatalf("summary should include %q, got %q", token, got)
+		}
+	}
+}

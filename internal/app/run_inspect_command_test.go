@@ -3,6 +3,8 @@ package app
 import (
 	"bytes"
 	"encoding/json"
+	reportpkg "github.com/watany-dev/gokui/internal/report"
+	skillpkg "github.com/watany-dev/gokui/internal/skill"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -10,7 +12,7 @@ import (
 	"testing"
 )
 
-func TestRunInspectVetCommands(t *testing.T) {
+func TestRunInspectCommand(t *testing.T) {
 	cfg := Config{
 		Version: "v0.1.0",
 		Commit:  "abc123",
@@ -73,7 +75,7 @@ func TestRunInspectVetCommands(t *testing.T) {
 			t.Fatalf("stderr should be empty, got %q", stderr.String())
 		}
 
-		var got inspectSARIFReport
+		var got reportpkg.SARIFDocument
 		if err := json.Unmarshal(stdout.Bytes(), &got); err != nil {
 			t.Fatalf("inspect sarif should be valid: %v\nstdout=%q", err, stdout.String())
 		}
@@ -272,7 +274,7 @@ func TestRunInspectVetCommands(t *testing.T) {
 		if stderr.Len() != 0 {
 			t.Fatalf("stderr should be empty, got %q", stderr.String())
 		}
-		var sarif inspectSARIFReport
+		var sarif reportpkg.SARIFDocument
 		if err := json.Unmarshal(stdout.Bytes(), &sarif); err != nil {
 			t.Fatalf("sarif parse failed: %v", err)
 		}
@@ -295,7 +297,7 @@ func TestRunInspectVetCommands(t *testing.T) {
 		if stderr.Len() != 0 {
 			t.Fatalf("stderr should be empty, got %q", stderr.String())
 		}
-		var sarif inspectSARIFReport
+		var sarif reportpkg.SARIFDocument
 		if err := json.Unmarshal(stdout.Bytes(), &sarif); err != nil {
 			t.Fatalf("sarif parse failed: %v", err)
 		}
@@ -318,7 +320,7 @@ func TestRunInspectVetCommands(t *testing.T) {
 		if stderr.Len() != 0 {
 			t.Fatalf("stderr should be empty, got %q", stderr.String())
 		}
-		var sarif inspectSARIFReport
+		var sarif reportpkg.SARIFDocument
 		if err := json.Unmarshal(stdout.Bytes(), &sarif); err != nil {
 			t.Fatalf("sarif parse failed: %v", err)
 		}
@@ -345,7 +347,7 @@ func TestRunInspectVetCommands(t *testing.T) {
 		if stderr.Len() != 0 {
 			t.Fatalf("stderr should be empty, got %q", stderr.String())
 		}
-		var sarif inspectSARIFReport
+		var sarif reportpkg.SARIFDocument
 		if err := json.Unmarshal(stdout.Bytes(), &sarif); err != nil {
 			t.Fatalf("sarif parse failed: %v", err)
 		}
@@ -389,7 +391,7 @@ func TestRunInspectVetCommands(t *testing.T) {
 			t.Fatalf("stderr should be empty, got %q", stderr.String())
 		}
 
-		var sarif inspectSARIFReport
+		var sarif reportpkg.SARIFDocument
 		if err := json.Unmarshal(stdout.Bytes(), &sarif); err != nil {
 			t.Fatalf("sarif parse failed: %v", err)
 		}
@@ -418,7 +420,7 @@ func TestRunInspectVetCommands(t *testing.T) {
 			t.Fatalf("stderr should be empty, got %q", stderr.String())
 		}
 
-		var sarif inspectSARIFReport
+		var sarif reportpkg.SARIFDocument
 		if err := json.Unmarshal(stdout.Bytes(), &sarif); err != nil {
 			t.Fatalf("sarif parse failed: %v", err)
 		}
@@ -732,17 +734,20 @@ func TestRunInspectVetCommands(t *testing.T) {
 		var stdout bytes.Buffer
 		var stderr bytes.Buffer
 
-		origLimit := maxSkillFrontmatterBytes
-		maxSkillFrontmatterBytes = 16
-		t.Cleanup(func() { maxSkillFrontmatterBytes = origLimit })
-
 		root := t.TempDir()
 		skillBody := "---\nname: huge-skill\ndescription: Use when validating oversized frontmatter behavior.\n---\n"
 		if err := os.WriteFile(filepath.Join(root, "SKILL.md"), []byte(skillBody), 0o644); err != nil {
 			t.Fatalf("write SKILL.md: %v", err)
 		}
 
-		code := Run([]string{"inspect", root, "--format", "json"}, &stdout, &stderr, cfg)
+		code := runInspectWithDeps([]string{root, "--format", "json"}, &stdout, &stderr, inspectDeps{
+			PrepareInspectSource: func(input string, sourceKind string) (string, func(), error) {
+				if err := skillpkg.ValidateLocalDirInspectSource(input, 16); err != nil {
+					return "", nil, err
+				}
+				return input, nil, nil
+			},
+		})
 		if code != 1 {
 			t.Fatalf("Run() code = %d, want 1", code)
 		}
@@ -752,7 +757,7 @@ func TestRunInspectVetCommands(t *testing.T) {
 		if !strings.Contains(stdout.String(), "\"error_code\": \""+inspectErrorCodeSourcePrepareFailed+"\"") {
 			t.Fatalf("stdout should include source-prepare-failed code, got %q", stdout.String())
 		}
-		if !strings.Contains(stdout.String(), "\"rule_id\": \""+ruleSkillFrontmatterTooLarge+"\"") {
+		if !strings.Contains(stdout.String(), "\"rule_id\": \""+skillpkg.RuleFrontmatterTooLarge+"\"") {
 			t.Fatalf("stdout should include frontmatter size rule_id, got %q", stdout.String())
 		}
 	})
@@ -780,7 +785,7 @@ func TestRunInspectVetCommands(t *testing.T) {
 		if !strings.Contains(stdout.String(), "\"error_code\": \""+inspectErrorCodeSourcePrepareFailed+"\"") {
 			t.Fatalf("stdout should include source-prepare-failed error_code, got %q", stdout.String())
 		}
-		if !strings.Contains(stdout.String(), "\"rule_id\": \""+ruleSkillFrontmatterInvalidUTF8+"\"") {
+		if !strings.Contains(stdout.String(), "\"rule_id\": \""+skillpkg.RuleFrontmatterInvalidUTF8+"\"") {
 			t.Fatalf("stdout should include frontmatter utf-8 rule_id, got %q", stdout.String())
 		}
 	})
@@ -877,7 +882,7 @@ func TestRunInspectVetCommands(t *testing.T) {
 			t.Fatalf("stderr should be empty, got %q", stderr.String())
 		}
 
-		var got inspectSARIFReport
+		var got reportpkg.SARIFDocument
 		if err := json.Unmarshal(stdout.Bytes(), &got); err != nil {
 			t.Fatalf("inspect sarif should be valid: %v", err)
 		}
@@ -917,24 +922,6 @@ func TestRunInspectVetCommands(t *testing.T) {
 		out := strings.TrimSpace(stdout.String())
 		if !strings.Contains(out, "decision=REJECTED") {
 			t.Fatalf("compact output should include rejected decision, got %q", out)
-		}
-	})
-
-	t.Run("vet compact returns rejected exit code for risky fixture", func(t *testing.T) {
-		var stdout bytes.Buffer
-		var stderr bytes.Buffer
-
-		fixturePath := filepath.FromSlash("../../fixtures/fake-prereq-skill")
-		code := Run([]string{"vet", fixturePath, "--format", "compact"}, &stdout, &stderr, cfg)
-		if code != 2 {
-			t.Fatalf("Run() code = %d, want 2\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
-		}
-		if stderr.Len() != 0 {
-			t.Fatalf("stderr should be empty, got %q", stderr.String())
-		}
-		out := strings.TrimSpace(stdout.String())
-		if !strings.HasPrefix(out, "vet ") || !strings.Contains(out, "decision=REJECTED") {
-			t.Fatalf("compact output should include vet rejected decision, got %q", out)
 		}
 	})
 

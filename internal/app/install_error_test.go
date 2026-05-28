@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	srcpkg "github.com/watany-dev/gokui/internal/source"
+	rulepkg "github.com/watany-dev/gokui/internal/rule"
 )
 
 func TestRunInstallErrorPaths(t *testing.T) {
@@ -325,13 +325,17 @@ func TestRunInstallErrorPaths(t *testing.T) {
 
 	stdout.Reset()
 	stderr.Reset()
-	origFetch := fetchGitHubSkill
-	t.Cleanup(func() { fetchGitHubSkill = origFetch })
 	fakeSource := createSkillSourceForInstallTest(t, "mocked-github-skill")
-	fetchGitHubSkill = func(spec srcpkg.GitHubSpec) (string, func(), error) {
-		return fakeSource, nil, nil
-	}
-	code = runInstall([]string{"github:org/repo//skill@8f3c2d1a4b5c6d7e8f901234567890abcdef1234", "--target", "custom:" + filepath.Join(t.TempDir(), "skills"), "--profile", "strict"}, &stdout, &stderr)
+	code = runInstallWithDeps(
+		[]string{"github:org/repo//skill@8f3c2d1a4b5c6d7e8f901234567890abcdef1234", "--target", "custom:" + filepath.Join(t.TempDir(), "skills"), "--profile", "strict"},
+		&stdout,
+		&stderr,
+		installDeps{
+			PrepareEvaluationSource: func(input string, sourceKind string) (string, func(), error) {
+				return fakeSource, nil, nil
+			},
+		},
+	)
 	if code != 0 {
 		t.Fatalf("runInstall(mock github) code = %d, want 0\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
 	}
@@ -534,7 +538,7 @@ func TestRunInstallRejectsSymlinkTargetRoot(t *testing.T) {
 	if !strings.Contains(stdout.String(), "\"error_code\": \""+installErrorCodeTargetInvalid+"\"") {
 		t.Fatalf("stdout should include target-invalid error code, got %q", stdout.String())
 	}
-	if !strings.Contains(stdout.String(), "\"rule_id\": \""+ruleInstallTargetSymlink+"\"") {
+	if !strings.Contains(stdout.String(), "\"rule_id\": \""+rulepkg.InstallTargetSymlink.ID+"\"") {
 		t.Fatalf("stdout should include target symlink rule_id, got %q", stdout.String())
 	}
 
@@ -551,7 +555,7 @@ func TestRunInstallRejectsSymlinkTargetRoot(t *testing.T) {
 	if stdout.Len() != 0 {
 		t.Fatalf("stdout should be empty for human errors, got %q", stdout.String())
 	}
-	if !strings.Contains(stderr.String(), ruleInstallTargetSymlink) {
+	if !strings.Contains(stderr.String(), rulepkg.InstallTargetSymlink.ID) {
 		t.Fatalf("stderr should include target symlink rule marker, got %q", stderr.String())
 	}
 }
@@ -592,7 +596,7 @@ func TestRunInstallRejectsSymlinkTargetEntry(t *testing.T) {
 	if !strings.Contains(stdout.String(), "\"error_code\": \""+installErrorCodeWriteFailed+"\"") {
 		t.Fatalf("stdout should include write-failed error code, got %q", stdout.String())
 	}
-	if !strings.Contains(stdout.String(), "\"rule_id\": \""+ruleInstallTargetEntrySymlink+"\"") {
+	if !strings.Contains(stdout.String(), "\"rule_id\": \""+rulepkg.InstallTargetEntrySymlink.ID+"\"") {
 		t.Fatalf("stdout should include target-entry symlink rule_id, got %q", stdout.String())
 	}
 
@@ -609,7 +613,7 @@ func TestRunInstallRejectsSymlinkTargetEntry(t *testing.T) {
 	if stdout.Len() != 0 {
 		t.Fatalf("stdout should be empty for human errors, got %q", stdout.String())
 	}
-	if !strings.Contains(stderr.String(), ruleInstallTargetEntrySymlink) {
+	if !strings.Contains(stderr.String(), rulepkg.InstallTargetEntrySymlink.ID) {
 		t.Fatalf("stderr should include target-entry symlink rule marker, got %q", stderr.String())
 	}
 }

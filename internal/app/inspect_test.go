@@ -6,241 +6,14 @@ import (
 	"bytes"
 	"compress/gzip"
 	"encoding/json"
+	reportpkg "github.com/watany-dev/gokui/internal/report"
+	skillpkg "github.com/watany-dev/gokui/internal/skill"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
 )
-
-func TestParseInspectArgs(t *testing.T) {
-	t.Run("parses source and default format", func(t *testing.T) {
-		input, format, err := parseInspectArgs([]string{"./skill"})
-		if err != nil {
-			t.Fatalf("parseInspectArgs() error = %v", err)
-		}
-		if input != "./skill" {
-			t.Fatalf("input = %q, want %q", input, "./skill")
-		}
-		if format != "human" {
-			t.Fatalf("format = %q, want %q", format, "human")
-		}
-	})
-
-	t.Run("parses equals format", func(t *testing.T) {
-		input, format, err := parseInspectArgs([]string{"./skill", "--format=json"})
-		if err != nil {
-			t.Fatalf("parseInspectArgs() error = %v", err)
-		}
-		if input != "./skill" || format != "json" {
-			t.Fatalf("got (%q, %q), want (%q, %q)", input, format, "./skill", "json")
-		}
-	})
-
-	t.Run("parses sarif format", func(t *testing.T) {
-		input, format, err := parseInspectArgs([]string{"./skill", "--format", "sarif"})
-		if err != nil {
-			t.Fatalf("parseInspectArgs() error = %v", err)
-		}
-		if input != "./skill" || format != "sarif" {
-			t.Fatalf("got (%q, %q), want (%q, %q)", input, format, "./skill", "sarif")
-		}
-	})
-
-	t.Run("parses compact format", func(t *testing.T) {
-		input, format, err := parseInspectArgs([]string{"./skill", "--format", "compact"})
-		if err != nil {
-			t.Fatalf("parseInspectArgs() error = %v", err)
-		}
-		if input != "./skill" || format != "compact" {
-			t.Fatalf("got (%q, %q), want (%q, %q)", input, format, "./skill", "compact")
-		}
-	})
-
-	t.Run("parses review-json format", func(t *testing.T) {
-		input, format, err := parseInspectArgs([]string{"./skill", "--format", "review-json"})
-		if err != nil {
-			t.Fatalf("parseInspectArgs() error = %v", err)
-		}
-		if input != "./skill" || format != "review-json" {
-			t.Fatalf("got (%q, %q), want (%q, %q)", input, format, "./skill", "review-json")
-		}
-	})
-
-	t.Run("errors when format value is missing", func(t *testing.T) {
-		_, _, err := parseInspectArgs([]string{"./skill", "--format"})
-		if err == nil || !strings.Contains(err.Error(), "missing value for --format") {
-			t.Fatalf("expected missing format error, got %v", err)
-		}
-	})
-
-	t.Run("errors when more than one source is given", func(t *testing.T) {
-		_, _, err := parseInspectArgs([]string{"./a", "./b"})
-		if err == nil || !strings.Contains(err.Error(), "inspect accepts exactly one source") {
-			t.Fatalf("expected single source error, got %v", err)
-		}
-	})
-}
-
-func TestParseVetArgs(t *testing.T) {
-	t.Run("parses source and default format", func(t *testing.T) {
-		input, format, profile, profileSet, err := parseVetArgs([]string{"./skill"})
-		if err != nil {
-			t.Fatalf("parseVetArgs() error = %v", err)
-		}
-		if input != "./skill" {
-			t.Fatalf("input = %q, want %q", input, "./skill")
-		}
-		if format != "human" {
-			t.Fatalf("format = %q, want %q", format, "human")
-		}
-		if profile != policyProfileStrict || profileSet {
-			t.Fatalf("profile/profileSet = %q/%t, want %q/false", profile, profileSet, policyProfileStrict)
-		}
-	})
-
-	t.Run("parses equals format", func(t *testing.T) {
-		input, format, _, _, err := parseVetArgs([]string{"./skill", "--format=json"})
-		if err != nil {
-			t.Fatalf("parseVetArgs() error = %v", err)
-		}
-		if input != "./skill" || format != "json" {
-			t.Fatalf("got (%q, %q), want (%q, %q)", input, format, "./skill", "json")
-		}
-	})
-
-	t.Run("parses sarif format", func(t *testing.T) {
-		input, format, _, _, err := parseVetArgs([]string{"./skill", "--format", "sarif"})
-		if err != nil {
-			t.Fatalf("parseVetArgs() error = %v", err)
-		}
-		if input != "./skill" || format != "sarif" {
-			t.Fatalf("got (%q, %q), want (%q, %q)", input, format, "./skill", "sarif")
-		}
-	})
-
-	t.Run("parses compact format", func(t *testing.T) {
-		input, format, _, _, err := parseVetArgs([]string{"./skill", "--format", "compact"})
-		if err != nil {
-			t.Fatalf("parseVetArgs() error = %v", err)
-		}
-		if input != "./skill" || format != "compact" {
-			t.Fatalf("got (%q, %q), want (%q, %q)", input, format, "./skill", "compact")
-		}
-	})
-
-	t.Run("parses review-json format", func(t *testing.T) {
-		input, format, _, _, err := parseVetArgs([]string{"./skill", "--format", "review-json"})
-		if err != nil {
-			t.Fatalf("parseVetArgs() error = %v", err)
-		}
-		if input != "./skill" || format != "review-json" {
-			t.Fatalf("got (%q, %q), want (%q, %q)", input, format, "./skill", "review-json")
-		}
-	})
-
-	t.Run("parses profile options", func(t *testing.T) {
-		_, _, profile, profileSet, err := parseVetArgs([]string{"./skill", "--profile", "research"})
-		if err != nil {
-			t.Fatalf("parseVetArgs() error = %v", err)
-		}
-		if profile != "research" || !profileSet {
-			t.Fatalf("profile/profileSet = %q/%t, want research/true", profile, profileSet)
-		}
-		_, _, profile, profileSet, err = parseVetArgs([]string{"./skill", "--profile=team"})
-		if err != nil {
-			t.Fatalf("parseVetArgs() equals profile error = %v", err)
-		}
-		if profile != "team" || !profileSet {
-			t.Fatalf("profile/profileSet (equals) = %q/%t, want team/true", profile, profileSet)
-		}
-	})
-
-	t.Run("errors when source is missing", func(t *testing.T) {
-		_, _, _, _, err := parseVetArgs([]string{"--format", "json"})
-		if err == nil || !strings.Contains(err.Error(), "vet source is required") {
-			t.Fatalf("expected source required error, got %v", err)
-		}
-	})
-
-	t.Run("errors when format value is missing", func(t *testing.T) {
-		_, _, _, _, err := parseVetArgs([]string{"./skill", "--format"})
-		if err == nil || !strings.Contains(err.Error(), "missing value for --format") {
-			t.Fatalf("expected missing format error, got %v", err)
-		}
-	})
-
-	t.Run("errors when profile value is missing", func(t *testing.T) {
-		_, _, _, _, err := parseVetArgs([]string{"./skill", "--profile"})
-		if err == nil || !strings.Contains(err.Error(), "missing value for --profile") {
-			t.Fatalf("expected missing profile error, got %v", err)
-		}
-	})
-
-	t.Run("errors on unknown option", func(t *testing.T) {
-		_, _, _, _, err := parseVetArgs([]string{"./skill", "--badopt"})
-		if err == nil || !strings.Contains(err.Error(), "unknown vet option") {
-			t.Fatalf("expected unknown option error, got %v", err)
-		}
-	})
-
-	t.Run("errors on multiple sources", func(t *testing.T) {
-		_, _, _, _, err := parseVetArgs([]string{"./a", "./b"})
-		if err == nil || !strings.Contains(err.Error(), "vet accepts exactly one source") {
-			t.Fatalf("expected single source error, got %v", err)
-		}
-	})
-
-	t.Run("errors on unsupported format", func(t *testing.T) {
-		_, _, _, _, err := parseVetArgs([]string{"./skill", "--format", "xml"})
-		if err == nil || !strings.Contains(err.Error(), "unsupported vet format") {
-			t.Fatalf("expected unsupported format error, got %v", err)
-		}
-	})
-}
-
-func TestInspectArgJSONHelpers(t *testing.T) {
-	if !inspectArgsRequestJSON([]string{"./skill", "--format", "json"}) {
-		t.Fatal("inspectArgsRequestJSON() should detect --format json")
-	}
-	if !inspectArgsRequestJSON([]string{"./skill", "--format=json"}) {
-		t.Fatal("inspectArgsRequestJSON() should detect --format=json")
-	}
-	if inspectArgsRequestJSON([]string{"./skill", "--format", "human"}) {
-		t.Fatal("inspectArgsRequestJSON() should be false for non-json format")
-	}
-	if !inspectArgsRequestSARIF([]string{"./skill", "--format", "sarif"}) {
-		t.Fatal("inspectArgsRequestSARIF() should detect --format sarif")
-	}
-	if !inspectArgsRequestSARIF([]string{"./skill", "--format=sarif"}) {
-		t.Fatal("inspectArgsRequestSARIF() should detect --format=sarif")
-	}
-	if inspectArgsRequestSARIF([]string{"./skill", "--format", "human"}) {
-		t.Fatal("inspectArgsRequestSARIF() should be false for non-sarif format")
-	}
-	if !inspectArgsRequestReviewJSON([]string{"./skill", "--format", "review-json"}) {
-		t.Fatal("inspectArgsRequestReviewJSON() should detect --format review-json")
-	}
-	if !inspectArgsRequestReviewJSON([]string{"./skill", "--format=review-json"}) {
-		t.Fatal("inspectArgsRequestReviewJSON() should detect --format=review-json")
-	}
-	if inspectArgsRequestReviewJSON([]string{"./skill", "--format", "human"}) {
-		t.Fatal("inspectArgsRequestReviewJSON() should be false for non-review format")
-	}
-
-	if got := extractInspectSourceArg([]string{"./skill", "--format", "json"}); got != "./skill" {
-		t.Fatalf("extractInspectSourceArg() = %q, want %q", got, "./skill")
-	}
-	if got := extractInspectSourceArg([]string{"--format=json", "./skill"}); got != "./skill" {
-		t.Fatalf("extractInspectSourceArg() with equals = %q, want %q", got, "./skill")
-	}
-	if got := extractInspectSourceArg([]string{"--format", "json"}); got != "" {
-		t.Fatalf("extractInspectSourceArg() without source = %q, want empty", got)
-	}
-	if got := extractInspectSourceArg([]string{"--unknown", "./skill", "--format", "json"}); got != "./skill" {
-		t.Fatalf("extractInspectSourceArg() should skip unknown options, got %q", got)
-	}
-}
 
 func TestBuildInspectReviewReportNeutralizesText(t *testing.T) {
 	report := inspectReport{
@@ -295,37 +68,6 @@ func TestBuildInspectReviewReportNeutralizesText(t *testing.T) {
 	if strings.ContainsRune(review.Source.Input, '\u202E') {
 		t.Fatalf("source input should be neutralized, got %q", review.Source.Input)
 	}
-}
-
-func TestDecodeInspectErrorPayload(t *testing.T) {
-	t.Run("valid payload keeps message", func(t *testing.T) {
-		raw := []byte(`{"schema_version":"0.1.0-draft","status":"ERROR","error_code":"INSPECT_ARGS_INVALID","message":"inspect source is required","source":{"input":"","kind":"local-dir"},"note":"x"}`)
-		got := decodeInspectErrorPayload(raw)
-		if got.ErrorCode != inspectErrorCodeArgsInvalid {
-			t.Fatalf("error_code = %q, want %q", got.ErrorCode, inspectErrorCodeArgsInvalid)
-		}
-		if got.Message != "inspect source is required" {
-			t.Fatalf("message = %q", got.Message)
-		}
-	})
-
-	t.Run("invalid payload falls back to trimmed raw message", func(t *testing.T) {
-		got := decodeInspectErrorPayload([]byte("not-json"))
-		if got.ErrorCode != inspectErrorCodeUnknown {
-			t.Fatalf("error_code = %q, want %q", got.ErrorCode, inspectErrorCodeUnknown)
-		}
-		if got.Message != "not-json" {
-			t.Fatalf("message = %q, want raw payload", got.Message)
-		}
-	})
-
-	t.Run("empty message uses default", func(t *testing.T) {
-		raw := []byte(`{"schema_version":"0.1.0-draft","status":"ERROR","error_code":"INSPECT_ARGS_INVALID","message":"   ","source":{"input":"","kind":"local-dir"},"note":"x"}`)
-		got := decodeInspectErrorPayload(raw)
-		if got.Message != "inspect failed" {
-			t.Fatalf("message = %q, want inspect failed", got.Message)
-		}
-	})
 }
 
 func TestDetectSourceKind(t *testing.T) {
@@ -502,7 +244,7 @@ func TestWriteInspectSARIFErrorPreservesExplicitRuleID(t *testing.T) {
 	if stderr.Len() != 0 {
 		t.Fatalf("stderr should be empty, got %q", stderr.String())
 	}
-	var sarif inspectSARIFReport
+	var sarif reportpkg.SARIFDocument
 	if err := json.Unmarshal(stdout.Bytes(), &sarif); err != nil {
 		t.Fatalf("sarif parse failed: %v", err)
 	}
@@ -548,24 +290,6 @@ func TestBuildInspectCompactSummary(t *testing.T) {
 	}
 }
 
-func TestInspectSeverityToSARIFLevel(t *testing.T) {
-	cases := []struct {
-		in   string
-		want string
-	}{
-		{in: "critical", want: "error"},
-		{in: "high", want: "error"},
-		{in: "medium", want: "warning"},
-		{in: "low", want: "note"},
-		{in: "unknown", want: "warning"},
-	}
-	for _, tc := range cases {
-		if got := inspectSeverityToSARIFLevel(tc.in); got != tc.want {
-			t.Fatalf("inspectSeverityToSARIFLevel(%q) = %q, want %q", tc.in, got, tc.want)
-		}
-	}
-}
-
 func TestValidateLocalDirInspectSource(t *testing.T) {
 	writeSkillDir := func(t *testing.T, dirName, skillBody string) string {
 		t.Helper()
@@ -607,7 +331,7 @@ func TestValidateLocalDirInspectSource(t *testing.T) {
 		}
 
 		err := validateLocalDirInspectSource(link)
-		if err == nil || !strings.Contains(err.Error(), ruleInspectSourceSymlink) {
+		if err == nil || !strings.Contains(err.Error(), skillpkg.RuleInspectSourceSymlink) {
 			t.Fatalf("expected source symlink rejection, got %v", err)
 		}
 	})
@@ -636,7 +360,7 @@ func TestValidateLocalDirInspectSource(t *testing.T) {
 		}
 
 		err := validateLocalDirInspectSource(filepath.Join(linkParent, "ancestor-skill"))
-		if err == nil || !strings.Contains(err.Error(), ruleInspectSourceSymlink) {
+		if err == nil || !strings.Contains(err.Error(), skillpkg.RuleInspectSourceSymlink) {
 			t.Fatalf("expected ancestor source symlink rejection, got %v", err)
 		}
 	})
@@ -660,7 +384,7 @@ func TestValidateLocalDirInspectSource(t *testing.T) {
 		}
 
 		err := validateLocalDirInspectSource(dir)
-		if err == nil || !strings.Contains(err.Error(), ruleSkillFrontmatterSymlink) {
+		if err == nil || !strings.Contains(err.Error(), skillpkg.RuleFrontmatterSymlink) {
 			t.Fatalf("expected SKILL symlink rejection, got %v", err)
 		}
 	})
@@ -676,7 +400,7 @@ func TestValidateLocalDirInspectSource(t *testing.T) {
 		}
 
 		err := validateLocalDirInspectSource(dir)
-		if err == nil || !strings.Contains(err.Error(), ruleSkillFrontmatterSpecialFile) {
+		if err == nil || !strings.Contains(err.Error(), skillpkg.RuleFrontmatterSpecialFile) {
 			t.Fatalf("expected non-regular SKILL rejection, got %v", err)
 		}
 	})

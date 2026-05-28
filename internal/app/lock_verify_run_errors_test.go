@@ -2,6 +2,8 @@ package app
 
 import (
 	"encoding/json"
+	reportpkg "github.com/watany-dev/gokui/internal/report"
+	rulepkg "github.com/watany-dev/gokui/internal/rule"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -49,7 +51,7 @@ func TestRunLockVerifyErrorPathsAndDriftKinds(t *testing.T) {
 	if stderr.Len() != 0 {
 		t.Fatalf("stderr should be empty for sarif parse error output, got %q", stderr.String())
 	}
-	var parseSARIF inspectSARIFReport
+	var parseSARIF reportpkg.SARIFDocument
 	if err := json.Unmarshal([]byte(stdout.String()), &parseSARIF); err != nil {
 		t.Fatalf("sarif parse (parse error): %v", err)
 	}
@@ -114,7 +116,7 @@ func TestRunLockVerifyErrorPathsAndDriftKinds(t *testing.T) {
 	if stderr.Len() != 0 {
 		t.Fatalf("stderr should be empty for sarif error output, got %q", stderr.String())
 	}
-	var readSARIF inspectSARIFReport
+	var readSARIF reportpkg.SARIFDocument
 	if err := json.Unmarshal([]byte(stdout.String()), &readSARIF); err != nil {
 		t.Fatalf("sarif parse (read error): %v", err)
 	}
@@ -154,7 +156,7 @@ func TestRunLockVerifyErrorPathsAndDriftKinds(t *testing.T) {
 		if stdout.Len() != 0 {
 			t.Fatalf("stdout should be empty for human error output, got %q", stdout.String())
 		}
-		if !strings.Contains(stderr.String(), ruleLockVerifyPathSymlink) {
+		if !strings.Contains(stderr.String(), rulepkg.LockVerifyPathSymlink.ID) {
 			t.Fatalf("stderr should include lock-verify path symlink rule, got %q", stderr.String())
 		}
 
@@ -170,7 +172,7 @@ func TestRunLockVerifyErrorPathsAndDriftKinds(t *testing.T) {
 		if !strings.Contains(stdout.String(), "\"status\": \"ERROR\"") {
 			t.Fatalf("stdout should include error status, got %q", stdout.String())
 		}
-		if !strings.Contains(stdout.String(), "\"rule_id\": \""+ruleLockVerifyPathSymlink+"\"") {
+		if !strings.Contains(stdout.String(), "\"rule_id\": \""+rulepkg.LockVerifyPathSymlink.ID+"\"") {
 			t.Fatalf("stdout should include lock-verify path symlink rule_id, got %q", stdout.String())
 		}
 
@@ -194,20 +196,22 @@ func TestRunLockVerifyErrorPathsAndDriftKinds(t *testing.T) {
 		if !strings.Contains(stdout.String(), "\"error_code\": \""+lockVerifyErrorCodeReadLockfile+"\"") {
 			t.Fatalf("stdout should include read-lockfile error code, got %q", stdout.String())
 		}
-		if !strings.Contains(stdout.String(), "\"rule_id\": \""+ruleLockfileSymlink+"\"") {
+		if !strings.Contains(stdout.String(), "\"rule_id\": \""+rulepkg.LockfileSymlink.ID+"\"") {
 			t.Fatalf("stdout should include lockfile symlink rule_id, got %q", stdout.String())
 		}
 	}
 
 	stdout.Reset()
 	stderr.Reset()
-	origLimit := maxLockVerifyLockFileBytes
-	maxLockVerifyLockFileBytes = 8
 	oversizedDir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(oversizedDir, installLockFile), []byte(`{"schema":"gokui.lock/v1"}`), 0o644); err != nil {
 		t.Fatalf("write oversized lockfile: %v", err)
 	}
-	code = runLockVerify([]string{oversizedDir, "--format", "json"}, &stdout, &stderr)
+	code = runLockVerifyWithDeps([]string{oversizedDir, "--format", "json"}, &stdout, &stderr, lockVerifyDeps{
+		VerifyLock: func(skillPath string) (lockVerifyReport, error) {
+			return verifyLockWithLimit(skillPath, 8)
+		},
+	})
 	if code != 1 {
 		t.Fatalf("runLockVerify(oversized lock json) code = %d, want 1", code)
 	}
@@ -217,10 +221,9 @@ func TestRunLockVerifyErrorPathsAndDriftKinds(t *testing.T) {
 	if !strings.Contains(stdout.String(), "\"error_code\": \""+lockVerifyErrorCodeReadLockfile+"\"") {
 		t.Fatalf("stdout should include read-lockfile error code, got %q", stdout.String())
 	}
-	if !strings.Contains(stdout.String(), "\"rule_id\": \""+ruleLockfileTooLarge+"\"") {
+	if !strings.Contains(stdout.String(), "\"rule_id\": \""+rulepkg.LockfileTooLarge.ID+"\"") {
 		t.Fatalf("stdout should include lockfile-too-large rule_id, got %q", stdout.String())
 	}
-	maxLockVerifyLockFileBytes = origLimit
 
 	stdout.Reset()
 	stderr.Reset()
@@ -238,7 +241,7 @@ func TestRunLockVerifyErrorPathsAndDriftKinds(t *testing.T) {
 	if !strings.Contains(stdout.String(), "\"error_code\": \""+lockVerifyErrorCodeReadLockfile+"\"") {
 		t.Fatalf("stdout should include read-lockfile error code, got %q", stdout.String())
 	}
-	if !strings.Contains(stdout.String(), "\"rule_id\": \""+ruleLockfileSpecialFile+"\"") {
+	if !strings.Contains(stdout.String(), "\"rule_id\": \""+rulepkg.LockfileSpecialFile.ID+"\"") {
 		t.Fatalf("stdout should include lockfile special-file rule_id, got %q", stdout.String())
 	}
 
@@ -273,7 +276,7 @@ func TestRunLockVerifyErrorPathsAndDriftKinds(t *testing.T) {
 		if !strings.Contains(stdout.String(), "\"error_code\": \""+lockVerifyErrorCodeDigestFailed+"\"") {
 			t.Fatalf("stdout should include digest-failed error_code, got %q", stdout.String())
 		}
-		if !strings.Contains(stdout.String(), "\"rule_id\": \""+ruleInstallDigestSymlink+"\"") {
+		if !strings.Contains(stdout.String(), "\"rule_id\": \""+rulepkg.InstallDigestSymlink.ID+"\"") {
 			t.Fatalf("stdout should include digest symlink rule_id, got %q", stdout.String())
 		}
 	}

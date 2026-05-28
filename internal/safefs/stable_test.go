@@ -83,6 +83,36 @@ func TestSentinelCheckOpened(t *testing.T) {
 	}
 }
 
+func TestStableCheckHelpers(t *testing.T) {
+	root := t.TempDir()
+	first := filepath.Join(root, "first.txt")
+	if err := os.WriteFile(first, []byte("one"), 0o644); err != nil {
+		t.Fatalf("write first: %v", err)
+	}
+	second := filepath.Join(root, "second.txt")
+	if err := os.WriteFile(second, []byte("two"), 0o644); err != nil {
+		t.Fatalf("write second: %v", err)
+	}
+	firstInfo, err := os.Lstat(first)
+	if err != nil {
+		t.Fatalf("lstat first: %v", err)
+	}
+	secondInfo, err := os.Lstat(second)
+	if err != nil {
+		t.Fatalf("lstat second: %v", err)
+	}
+
+	changedErr := errors.New("changed")
+	if err := CheckCurrentStable(firstInfo, secondInfo, first, func(string) error { return changedErr }); !errors.Is(err, changedErr) {
+		t.Fatalf("expected changed callback error, got %v", err)
+	}
+
+	statErr := errors.New("stat failed")
+	if err := CheckOpenedStable(firstInfo, errorStatter{err: errors.New("raw")}, first, func(string) error { return statErr }, nil); !errors.Is(err, statErr) {
+		t.Fatalf("expected stat callback error, got %v", err)
+	}
+}
+
 func TestRootCheckValidate(t *testing.T) {
 	t.Run("accepts directory", func(t *testing.T) {
 		if err := (RootCheck{Root: t.TempDir(), Label: "input", SymlinkRuleID: "SYM", SpecialRuleID: "SPECIAL"}).Validate(); err != nil {

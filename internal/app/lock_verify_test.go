@@ -3,6 +3,8 @@ package app
 import (
 	"encoding/json"
 	"errors"
+	reportpkg "github.com/watany-dev/gokui/internal/report"
+	rulepkg "github.com/watany-dev/gokui/internal/rule"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -96,7 +98,7 @@ func TestVerifyLockAndRunLockVerify(t *testing.T) {
 	if stderr.Len() != 0 {
 		t.Fatalf("stderr should be empty for sarif verified output, got %q", stderr.String())
 	}
-	var verifiedSARIF inspectSARIFReport
+	var verifiedSARIF reportpkg.SARIFDocument
 	if err := json.Unmarshal([]byte(stdout.String()), &verifiedSARIF); err != nil {
 		t.Fatalf("sarif unmarshal (verified): %v", err)
 	}
@@ -156,7 +158,7 @@ func TestVerifyLockAndRunLockVerify(t *testing.T) {
 	if stderr.Len() != 0 {
 		t.Fatalf("stderr should be empty for sarif drifted output, got %q", stderr.String())
 	}
-	var driftSARIF inspectSARIFReport
+	var driftSARIF reportpkg.SARIFDocument
 	if err := json.Unmarshal([]byte(stdout.String()), &driftSARIF); err != nil {
 		t.Fatalf("sarif unmarshal (drifted): %v", err)
 	}
@@ -220,7 +222,7 @@ func TestVerifyLockErrorsAndDiff(t *testing.T) {
 			}
 
 			_, err := verifyLock(link)
-			if err == nil || !strings.Contains(err.Error(), ruleLockVerifyPathSymlink) {
+			if err == nil || !strings.Contains(err.Error(), rulepkg.LockVerifyPathSymlink.ID) {
 				t.Fatalf("expected symlinked verify path rejection, got %v", err)
 			}
 		})
@@ -242,21 +244,17 @@ func TestVerifyLockErrorsAndDiff(t *testing.T) {
 		t.Fatalf("write invalid utf-8 lock: %v", err)
 	}
 	_, err = verifyLock(invalidUTF8Dir)
-	if err == nil || !strings.Contains(err.Error(), ruleLockfileInvalidUTF8) || !strings.Contains(err.Error(), "invalid lockfile JSON") {
+	if err == nil || !strings.Contains(err.Error(), rulepkg.LockfileInvalidUTF8.ID) || !strings.Contains(err.Error(), "invalid lockfile JSON") {
 		t.Fatalf("expected invalid utf-8 lockfile JSON error, got %v", err)
 	}
 
 	t.Run("oversized lockfile", func(t *testing.T) {
-		origLimit := maxLockVerifyLockFileBytes
-		maxLockVerifyLockFileBytes = 8
-		t.Cleanup(func() { maxLockVerifyLockFileBytes = origLimit })
-
 		oversizedDir := t.TempDir()
 		if err := os.WriteFile(filepath.Join(oversizedDir, installLockFile), []byte(`{"schema":"gokui.lock/v1"}`), 0o644); err != nil {
 			t.Fatalf("write oversized lockfile: %v", err)
 		}
-		_, err := verifyLock(oversizedDir)
-		if err == nil || !strings.Contains(err.Error(), ruleLockfileTooLarge) || !strings.Contains(err.Error(), "failed to read lockfile") {
+		_, err := verifyLockWithLimit(oversizedDir, 8)
+		if err == nil || !strings.Contains(err.Error(), rulepkg.LockfileTooLarge.ID) || !strings.Contains(err.Error(), "failed to read lockfile") {
 			t.Fatalf("expected oversized lockfile read failure, got %v", err)
 		}
 	})
@@ -267,7 +265,7 @@ func TestVerifyLockErrorsAndDiff(t *testing.T) {
 			t.Fatalf("mkdir lock path dir: %v", err)
 		}
 		_, err := verifyLock(dirWithLockDir)
-		if err == nil || !strings.Contains(err.Error(), ruleLockfileSpecialFile) {
+		if err == nil || !strings.Contains(err.Error(), rulepkg.LockfileSpecialFile.ID) {
 			t.Fatalf("expected lockfile special-file error for directory path, got %v", err)
 		}
 	})
@@ -354,11 +352,11 @@ func TestLockVerifyStableFileHelpers(t *testing.T) {
 	}
 	defer changed.Close()
 	err = ensureLockfileStableFromOpen(firstInfo, changed, secondPath)
-	if err == nil || !strings.Contains(err.Error(), ruleLockfileSourceChanged) || !strings.Contains(err.Error(), "failed to read lockfile") {
+	if err == nil || !strings.Contains(err.Error(), rulepkg.LockfileSourceChangedDuringRead.ID) || !strings.Contains(err.Error(), "failed to read lockfile") {
 		t.Fatalf("expected lockfile source-changed read error, got %v", err)
 	}
 	err = ensureInstallReportStableFromOpen(firstInfo, changed, secondPath)
-	if err == nil || !strings.Contains(err.Error(), ruleInstallReportSourceChanged) {
+	if err == nil || !strings.Contains(err.Error(), rulepkg.InstallReportSourceChangedDuringRead.ID) {
 		t.Fatalf("expected install-report source-changed error, got %v", err)
 	}
 }

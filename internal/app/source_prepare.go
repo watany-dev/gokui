@@ -3,16 +3,36 @@ package app
 import (
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
+	"strings"
 
+	"github.com/watany-dev/gokui/internal/materialize"
+	skillpkg "github.com/watany-dev/gokui/internal/skill"
 	srcpkg "github.com/watany-dev/gokui/internal/source"
 )
 
-var fetchGitHubSkill = srcpkg.FetchGitHubSkill
-
 var errGitHubRefNotPinned = errors.New("github source requires a commit-pinned ref")
 
+const maxSkillFrontmatterBytes int64 = 1_000_000
+
+var errInspectSourceNotFound = skillpkg.ErrInspectSourceNotFound
+
+type policyEvaluationSourceDeps struct {
+	FetchGitHubSkill func(srcpkg.GitHubSpec) (string, func(), error)
+}
+
+func defaultPolicyEvaluationSourceDeps() policyEvaluationSourceDeps {
+	return policyEvaluationSourceDeps{
+		FetchGitHubSkill: srcpkg.FetchGitHubSkill,
+	}
+}
+
 func preparePolicyEvaluationSource(input string, sourceKind string) (skillRoot string, cleanup func(), err error) {
+	return preparePolicyEvaluationSourceWithDeps(input, sourceKind, defaultPolicyEvaluationSourceDeps())
+}
+
+func preparePolicyEvaluationSourceWithDeps(input string, sourceKind string, deps policyEvaluationSourceDeps) (skillRoot string, cleanup func(), err error) {
 	switch sourceKind {
 	case "github-source":
 		spec, parseErr := srcpkg.ParseGitHubSource(input)
@@ -23,7 +43,11 @@ func preparePolicyEvaluationSource(input string, sourceKind string) (skillRoot s
 			return "", nil, fmt.Errorf("%w (e.g. @8f3c2d1a4b5c6d7e8f901234567890abcdef1234)", errGitHubRefNotPinned)
 		}
 
-		root, release, fetchErr := fetchGitHubSkill(spec)
+		fetch := deps.FetchGitHubSkill
+		if fetch == nil {
+			fetch = srcpkg.FetchGitHubSkill
+		}
+		root, release, fetchErr := fetch(spec)
 		if fetchErr != nil {
 			if release != nil {
 				release()
@@ -44,6 +68,81 @@ func preparePolicyEvaluationSource(input string, sourceKind string) (skillRoot s
 		}
 		return filepath.Clean(root), release, nil
 	}
+}
+
+func prepareInspectSource(input string, sourceKind string) (skillRoot string, cleanup func(), err error) {
+	switch sourceKind {
+	case "local-dir":
+		if validateErr := validateLocalDirInspectSource(input); validateErr != nil {
+			return "", nil, validateErr
+		}
+		return input, nil, nil
+	case "zip", "tar":
+		return prepareArchiveInspectSource(input, sourceKind)
+	default:
+		return "", nil, fmt.Errorf("unsupported inspect source kind: %s", sourceKind)
+	}
+}
+
+func prepareArchiveInspectSource(input string, sourceKind string) (string, func(), error) {
+	tempRoot, err := os.MkdirTemp("", "gokui-inspect-archive-*")
+	if err != nil {
+		return "", nil, fmt.Errorf("failed to create inspect quarantine: %w", err)
+	}
+	cleanup := func() {
+		_ = os.RemoveAll(tempRoot)
+	}
+
+	extractDir := filepath.Join(tempRoot, "extract")
+	if err := os.Mkdir(extractDir, 0o755); err != nil {
+		cleanup()
+		return "", nil, fmt.Errorf("failed to prepare inspect extraction directory: %w", err)
+	}
+
+	limits := materialize.Limits{
+		MaxFiles:      1000,
+		MaxTotalBytes: 50 * 1024 * 1024,
+		MaxFileBytes:  10 * 1024 * 1024,
+	}
+	if err := materialize.ExtractArchive(input, sourceKind, extractDir, limits); err != nil {
+		cleanup()
+		return "", nil, err
+	}
+
+	skillRoot, err := materialize.DetectSkillRoot(extractDir)
+	if err != nil {
+		cleanup()
+		return "", nil, err
+	}
+
+	if err := validateLocalDirInspectSource(skillRoot); err != nil {
+		cleanup()
+		return "", nil, err
+	}
+
+	return skillRoot, cleanup, nil
+}
+
+func detectSourceKind(input string) string {
+	lower := strings.ToLower(input)
+	switch {
+	case strings.HasPrefix(input, "github:"):
+		return "github-source"
+	case strings.HasSuffix(lower, ".zip"):
+		return "zip"
+	case strings.HasSuffix(lower, ".tar"), strings.HasSuffix(lower, ".tar.gz"), strings.HasSuffix(lower, ".tgz"):
+		return "tar"
+	default:
+		return "local-dir"
+	}
+}
+
+func validateLocalDirInspectSource(input string) error {
+	return skillpkg.ValidateLocalDirInspectSource(input, maxSkillFrontmatterBytes)
+}
+
+func isInspectSourceNotFoundError(err error) bool {
+	return errors.Is(err, errInspectSourceNotFound)
 }
 
 func isGitHubRefNotPinnedError(err error) bool {

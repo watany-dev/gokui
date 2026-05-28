@@ -27,3 +27,23 @@ func TestNeutralizeReviewTextInvalidUTF8(t *testing.T) {
 		t.Fatalf("expected escaped replacement rune, got %q", got)
 	}
 }
+
+func TestReviewFindings(t *testing.T) {
+	findings, summary := ReviewFindings([]ReviewFindingInput{
+		{ID: "A", Severity: "high", File: "SKILL.md", Line: 1, Summary: "line1\nline2"},
+		{ID: "B", Severity: "medium", File: "README.md", Line: 2, Summary: "\u202E hidden"},
+		{ID: "C", Severity: "low", File: "notes.md", Line: 3, Summary: "ok"},
+	})
+	if summary.Total != 3 || summary.High != 1 || summary.Medium != 1 || summary.Low != 1 {
+		t.Fatalf("summary = %+v, want one high/medium/low", summary)
+	}
+	if len(findings) != 3 {
+		t.Fatalf("findings len = %d, want 3", len(findings))
+	}
+	if !strings.Contains(findings[0].SummaryNeutralized, `\n`) {
+		t.Fatalf("expected escaped newline, got %q", findings[0].SummaryNeutralized)
+	}
+	if strings.ContainsRune(findings[1].SummaryNeutralized, '\u202e') || !strings.Contains(findings[1].SummaryNeutralized, `\u202e`) {
+		t.Fatalf("expected escaped bidi rune, got %q", findings[1].SummaryNeutralized)
+	}
+}

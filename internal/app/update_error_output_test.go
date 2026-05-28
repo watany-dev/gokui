@@ -2,6 +2,8 @@ package app
 
 import (
 	"encoding/json"
+	reportpkg "github.com/watany-dev/gokui/internal/report"
+	rulepkg "github.com/watany-dev/gokui/internal/rule"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -67,7 +69,7 @@ func TestRunUpdateJSONFatalErrors(t *testing.T) {
 		if !strings.Contains(stdout.String(), "\"error_code\": \""+updateFatalCodeTargetInvalid+"\"") {
 			t.Fatalf("stdout should include target-invalid error code, got %q", stdout.String())
 		}
-		if !strings.Contains(stdout.String(), "\"rule_id\": \""+ruleUpdateTargetSymlink+"\"") {
+		if !strings.Contains(stdout.String(), "\"rule_id\": \""+rulepkg.UpdateTargetSymlink.ID+"\"") {
 			t.Fatalf("stdout should include symlink rule_id, got %q", stdout.String())
 		}
 
@@ -80,7 +82,7 @@ func TestRunUpdateJSONFatalErrors(t *testing.T) {
 		if stdout.Len() != 0 {
 			t.Fatalf("stdout should be empty for human target errors, got %q", stdout.String())
 		}
-		if !strings.Contains(stderr.String(), ruleUpdateTargetSymlink) {
+		if !strings.Contains(stderr.String(), rulepkg.UpdateTargetSymlink.ID) {
 			t.Fatalf("stderr should include symlink rule marker, got %q", stderr.String())
 		}
 	})
@@ -160,7 +162,7 @@ func TestRunUpdateJSONFatalErrors(t *testing.T) {
 		if !strings.Contains(stdout.String(), "\"error_code\": \""+updateFatalCodeReportBuild+"\"") {
 			t.Fatalf("stdout should include report-build error_code, got %q", stdout.String())
 		}
-		if !strings.Contains(stdout.String(), "\"rule_id\": \""+ruleUpdateTargetEntrySymlink+"\"") {
+		if !strings.Contains(stdout.String(), "\"rule_id\": \""+rulepkg.UpdateTargetEntrySymlink.ID+"\"") {
 			t.Fatalf("stdout should include target-entry symlink rule_id, got %q", stdout.String())
 		}
 
@@ -189,7 +191,7 @@ func TestRunUpdateSARIFFatalErrors(t *testing.T) {
 		if stderr.Len() != 0 {
 			t.Fatalf("stderr should be empty for sarif parse errors, got %q", stderr.String())
 		}
-		var sarif inspectSARIFReport
+		var sarif reportpkg.SARIFDocument
 		if err := json.Unmarshal([]byte(stdout.String()), &sarif); err != nil {
 			t.Fatalf("sarif parse failed: %v", err)
 		}
@@ -214,7 +216,7 @@ func TestRunUpdateSARIFFatalErrors(t *testing.T) {
 		if stderr.Len() != 0 {
 			t.Fatalf("stderr should be empty for sarif build errors, got %q", stderr.String())
 		}
-		var sarif inspectSARIFReport
+		var sarif reportpkg.SARIFDocument
 		if err := json.Unmarshal([]byte(stdout.String()), &sarif); err != nil {
 			t.Fatalf("sarif parse failed: %v", err)
 		}
@@ -245,7 +247,7 @@ func TestRunUpdateSARIFFatalErrors(t *testing.T) {
 		if stderr.Len() != 0 {
 			t.Fatalf("stderr should be empty for sarif policy load errors, got %q", stderr.String())
 		}
-		var sarif inspectSARIFReport
+		var sarif reportpkg.SARIFDocument
 		if err := json.Unmarshal([]byte(stdout.String()), &sarif); err != nil {
 			t.Fatalf("sarif parse failed: %v", err)
 		}
@@ -325,7 +327,7 @@ func TestWriteUpdateSARIFErrorRuleID(t *testing.T) {
 		if stderr.Len() != 0 {
 			t.Fatalf("stderr should be empty, got %q", stderr.String())
 		}
-		var sarif inspectSARIFReport
+		var sarif reportpkg.SARIFDocument
 		if err := json.Unmarshal([]byte(stdout.String()), &sarif); err != nil {
 			t.Fatalf("sarif parse failed: %v", err)
 		}
@@ -356,7 +358,7 @@ func TestWriteUpdateSARIFErrorRuleID(t *testing.T) {
 		if stderr.Len() != 0 {
 			t.Fatalf("stderr should be empty, got %q", stderr.String())
 		}
-		var sarif inspectSARIFReport
+		var sarif reportpkg.SARIFDocument
 		if err := json.Unmarshal([]byte(stdout.String()), &sarif); err != nil {
 			t.Fatalf("sarif parse failed: %v", err)
 		}
@@ -370,23 +372,23 @@ func TestWriteUpdateSARIFErrorRuleID(t *testing.T) {
 }
 
 func TestUpdateArgJSONHelpers(t *testing.T) {
-	if !updateArgsRequestJSON([]string{"--dry-run", "--format", "json"}) {
-		t.Fatal("updateArgsRequestJSON() should detect --format json")
+	if !argsRequestFormat([]string{"--dry-run", "--format", "json"}, "json") {
+		t.Fatal("argsRequestFormat json should detect --format json")
 	}
-	if !updateArgsRequestJSON([]string{"--dry-run", "--format=json"}) {
-		t.Fatal("updateArgsRequestJSON() should detect --format=json")
+	if !argsRequestFormat([]string{"--dry-run", "--format=json"}, "json") {
+		t.Fatal("argsRequestFormat json should detect --format=json")
 	}
-	if updateArgsRequestJSON([]string{"--dry-run", "--format", "human"}) {
-		t.Fatal("updateArgsRequestJSON() should be false for non-json format")
+	if argsRequestFormat([]string{"--dry-run", "--format", "human"}, "json") {
+		t.Fatal("argsRequestFormat json should be false for non-json format")
 	}
-	if !updateArgsRequestSARIF([]string{"--dry-run", "--format", "sarif"}) {
-		t.Fatal("updateArgsRequestSARIF() should detect --format sarif")
+	if !argsRequestFormat([]string{"--dry-run", "--format", "sarif"}, "sarif") {
+		t.Fatal("argsRequestFormat sarif should detect --format sarif")
 	}
-	if !updateArgsRequestSARIF([]string{"--dry-run", "--format=sarif"}) {
-		t.Fatal("updateArgsRequestSARIF() should detect --format=sarif")
+	if !argsRequestFormat([]string{"--dry-run", "--format=sarif"}, "sarif") {
+		t.Fatal("argsRequestFormat sarif should detect --format=sarif")
 	}
-	if updateArgsRequestSARIF([]string{"--dry-run", "--format", "json"}) {
-		t.Fatal("updateArgsRequestSARIF() should be false for non-sarif format")
+	if argsRequestFormat([]string{"--dry-run", "--format", "json"}, "sarif") {
+		t.Fatal("argsRequestFormat sarif should be false for non-sarif format")
 	}
 	if got := extractUpdateTargetArg([]string{"--dry-run", "--target", "custom:/tmp/skills"}); got != "custom:/tmp/skills" {
 		t.Fatalf("extractUpdateTargetArg() = %q", got)

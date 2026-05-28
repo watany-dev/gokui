@@ -76,23 +76,23 @@ func TestParseLockVerifyArgs(t *testing.T) {
 	})
 
 	t.Run("json-request and path extraction helpers", func(t *testing.T) {
-		if !lockVerifyArgsRequestJSON([]string{"--format", "json"}) {
-			t.Fatal("lockVerifyArgsRequestJSON() should detect --format json")
+		if !argsRequestFormat([]string{"--format", "json"}, "json") {
+			t.Fatal("argsRequestFormat json should detect --format json")
 		}
-		if !lockVerifyArgsRequestJSON([]string{"--format=json"}) {
-			t.Fatal("lockVerifyArgsRequestJSON() should detect --format=json")
+		if !argsRequestFormat([]string{"--format=json"}, "json") {
+			t.Fatal("argsRequestFormat json should detect --format=json")
 		}
-		if lockVerifyArgsRequestJSON([]string{"--format", "human"}) {
-			t.Fatal("lockVerifyArgsRequestJSON() should be false for human format")
+		if argsRequestFormat([]string{"--format", "human"}, "json") {
+			t.Fatal("argsRequestFormat json should be false for human format")
 		}
-		if !lockVerifyArgsRequestSARIF([]string{"--format", "sarif"}) {
-			t.Fatal("lockVerifyArgsRequestSARIF() should detect --format sarif")
+		if !argsRequestFormat([]string{"--format", "sarif"}, "sarif") {
+			t.Fatal("argsRequestFormat sarif should detect --format sarif")
 		}
-		if !lockVerifyArgsRequestSARIF([]string{"--format=sarif"}) {
-			t.Fatal("lockVerifyArgsRequestSARIF() should detect --format=sarif")
+		if !argsRequestFormat([]string{"--format=sarif"}, "sarif") {
+			t.Fatal("argsRequestFormat sarif should detect --format=sarif")
 		}
-		if lockVerifyArgsRequestSARIF([]string{"--format", "human"}) {
-			t.Fatal("lockVerifyArgsRequestSARIF() should be false for human format")
+		if argsRequestFormat([]string{"--format", "human"}, "sarif") {
+			t.Fatal("argsRequestFormat sarif should be false for human format")
 		}
 
 		if got := extractLockVerifyPathArg([]string{"./skill", "--format", "json"}); got != "./skill" {

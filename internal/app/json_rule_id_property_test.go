@@ -2,6 +2,7 @@ package app
 
 import (
 	"encoding/json"
+	rulepkg "github.com/watany-dev/gokui/internal/rule"
 	"strings"
 	"testing"
 	"testing/quick"
@@ -41,7 +42,7 @@ func TestJSONErrorRuleIDProperties(t *testing.T) {
 
 			expectedRule := report.RuleID
 			if expectedRule == "" {
-				expectedRule = inferRuleIDForJSONError(report.Message)
+				expectedRule = rulepkg.InferIDForJSONError(report.Message)
 			}
 
 			var decoded installErrorReport
@@ -97,7 +98,7 @@ func TestJSONErrorRuleIDProperties(t *testing.T) {
 
 			expectedRule := report.RuleID
 			if expectedRule == "" {
-				expectedRule = inferRuleIDForJSONError(report.Message)
+				expectedRule = rulepkg.InferIDForJSONError(report.Message)
 			}
 
 			var decoded fetchErrorReport
@@ -149,7 +150,7 @@ func TestJSONErrorRuleIDProperties(t *testing.T) {
 
 			expectedRule := report.RuleID
 			if expectedRule == "" {
-				expectedRule = inferRuleIDForJSONError(report.Message)
+				expectedRule = rulepkg.InferIDForJSONError(report.Message)
 			}
 
 			var decoded updateErrorReport

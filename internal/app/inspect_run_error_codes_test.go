@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	srcpkg "github.com/watany-dev/gokui/internal/source"
+	skillpkg "github.com/watany-dev/gokui/internal/skill"
 )
 
 func TestRunInspectJSONErrorCodes(t *testing.T) {
@@ -177,7 +177,7 @@ func TestRunInspectJSONErrorCodes(t *testing.T) {
 		if !strings.Contains(stdout.String(), "\"error_code\": \""+inspectErrorCodeSourcePrepareFailed+"\"") {
 			t.Fatalf("stdout should include source-prepare-failed code, got %q", stdout.String())
 		}
-		if !strings.Contains(stdout.String(), "\"rule_id\": \""+ruleInspectSourceSymlink+"\"") {
+		if !strings.Contains(stdout.String(), "\"rule_id\": \""+skillpkg.RuleInspectSourceSymlink+"\"") {
 			t.Fatalf("stdout should include source symlink rule_id, got %q", stdout.String())
 		}
 	})
@@ -220,9 +220,6 @@ func TestRunInspectJSONErrorCodes(t *testing.T) {
 			t.Skip("permission behavior differs on windows")
 		}
 
-		origFetch := fetchGitHubSkill
-		t.Cleanup(func() { fetchGitHubSkill = origFetch })
-
 		skillRoot := createSkillSourceForInstallTest(t, "inspect-github-scan-fail")
 		refDir := filepath.Join(skillRoot, "references")
 		if err := os.Mkdir(refDir, 0o755); err != nil {
@@ -237,13 +234,18 @@ func TestRunInspectJSONErrorCodes(t *testing.T) {
 		}
 		defer os.Chmod(blocked, 0o644)
 
-		fetchGitHubSkill = func(spec srcpkg.GitHubSpec) (string, func(), error) {
-			return skillRoot, nil, nil
-		}
-
 		var stdout bytes.Buffer
 		var stderr bytes.Buffer
-		code := Run([]string{"inspect", "github:org/repo//skills/inspect-github-scan-fail@8f3c2d1a4b5c6d7e8f901234567890abcdef1234", "--format", "json"}, &stdout, &stderr, cfg)
+		code := runInspectWithDeps(
+			[]string{"github:org/repo//skills/inspect-github-scan-fail@8f3c2d1a4b5c6d7e8f901234567890abcdef1234", "--format", "json"},
+			&stdout,
+			&stderr,
+			inspectDeps{
+				PrepareEvaluationSource: func(input string, sourceKind string) (string, func(), error) {
+					return skillRoot, nil, nil
+				},
+			},
+		)
 		if code != 1 {
 			t.Fatalf("Run() code = %d, want 1\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
 		}
@@ -260,9 +262,6 @@ func TestRunInspectJSONErrorCodes(t *testing.T) {
 			t.Skip("mkfifo is not available on windows")
 		}
 
-		origFetch := fetchGitHubSkill
-		t.Cleanup(func() { fetchGitHubSkill = origFetch })
-
 		skillRoot := createSkillSourceForInstallTest(t, "inspect-github-special-file")
 		fifoPath := filepath.Join(skillRoot, "pipe.fifo")
 		if _, err := exec.LookPath("mkfifo"); err != nil {
@@ -271,13 +270,18 @@ func TestRunInspectJSONErrorCodes(t *testing.T) {
 		if err := exec.Command("mkfifo", fifoPath).Run(); err != nil {
 			t.Skipf("mkfifo unsupported in this environment: %v", err)
 		}
-		fetchGitHubSkill = func(spec srcpkg.GitHubSpec) (string, func(), error) {
-			return skillRoot, nil, nil
-		}
-
 		var stdout bytes.Buffer
 		var stderr bytes.Buffer
-		code := Run([]string{"inspect", "github:org/repo//skills/inspect-github-special-file@8f3c2d1a4b5c6d7e8f901234567890abcdef1234", "--format", "json"}, &stdout, &stderr, cfg)
+		code := runInspectWithDeps(
+			[]string{"github:org/repo//skills/inspect-github-special-file@8f3c2d1a4b5c6d7e8f901234567890abcdef1234", "--format", "json"},
+			&stdout,
+			&stderr,
+			inspectDeps{
+				PrepareEvaluationSource: func(input string, sourceKind string) (string, func(), error) {
+					return skillRoot, nil, nil
+				},
+			},
+		)
 		if code != 1 {
 			t.Fatalf("Run() code = %d, want 1\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
 		}
@@ -728,15 +732,18 @@ func TestRunInspectJSONErrorCodes(t *testing.T) {
 	})
 
 	t.Run("github fetch failure in human mode writes stderr", func(t *testing.T) {
-		origFetch := fetchGitHubSkill
-		t.Cleanup(func() { fetchGitHubSkill = origFetch })
-		fetchGitHubSkill = func(spec srcpkg.GitHubSpec) (string, func(), error) {
-			return "", nil, os.ErrNotExist
-		}
-
 		var stdout bytes.Buffer
 		var stderr bytes.Buffer
-		code := Run([]string{"inspect", "github:org/repo//skills/clean-skill@8f3c2d1a4b5c6d7e8f901234567890abcdef1234"}, &stdout, &stderr, cfg)
+		code := runInspectWithDeps(
+			[]string{"github:org/repo//skills/clean-skill@8f3c2d1a4b5c6d7e8f901234567890abcdef1234"},
+			&stdout,
+			&stderr,
+			inspectDeps{
+				PrepareEvaluationSource: func(input string, sourceKind string) (string, func(), error) {
+					return "", nil, os.ErrNotExist
+				},
+			},
+		)
 		if code != 1 {
 			t.Fatalf("Run() code = %d, want 1", code)
 		}

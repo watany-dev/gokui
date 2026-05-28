@@ -16,15 +16,15 @@ func TestValidateUpdateLockPolicy(t *testing.T) {
 		wantProfile string
 		wantErrPart string
 	}{
-		{name: "valid strict pass policy", policy: lockPolicy{Profile: policyProfileStrict, Decision: "pass"}, wantProfile: policyProfileStrict},
-		{name: "profile control character", policy: lockPolicy{Profile: policyProfileStrict + "\n", Decision: "pass"}, wantErrPart: "lock policy profile must not contain C0/C1 control characters"},
-		{name: "profile unicode obfuscation", policy: lockPolicy{Profile: policyProfileStrict + "\u200d", Decision: "pass"}, wantErrPart: "lock policy profile must not contain Unicode bidi, zero-width, tag, or variation-selector characters"},
+		{name: "valid strict pass policy", policy: lockPolicy{Profile: policypkg.ProfileStrict.String(), Decision: "pass"}, wantProfile: policypkg.ProfileStrict.String()},
+		{name: "profile control character", policy: lockPolicy{Profile: policypkg.ProfileStrict.String() + "\n", Decision: "pass"}, wantErrPart: "lock policy profile must not contain C0/C1 control characters"},
+		{name: "profile unicode obfuscation", policy: lockPolicy{Profile: policypkg.ProfileStrict.String() + "\u200d", Decision: "pass"}, wantErrPart: "lock policy profile must not contain Unicode bidi, zero-width, tag, or variation-selector characters"},
 		{name: "profile not canonical", policy: lockPolicy{Profile: "Strict", Decision: "pass"}, wantErrPart: "lock policy profile must be canonical lowercase without surrounding whitespace"},
 		{name: "unsupported profile", policy: lockPolicy{Profile: "unknown", Decision: "pass"}, wantErrPart: "unsupported policy profile in lockfile: unknown"},
-		{name: "decision control character", policy: lockPolicy{Profile: policyProfileStrict, Decision: "pass\n"}, wantErrPart: "lock policy decision must not contain C0/C1 control characters"},
-		{name: "decision unicode obfuscation", policy: lockPolicy{Profile: policyProfileStrict, Decision: "pass\u200d"}, wantErrPart: "lock policy decision must not contain Unicode bidi, zero-width, tag, or variation-selector characters"},
-		{name: "decision surrounding whitespace", policy: lockPolicy{Profile: policyProfileStrict, Decision: " pass"}, wantErrPart: "lock policy decision must not contain leading or trailing whitespace"},
-		{name: "decision not pass", policy: lockPolicy{Profile: policyProfileStrict, Decision: "PASS"}, wantErrPart: "lock policy decision must be canonical lowercase pass"},
+		{name: "decision control character", policy: lockPolicy{Profile: policypkg.ProfileStrict.String(), Decision: "pass\n"}, wantErrPart: "lock policy decision must not contain C0/C1 control characters"},
+		{name: "decision unicode obfuscation", policy: lockPolicy{Profile: policypkg.ProfileStrict.String(), Decision: "pass\u200d"}, wantErrPart: "lock policy decision must not contain Unicode bidi, zero-width, tag, or variation-selector characters"},
+		{name: "decision surrounding whitespace", policy: lockPolicy{Profile: policypkg.ProfileStrict.String(), Decision: " pass"}, wantErrPart: "lock policy decision must not contain leading or trailing whitespace"},
+		{name: "decision not pass", policy: lockPolicy{Profile: policypkg.ProfileStrict.String(), Decision: "PASS"}, wantErrPart: "lock policy decision must be canonical lowercase pass"},
 	}
 
 	for _, tt := range tests {
@@ -494,7 +494,7 @@ func TestValidateUpdateLockForEvaluation(t *testing.T) {
 			},
 		},
 		Policy: lockPolicy{
-			Profile:  policyProfileStrict,
+			Profile:  policypkg.ProfileStrict.String(),
 			Decision: "pass",
 		},
 	}
@@ -504,8 +504,8 @@ func TestValidateUpdateLockForEvaluation(t *testing.T) {
 	if failure != nil {
 		t.Fatalf("validateUpdateLockForEvaluation() failure = %+v", failure)
 	}
-	if got.policyProfile != policyProfileStrict {
-		t.Fatalf("policy profile = %q, want %q", got.policyProfile, policyProfileStrict)
+	if got.policyProfile != policypkg.ProfileStrict.String() {
+		t.Fatalf("policy profile = %q, want %q", got.policyProfile, policypkg.ProfileStrict.String())
 	}
 	if got.sourceInput != sourceInput {
 		t.Fatalf("source input = %q, want %q", got.sourceInput, sourceInput)
@@ -532,10 +532,10 @@ func TestEvaluateUpdateSourceFindings(t *testing.T) {
 	t.Run("invalid reject severity returns evaluation failure", func(t *testing.T) {
 		cfg := policypkg.Config{
 			Profiles: map[string]policypkg.ProfileConfig{
-				policyProfileStrict: {RejectSeverities: []string{"urgent"}},
+				policypkg.ProfileStrict.String(): {RejectSeverities: []string{"urgent"}},
 			},
 		}
-		got, err := evaluateUpdateSourceFindings(t.TempDir(), policyProfileStrict, true, cfg, nil)
+		got, err := evaluateUpdateSourceFindings(t.TempDir(), policypkg.ProfileStrict.String(), true, cfg, nil)
 		if err != nil {
 			t.Fatalf("evaluateUpdateSourceFindings() error = %v", err)
 		}
@@ -552,7 +552,7 @@ func TestEvaluateUpdateSourceFindings(t *testing.T) {
 
 	t.Run("clean source evaluates pass", func(t *testing.T) {
 		skillRoot := createSkillSourceForInstallTest(t, "clean-update-source")
-		got, err := evaluateUpdateSourceFindings(skillRoot, policyProfileStrict, false, policypkg.Config{}, nil)
+		got, err := evaluateUpdateSourceFindings(skillRoot, policypkg.ProfileStrict.String(), false, policypkg.Config{}, nil)
 		if err != nil {
 			t.Fatalf("evaluateUpdateSourceFindings() error = %v", err)
 		}

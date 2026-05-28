@@ -12,19 +12,14 @@ import (
 	"unicode/utf8"
 
 	"github.com/watany-dev/gokui/internal/limitio"
+	rulepkg "github.com/watany-dev/gokui/internal/rule"
 	"github.com/watany-dev/gokui/internal/safefs"
 	srcpkg "github.com/watany-dev/gokui/internal/source"
 )
 
 const sourceMetadataFile = ".gokui-source.json"
 
-var maxSourceMetadataFileBytes int64 = 1_000_000
-
-const ruleSourceMetadataFileTooLarge = "SOURCE_METADATA_FILE_TOO_LARGE"
-const ruleSourceMetadataSymlink = "SOURCE_METADATA_SYMLINK_DETECTED"
-const ruleSourceMetadataSpecialFile = "SOURCE_METADATA_SPECIAL_FILE"
-const ruleSourceMetadataSourceChanged = "SOURCE_METADATA_SOURCE_CHANGED_DURING_READ"
-const ruleSourceMetadataInvalidUTF8 = "SOURCE_METADATA_INVALID_UTF8"
+const maxSourceMetadataFileBytes int64 = 1_000_000
 
 type sourceMetadata struct {
 	Schema          string `json:"schema"`
@@ -38,16 +33,16 @@ type sourceMetadata struct {
 func writeSourceMetadata(skillRoot string, meta sourceMetadata) error {
 	raw, _ := json.MarshalIndent(meta, "", "  ")
 	path := filepath.Join(skillRoot, sourceMetadataFile)
-	if err := rejectSymlinkPath(path, "source metadata file", ruleSourceMetadataSymlink); err != nil {
+	if err := rejectSymlinkPath(path, "source metadata file", rulepkg.SourceMetadataSymlink.ID); err != nil {
 		return err
 	}
 	info, statErr := os.Lstat(path)
 	if statErr == nil {
 		if info.Mode()&os.ModeSymlink != 0 {
-			return fmt.Errorf("%s: source metadata file must not be a symlink: %s", ruleSourceMetadataSymlink, path)
+			return fmt.Errorf("%s: source metadata file must not be a symlink: %s", rulepkg.SourceMetadataSymlink.ID, path)
 		}
 		if !info.Mode().IsRegular() {
-			return fmt.Errorf("%s: source metadata file must be a regular file: %s", ruleSourceMetadataSpecialFile, path)
+			return fmt.Errorf("%s: source metadata file must be a regular file: %s", rulepkg.SourceMetadataSpecialFile.ID, path)
 		}
 	} else if !os.IsNotExist(statErr) {
 		return fmt.Errorf("failed to evaluate source metadata file: %w", statErr)
@@ -59,6 +54,10 @@ func writeSourceMetadata(skillRoot string, meta sourceMetadata) error {
 }
 
 func readSourceMetadata(skillRoot string) (sourceMetadata, bool, error) {
+	return readSourceMetadataWithLimit(skillRoot, maxSourceMetadataFileBytes)
+}
+
+func readSourceMetadataWithLimit(skillRoot string, maxBytes int64) (sourceMetadata, bool, error) {
 	rootInfo, rootErr := os.Lstat(skillRoot)
 	if rootErr != nil {
 		if os.IsNotExist(rootErr) {
@@ -71,7 +70,7 @@ func readSourceMetadata(skillRoot string) (sourceMetadata, bool, error) {
 	}
 
 	path := filepath.Join(skillRoot, sourceMetadataFile)
-	if err := rejectSymlinkPath(path, "source metadata file", ruleSourceMetadataSymlink); err != nil {
+	if err := rejectSymlinkPath(path, "source metadata file", rulepkg.SourceMetadataSymlink.ID); err != nil {
 		return sourceMetadata{}, false, err
 	}
 	linkInfo, lstatErr := os.Lstat(path)
@@ -82,10 +81,10 @@ func readSourceMetadata(skillRoot string) (sourceMetadata, bool, error) {
 		return sourceMetadata{}, false, fmt.Errorf("failed to read source metadata: %w", lstatErr)
 	}
 	if linkInfo.Mode()&os.ModeSymlink != 0 {
-		return sourceMetadata{}, false, fmt.Errorf("%s: source metadata file must not be a symlink: %s", ruleSourceMetadataSymlink, path)
+		return sourceMetadata{}, false, fmt.Errorf("%s: source metadata file must not be a symlink: %s", rulepkg.SourceMetadataSymlink.ID, path)
 	}
 	if !linkInfo.Mode().IsRegular() {
-		return sourceMetadata{}, false, fmt.Errorf("%s: source metadata file must be a regular file: %s", ruleSourceMetadataSpecialFile, path)
+		return sourceMetadata{}, false, fmt.Errorf("%s: source metadata file must be a regular file: %s", rulepkg.SourceMetadataSpecialFile.ID, path)
 	}
 
 	f, err := os.Open(path)
@@ -102,14 +101,14 @@ func readSourceMetadata(skillRoot string) (sourceMetadata, bool, error) {
 	}
 
 	var raw bytes.Buffer
-	if _, err := limitio.CopyWithStrictLimit(&raw, f, maxSourceMetadataFileBytes); err != nil {
+	if _, err := limitio.CopyWithStrictLimit(&raw, f, maxBytes); err != nil {
 		if errors.Is(err, limitio.ErrSizeExceeded) {
-			return sourceMetadata{}, false, fmt.Errorf("%s: source metadata exceeds size limit: %s", ruleSourceMetadataFileTooLarge, path)
+			return sourceMetadata{}, false, fmt.Errorf("%s: source metadata exceeds size limit: %s", rulepkg.SourceMetadataFileTooLarge.ID, path)
 		}
 		return sourceMetadata{}, false, fmt.Errorf("failed to read source metadata: %w", err)
 	}
 	if !utf8.Valid(raw.Bytes()) {
-		return sourceMetadata{}, false, fmt.Errorf("%s: source metadata must be valid UTF-8: %s", ruleSourceMetadataInvalidUTF8, path)
+		return sourceMetadata{}, false, fmt.Errorf("%s: source metadata must be valid UTF-8: %s", rulepkg.SourceMetadataInvalidUTF8.ID, path)
 	}
 
 	var meta sourceMetadata
@@ -123,13 +122,11 @@ func readSourceMetadata(skillRoot string) (sourceMetadata, bool, error) {
 }
 
 func ensureSourceMetadataStableFile(previous os.FileInfo, current os.FileInfo, path string) error {
-	return safefs.Sentinel{
-		Previous: previous,
-		Path:     path,
-		ChangedError: func(path string) error {
-			return fmt.Errorf("%s: source metadata file changed during read: %s", ruleSourceMetadataSourceChanged, path)
+	return safefs.CheckCurrentStable(previous, current, path,
+		func(path string) error {
+			return fmt.Errorf("%s: source metadata file changed during read: %s", rulepkg.SourceMetadataSourceChangedDuringRead.ID, path)
 		},
-	}.CheckCurrent(current)
+	)
 }
 
 func validateSourceMetadata(meta sourceMetadata) error {

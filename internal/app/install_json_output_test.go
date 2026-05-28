@@ -2,13 +2,14 @@ package app
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
 
-	srcpkg "github.com/watany-dev/gokui/internal/source"
+	rulepkg "github.com/watany-dev/gokui/internal/rule"
 )
 
 func TestRunInstallJSONOutput(t *testing.T) {
@@ -244,6 +245,21 @@ func TestRunInstallJSONOutput(t *testing.T) {
 				t.Fatalf("stdout should include error_code %q, got %q", wantCode, stdout.String())
 			}
 		}
+		assertJSONErrorCodeWithDeps := func(t *testing.T, args []string, deps installDeps, wantCode string) {
+			t.Helper()
+			var stdout strings.Builder
+			var stderr strings.Builder
+			code := runInstallWithDeps(args, &stdout, &stderr, deps)
+			if code != 1 {
+				t.Fatalf("runInstallWithDeps(%v) code = %d, want 1\nstdout=%q\nstderr=%q", args, code, stdout.String(), stderr.String())
+			}
+			if stderr.Len() != 0 {
+				t.Fatalf("stderr should be empty for json errors, got %q", stderr.String())
+			}
+			if !strings.Contains(stdout.String(), "\"error_code\": \""+wantCode+"\"") {
+				t.Fatalf("stdout should include error_code %q, got %q", wantCode, stdout.String())
+			}
+		}
 
 		source := createSkillSourceForInstallTest(t, "json-install-failure-codes")
 		assertJSONErrorCode(t, []string{
@@ -370,35 +386,33 @@ func TestRunInstallJSONOutput(t *testing.T) {
 				t.Fatalf("writeSourceMetadata() error = %v", err)
 			}
 
-			origFetch := fetchGitHubSkill
-			t.Cleanup(func() { fetchGitHubSkill = origFetch })
-			fetchGitHubSkill = func(spec srcpkg.GitHubSpec) (string, func(), error) {
-				return metaSource, nil, nil
-			}
-
-			assertJSONErrorCode(t, []string{
+			assertJSONErrorCodeWithDeps(t, []string{
 				"github:org/repo//skills/json-meta-invalid@8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
 				"--target", "custom:" + filepath.Join(t.TempDir(), "skills"),
 				"--profile", "strict",
 				"--format", "json",
+			}, installDeps{
+				PrepareEvaluationSource: func(input string, sourceKind string) (string, func(), error) {
+					return metaSource, nil, nil
+				},
 			}, installErrorCodeSourceMetadataFailed)
 		})
 
 		t.Run("install write failure includes copy limit rule_id", func(t *testing.T) {
-			origLimit := installMaxCopyFiles
-			installMaxCopyFiles = 1
-			t.Cleanup(func() { installMaxCopyFiles = origLimit })
-
 			limitedSource := createSkillSourceForInstallTest(t, "json-copy-limit")
 
 			var stdout strings.Builder
 			var stderr strings.Builder
-			code := runInstall([]string{
+			code := runInstallWithDeps([]string{
 				limitedSource,
 				"--target", "custom:" + filepath.Join(t.TempDir(), "skills"),
 				"--profile", "strict",
 				"--format", "json",
-			}, &stdout, &stderr)
+			}, &stdout, &stderr, installDeps{
+				InstallSkillAtomic: func(skillRoot string, targetRoot string, skillName string, report installReport) (string, installResult, error) {
+					return "", "", fmt.Errorf("%s: install source exceeds max file count: 1", rulepkg.InstallSourceFileCountExceeded.ID)
+				},
+			})
 			if code != 1 {
 				t.Fatalf("runInstall(json copy-limit) code = %d, want 1\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
 			}
@@ -408,7 +422,7 @@ func TestRunInstallJSONOutput(t *testing.T) {
 			if !strings.Contains(stdout.String(), "\"error_code\": \""+installErrorCodeWriteFailed+"\"") {
 				t.Fatalf("stdout should include write-failed error_code, got %q", stdout.String())
 			}
-			if !strings.Contains(stdout.String(), "\"rule_id\": \""+ruleInstallSourceFileCountExceeded+"\"") {
+			if !strings.Contains(stdout.String(), "\"rule_id\": \""+rulepkg.InstallSourceFileCountExceeded.ID+"\"") {
 				t.Fatalf("stdout should include copy-limit rule_id, got %q", stdout.String())
 			}
 		})

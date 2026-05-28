@@ -14,30 +14,331 @@ and use this file to order the refactoring queue.
 - Non-goal: changing CLI behavior, JSON/SARIF contracts, release-check error
   codes, or `ROADMAP.md` in this pass.
 
-## Existing Uncommitted Work
+## Current Local Progress
 
-The following files are already modified in the working tree and should be
-treated as pre-existing work. Do not stage them when committing this plan unless
-the owner explicitly asks for that.
+As of the current local branch, the working tree should be clean between
+increments. Earlier uncommitted validation-test work has been committed, and the
+branch now contains several behavior-preserving extraction commits.
 
-- `internal/app/install_lock_validation_test.go`
-- `internal/app/lock_verify_source_test.go`
-- `internal/app/update_evaluate_lock_validation_test.go`
+Recent completed increments:
+
+- install/update/lock validation helpers split into focused files under
+  `internal/app`.
+- inspect/vet/update/fetch output writers and command dependency defaults split
+  into focused files under `internal/app`.
+- fetch/inspect/vet argument parsing split into focused parser files.
+- supported command format checks centralized in `internal/app/args.go`.
+- typed CLI format helpers added under `internal/cli/format`; command format
+  support checks, parser defaults, pre-parse format detection, structured
+  output checks, and success-output routing now use the typed constants.
+- structured-error routing now uses typed formats internally, shared JSON/SARIF
+  error-report write helpers, and a `lock verify` structured-error emit helper.
+- pre-parse structured format detection is centralized while preserving the
+  existing priority order for ambiguous argument lists.
+- command parse-error report construction is split into command-specific helper
+  functions for fetch, inspect/vet, install, update, and lock verify.
+- parse-error structured writer dispatch is centralized, and all command
+  parsers now read `--format` through one helper while preserving current error
+  text.
+- value-flag parsing for `--out`, `--target`, `--profile`, and `--override`
+  now goes through a shared helper while preserving current missing-value errors.
+- parser handling for repeated source arguments, unknown options, optional
+  `lock verify` paths, and rejected `update` positionals now goes through
+  shared helpers while preserving current error text.
+- command parser value-flag dispatch is centralized; fetch, inspect, vet,
+  install, update, and lock verify now share the same `--flag value` /
+  `--flag=value` matching path and missing-value errors.
+- boolean flag dispatch now uses the same parser-helper pattern; `update
+  --dry-run` no longer has command-specific flag matching inline in the
+  positional/unknown-option branch.
+- parse-error output fallback is centralized; command runners now share the
+  structured-output dispatch and human usage fallback for argument parsing
+  failures while keeping command-specific report construction.
+- JSON/SARIF structured-error emitter plumbing is centralized for fetch,
+  install, update, and lock verify; inspect keeps its `review-json` special
+  case until the inspect/vet report boundary is refactored.
+- parser positional policy is centralized for single-source commands, optional
+  `lock verify` paths, and commands that reject positionals; per-command loops
+  no longer branch directly on option-vs-positional errors.
+- parser loop dispatch now goes through a shared command-argument dispatcher
+  that applies value flags, boolean flags, then positional policy in one place.
+- command parser flag sets now use a reusable parser spec wrapper so each
+  command declares value flags, boolean flags, and positional policy separately
+  from loop execution.
+- repeated parser spec handlers for common `--format`, `--target`, `--profile`,
+  single-source positional, optional-path positional, and no-positional policies
+  now use shared handler constructors.
+- app-level inspect findings now carry `policy.Severity` internally while JSON,
+  SARIF, compact, review, human output, install locks, and update risk scoring
+  keep their existing string wire contracts.
+- scan findings now carry the catalog `rule.Severity` type instead of raw
+  strings, and app conversion to policy/wire severities happens at explicit
+  boundaries.
+- stable opened/current file checks now have package-level helpers in
+  `internal/safefs`; app-specific `ensure*Stable*` functions are thin
+  command/error-policy adapters.
+- production install/update/lock wire structs now use
+  `policy.SeverityOverrideAudit` directly; the old app-local alias is test-only
+  compatibility for existing contract tests.
+- structured SARIF error properties now use a shared helper for the common
+  schema/source/status/error-code fields; command builders keep only their
+  command-specific source kind and note text.
+- review finding neutralization and summary counting now live in
+  `internal/report`; app-level inspect/vet review output only adapts those
+  primitives into the existing JSON wire structs.
+- install compact summary formatting now lives in `internal/report`; app-level
+  install output adapts command fields into the report package input shape.
+- update compact summary formatting now lives in `internal/report`; app-level
+  update output adapts summary fields into the report package input shape.
+- lock verify compact summary formatting now lives in `internal/report`;
+  app-level lock verification output adapts drift/check counts into the report
+  package input shape.
+- lock verify SARIF rule/result assembly now lives in `internal/report`;
+  app-level lock verification output adapts checks, drift lists, and properties
+  into the report package input shape.
+- update skill evaluation now runs through explicit evaluation steps for lock
+  validation, source preparation, policy resolution, findings evaluation, and
+  change/risk evaluation while preserving existing status and error-code
+  behavior.
+- update URL/executable scan limits now use explicit helper inputs in focused
+  tests instead of mutating package globals for max-file scenarios.
+- install copy/digest size and file-count limits now use explicit helper inputs
+  in focused tests, and install command tests inject the atomic install
+  dependency instead of mutating copy limit globals.
+- install lock, source metadata, lock verify, and install-report oversized-file
+  unit tests now use explicit read-limit helpers instead of mutating package
+  globals, and lock verify command-run tests inject the verifier dependency for
+  oversized lockfile coverage.
+- inspect oversized-frontmatter JSON error coverage now injects the inspect
+  source preparation dependency instead of mutating the app-level frontmatter
+  size limit.
+- vet now evaluates local sources directly through source preparation and
+  scanning instead of invoking `inspect --format json` and reparsing its output.
+- findings SARIF property assembly now uses a report-level input struct, so app
+  code adapts findings and leaves the common SARIF document shape in
+  `internal/report`.
+- vet policy/profile contract tests are split into `run_vet_policy_test.go`,
+  reducing the broad `run_vet_command_test.go` command-output test file while
+  preserving existing command behavior.
+- release checklist documentation sync coverage is split into
+  `docs_sync_release_checklist_test.go`, narrowing the broad docs sync test
+  file without changing documentation assertions.
+- release evidence and beta-track documentation sync coverage is split into
+  `docs_sync_release_evidence_test.go`, continuing the #19 test-boundary
+  cleanup without changing documentation assertions.
+- source metadata hardening documentation sync coverage is split into
+  `docs_sync_source_metadata_hardening_test.go`, separating source metadata
+  assertions from the broader hardening documentation sync file.
+- install-report hardening documentation sync coverage is split into
+  `docs_sync_install_report_hardening_test.go`, separating install report
+  assertions from the broader hardening documentation sync file.
+- severity override hardening documentation sync coverage is split into
+  `docs_sync_severity_override_hardening_test.go`, separating override audit
+  assertions from the broader hardening documentation sync file.
+- lockfile hardening documentation sync coverage is split into
+  `docs_sync_lock_hardening_test.go`, leaving the broad hardening sync file for
+  cross-cutting scan/update/policy documentation assertions.
+- common pre-release SARIF property assembly now lives in `internal/report`;
+  app-level structured error and lock verify builders use the shared helper
+  instead of assembling the same property block directly.
+- structured SARIF error document construction now accepts a report-level input
+  struct, leaving app-level builders to adapt command error fields before
+  calling `internal/report`.
+- structured SARIF error property notes now use a report-level helper for
+  appending machine-readable `error_code` metadata.
+- structured SARIF error report builders now pass command fields through a
+  report-level input shape; app-level builders no longer assemble SARIF
+  properties before calling `internal/report`.
+- inspect/vet parser and argument helper tests are split into
+  `inspect_args_test.go`, narrowing `inspect_test.go` to report and source
+  preparation behavior.
+- the remaining vet compact command-output contract moved from the broad
+  inspect/vet command test into `run_vet_command_test.go`, leaving
+  `run_inspect_vet_test.go` focused on inspect command behavior.
+- the inspect command contract test file is renamed to
+  `run_inspect_command_test.go` with an inspect-specific test name after the
+  vet command contract was moved out.
+- remaining app-level GitHub archive rule-id assertions now use the
+  `internal/rule` catalog constant instead of a string literal.
+- ROADMAP rule ID implementation sync coverage is split into
+  `docs_sync_rule_catalog_test.go`, separating catalog completeness checks from
+  the broad docs sync file.
+- CLI command-set, usage, structured-error stream, exit-code, and update status
+  matrix documentation sync coverage is split into
+  `docs_sync_cli_contract_test.go`, separating command contract assertions from
+  the broader docs sync file.
+- obsolete app-level SARIF property helper tests were removed after the
+  property composition moved into `internal/report`, keeping `make check`
+  deadcode-clean.
+- SARIF error document construction now uses a shared helper for structured
+  error rule ID resolution while keeping command-specific SARIF properties at
+  the output boundary.
+- SARIF findings-to-rules/results construction moved into `internal/report`;
+  app-level inspect/fetch/install/update builders now adapt command findings
+  into report findings before setting command-specific SARIF properties.
+- SARIF file-location construction now lives in `internal/report`, and
+  lock-verify drift results use the shared helper.
+- SARIF rule/result construction now lives behind `internal/report` helpers,
+  and lock verify uses the shared rule/result builders.
+- SARIF rule/result sorting now lives behind `internal/report` helpers; lock
+  verify no longer owns generic SARIF sort logic.
+- update success SARIF decision, status-fallback finding, path normalization,
+  empty-summary fallback, and invocation-success assembly now live in
+  `internal/report`; app-level update output only adapts command fields into the
+  report input shape.
+
+Validation already run after the latest refactoring increments:
+
+```sh
+go test ./internal/app -run 'Fetch|Args'
+go test ./internal/app ./internal/cli/exitcode
+go test ./internal/app -run 'Inspect|Vet|Args'
+go test ./internal/app
+go test ./internal/app -run 'Args|Fetch|Inspect|Vet|Install|Update|LockVerify'
+go test ./internal/app -run 'Inspect|Vet|Update|JSON|SARIF|Compact|Review'
+go test ./internal/app -run 'Fetch|Install|LockVerify|JSON|SARIF|Compact'
+go test ./internal/app -run 'Error|JSON|SARIF|Fetch|Install|Update|Inspect|Vet|LockVerify'
+go test ./internal/app -run 'LockVerify|Error|JSON|SARIF'
+go test ./internal/app -run 'Args|Error|JSON|SARIF|Review|Fetch|Inspect|Vet|Install|Update|LockVerify'
+go test ./internal/app -run 'Inspect|Vet|Args|Error|JSON|SARIF|Review'
+go test ./internal/app -run 'Update|LockVerify|Args|Error|JSON|SARIF'
+go test ./internal/app -run 'Fetch|Install|Args|Error|JSON|SARIF'
+go test ./internal/app -run 'Args|Error|JSON|SARIF|Review|Fetch|Inspect|Vet|Install|Update|LockVerify'
+go test ./internal/app -run 'Args|Fetch|Inspect|Update|Error|JSON|SARIF'
+go test ./internal/app -run 'Args|Install|Vet|LockVerify|Error|JSON|SARIF|Review'
+go test ./internal/app -run 'Args|Fetch|Install|Update|Error|JSON|SARIF'
+go test ./internal/app -run 'Args|Install|Vet|Error|JSON|SARIF|Review'
+go test ./internal/app
+go test ./internal/app -run 'Args|Error|JSON|SARIF|Review|Fetch|Inspect|Vet|Install|Update|LockVerify'
+go test ./internal/app -run 'Update|Args|Error|JSON|SARIF'
+go test ./internal/app -run 'Args|Error|JSON|SARIF|Review|Fetch|Inspect|Vet|Install|Update|LockVerify'
+go test ./internal/app -run 'Error|JSON|SARIF|Fetch|Install|Update|LockVerify'
+go test ./internal/app -run 'Args|Fetch|Inspect|Vet|Install|Update|LockVerify|Error|JSON|SARIF|Review'
+go test ./internal/app -run 'Args|Fetch|Inspect|Vet|Install|Update|LockVerify|Error|JSON|SARIF|Review'
+go test ./internal/app -run 'Args|Fetch|Inspect|Vet|Install|Update|LockVerify|Error|JSON|SARIF|Review'
+go test ./internal/app -run 'Error|SARIF|JSON|Fetch|Inspect|Install|Update|LockVerify'
+go test ./internal/report ./internal/app -run 'SARIF|Inspect|Fetch|Install|Update'
+go test ./internal/report ./internal/app -run 'SARIF|LockVerify'
+go test ./internal/report ./internal/app -run 'SARIF|LockVerify'
+go test ./internal/report ./internal/app -run 'SARIF|LockVerify'
+go test ./internal/app -run 'Args|Fetch|Inspect|Vet|Install|Update|LockVerify|Error|JSON|SARIF|Review'
+go test ./internal/app -run 'Inspect|Vet|Install|Update|Severity|JSON|SARIF|Compact|Review'
+go test ./internal/scan ./internal/app -run 'Finding|Inspect|Vet|Install|Update|Severity|JSON|SARIF|Compact|Review'
+go test ./internal/safefs ./internal/app -run 'Stable|Install|LockVerify|SourceMetadata|URLScan|Digest|Copy|Hash'
+go test ./internal/app -run 'SeverityOverride|Install|Update|Lock'
+go test ./internal/app -run 'StructuredError|SARIF|Inspect|Update|LockVerify|Error'
+go test ./internal/app -run 'Install|StructuredError|SARIF|Error'
+go test ./internal/app -run 'Fetch|StructuredError|SARIF|Error'
+go test ./internal/report ./internal/app -run 'Review|Inspect|Vet'
+go test ./internal/report ./internal/app -run 'Compact|Install'
+go test ./internal/report ./internal/app -run 'Compact|Update'
+go test ./internal/report ./internal/app -run 'Compact|LockVerify'
+go test ./internal/report ./internal/app -run 'SARIF|LockVerify'
+go test ./internal/app -run 'DocumentationSync|ReleaseChecklist|LocalBuildArtifact'
+go test ./internal/app -run 'BetaReleaseTrack|LocalBuildArtifact|ReleaseEvidenceModeNaming|GitignoreReleaseEvidence|RoadmapReleaseEvidence|ReleaseChecklist'
+go test ./internal/app -run 'SourceMetadata.*DocumentationSync|HardeningDocumentationSync'
+go test ./internal/app -run 'InstallReport.*HardeningDocumentationSync|Lock.*HardeningDocumentationSync|SeverityOverrides.*HardeningDocumentationSync'
+go test ./internal/app -run 'Lock.*HardeningDocumentationSync|SeverityOverrides.*HardeningDocumentationSync|VetFailClosedInspectPayloadDocumentationSync|ScanNonUTF8TextHardeningDocumentationSync|UpdateURLScanUTF8HardeningDocumentationSync|PolicyUTF8HardeningDocumentationSync'
+go test ./internal/report ./internal/app -run 'SARIF|LockVerify|StructuredError|Error'
+go test ./internal/report ./internal/app -run 'SARIFError|StructuredError|Error|Fetch|Inspect|Install|Update|LockVerify'
+go test ./internal/report ./internal/app -run 'PreReleaseSARIF|StructuredErrorSARIFProperties|SARIFError|StructuredError|Error'
+go test ./internal/report ./internal/app -run 'SARIFError|StructuredError|Error|Fetch|Inspect|Install|Update|LockVerify'
+go test ./internal/app -run 'ParseInspectArgs|ParseVetArgs|InspectArgJSONHelpers|BuildInspect|DetectSourceKind|PrepareInspect'
+go test ./internal/app -run 'TestRunInspectVetCommands|TestRunVetCommands'
+go test ./internal/app -run 'TestRunInspectCommand|TestRunVetCommands'
+go test ./internal/rule ./internal/source ./internal/app -run 'Catalog|GitHubArchive|FetchJSONErrorCodes'
+go test ./internal/app -run 'RoadmapRuleIDsAreImplemented|CommandSetDocumentationSync|ReadmePolicyExampleSchemaSync'
+go test ./internal/app -run 'CommandSetDocumentationSync|CLIUsageSyntaxDocumentationSync|StructuredErrorStreamContractDocumentationSync|ExitCodeContractDocumentationSync|UpdateStatusErrorCodeMatrixDocumentationSync'
+go test ./internal/report ./internal/app -run 'SARIF|Update'
+make test
+make check
+```
+
+Current inventory notes:
+
+- #7 is represented by `internal/rule`, catalog lookup tests, scan registry
+  tests, and guard-rule call sites for GitHub archive/source metadata/fetch
+  symlink errors. Command `*_FAILED`, argument, and update status strings remain
+  wire-level error/status codes rather than catalog rules, so this is a
+  candidate to close after repository write access is available.
+- #10 is represented by shared SARIF document/types, pre-release property
+  helpers, findings/update/lock-verify builders, and structured-error input
+  builders in `internal/report`. The remaining fetch/inspect/install
+  successful-command SARIF code is now an app-boundary adapter from command wire
+  structs into report input shapes, so this is a candidate to close after
+  repository write access is available.
+- #12 is represented by `source.GitHubFetcher`, option-based configuration, and
+  option-based tests; candidate to close after repository write access is
+  available.
+- #13 is represented by split `internal/scan` implementation and test files;
+  candidate to close after repository write access is available.
+- #14 is represented by `scan.Finding` creation through `internal/rule` values
+  and registry sync tests; candidate to close after repository write access is
+  available.
+- #15 is partially represented by `internal/safefs` stable/root/path helpers;
+  the remaining app-specific `ensure*Stable*` wrappers are now thin policy/error
+  adapters over shared `safefs` helpers, so this is a candidate to close after
+  repository write access is available.
+- #16 is represented by `internal/limitio` strict copy/hash helpers and related
+  `internal/safefs` path helpers; candidate to close after repository write
+  access is available.
+- #17 is represented by `internal/policy` profile/severity types,
+  `internal/cli/exitcode`, typed app command returns, typed scan findings, and
+  typed app findings. Remaining severity strings are wire-boundary fields or
+  JSON keys, so this is a candidate to close after repository write access is
+  available.
+- #18 is represented by `internal/policy/override.go` and
+  `SeverityOverrideAuditSet`; production app structs/functions use
+  `policy.SeverityOverrideAudit` directly, so this is a candidate to close after
+  repository write access is available.
+- #6 is represented by `updateLockEvaluationChecks` for lock validation and
+  `updateSkillEvaluationSteps` for the broader update source evaluation flow;
+  candidate to close after repository write access is available.
+- #11 is represented by explicit dependency structs for fetch, inspect, vet,
+  install, update, policy-evaluation source preparation, and lock verify. The
+  audit found no package-global function variables used for tests; remaining
+  package globals are constants, regex caches, or sentinel errors, so this is a
+  candidate to close after repository write access is available.
+- #8 is represented by direct vet source preparation and scanning; the old
+  inspect JSON round trip and fail-closed JSON reparse path have been removed,
+  so this is a candidate to close after repository write access is available.
+- #3, #4, #5, and #19 are partially represented but still need final audit before
+  closing because `internal/app` remains the compatibility owner for command
+  orchestration and many contract tests.
+- GitHub issue write access was unavailable during the latest audit
+  (`403 Resource not accessible by integration`), so no issue comments or
+  closures were applied remotely.
+
+Local checkpoint:
+
+- Candidate-complete locally, pending remote issue write access: #6, #7, #8,
+  #10, #11, #12, #13, #14, #15, #16, #17, and #18.
+- Continue locally only as deliberate follow-up work: #2, #3, #4, #5, #9, and
+  #19. These remain open because command orchestration, CLI common code, and
+  wire/domain separation still have larger blast radius than the completed
+  behavior-preserving increments.
+- Last full validation in this pass: `make check` passed, including
+  `staticcheck`, `deadcode`, and coverage at 95.2% against the 95.0% threshold.
 
 ## Recommended Order
 
 ### 1. Confirm Inventory
 
-Confirm which open issues are already partially implemented locally, then update
-issue descriptions or close completed follow-up issues before moving code again.
+The inventory pass is complete locally. Update or close candidate-complete
+issues when repository issue write access is available before moving broad
+command packages again.
 
 Primary issues:
 
 - #2: split `internal/app` according to the roadmap packages.
 - #3: move real implementations into `internal/skill`, `internal/install`, and
   `internal/report`.
-- #7, #10, #13, #14, #15, #16, #17, #18, #19: several items appear partially or
-  mostly represented in the current tree and need explicit issue-by-issue audit.
+- #4 and #5: continue CLI common code cleanup only where behavior stays
+  unchanged.
+- #9: defer broad wire/domain separation until command/report boundaries are
+  covered by narrow tests.
+- #19: continue only for natural test-boundary splits; avoid artificial splits
+  of single end-to-end contract matrices.
 
 Validation:
 
@@ -47,11 +348,10 @@ go test ./internal/rule ./internal/safefs ./internal/report ./internal/skill ./i
 make test
 ```
 
-### 2. Finish Foundation Types
+### 2. Foundation Types
 
-Finish or verify the low-level typed foundations before touching CLI command
-orchestration. These changes are easiest to validate in isolation and reduce
-stringly typed behavior in later steps.
+This stage is locally represented. Keep it as the validation baseline for any
+future command or wire/domain movement.
 
 Primary issues:
 
@@ -72,15 +372,16 @@ make test
 
 ### 3. Extract Leaf Domains
 
-Move leaf logic out of `internal/app` where there is little or no dependency on
-command-level IO. Prefer package-local tests while preserving existing contract
-tests in `internal/app`.
+Most low-risk leaf extraction in this pass is complete. Future work should
+prefer package-local tests while preserving existing contract tests in
+`internal/app`.
 
 Primary issues:
 
 - #3: `internal/skill` frontmatter/name/description validation.
 - #3: `internal/report` compact/review/SARIF rendering primitives.
-- #10: shared SARIF document/builder types without `inspect` naming.
+- #10: shared SARIF document/builder types without `inspect` naming; locally
+  represented and candidate-complete.
 - #13: split `internal/scan/scan.go` by topic without behavior changes.
 - #19: split large tests in the same packages after code movement stabilizes.
 
@@ -114,9 +415,10 @@ make test
 
 ### 5. Introduce Dependency Injection
 
-Replace test-only package globals with explicit dependency structs after leaf
-logic is extracted. This lowers risk because the dependency surfaces will be
-smaller and command-specific.
+This stage is locally represented: command dependencies are explicit for the
+current command surfaces, and the GitHub fetcher is a configurable client
+struct. Keep this stage open only for remote issue bookkeeping or newly
+introduced dependency seams.
 
 Primary issues:
 
@@ -153,9 +455,10 @@ make test
 
 ### 7. Split Inspect and Vet Internals
 
-Remove the in-process JSON round trip only after the report rendering and CLI
-error path are centralized. `inspect` and `vet` should share a domain evaluator
-and diverge only at command policy/rendering boundaries.
+This stage is locally represented for the current MVP: `vet` prepares and scans
+sources directly, then applies its policy decision at the command boundary.
+Keep broader evaluator-package extraction under #3/#9 instead of reopening the
+old JSON round-trip path.
 
 Primary issues:
 
@@ -225,20 +528,36 @@ make build
 | #3 | 3, 7, 9 | Extract leaf domain first, then finish command-level leftovers. |
 | #4 | 6 | Do after DI and rendering primitives are stable. |
 | #5 | 6 | Pair with #4 so parse failures and error envelopes share one path. |
-| #6 | 4 | Isolated update cleanup; avoid mixing with wire/domain conversion. |
-| #7 | 2 | Foundation for scan, report, and rule inference. |
-| #8 | 7 | Depends on inspect evaluator and report rendering separation. |
+| #6 | 4 | Locally represented; candidate to close after write access. |
+| #7 | 2 | Locally represented; command error codes intentionally remain wire/status codes. |
+| #8 | 7 | Direct vet evaluation is implemented; candidate to close after audit/write access. |
 | #9 | 8 | High blast-radius; defer until behavior is well covered. |
-| #10 | 3, 8 | Shared SARIF primitives first, wire cleanup later. |
-| #11 | 5 | Easier after leaf functions have moved out of `internal/app`. |
-| #12 | 5 | Can be paired with #11 but validated in `internal/source` first. |
-| #13 | 3 | File split only; should remain behavior-preserving. |
-| #14 | 2 | Complete after rule registry shape is fixed. |
-| #15 | 2 | Foundation utility extraction. |
-| #16 | 2 | Foundation utility extraction. |
-| #17 | 2, 6, 8 | Define enums early, thread exit codes through CLI later. |
-| #18 | 2, 4 | Define value type early, adopt in update/lock verification next. |
-| #19 | 3, 9 | Split tests after the related package boundaries settle. |
+| #10 | 3, 8 | Locally represented; remaining app code is wire-boundary adaptation. |
+| #11 | 5 | Explicit command deps are implemented; candidate to close after audit/write access. |
+| #12 | 5 | Locally represented in `internal/source`; candidate to close after write access. |
+| #13 | 3 | Locally represented by scan file splits; candidate to close after write access. |
+| #14 | 2 | Locally represented by scan findings through the rule catalog. |
+| #15 | 2 | Locally represented by `internal/safefs` helpers. |
+| #16 | 2 | Locally represented by strict copy/hash/limit helpers. |
+| #17 | 2, 6, 8 | Locally represented for current boundaries; wire strings remain at outputs. |
+| #18 | 2, 4 | Locally represented by `SeverityOverrideAuditSet`. |
+| #19 | 3, 9 | Partially represented; continue only for natural test-boundary splits. |
+
+## Next Concrete Increments
+
+The next work should stay behavior-preserving and commit after each validation
+slice:
+
+1. When GitHub issue write access is available, close or comment on the
+   candidate-complete issues now represented locally: #6, #7, #8, #10, #11,
+   #12, #13, #14, #15, #16, #17, and #18.
+2. Continue #4/#5 only where common CLI parsing or structured-error helpers can
+   remove duplication without changing error strings, fallback source/target
+   fields, `review-json` handling, SARIF properties, or stream contracts.
+3. Continue #19 by splitting the largest app contract tests along existing
+   command/doc-sync boundaries before moving command packages.
+4. Defer #2/#3/#9 broad package and wire/domain separation until the remaining
+   CLI/report boundaries are explicit and covered by `make check`.
 
 ## Commit Hygiene
 
@@ -250,9 +569,10 @@ git diff --check
 make test
 ```
 
-When committing this document, stage only:
+When committing future increments, stage only the files touched by that
+increment:
 
 ```sh
-git add docs/refactoring-plan.md
-git commit -m "docs: add refactoring execution plan"
+git add <changed-files>
+git commit -m "<scope>: <summary>"
 ```

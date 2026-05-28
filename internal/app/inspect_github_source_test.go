@@ -7,8 +7,6 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-
-	srcpkg "github.com/watany-dev/gokui/internal/source"
 )
 
 func TestRunInspectGitHubSourceRejectsFloatingRef(t *testing.T) {
@@ -541,23 +539,19 @@ func TestRunInspectGitHubSourceRejectsNonCanonicalPathSegments(t *testing.T) {
 }
 
 func TestRunInspectGitHubSourceCommitPinnedEvaluatesContent(t *testing.T) {
-	cfg := Config{
-		Version: "v0.1.0",
-		Commit:  "abc123",
-		Date:    "2026-05-22T00:00:00Z",
-	}
-
-	origFetch := fetchGitHubSkill
-	t.Cleanup(func() { fetchGitHubSkill = origFetch })
-
 	t.Run("clean content passes", func(t *testing.T) {
-		fetchGitHubSkill = func(spec srcpkg.GitHubSpec) (string, func(), error) {
-			return filepath.FromSlash("../../fixtures/clean-skill"), nil, nil
-		}
-
 		var stdout bytes.Buffer
 		var stderr bytes.Buffer
-		code := Run([]string{"inspect", "github:org/repo//skills/clean-skill@8f3c2d1a4b5c6d7e8f901234567890abcdef1234", "--format", "json"}, &stdout, &stderr, cfg)
+		code := runInspectWithDeps(
+			[]string{"github:org/repo//skills/clean-skill@8f3c2d1a4b5c6d7e8f901234567890abcdef1234", "--format", "json"},
+			&stdout,
+			&stderr,
+			inspectDeps{
+				PrepareEvaluationSource: func(input string, sourceKind string) (string, func(), error) {
+					return filepath.FromSlash("../../fixtures/clean-skill"), nil, nil
+				},
+			},
+		)
 		if code != 0 {
 			t.Fatalf("Run() code = %d, want 0", code)
 		}
@@ -578,13 +572,18 @@ func TestRunInspectGitHubSourceCommitPinnedEvaluatesContent(t *testing.T) {
 	})
 
 	t.Run("risky content is rejected", func(t *testing.T) {
-		fetchGitHubSkill = func(spec srcpkg.GitHubSpec) (string, func(), error) {
-			return filepath.FromSlash("../../fixtures/fake-prereq-skill"), nil, nil
-		}
-
 		var stdout bytes.Buffer
 		var stderr bytes.Buffer
-		code := Run([]string{"inspect", "github:org/repo//skills/fake-prereq-skill@8f3c2d1a4b5c6d7e8f901234567890abcdef1234", "--format", "json"}, &stdout, &stderr, cfg)
+		code := runInspectWithDeps(
+			[]string{"github:org/repo//skills/fake-prereq-skill@8f3c2d1a4b5c6d7e8f901234567890abcdef1234", "--format", "json"},
+			&stdout,
+			&stderr,
+			inspectDeps{
+				PrepareEvaluationSource: func(input string, sourceKind string) (string, func(), error) {
+					return filepath.FromSlash("../../fixtures/fake-prereq-skill"), nil, nil
+				},
+			},
+		)
 		if code != 2 {
 			t.Fatalf("Run() code = %d, want 2", code)
 		}
@@ -602,13 +601,18 @@ func TestRunInspectGitHubSourceCommitPinnedEvaluatesContent(t *testing.T) {
 	})
 
 	t.Run("fetch failure surfaces error", func(t *testing.T) {
-		fetchGitHubSkill = func(spec srcpkg.GitHubSpec) (string, func(), error) {
-			return "", nil, os.ErrNotExist
-		}
-
 		var stdout bytes.Buffer
 		var stderr bytes.Buffer
-		code := Run([]string{"inspect", "github:org/repo//skills/clean-skill@8f3c2d1a4b5c6d7e8f901234567890abcdef1234", "--format", "json"}, &stdout, &stderr, cfg)
+		code := runInspectWithDeps(
+			[]string{"github:org/repo//skills/clean-skill@8f3c2d1a4b5c6d7e8f901234567890abcdef1234", "--format", "json"},
+			&stdout,
+			&stderr,
+			inspectDeps{
+				PrepareEvaluationSource: func(input string, sourceKind string) (string, func(), error) {
+					return "", nil, os.ErrNotExist
+				},
+			},
+		)
 		if code != 1 {
 			t.Fatalf("Run() code = %d, want 1", code)
 		}

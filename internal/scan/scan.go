@@ -24,17 +24,10 @@ const minHexCandidateLength = 64
 
 var scanMaxFiles = 10_000
 
-const (
-	ruleScanSymlinkInSource = "SYMLINK_IN_SCAN_SOURCE"
-	ruleScanFileCount       = "SCAN_FILE_COUNT_EXCEEDED"
-	ruleScanSpecialFile     = "SPECIAL_FILE_IN_SCAN_SOURCE"
-	ruleScanSourceChanged   = "SCAN_SOURCE_CHANGED_DURING_READ"
-)
-
 // Finding represents one scan result.
 type Finding struct {
 	ID       string
-	Severity string
+	Severity rule.Severity
 	File     string
 	Line     int
 	Summary  string
@@ -89,10 +82,10 @@ func scanTextFile(target scanTarget) ([]Finding, error) {
 		return nil, fmt.Errorf("failed to read scan file %s: %w", target.Relative, err)
 	}
 	if !info.Mode().IsRegular() {
-		return nil, fmt.Errorf("%s: scan source contains non-regular file: %s", ruleScanSpecialFile, target.Relative)
+		return nil, fmt.Errorf("%s: scan source contains non-regular file: %s", rule.SpecialFileInScanSource.ID, target.Relative)
 	}
 	if target.Info != nil && !os.SameFile(target.Info, info) {
-		return nil, fmt.Errorf("%s: scan source changed during read: %s", ruleScanSourceChanged, target.Relative)
+		return nil, fmt.Errorf("%s: scan source changed during read: %s", rule.ScanSourceChangedDuringRead.ID, target.Relative)
 	}
 
 	var contentBuf bytes.Buffer

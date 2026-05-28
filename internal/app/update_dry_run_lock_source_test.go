@@ -7,6 +7,8 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+
+	rulepkg "github.com/watany-dev/gokui/internal/rule"
 )
 
 func TestRunUpdateDryRunLockAndSourceMetadataErrors(t *testing.T) {
@@ -441,7 +443,7 @@ func TestRunUpdateDryRunLockAndSourceMetadataErrors(t *testing.T) {
 		if !strings.Contains(stdout.String(), "\"error_code\": \""+updateCodeSourceMetadataBad+"\"") {
 			t.Fatalf("stdout should include source-metadata error_code, got %q", stdout.String())
 		}
-		if !strings.Contains(stdout.String(), "\"rule_id\": \""+ruleSourceMetadataSymlink+"\"") {
+		if !strings.Contains(stdout.String(), "\"rule_id\": \""+rulepkg.SourceMetadataSymlink.ID+"\"") {
 			t.Fatalf("stdout should include source-metadata symlink rule_id, got %q", stdout.String())
 		}
 	})

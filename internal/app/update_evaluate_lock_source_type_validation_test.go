@@ -25,7 +25,7 @@ func TestEvaluateUpdateSkillLockSourceTypeValidationBranches(t *testing.T) {
 				},
 			},
 			Policy: lockPolicy{
-				Profile:  policyProfileStrict,
+				Profile:  policypkg.ProfileStrict.String(),
 				Decision: "pass",
 			},
 		}
@@ -74,7 +74,7 @@ func TestEvaluateUpdateSkillLockSourceTypeValidationBranches(t *testing.T) {
 				},
 			},
 			Policy: lockPolicy{
-				Profile:  policyProfileStrict,
+				Profile:  policypkg.ProfileStrict.String(),
 				Decision: "pass",
 			},
 		}
@@ -123,7 +123,7 @@ func TestEvaluateUpdateSkillLockSourceTypeValidationBranches(t *testing.T) {
 				},
 			},
 			Policy: lockPolicy{
-				Profile:  policyProfileStrict,
+				Profile:  policypkg.ProfileStrict.String(),
 				Decision: "pass",
 			},
 		}
@@ -172,7 +172,7 @@ func TestEvaluateUpdateSkillLockSourceTypeValidationBranches(t *testing.T) {
 				},
 			},
 			Policy: lockPolicy{
-				Profile:  policyProfileStrict,
+				Profile:  policypkg.ProfileStrict.String(),
 				Decision: "pass",
 			},
 		}
@@ -221,7 +221,7 @@ func TestEvaluateUpdateSkillLockSourceTypeValidationBranches(t *testing.T) {
 				},
 			},
 			Policy: lockPolicy{
-				Profile:  policyProfileStrict,
+				Profile:  policypkg.ProfileStrict.String(),
 				Decision: "pass",
 			},
 		}
@@ -270,7 +270,7 @@ func TestEvaluateUpdateSkillLockSourceTypeValidationBranches(t *testing.T) {
 				},
 			},
 			Policy: lockPolicy{
-				Profile:  policyProfileStrict,
+				Profile:  policypkg.ProfileStrict.String(),
 				Decision: "pass",
 			},
 		}
@@ -319,7 +319,7 @@ func TestEvaluateUpdateSkillLockSourceTypeValidationBranches(t *testing.T) {
 				},
 			},
 			Policy: lockPolicy{
-				Profile:  policyProfileStrict,
+				Profile:  policypkg.ProfileStrict.String(),
 				Decision: "pass",
 			},
 		}
@@ -368,7 +368,7 @@ func TestEvaluateUpdateSkillLockSourceTypeValidationBranches(t *testing.T) {
 				},
 			},
 			Policy: lockPolicy{
-				Profile:  policyProfileStrict,
+				Profile:  policypkg.ProfileStrict.String(),
 				Decision: "pass",
 			},
 		}

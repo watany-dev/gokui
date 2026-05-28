@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	policypkg "github.com/watany-dev/gokui/internal/policy"
+	rulepkg "github.com/watany-dev/gokui/internal/rule"
 )
 
 func TestUpdateHelpers(t *testing.T) {
@@ -104,7 +105,7 @@ func TestUpdateHelpers(t *testing.T) {
 		}
 
 		_, err := collectURLs(linkRoot)
-		if err == nil || !strings.Contains(err.Error(), ruleUpdateURLScanSymlink) {
+		if err == nil || !strings.Contains(err.Error(), rulepkg.UpdateURLScanSymlink.ID) {
 			t.Fatalf("expected URL-scan root symlink rejection, got %v", err)
 		}
 	})
@@ -116,7 +117,7 @@ func TestUpdateHelpers(t *testing.T) {
 		}
 
 		_, err := collectURLs(rootFile)
-		if err == nil || !strings.Contains(err.Error(), ruleUpdateURLScanSpecialFile) {
+		if err == nil || !strings.Contains(err.Error(), rulepkg.UpdateURLScanSpecialFile.ID) {
 			t.Fatalf("expected URL-scan non-directory rejection, got %v", err)
 		}
 	})
@@ -136,7 +137,7 @@ func TestUpdateHelpers(t *testing.T) {
 		}
 
 		_, err := collectURLs(root)
-		if err == nil || !strings.Contains(err.Error(), ruleUpdateURLScanSymlink) {
+		if err == nil || !strings.Contains(err.Error(), rulepkg.UpdateURLScanSymlink.ID) {
 			t.Fatalf("expected URL-scan symlink rejection, got %v", err)
 		}
 	})
@@ -156,7 +157,7 @@ func TestUpdateHelpers(t *testing.T) {
 		}
 
 		_, err := collectURLs(root)
-		if err == nil || !strings.Contains(err.Error(), ruleUpdateURLScanSpecialFile) {
+		if err == nil || !strings.Contains(err.Error(), rulepkg.UpdateURLScanSpecialFile.ID) {
 			t.Fatalf("expected URL-scan special-file rejection, got %v", err)
 		}
 	})
@@ -199,7 +200,7 @@ func TestUpdateHelpers(t *testing.T) {
 		}
 
 		_, err := collectExecutableFiles(root)
-		if err == nil || !strings.Contains(err.Error(), ruleUpdateExecutableScanSymlink) {
+		if err == nil || !strings.Contains(err.Error(), rulepkg.UpdateExecutableScanSymlink.ID) {
 			t.Fatalf("expected executable-scan symlink rejection, got %v", err)
 		}
 	})
@@ -246,7 +247,7 @@ func TestUpdateHelpers(t *testing.T) {
 		}
 
 		_, err := collectExecutableFiles(linkRoot)
-		if err == nil || !strings.Contains(err.Error(), ruleUpdateExecutableScanSymlink) {
+		if err == nil || !strings.Contains(err.Error(), rulepkg.UpdateExecutableScanSymlink.ID) {
 			t.Fatalf("expected executable-scan root symlink rejection, got %v", err)
 		}
 	})
@@ -258,7 +259,7 @@ func TestUpdateHelpers(t *testing.T) {
 		}
 
 		_, err := collectExecutableFiles(rootFile)
-		if err == nil || !strings.Contains(err.Error(), ruleUpdateExecutableScanSpecialFile) {
+		if err == nil || !strings.Contains(err.Error(), rulepkg.UpdateExecutableScanSpecialFile.ID) {
 			t.Fatalf("expected executable-scan non-directory rejection, got %v", err)
 		}
 	})
@@ -278,7 +279,7 @@ func TestUpdateHelpers(t *testing.T) {
 		}
 
 		_, err := collectExecutableFiles(root)
-		if err == nil || !strings.Contains(err.Error(), ruleUpdateExecutableScanSpecialFile) {
+		if err == nil || !strings.Contains(err.Error(), rulepkg.UpdateExecutableScanSpecialFile.ID) {
 			t.Fatalf("expected executable-scan special-file rejection, got %v", err)
 		}
 	})
@@ -299,27 +300,23 @@ func TestUpdateHelpers(t *testing.T) {
 		root := t.TempDir()
 		path := filepath.Join(root, "big.md")
 
-		_, err := readURLScanContent(bytes.NewReader([]byte(strings.Repeat("a", int(updateMaxURLScanFileBytes)+1))), path, root)
+		_, err := readURLScanContentWithLimit(bytes.NewReader([]byte(strings.Repeat("a", int(updateMaxURLScanFileBytes)+1))), path, root, updateMaxURLScanFileBytes)
 		if err == nil || !strings.Contains(err.Error(), "exceeds URL scan size limit") {
 			t.Fatalf("expected size-limit error, got %v", err)
 		}
 
-		_, err = readURLScanContent(errorReader{err: errors.New("read fail")}, path, root)
+		_, err = readURLScanContentWithLimit(errorReader{err: errors.New("read fail")}, path, root, updateMaxURLScanFileBytes)
 		if err == nil || !strings.Contains(err.Error(), "failed to read file for URL scan") {
 			t.Fatalf("expected read error, got %v", err)
 		}
 
-		_, err = readURLScanContent(bytes.NewReader([]byte{0xff}), path, root)
-		if err == nil || !strings.Contains(err.Error(), ruleUpdateURLScanInvalidUTF8) {
+		_, err = readURLScanContentWithLimit(bytes.NewReader([]byte{0xff}), path, root, updateMaxURLScanFileBytes)
+		if err == nil || !strings.Contains(err.Error(), rulepkg.UpdateURLScanInvalidUTF8.ID) {
 			t.Fatalf("expected invalid utf-8 URL scan error, got %v", err)
 		}
 	})
 
 	t.Run("collectURLs enforces max scan file count", func(t *testing.T) {
-		origLimit := updateMaxScanFiles
-		updateMaxScanFiles = 2
-		t.Cleanup(func() { updateMaxScanFiles = origLimit })
-
 		root := t.TempDir()
 		for i := 0; i < 3; i++ {
 			name := filepath.Join(root, fmt.Sprintf("doc-%d.md", i))
@@ -327,7 +324,7 @@ func TestUpdateHelpers(t *testing.T) {
 				t.Fatalf("write markdown %d: %v", i, err)
 			}
 		}
-		_, err := collectURLs(root)
+		_, err := collectURLsWithLimits(root, updateScanLimits{MaxURLScanFileBytes: updateMaxURLScanFileBytes, MaxScanFiles: 2})
 		if err == nil || !strings.Contains(err.Error(), "URL scan exceeded max file count") {
 			t.Fatalf("expected URL scan max-file error, got %v", err)
 		}
@@ -340,7 +337,7 @@ func TestUpdateHelpers(t *testing.T) {
 			t.Fatalf("write invalid utf-8 markdown: %v", err)
 		}
 		_, err := collectURLs(root)
-		if err == nil || !strings.Contains(err.Error(), ruleUpdateURLScanInvalidUTF8) {
+		if err == nil || !strings.Contains(err.Error(), rulepkg.UpdateURLScanInvalidUTF8.ID) {
 			t.Fatalf("expected URL scan invalid-utf8 error, got %v", err)
 		}
 	})
@@ -365,7 +362,7 @@ func TestUpdateHelpers(t *testing.T) {
 			t.Fatalf("lstat root dir: %v", err)
 		}
 		err = ensureURLScanRegularFile(dirInfo, root, root)
-		if err == nil || !strings.Contains(err.Error(), ruleUpdateURLScanSpecialFile) {
+		if err == nil || !strings.Contains(err.Error(), rulepkg.UpdateURLScanSpecialFile.ID) {
 			t.Fatalf("expected non-regular file error, got %v", err)
 		}
 	})
@@ -394,16 +391,12 @@ func TestUpdateHelpers(t *testing.T) {
 			t.Fatalf("same file identity should pass, got %v", err)
 		}
 		err = ensureURLScanStableFile(firstInfo, secondInfo, secondPath, root)
-		if err == nil || !strings.Contains(err.Error(), ruleUpdateURLScanSourceChanged) {
+		if err == nil || !strings.Contains(err.Error(), rulepkg.UpdateURLScanSourceChangedDuringRead.ID) {
 			t.Fatalf("expected changed-source error, got %v", err)
 		}
 	})
 
 	t.Run("collectExecutableFiles enforces max scan file count", func(t *testing.T) {
-		origLimit := updateMaxScanFiles
-		updateMaxScanFiles = 2
-		t.Cleanup(func() { updateMaxScanFiles = origLimit })
-
 		root := t.TempDir()
 		for i := 0; i < 3; i++ {
 			name := filepath.Join(root, fmt.Sprintf("run-%d.sh", i))
@@ -411,7 +404,7 @@ func TestUpdateHelpers(t *testing.T) {
 				t.Fatalf("write executable %d: %v", i, err)
 			}
 		}
-		_, err := collectExecutableFiles(root)
+		_, err := collectExecutableFilesWithLimits(root, updateScanLimits{MaxURLScanFileBytes: updateMaxURLScanFileBytes, MaxScanFiles: 2})
 		if err == nil || !strings.Contains(err.Error(), "executable scan exceeded max file count") {
 			t.Fatalf("expected executable scan max-file error, got %v", err)
 		}

@@ -25,7 +25,7 @@ func TestEvaluateUpdateSkillLockFileValidationBranches(t *testing.T) {
 				},
 			},
 			Policy: lockPolicy{
-				Profile:  policyProfileStrict,
+				Profile:  policypkg.ProfileStrict.String(),
 				Decision: "pass",
 			},
 		}
@@ -69,7 +69,7 @@ func TestEvaluateUpdateSkillLockFileValidationBranches(t *testing.T) {
 				Files:      nil,
 			},
 			Policy: lockPolicy{
-				Profile:  policyProfileStrict,
+				Profile:  policypkg.ProfileStrict.String(),
 				Decision: "pass",
 			},
 		}
@@ -116,7 +116,7 @@ func TestEvaluateUpdateSkillLockFileValidationBranches(t *testing.T) {
 				},
 			},
 			Policy: lockPolicy{
-				Profile:  policyProfileStrict,
+				Profile:  policypkg.ProfileStrict.String(),
 				Decision: "pass",
 			},
 		}
@@ -162,7 +162,7 @@ func TestEvaluateUpdateSkillLockFileValidationBranches(t *testing.T) {
 				},
 			},
 			Policy: lockPolicy{
-				Profile:  policyProfileStrict,
+				Profile:  policypkg.ProfileStrict.String(),
 				Decision: "pass",
 			},
 		}

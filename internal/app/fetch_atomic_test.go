@@ -6,6 +6,8 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+
+	rulepkg "github.com/watany-dev/gokui/internal/rule"
 )
 
 func TestFetchSkillAtomic(t *testing.T) {
@@ -67,7 +69,7 @@ func TestFetchSkillAtomic(t *testing.T) {
 				t.Fatalf("create output entry symlink: %v", err)
 			}
 			_, err = fetchSkillAtomic(sourceDir, symlinkOut, "fetch-atomic-fail")
-			if err == nil || !strings.Contains(err.Error(), ruleFetchOutputEntrySymlink) {
+			if err == nil || !strings.Contains(err.Error(), rulepkg.FetchOutputEntrySymlink.ID) {
 				t.Fatalf("expected output-entry symlink rejection, got %v", err)
 			}
 		}

@@ -179,6 +179,266 @@ var (
 		Severity:    SeverityMedium,
 		Description: "remote Markdown image URL",
 	}
+	SymlinkInScanSource = Rule{
+		ID:          "SYMLINK_IN_SCAN_SOURCE",
+		Severity:    SeverityHigh,
+		Description: "scan source contains a symlink",
+	}
+	ScanFileCountExceeded = Rule{
+		ID:          "SCAN_FILE_COUNT_EXCEEDED",
+		Severity:    SeverityHigh,
+		Description: "scan source exceeds maximum file count",
+	}
+	SpecialFileInScanSource = Rule{
+		ID:          "SPECIAL_FILE_IN_SCAN_SOURCE",
+		Severity:    SeverityHigh,
+		Description: "scan source contains a non-regular file",
+	}
+	ScanSourceChangedDuringRead = Rule{
+		ID:          "SCAN_SOURCE_CHANGED_DURING_READ",
+		Severity:    SeverityHigh,
+		Description: "scan source changed while being read",
+	}
+	FetchOutputSymlink = Rule{
+		ID:          "FETCH_OUTPUT_SYMLINK_DETECTED",
+		Severity:    SeverityHigh,
+		Description: "fetch output root is a symlink",
+	}
+	FetchOutputEntrySymlink = Rule{
+		ID:          "FETCH_OUTPUT_ENTRY_SYMLINK_DETECTED",
+		Severity:    SeverityHigh,
+		Description: "fetch output entry is a symlink",
+	}
+	GitHubArchiveSchemeInvalid = Rule{
+		ID:          "GITHUB_ARCHIVE_SCHEME_INVALID",
+		Severity:    SeverityHigh,
+		Description: "GitHub archive URL uses an invalid scheme",
+	}
+	GitHubArchiveRedirectHostMismatch = Rule{
+		ID:          "GITHUB_ARCHIVE_REDIRECT_HOST_MISMATCH",
+		Severity:    SeverityHigh,
+		Description: "GitHub archive redirect changed host",
+	}
+	GitHubArchiveRedirectPortMismatch = Rule{
+		ID:          "GITHUB_ARCHIVE_REDIRECT_PORT_MISMATCH",
+		Severity:    SeverityHigh,
+		Description: "GitHub archive redirect changed port",
+	}
+	GitHubArchiveRedirectSchemeInvalid = Rule{
+		ID:          "GITHUB_ARCHIVE_REDIRECT_SCHEME_INVALID",
+		Severity:    SeverityHigh,
+		Description: "GitHub archive redirect changed scheme",
+	}
+	GitHubArchiveRedirectUserinfoDisallowed = Rule{
+		ID:          "GITHUB_ARCHIVE_REDIRECT_USERINFO_DISALLOWED",
+		Severity:    SeverityHigh,
+		Description: "GitHub archive redirect included userinfo",
+	}
+	GitHubArchiveContentTypeInvalid = Rule{
+		ID:          "GITHUB_ARCHIVE_CONTENT_TYPE_INVALID",
+		Severity:    SeverityHigh,
+		Description: "GitHub archive response content type is invalid",
+	}
+	GitHubArchiveContentEncodingInvalid = Rule{
+		ID:          "GITHUB_ARCHIVE_CONTENT_ENCODING_INVALID",
+		Severity:    SeverityHigh,
+		Description: "GitHub archive response content encoding is invalid",
+	}
+	SourceMetadataFileTooLarge = Rule{
+		ID:          "SOURCE_METADATA_FILE_TOO_LARGE",
+		Severity:    SeverityHigh,
+		Description: "source metadata file exceeds the size limit",
+	}
+	SourceMetadataSymlink = Rule{
+		ID:          "SOURCE_METADATA_SYMLINK_DETECTED",
+		Severity:    SeverityHigh,
+		Description: "source metadata path contains a symlink",
+	}
+	SourceMetadataSpecialFile = Rule{
+		ID:          "SOURCE_METADATA_SPECIAL_FILE",
+		Severity:    SeverityHigh,
+		Description: "source metadata path is not a regular file",
+	}
+	SourceMetadataSourceChangedDuringRead = Rule{
+		ID:          "SOURCE_METADATA_SOURCE_CHANGED_DURING_READ",
+		Severity:    SeverityHigh,
+		Description: "source metadata changed while being read",
+	}
+	SourceMetadataInvalidUTF8 = Rule{
+		ID:          "SOURCE_METADATA_INVALID_UTF8",
+		Severity:    SeverityHigh,
+		Description: "source metadata must be valid UTF-8",
+	}
+	LockfileTooLarge = Rule{
+		ID:          "LOCKFILE_TOO_LARGE",
+		Severity:    SeverityHigh,
+		Description: "install lockfile exceeds the size limit",
+	}
+	LockfileInvalidUTF8 = Rule{
+		ID:          "LOCKFILE_INVALID_UTF8",
+		Severity:    SeverityHigh,
+		Description: "install lockfile must be valid UTF-8",
+	}
+	LockfileSymlink = Rule{
+		ID:          "LOCKFILE_SYMLINK_DETECTED",
+		Severity:    SeverityHigh,
+		Description: "install lockfile path contains a symlink",
+	}
+	LockfileSpecialFile = Rule{
+		ID:          "LOCKFILE_SPECIAL_FILE",
+		Severity:    SeverityHigh,
+		Description: "install lockfile path is not a regular file",
+	}
+	LockfileSourceChangedDuringRead = Rule{
+		ID:          "LOCKFILE_SOURCE_CHANGED_DURING_READ",
+		Severity:    SeverityHigh,
+		Description: "install lockfile changed while being read",
+	}
+	InstallTargetSymlink = Rule{
+		ID:          "INSTALL_TARGET_SYMLINK_DETECTED",
+		Severity:    SeverityHigh,
+		Description: "install target root is a symlink",
+	}
+	InstallTargetEntrySymlink = Rule{
+		ID:          "INSTALL_TARGET_ENTRY_SYMLINK_DETECTED",
+		Severity:    SeverityHigh,
+		Description: "install target entry is a symlink",
+	}
+	InstallSourceFileCountExceeded = Rule{
+		ID:          "INSTALL_SOURCE_FILE_COUNT_EXCEEDED",
+		Severity:    SeverityHigh,
+		Description: "install source exceeds maximum file count",
+	}
+	InstallSourceTotalBytesExceeded = Rule{
+		ID:          "INSTALL_SOURCE_TOTAL_BYTES_EXCEEDED",
+		Severity:    SeverityHigh,
+		Description: "install source exceeds maximum total bytes",
+	}
+	InstallSourceFileTooLarge = Rule{
+		ID:          "INSTALL_SOURCE_FILE_TOO_LARGE",
+		Severity:    SeverityHigh,
+		Description: "install source file exceeds the size limit",
+	}
+	InstallSourceSymlink = Rule{
+		ID:          "INSTALL_SOURCE_SYMLINK_DETECTED",
+		Severity:    SeverityHigh,
+		Description: "install source contains a symlink",
+	}
+	InstallSourceSpecialFile = Rule{
+		ID:          "INSTALL_SOURCE_SPECIAL_FILE",
+		Severity:    SeverityHigh,
+		Description: "install source contains a non-regular file",
+	}
+	InstallSourceChangedDuringCopy = Rule{
+		ID:          "INSTALL_SOURCE_CHANGED_DURING_COPY",
+		Severity:    SeverityHigh,
+		Description: "install source changed while being copied",
+	}
+	InstallDigestSymlink = Rule{
+		ID:          "INSTALL_DIGEST_SYMLINK_DETECTED",
+		Severity:    SeverityHigh,
+		Description: "digest input contains a symlink",
+	}
+	InstallDigestFileCountExceeded = Rule{
+		ID:          "INSTALL_DIGEST_FILE_COUNT_EXCEEDED",
+		Severity:    SeverityHigh,
+		Description: "digest input exceeds maximum file count",
+	}
+	InstallDigestTotalBytesExceeded = Rule{
+		ID:          "INSTALL_DIGEST_TOTAL_BYTES_EXCEEDED",
+		Severity:    SeverityHigh,
+		Description: "digest input exceeds maximum total bytes",
+	}
+	InstallDigestFileTooLarge = Rule{
+		ID:          "INSTALL_DIGEST_FILE_TOO_LARGE",
+		Severity:    SeverityHigh,
+		Description: "digest input file exceeds the size limit",
+	}
+	InstallDigestSpecialFile = Rule{
+		ID:          "INSTALL_DIGEST_SPECIAL_FILE",
+		Severity:    SeverityHigh,
+		Description: "digest input contains a non-regular file",
+	}
+	InstallDigestSourceChangedDuringHash = Rule{
+		ID:          "INSTALL_DIGEST_SOURCE_CHANGED_DURING_HASH",
+		Severity:    SeverityHigh,
+		Description: "digest input changed while being hashed",
+	}
+	InstallReportTooLarge = Rule{
+		ID:          "INSTALL_REPORT_TOO_LARGE",
+		Severity:    SeverityHigh,
+		Description: "install report exceeds the size limit",
+	}
+	InstallReportInvalidUTF8 = Rule{
+		ID:          "INSTALL_REPORT_INVALID_UTF8",
+		Severity:    SeverityHigh,
+		Description: "install report must be valid UTF-8",
+	}
+	InstallReportSymlink = Rule{
+		ID:          "INSTALL_REPORT_SYMLINK_DETECTED",
+		Severity:    SeverityHigh,
+		Description: "install report path contains a symlink",
+	}
+	InstallReportSpecialFile = Rule{
+		ID:          "INSTALL_REPORT_SPECIAL_FILE",
+		Severity:    SeverityHigh,
+		Description: "install report path is not a regular file",
+	}
+	InstallReportSourceChangedDuringRead = Rule{
+		ID:          "INSTALL_REPORT_SOURCE_CHANGED_DURING_READ",
+		Severity:    SeverityHigh,
+		Description: "install report changed while being read",
+	}
+	LockVerifyPathSymlink = Rule{
+		ID:          "LOCK_VERIFY_PATH_SYMLINK_DETECTED",
+		Severity:    SeverityHigh,
+		Description: "lock verify path contains a symlink",
+	}
+	UpdateTargetSymlink = Rule{
+		ID:          "UPDATE_TARGET_SYMLINK_DETECTED",
+		Severity:    SeverityHigh,
+		Description: "update target root is a symlink",
+	}
+	UpdateTargetEntrySymlink = Rule{
+		ID:          "UPDATE_TARGET_ENTRY_SYMLINK_DETECTED",
+		Severity:    SeverityHigh,
+		Description: "update target entry is a symlink",
+	}
+	UpdateURLScanSymlink = Rule{
+		ID:          "UPDATE_URL_SCAN_SYMLINK_DETECTED",
+		Severity:    SeverityHigh,
+		Description: "update URL scan input contains a symlink",
+	}
+	UpdateURLScanSpecialFile = Rule{
+		ID:          "UPDATE_URL_SCAN_SPECIAL_FILE",
+		Severity:    SeverityHigh,
+		Description: "update URL scan input contains a non-regular file",
+	}
+	UpdateURLScanSourceChangedDuringRead = Rule{
+		ID:          "UPDATE_URL_SCAN_SOURCE_CHANGED_DURING_READ",
+		Severity:    SeverityHigh,
+		Description: "update URL scan input changed while being read",
+	}
+	UpdateURLScanInvalidUTF8 = Rule{
+		ID:          "UPDATE_URL_SCAN_INVALID_UTF8",
+		Severity:    SeverityHigh,
+		Description: "update URL scan input must be valid UTF-8",
+	}
+	UpdateExecutableScanSymlink = Rule{
+		ID:          "UPDATE_EXECUTABLE_SCAN_SYMLINK_DETECTED",
+		Severity:    SeverityHigh,
+		Description: "update executable scan input contains a symlink",
+	}
+	UpdateExecutableScanSpecialFile = Rule{
+		ID:          "UPDATE_EXECUTABLE_SCAN_SPECIAL_FILE",
+		Severity:    SeverityHigh,
+		Description: "update executable scan input contains a non-regular file",
+	}
+	UpdateSkillStatus = Rule{
+		ID:          "UPDATE_SKILL_STATUS",
+		Severity:    SeverityHigh,
+		Description: "update skill status fallback rule",
+	}
 )
 
 var catalog = []Rule{
@@ -214,6 +474,58 @@ var catalog = []Rule{
 	PasteSiteURL,
 	ReleaseAssetURL,
 	RemoteImageURL,
+	SymlinkInScanSource,
+	ScanFileCountExceeded,
+	SpecialFileInScanSource,
+	ScanSourceChangedDuringRead,
+	FetchOutputSymlink,
+	FetchOutputEntrySymlink,
+	GitHubArchiveSchemeInvalid,
+	GitHubArchiveRedirectHostMismatch,
+	GitHubArchiveRedirectPortMismatch,
+	GitHubArchiveRedirectSchemeInvalid,
+	GitHubArchiveRedirectUserinfoDisallowed,
+	GitHubArchiveContentTypeInvalid,
+	GitHubArchiveContentEncodingInvalid,
+	SourceMetadataFileTooLarge,
+	SourceMetadataSymlink,
+	SourceMetadataSpecialFile,
+	SourceMetadataSourceChangedDuringRead,
+	SourceMetadataInvalidUTF8,
+	LockfileTooLarge,
+	LockfileInvalidUTF8,
+	LockfileSymlink,
+	LockfileSpecialFile,
+	LockfileSourceChangedDuringRead,
+	InstallTargetSymlink,
+	InstallTargetEntrySymlink,
+	InstallSourceFileCountExceeded,
+	InstallSourceTotalBytesExceeded,
+	InstallSourceFileTooLarge,
+	InstallSourceSymlink,
+	InstallSourceSpecialFile,
+	InstallSourceChangedDuringCopy,
+	InstallDigestSymlink,
+	InstallDigestFileCountExceeded,
+	InstallDigestTotalBytesExceeded,
+	InstallDigestFileTooLarge,
+	InstallDigestSpecialFile,
+	InstallDigestSourceChangedDuringHash,
+	InstallReportTooLarge,
+	InstallReportInvalidUTF8,
+	InstallReportSymlink,
+	InstallReportSpecialFile,
+	InstallReportSourceChangedDuringRead,
+	LockVerifyPathSymlink,
+	UpdateTargetSymlink,
+	UpdateTargetEntrySymlink,
+	UpdateURLScanSymlink,
+	UpdateURLScanSpecialFile,
+	UpdateURLScanSourceChangedDuringRead,
+	UpdateURLScanInvalidUTF8,
+	UpdateExecutableScanSymlink,
+	UpdateExecutableScanSpecialFile,
+	UpdateSkillStatus,
 }
 
 var catalogByID = buildCatalogByID(catalog)
