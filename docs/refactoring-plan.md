@@ -90,6 +90,9 @@ Recent completed increments:
   install output adapts command fields into the report package input shape.
 - update compact summary formatting now lives in `internal/report`; app-level
   update output adapts summary fields into the report package input shape.
+- lock verify compact summary formatting now lives in `internal/report`;
+  app-level lock verification output adapts drift/check counts into the report
+  package input shape.
 - SARIF error document construction now uses a shared helper for structured
   error rule ID resolution while keeping command-specific SARIF properties at
   the output boundary.
@@ -148,6 +151,7 @@ go test ./internal/app -run 'Fetch|StructuredError|SARIF|Error'
 go test ./internal/report ./internal/app -run 'Review|Inspect|Vet'
 go test ./internal/report ./internal/app -run 'Compact|Install'
 go test ./internal/report ./internal/app -run 'Compact|Update'
+go test ./internal/report ./internal/app -run 'Compact|LockVerify'
 make test
 ```
 

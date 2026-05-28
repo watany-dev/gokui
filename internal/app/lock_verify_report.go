@@ -15,16 +15,15 @@ func buildLockVerifyCompactSummary(report lockVerifyReport) string {
 			failed++
 		}
 	}
-	return fmt.Sprintf(
-		"lock_verify status=%s checks=%d failed=%d missing=%d changed=%d unexpected=%d path=%q",
-		report.Status,
-		len(report.Checks),
-		failed,
-		len(report.Drift.MissingFiles),
-		len(report.Drift.ChangedFiles),
-		len(report.Drift.UnexpectedFiles),
-		report.SkillPath,
-	)
+	return reportpkg.LockVerifyCompactSummary(reportpkg.LockVerifyCompactInput{
+		Status:          report.Status,
+		Checks:          len(report.Checks),
+		Failed:          failed,
+		MissingFiles:    len(report.Drift.MissingFiles),
+		ChangedFiles:    len(report.Drift.ChangedFiles),
+		UnexpectedFiles: len(report.Drift.UnexpectedFiles),
+		Path:            report.SkillPath,
+	})
 }
 
 func buildLockVerifySARIFReport(report lockVerifyReport) reportpkg.SARIFDocument {

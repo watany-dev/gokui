@@ -106,3 +106,29 @@ func TestUpdateCompactSummary(t *testing.T) {
 		}
 	}
 }
+
+func TestLockVerifyCompactSummary(t *testing.T) {
+	got := LockVerifyCompactSummary(LockVerifyCompactInput{
+		Status:          "DRIFTED",
+		Checks:          3,
+		Failed:          2,
+		MissingFiles:    1,
+		ChangedFiles:    1,
+		UnexpectedFiles: 2,
+		Path:            "/tmp/skills/demo",
+	})
+	required := []string{
+		"lock_verify status=DRIFTED",
+		"checks=3",
+		"failed=2",
+		"missing=1",
+		"changed=1",
+		"unexpected=2",
+		`path="/tmp/skills/demo"`,
+	}
+	for _, token := range required {
+		if !strings.Contains(got, token) {
+			t.Fatalf("summary should include %q, got %q", token, got)
+		}
+	}
+}

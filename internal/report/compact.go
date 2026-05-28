@@ -105,3 +105,26 @@ func UpdateCompactSummary(input UpdateCompactInput) string {
 		input.Target,
 	)
 }
+
+type LockVerifyCompactInput struct {
+	Status          string
+	Checks          int
+	Failed          int
+	MissingFiles    int
+	ChangedFiles    int
+	UnexpectedFiles int
+	Path            string
+}
+
+func LockVerifyCompactSummary(input LockVerifyCompactInput) string {
+	return fmt.Sprintf(
+		"lock_verify status=%s checks=%d failed=%d missing=%d changed=%d unexpected=%d path=%q",
+		input.Status,
+		input.Checks,
+		input.Failed,
+		input.MissingFiles,
+		input.ChangedFiles,
+		input.UnexpectedFiles,
+		input.Path,
+	)
+}
