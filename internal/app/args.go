@@ -45,14 +45,18 @@ func defaultCommandFormat() string {
 }
 
 func parseFormatArg(args []string, index int) (value string, nextIndex int, ok bool, err error) {
+	return parseValueFlagArg(args, index, "--format")
+}
+
+func parseValueFlagArg(args []string, index int, flag string) (value string, nextIndex int, ok bool, err error) {
 	arg := args[index]
-	if arg == "--format" {
+	if arg == flag {
 		if index+1 >= len(args) {
-			return "", index, true, fmt.Errorf("missing value for --format")
+			return "", index, true, fmt.Errorf("missing value for %s", flag)
 		}
 		return args[index+1], index + 1, true, nil
 	}
-	if value, found := strings.CutPrefix(arg, "--format="); found {
+	if value, found := strings.CutPrefix(arg, flag+"="); found {
 		return value, index, true, nil
 	}
 	return "", index, false, nil

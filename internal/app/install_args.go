@@ -18,15 +18,15 @@ func parseInstallArgs(args []string) (installArgs, error) {
 			i = next
 			continue
 		}
-		switch {
-		case arg == "--target":
-			if i+1 >= len(args) {
-				return installArgs{}, fmt.Errorf("missing value for --target")
+		if targetValue, next, ok, err := parseValueFlagArg(args, i, "--target"); ok {
+			if err != nil {
+				return installArgs{}, err
 			}
-			out.Target = args[i+1]
-			i++
-		case strings.HasPrefix(arg, "--target="):
-			out.Target = strings.TrimPrefix(arg, "--target=")
+			out.Target = targetValue
+			i = next
+			continue
+		}
+		switch {
 		case arg == "--profile":
 			if i+1 >= len(args) {
 				return installArgs{}, fmt.Errorf("missing value for --profile")

@@ -25,17 +25,17 @@ func parseUpdateArgs(args []string) (updateArgs, error) {
 			i = next
 			continue
 		}
+		if targetValue, next, ok, err := parseValueFlagArg(args, i, "--target"); ok {
+			if err != nil {
+				return updateArgs{}, err
+			}
+			out.Target = targetValue
+			i = next
+			continue
+		}
 		switch {
 		case arg == "--dry-run":
 			out.DryRun = true
-		case arg == "--target":
-			if i+1 >= len(args) {
-				return updateArgs{}, fmt.Errorf("missing value for --target")
-			}
-			out.Target = args[i+1]
-			i++
-		case strings.HasPrefix(arg, "--target="):
-			out.Target = strings.TrimPrefix(arg, "--target=")
 		case strings.HasPrefix(arg, "-"):
 			return updateArgs{}, fmt.Errorf("unknown update option: %s", arg)
 		default:

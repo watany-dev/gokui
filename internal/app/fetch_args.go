@@ -21,15 +21,15 @@ func parseFetchArgs(args []string) (fetchArgs, error) {
 			i = next
 			continue
 		}
-		switch {
-		case arg == "--out":
-			if i+1 >= len(args) {
-				return fetchArgs{}, fmt.Errorf("missing value for --out")
+		if outValue, next, ok, err := parseValueFlagArg(args, i, "--out"); ok {
+			if err != nil {
+				return fetchArgs{}, err
 			}
-			out.Out = args[i+1]
-			i++
-		case strings.HasPrefix(arg, "--out="):
-			out.Out = strings.TrimPrefix(arg, "--out=")
+			out.Out = outValue
+			i = next
+			continue
+		}
+		switch {
 		case strings.HasPrefix(arg, "-"):
 			return fetchArgs{}, fmt.Errorf("unknown fetch option: %s", arg)
 		default:
