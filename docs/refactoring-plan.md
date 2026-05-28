@@ -73,18 +73,35 @@ make test
 
 Current inventory notes:
 
-- #7 is represented by `internal/rule`.
-- #10 is represented by shared SARIF document/types in `internal/report`.
-- #12 is represented by `source.GitHubFetcher` and option-based tests.
-- #13 is represented by split `internal/scan` files.
-- #15 is represented by `internal/safefs` stable/root/path helpers.
-- #16 is represented by `internal/limitio` and related safefs path helpers.
-- #17 is represented by `internal/policy` profile/severity types and
-  `internal/cli/exitcode`.
-- #18 is represented by `internal/policy/override.go`.
+- #7 is partially represented by `internal/rule`; keep open until scattered
+  app/source rule constants are fully catalog-backed and registry sync tests
+  cover the roadmap table.
+- #10 is partially represented by shared SARIF document/types in
+  `internal/report`; keep open until command-specific SARIF builders are
+  reduced to a common builder/config shape.
+- #12 is represented by `source.GitHubFetcher`, option-based configuration, and
+  option-based tests; candidate to close after repository write access is
+  available.
+- #13 is represented by split `internal/scan` implementation and test files;
+  candidate to close after repository write access is available.
+- #15 is partially represented by `internal/safefs` stable/root/path helpers;
+  keep open until remaining app-specific `ensure*Stable*` wrappers are reduced
+  to thin policy/error adapters or removed.
+- #16 is represented by `internal/limitio` strict copy/hash helpers and related
+  `internal/safefs` path helpers; candidate to close after repository write
+  access is available.
+- #17 is partially represented by `internal/policy` profile/severity types and
+  `internal/cli/exitcode`; keep open until app command returns and severity
+  comparisons consistently use the typed values.
+- #18 is represented by `internal/policy/override.go` and
+  `SeverityOverrideAuditSet`; candidate to close after repository write access
+  is available.
 - #3, #4, #5, and #19 are partially represented but still need final audit before
   closing because `internal/app` remains the compatibility owner for command
   orchestration and many contract tests.
+- GitHub issue write access was unavailable during the latest audit
+  (`403 Resource not accessible by integration`), so no issue comments or
+  closures were applied remotely.
 
 ## Recommended Order
 
