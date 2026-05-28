@@ -723,27 +723,11 @@ func buildInstallCompactSummary(report installReport, target string) string {
 }
 
 func installArgsRequestJSON(args []string) bool {
-	for i := 0; i < len(args); i++ {
-		if args[i] == "--format" && i+1 < len(args) && args[i+1] == "json" {
-			return true
-		}
-		if strings.HasPrefix(args[i], "--format=") && strings.TrimPrefix(args[i], "--format=") == "json" {
-			return true
-		}
-	}
-	return false
+	return argsRequestFormat(args, "json")
 }
 
 func installArgsRequestSARIF(args []string) bool {
-	for i := 0; i < len(args); i++ {
-		if args[i] == "--format" && i+1 < len(args) && args[i+1] == "sarif" {
-			return true
-		}
-		if strings.HasPrefix(args[i], "--format=") && strings.TrimPrefix(args[i], "--format=") == "sarif" {
-			return true
-		}
-	}
-	return false
+	return argsRequestFormat(args, "sarif")
 }
 
 func extractInstallSourceArg(args []string) string {

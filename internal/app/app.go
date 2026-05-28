@@ -1016,35 +1016,23 @@ func inspectSeverityToSARIFLevel(severity string) string {
 }
 
 func inspectArgsRequestJSON(args []string) bool {
-	for i := 0; i < len(args); i++ {
-		if args[i] == "--format" && i+1 < len(args) && args[i+1] == "json" {
-			return true
-		}
-		if strings.HasPrefix(args[i], "--format=") && strings.TrimPrefix(args[i], "--format=") == "json" {
-			return true
-		}
-	}
-	return false
+	return argsRequestFormat(args, "json")
 }
 
 func inspectArgsRequestSARIF(args []string) bool {
-	for i := 0; i < len(args); i++ {
-		if args[i] == "--format" && i+1 < len(args) && args[i+1] == "sarif" {
-			return true
-		}
-		if strings.HasPrefix(args[i], "--format=") && strings.TrimPrefix(args[i], "--format=") == "sarif" {
-			return true
-		}
-	}
-	return false
+	return argsRequestFormat(args, "sarif")
 }
 
 func inspectArgsRequestReviewJSON(args []string) bool {
+	return argsRequestFormat(args, "review-json")
+}
+
+func argsRequestFormat(args []string, format string) bool {
 	for i := 0; i < len(args); i++ {
-		if args[i] == "--format" && i+1 < len(args) && args[i+1] == "review-json" {
+		if args[i] == "--format" && i+1 < len(args) && args[i+1] == format {
 			return true
 		}
-		if strings.HasPrefix(args[i], "--format=") && strings.TrimPrefix(args[i], "--format=") == "review-json" {
+		if strings.HasPrefix(args[i], "--format=") && strings.TrimPrefix(args[i], "--format=") == format {
 			return true
 		}
 	}
