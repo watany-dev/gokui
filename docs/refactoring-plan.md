@@ -182,6 +182,10 @@ Recent completed increments:
   and lock verify uses the shared rule/result builders.
 - SARIF rule/result sorting now lives behind `internal/report` helpers; lock
   verify no longer owns generic SARIF sort logic.
+- update success SARIF decision, status-fallback finding, path normalization,
+  empty-summary fallback, and invocation-success assembly now live in
+  `internal/report`; app-level update output only adapts command fields into the
+  report input shape.
 
 Validation already run after the latest refactoring increments:
 
@@ -245,6 +249,7 @@ go test ./internal/app -run 'TestRunInspectCommand|TestRunVetCommands'
 go test ./internal/rule ./internal/source ./internal/app -run 'Catalog|GitHubArchive|FetchJSONErrorCodes'
 go test ./internal/app -run 'RoadmapRuleIDsAreImplemented|CommandSetDocumentationSync|ReadmePolicyExampleSchemaSync'
 go test ./internal/app -run 'CommandSetDocumentationSync|CLIUsageSyntaxDocumentationSync|StructuredErrorStreamContractDocumentationSync|ExitCodeContractDocumentationSync|UpdateStatusErrorCodeMatrixDocumentationSync'
+go test ./internal/report ./internal/app -run 'SARIF|Update'
 make test
 make check
 ```

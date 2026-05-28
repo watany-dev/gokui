@@ -1,12 +1,8 @@
 package app
 
 import (
-	"fmt"
 	"io"
-	"path/filepath"
-	"strings"
 
-	policypkg "github.com/watany-dev/gokui/internal/policy"
 	reportpkg "github.com/watany-dev/gokui/internal/report"
 	rulepkg "github.com/watany-dev/gokui/internal/rule"
 )
@@ -53,77 +49,44 @@ func emitUpdateStructuredError(format string, stdout io.Writer, stderr io.Writer
 }
 
 func buildUpdateSARIFReport(report updateReport) reportpkg.SARIFDocument {
-	decision := "PASS"
-	if report.Summary.Errors > 0 {
-		decision = reportStatusError
-	} else if report.Summary.Rejected > 0 {
-		decision = reportDecisionRejected
-	} else if report.Summary.Changed > 0 {
-		decision = "CHANGED"
-	}
-
-	findings := make([]inspectFinding, 0, 64)
+	skills := make([]reportpkg.UpdateSARIFSkill, 0, len(report.Skills))
 	for _, skill := range report.Skills {
-		if len(skill.Findings) > 0 {
-			for _, finding := range skill.Findings {
-				filePath := finding.File
-				if filePath != "" {
-					filePath = filepath.ToSlash(filepath.Join(skill.Name, filePath))
-				}
-				summary := finding.Summary
-				if strings.TrimSpace(summary) == "" {
-					summary = fmt.Sprintf("%s finding in %s", finding.ID, skill.Name)
-				}
-				findings = append(findings, inspectFinding{
-					ID:       finding.ID,
-					Severity: finding.Severity,
-					File:     filePath,
-					Line:     finding.Line,
-					Summary:  summary,
-				})
-			}
-			continue
+		findings := make([]reportpkg.SARIFFinding, 0, len(skill.Findings))
+		for _, finding := range skill.Findings {
+			findings = append(findings, reportpkg.SARIFFinding{
+				ID:       finding.ID,
+				Severity: finding.Severity.String(),
+				File:     finding.File,
+				Line:     finding.Line,
+				Summary:  finding.Summary,
+			})
 		}
-		if skill.Status != reportStatusError && skill.Status != reportDecisionRejected {
-			continue
-		}
-		ruleID := skill.RuleID
-		if ruleID == "" {
-			ruleID = skill.ErrorCode
-		}
-		if ruleID == "" {
-			ruleID = rulepkg.UpdateSkillStatus.ID
-		}
-		summary := skill.Message
-		if strings.TrimSpace(summary) == "" {
-			summary = fmt.Sprintf("%s: %s", skill.Status, skill.Name)
-		}
-		findings = append(findings, inspectFinding{
-			ID:       ruleID,
-			Severity: policypkg.SeverityHigh,
-			File:     filepath.ToSlash(skill.Name),
-			Line:     1,
-			Summary:  summary,
+		skills = append(skills, reportpkg.UpdateSARIFSkill{
+			Name:      skill.Name,
+			Status:    skill.Status,
+			ErrorCode: skill.ErrorCode,
+			RuleID:    skill.RuleID,
+			Message:   skill.Message,
+			Findings:  findings,
 		})
 	}
-
-	sarif := buildFindingsSARIFReport(
-		report.SchemaVersion,
-		true,
-		source{
-			Input: report.Target,
-			Kind:  "update-target",
-		},
-		decision,
-		findings,
-		report.Note,
-	)
-	if len(sarif.Runs) > 0 {
-		sarif.Runs[0].Invocations = []reportpkg.SARIFInvocation{
-			{ExecutionSuccessful: report.Summary.Errors == 0 && report.Summary.Rejected == 0},
-		}
-	}
-	return sarif
+	return reportpkg.SARIFDocumentForUpdate(reportpkg.UpdateSARIFInput{
+		SchemaVersion:            report.SchemaVersion,
+		Target:                   report.Target,
+		Note:                     report.Note,
+		Summary:                  reportpkg.UpdateSARIFSummary{Changed: report.Summary.Changed, Rejected: report.Summary.Rejected, Errors: report.Summary.Errors},
+		Skills:                   skills,
+		StatusError:              reportStatusError,
+		StatusRejected:           reportDecisionRejected,
+		ErrorDecision:            reportStatusError,
+		RejectedDecision:         reportDecisionRejected,
+		ChangedDecision:          "CHANGED",
+		PassDecision:             "PASS",
+		SourceKind:               "update-target",
+		StatusFallbackRuleID:     rulepkg.UpdateSkillStatus.ID,
+		StatusFallbackSeverity:   "high",
+		ExecutionFailureOnReject: true,
+	})
 }
 
 func buildUpdateCompactSummary(report updateReport) string {

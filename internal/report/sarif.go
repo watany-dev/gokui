@@ -1,6 +1,8 @@
 package report
 
 import (
+	"fmt"
+	"path/filepath"
 	"sort"
 	"strings"
 )
@@ -111,6 +113,39 @@ type FindingsSARIFInput struct {
 	Findings      []SARIFFinding
 }
 
+type UpdateSARIFSummary struct {
+	Changed  int
+	Rejected int
+	Errors   int
+}
+
+type UpdateSARIFSkill struct {
+	Name      string
+	Status    string
+	ErrorCode string
+	RuleID    string
+	Message   string
+	Findings  []SARIFFinding
+}
+
+type UpdateSARIFInput struct {
+	SchemaVersion            string
+	Target                   string
+	Note                     string
+	Summary                  UpdateSARIFSummary
+	Skills                   []UpdateSARIFSkill
+	StatusError              string
+	StatusRejected           string
+	ErrorDecision            string
+	RejectedDecision         string
+	ChangedDecision          string
+	PassDecision             string
+	SourceKind               string
+	StatusFallbackRuleID     string
+	StatusFallbackSeverity   string
+	ExecutionFailureOnReject bool
+}
+
 func PreReleaseSARIFProperties(schemaVersion string, sourceInput string, sourceKind string, decision string, note string) SARIFProperties {
 	return SARIFProperties{
 		SchemaVersion: schemaVersion,
@@ -140,6 +175,85 @@ func SARIFDocumentForFindingsInput(input FindingsSARIFInput) SARIFDocument {
 		!input.Rejected,
 		properties,
 	)
+}
+
+func SARIFDocumentForUpdate(input UpdateSARIFInput) SARIFDocument {
+	decision := input.PassDecision
+	if input.Summary.Errors > 0 {
+		decision = input.ErrorDecision
+	} else if input.Summary.Rejected > 0 {
+		decision = input.RejectedDecision
+	} else if input.Summary.Changed > 0 {
+		decision = input.ChangedDecision
+	}
+
+	findings := updateSARIFFindings(input)
+	sarif := SARIFDocumentForFindingsInput(FindingsSARIFInput{
+		SchemaVersion: input.SchemaVersion,
+		PreRelease:    true,
+		SourceInput:   input.Target,
+		SourceKind:    input.SourceKind,
+		Decision:      decision,
+		Rejected:      input.Summary.Rejected > 0,
+		Note:          input.Note,
+		Findings:      findings,
+	})
+	if len(sarif.Runs) > 0 {
+		executionSuccessful := input.Summary.Errors == 0
+		if input.ExecutionFailureOnReject {
+			executionSuccessful = executionSuccessful && input.Summary.Rejected == 0
+		}
+		sarif.Runs[0].Invocations = []SARIFInvocation{{ExecutionSuccessful: executionSuccessful}}
+	}
+	return sarif
+}
+
+func updateSARIFFindings(input UpdateSARIFInput) []SARIFFinding {
+	findings := make([]SARIFFinding, 0, 64)
+	for _, skill := range input.Skills {
+		if len(skill.Findings) > 0 {
+			for _, finding := range skill.Findings {
+				filePath := finding.File
+				if filePath != "" {
+					filePath = filepath.ToSlash(filepath.Join(skill.Name, filePath))
+				}
+				summary := finding.Summary
+				if strings.TrimSpace(summary) == "" {
+					summary = fmt.Sprintf("%s finding in %s", finding.ID, skill.Name)
+				}
+				findings = append(findings, SARIFFinding{
+					ID:       finding.ID,
+					Severity: finding.Severity,
+					File:     filePath,
+					Line:     finding.Line,
+					Summary:  summary,
+				})
+			}
+			continue
+		}
+		if skill.Status != input.StatusError && skill.Status != input.StatusRejected {
+			continue
+		}
+		ruleID := skill.RuleID
+		if ruleID == "" {
+			ruleID = skill.ErrorCode
+		}
+		if ruleID == "" {
+			ruleID = input.StatusFallbackRuleID
+		}
+		summary := skill.Message
+		if strings.TrimSpace(summary) == "" {
+			summary = fmt.Sprintf("%s: %s", skill.Status, skill.Name)
+		}
+		findings = append(findings, SARIFFinding{
+			ID:       ruleID,
+			Severity: input.StatusFallbackSeverity,
+			File:     filepath.ToSlash(skill.Name),
+			Line:     1,
+			Summary:  summary,
+		})
+	}
+	return findings
 }
 
 func SARIFDocumentForFindings(findings []SARIFFinding, executionSuccessful bool, properties SARIFProperties) SARIFDocument {
