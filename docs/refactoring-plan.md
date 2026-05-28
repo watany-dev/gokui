@@ -54,6 +54,9 @@ Recent completed increments:
 - parse-error output fallback is centralized; command runners now share the
   structured-output dispatch and human usage fallback for argument parsing
   failures while keeping command-specific report construction.
+- JSON/SARIF structured-error emitter plumbing is centralized for fetch,
+  install, update, and lock verify; inspect keeps its `review-json` special
+  case until the inspect/vet report boundary is refactored.
 
 Validation already run after the latest parser/format increments:
 
@@ -80,6 +83,7 @@ go test ./internal/app
 go test ./internal/app -run 'Args|Error|JSON|SARIF|Review|Fetch|Inspect|Vet|Install|Update|LockVerify'
 go test ./internal/app -run 'Update|Args|Error|JSON|SARIF'
 go test ./internal/app -run 'Args|Error|JSON|SARIF|Review|Fetch|Inspect|Vet|Install|Update|LockVerify'
+go test ./internal/app -run 'Error|JSON|SARIF|Fetch|Install|Update|LockVerify'
 make test
 ```
 
@@ -344,8 +348,9 @@ slice:
    doing this.
 3. Continue #4 by extracting any remaining command-specific structured-error
    branching outside parse-error handling where it can be done without changing
-   current error strings, fallback source/target fields, or structured output
-   contracts; defer changing report wire structs until #9.
+   current error strings, fallback source/target fields, `review-json`
+   handling, or structured output contracts; defer changing report wire structs
+   until #9.
 4. Continue #8 only after #4 has a stable command error path and inspect report
    rendering remains covered by contract tests.
 
