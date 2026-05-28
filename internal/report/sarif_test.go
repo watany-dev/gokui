@@ -282,3 +282,23 @@ func TestSARIFErrorDocument(t *testing.T) {
 		t.Fatalf("properties = %+v, want %+v", run.Properties, properties)
 	}
 }
+
+func TestSARIFErrorDocumentForInput(t *testing.T) {
+	properties := PreReleaseSARIFProperties("1", "src", "local-dir", "ERROR", "note")
+	doc := SARIFErrorDocumentForInput(SARIFErrorInput{
+		RuleID:     "RULE_ONE",
+		ErrorCode:  "ERROR_ONE",
+		Message:    "failed",
+		Properties: properties,
+	})
+	run := doc.Runs[0]
+	if len(run.Tool.Driver.Rules) != 1 || run.Tool.Driver.Rules[0].ID != "RULE_ONE" {
+		t.Fatalf("unexpected rules: %+v", run.Tool.Driver.Rules)
+	}
+	if len(run.Results) != 1 || run.Results[0].RuleID != "RULE_ONE" || run.Results[0].Message.Text != "failed" {
+		t.Fatalf("unexpected results: %+v", run.Results)
+	}
+	if run.Properties != properties {
+		t.Fatalf("properties = %+v, want %+v", run.Properties, properties)
+	}
+}

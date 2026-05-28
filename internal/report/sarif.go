@@ -184,6 +184,17 @@ type LockVerifySARIFInput struct {
 	Properties     SARIFProperties
 }
 
+type SARIFErrorInput struct {
+	RuleID     string
+	ErrorCode  string
+	Message    string
+	Properties SARIFProperties
+}
+
+func SARIFErrorDocumentForInput(input SARIFErrorInput) SARIFDocument {
+	return SARIFErrorDocument(input.RuleID, input.ErrorCode, input.Message, input.Properties)
+}
+
 func SARIFDocumentForLockVerify(input LockVerifySARIFInput) SARIFDocument {
 	decision := "PASS"
 	if input.Status != input.VerifiedStatus {

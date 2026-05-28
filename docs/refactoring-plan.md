@@ -141,6 +141,9 @@ Recent completed increments:
 - common pre-release SARIF property assembly now lives in `internal/report`;
   app-level structured error and lock verify builders use the shared helper
   instead of assembling the same property block directly.
+- structured SARIF error document construction now accepts a report-level input
+  struct, leaving app-level builders to adapt command error fields before
+  calling `internal/report`.
 - SARIF error document construction now uses a shared helper for structured
   error rule ID resolution while keeping command-specific SARIF properties at
   the output boundary.
@@ -207,6 +210,7 @@ go test ./internal/app -run 'SourceMetadata.*DocumentationSync|HardeningDocument
 go test ./internal/app -run 'InstallReport.*HardeningDocumentationSync|Lock.*HardeningDocumentationSync|SeverityOverrides.*HardeningDocumentationSync'
 go test ./internal/app -run 'Lock.*HardeningDocumentationSync|SeverityOverrides.*HardeningDocumentationSync|VetFailClosedInspectPayloadDocumentationSync|ScanNonUTF8TextHardeningDocumentationSync|UpdateURLScanUTF8HardeningDocumentationSync|PolicyUTF8HardeningDocumentationSync'
 go test ./internal/report ./internal/app -run 'SARIF|LockVerify|StructuredError|Error'
+go test ./internal/report ./internal/app -run 'SARIFError|StructuredError|Error|Fetch|Inspect|Install|Update|LockVerify'
 make test
 ```
 

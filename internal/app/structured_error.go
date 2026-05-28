@@ -70,7 +70,12 @@ func structuredErrorRuleID(errorCode string, ruleID string) string {
 }
 
 func buildStructuredSARIFErrorReport(errorCode string, ruleID string, message string, properties reportpkg.SARIFProperties) reportpkg.SARIFDocument {
-	return reportpkg.SARIFErrorDocument(structuredErrorRuleID(errorCode, ruleID), errorCode, message, properties)
+	return reportpkg.SARIFErrorDocumentForInput(reportpkg.SARIFErrorInput{
+		RuleID:     structuredErrorRuleID(errorCode, ruleID),
+		ErrorCode:  errorCode,
+		Message:    message,
+		Properties: properties,
+	})
 }
 
 func structuredErrorSARIFProperties(schemaVersion string, sourceInput string, sourceKind string, status string, note string, errorCode string) reportpkg.SARIFProperties {
