@@ -126,6 +126,9 @@ Recent completed increments:
 - release evidence and beta-track documentation sync coverage is split into
   `docs_sync_release_evidence_test.go`, continuing the #19 test-boundary
   cleanup without changing documentation assertions.
+- source metadata hardening documentation sync coverage is split into
+  `docs_sync_source_metadata_hardening_test.go`, separating source metadata
+  assertions from the broader hardening documentation sync file.
 - SARIF error document construction now uses a shared helper for structured
   error rule ID resolution while keeping command-specific SARIF properties at
   the output boundary.
