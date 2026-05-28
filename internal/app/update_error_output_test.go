@@ -3,6 +3,7 @@ package app
 import (
 	"encoding/json"
 	reportpkg "github.com/watany-dev/gokui/internal/report"
+	rulepkg "github.com/watany-dev/gokui/internal/rule"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -68,7 +69,7 @@ func TestRunUpdateJSONFatalErrors(t *testing.T) {
 		if !strings.Contains(stdout.String(), "\"error_code\": \""+updateFatalCodeTargetInvalid+"\"") {
 			t.Fatalf("stdout should include target-invalid error code, got %q", stdout.String())
 		}
-		if !strings.Contains(stdout.String(), "\"rule_id\": \""+ruleUpdateTargetSymlink+"\"") {
+		if !strings.Contains(stdout.String(), "\"rule_id\": \""+rulepkg.UpdateTargetSymlink.ID+"\"") {
 			t.Fatalf("stdout should include symlink rule_id, got %q", stdout.String())
 		}
 
@@ -81,7 +82,7 @@ func TestRunUpdateJSONFatalErrors(t *testing.T) {
 		if stdout.Len() != 0 {
 			t.Fatalf("stdout should be empty for human target errors, got %q", stdout.String())
 		}
-		if !strings.Contains(stderr.String(), ruleUpdateTargetSymlink) {
+		if !strings.Contains(stderr.String(), rulepkg.UpdateTargetSymlink.ID) {
 			t.Fatalf("stderr should include symlink rule marker, got %q", stderr.String())
 		}
 	})
@@ -161,7 +162,7 @@ func TestRunUpdateJSONFatalErrors(t *testing.T) {
 		if !strings.Contains(stdout.String(), "\"error_code\": \""+updateFatalCodeReportBuild+"\"") {
 			t.Fatalf("stdout should include report-build error_code, got %q", stdout.String())
 		}
-		if !strings.Contains(stdout.String(), "\"rule_id\": \""+ruleUpdateTargetEntrySymlink+"\"") {
+		if !strings.Contains(stdout.String(), "\"rule_id\": \""+rulepkg.UpdateTargetEntrySymlink.ID+"\"") {
 			t.Fatalf("stdout should include target-entry symlink rule_id, got %q", stdout.String())
 		}
 

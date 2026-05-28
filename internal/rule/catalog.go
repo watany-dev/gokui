@@ -394,6 +394,51 @@ var (
 		Severity:    SeverityHigh,
 		Description: "lock verify path contains a symlink",
 	}
+	UpdateTargetSymlink = Rule{
+		ID:          "UPDATE_TARGET_SYMLINK_DETECTED",
+		Severity:    SeverityHigh,
+		Description: "update target root is a symlink",
+	}
+	UpdateTargetEntrySymlink = Rule{
+		ID:          "UPDATE_TARGET_ENTRY_SYMLINK_DETECTED",
+		Severity:    SeverityHigh,
+		Description: "update target entry is a symlink",
+	}
+	UpdateURLScanSymlink = Rule{
+		ID:          "UPDATE_URL_SCAN_SYMLINK_DETECTED",
+		Severity:    SeverityHigh,
+		Description: "update URL scan input contains a symlink",
+	}
+	UpdateURLScanSpecialFile = Rule{
+		ID:          "UPDATE_URL_SCAN_SPECIAL_FILE",
+		Severity:    SeverityHigh,
+		Description: "update URL scan input contains a non-regular file",
+	}
+	UpdateURLScanSourceChangedDuringRead = Rule{
+		ID:          "UPDATE_URL_SCAN_SOURCE_CHANGED_DURING_READ",
+		Severity:    SeverityHigh,
+		Description: "update URL scan input changed while being read",
+	}
+	UpdateURLScanInvalidUTF8 = Rule{
+		ID:          "UPDATE_URL_SCAN_INVALID_UTF8",
+		Severity:    SeverityHigh,
+		Description: "update URL scan input must be valid UTF-8",
+	}
+	UpdateExecutableScanSymlink = Rule{
+		ID:          "UPDATE_EXECUTABLE_SCAN_SYMLINK_DETECTED",
+		Severity:    SeverityHigh,
+		Description: "update executable scan input contains a symlink",
+	}
+	UpdateExecutableScanSpecialFile = Rule{
+		ID:          "UPDATE_EXECUTABLE_SCAN_SPECIAL_FILE",
+		Severity:    SeverityHigh,
+		Description: "update executable scan input contains a non-regular file",
+	}
+	UpdateSkillStatus = Rule{
+		ID:          "UPDATE_SKILL_STATUS",
+		Severity:    SeverityHigh,
+		Description: "update skill status fallback rule",
+	}
 )
 
 var catalog = []Rule{
@@ -472,6 +517,15 @@ var catalog = []Rule{
 	InstallReportSpecialFile,
 	InstallReportSourceChangedDuringRead,
 	LockVerifyPathSymlink,
+	UpdateTargetSymlink,
+	UpdateTargetEntrySymlink,
+	UpdateURLScanSymlink,
+	UpdateURLScanSpecialFile,
+	UpdateURLScanSourceChangedDuringRead,
+	UpdateURLScanInvalidUTF8,
+	UpdateExecutableScanSymlink,
+	UpdateExecutableScanSpecialFile,
+	UpdateSkillStatus,
 }
 
 var catalogByID = buildCatalogByID(catalog)

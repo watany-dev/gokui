@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+
+	rulepkg "github.com/watany-dev/gokui/internal/rule"
 )
 
 func TestParseUpdateArgs(t *testing.T) {
@@ -382,7 +384,7 @@ func TestBuildUpdateSARIFReport(t *testing.T) {
 		foundFallback := false
 		foundEmptySummaryRule := false
 		for _, rule := range run.Tool.Driver.Rules {
-			if rule.ID == "UPDATE_SKILL_STATUS" {
+			if rule.ID == rulepkg.UpdateSkillStatus.ID {
 				foundFallback = true
 			}
 			if rule.ID == "B_RULE" && strings.Contains(rule.ShortDescription.Text, "finding in zeta") {

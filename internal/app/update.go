@@ -101,15 +101,6 @@ const (
 	updateFatalCodeUnknown        = "UPDATE_FAILED"
 )
 
-const ruleUpdateTargetSymlink = "UPDATE_TARGET_SYMLINK_DETECTED"
-const ruleUpdateTargetEntrySymlink = "UPDATE_TARGET_ENTRY_SYMLINK_DETECTED"
-const ruleUpdateURLScanSymlink = "UPDATE_URL_SCAN_SYMLINK_DETECTED"
-const ruleUpdateURLScanSpecialFile = "UPDATE_URL_SCAN_SPECIAL_FILE"
-const ruleUpdateURLScanSourceChanged = "UPDATE_URL_SCAN_SOURCE_CHANGED_DURING_READ"
-const ruleUpdateURLScanInvalidUTF8 = "UPDATE_URL_SCAN_INVALID_UTF8"
-const ruleUpdateExecutableScanSymlink = "UPDATE_EXECUTABLE_SCAN_SYMLINK_DETECTED"
-const ruleUpdateExecutableScanSpecialFile = "UPDATE_EXECUTABLE_SCAN_SPECIAL_FILE"
-
 type updateDiff struct {
 	Added   []string `json:"added"`
 	Removed []string `json:"removed"`
@@ -229,7 +220,7 @@ func runUpdateWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps u
 		_, _ = fmt.Fprintln(stderr, err.Error())
 		return exitcode.Error.Int()
 	}
-	if err := rejectSymlinkPath(targetRoot, "update target root", ruleUpdateTargetSymlink); err != nil {
+	if err := rejectSymlinkPath(targetRoot, "update target root", rulepkg.UpdateTargetSymlink.ID); err != nil {
 		if emitUpdateStructuredError(parsed.Format, stdout, stderr, updateErrorReport{
 			SchemaVersion: reportSchemaVersion,
 			Status:        reportStatusError,
@@ -458,7 +449,7 @@ func buildUpdateSARIFReport(report updateReport) reportpkg.SARIFDocument {
 			ruleID = skill.ErrorCode
 		}
 		if ruleID == "" {
-			ruleID = "UPDATE_SKILL_STATUS"
+			ruleID = rulepkg.UpdateSkillStatus.ID
 		}
 		summary := skill.Message
 		if strings.TrimSpace(summary) == "" {
@@ -517,7 +508,7 @@ func buildUpdateReportWithDeps(targetRoot string, policyLoaded bool, cfg policyp
 	skills := make([]updateSkillItem, 0, len(entries))
 	for _, entry := range entries {
 		if entry.Type()&os.ModeSymlink != 0 {
-			return updateReport{}, fmt.Errorf("%s: update target entry must not be a symlink: %s", ruleUpdateTargetEntrySymlink, filepath.Join(cleanTarget, entry.Name()))
+			return updateReport{}, fmt.Errorf("%s: update target entry must not be a symlink: %s", rulepkg.UpdateTargetEntrySymlink.ID, filepath.Join(cleanTarget, entry.Name()))
 		}
 		if !entry.IsDir() {
 			continue
@@ -1292,7 +1283,7 @@ func cappedWeightedContribution(count int, weight int, absCap int) int {
 }
 
 func collectURLs(root string) ([]string, error) {
-	if err := ensureUpdateScanRoot(root, "URL scan", ruleUpdateURLScanSymlink, ruleUpdateURLScanSpecialFile); err != nil {
+	if err := ensureUpdateScanRoot(root, "URL scan", rulepkg.UpdateURLScanSymlink.ID, rulepkg.UpdateURLScanSpecialFile.ID); err != nil {
 		return nil, err
 	}
 	set := make(map[string]struct{}, 32)
@@ -1312,7 +1303,7 @@ func collectURLs(root string) ([]string, error) {
 			if relErr == nil {
 				path = filepath.ToSlash(rel)
 			}
-			return fmt.Errorf("%s: URL scan input contains symlink: %s", ruleUpdateURLScanSymlink, path)
+			return fmt.Errorf("%s: URL scan input contains symlink: %s", rulepkg.UpdateURLScanSymlink.ID, path)
 		}
 		info, err := os.Lstat(path)
 		if err != nil {
@@ -1365,7 +1356,7 @@ func ensureURLScanRegularFile(info os.FileInfo, path string, root string) error 
 	if relErr == nil {
 		path = filepath.ToSlash(rel)
 	}
-	return fmt.Errorf("%s: URL scan input contains non-regular file: %s", ruleUpdateURLScanSpecialFile, path)
+	return fmt.Errorf("%s: URL scan input contains non-regular file: %s", rulepkg.UpdateURLScanSpecialFile.ID, path)
 }
 
 func relativePathForMessage(path string, root string) string {
@@ -1381,13 +1372,13 @@ func ensureURLScanStableFile(previous os.FileInfo, current os.FileInfo, path str
 		Previous: previous,
 		Path:     relativePathForMessage(path, root),
 		ChangedError: func(path string) error {
-			return fmt.Errorf("%s: URL scan source changed during read: %s", ruleUpdateURLScanSourceChanged, path)
+			return fmt.Errorf("%s: URL scan source changed during read: %s", rulepkg.UpdateURLScanSourceChangedDuringRead.ID, path)
 		},
 	}.CheckCurrent(current)
 }
 
 func collectExecutableFiles(root string) ([]string, error) {
-	if err := ensureUpdateScanRoot(root, "executable scan", ruleUpdateExecutableScanSymlink, ruleUpdateExecutableScanSpecialFile); err != nil {
+	if err := ensureUpdateScanRoot(root, "executable scan", rulepkg.UpdateExecutableScanSymlink.ID, rulepkg.UpdateExecutableScanSpecialFile.ID); err != nil {
 		return nil, err
 	}
 	set := make(map[string]struct{}, 16)
@@ -1404,7 +1395,7 @@ func collectExecutableFiles(root string) ([]string, error) {
 			if relErr == nil {
 				path = filepath.ToSlash(rel)
 			}
-			return fmt.Errorf("%s: executable scan input contains symlink: %s", ruleUpdateExecutableScanSymlink, path)
+			return fmt.Errorf("%s: executable scan input contains symlink: %s", rulepkg.UpdateExecutableScanSymlink.ID, path)
 		}
 		info, err := os.Lstat(path)
 		if err != nil {
@@ -1415,7 +1406,7 @@ func collectExecutableFiles(root string) ([]string, error) {
 			if relErr == nil {
 				path = filepath.ToSlash(rel)
 			}
-			return fmt.Errorf("%s: executable scan input contains non-regular file: %s", ruleUpdateExecutableScanSpecialFile, path)
+			return fmt.Errorf("%s: executable scan input contains non-regular file: %s", rulepkg.UpdateExecutableScanSpecialFile.ID, path)
 		}
 		scannedFiles++
 		if scannedFiles > updateMaxScanFiles {
@@ -1454,7 +1445,7 @@ func readURLScanContent(r io.Reader, path string, root string) (string, error) {
 		if relErr == nil {
 			path = filepath.ToSlash(rel)
 		}
-		return "", fmt.Errorf("%s: markdown file must be valid UTF-8: %s", ruleUpdateURLScanInvalidUTF8, path)
+		return "", fmt.Errorf("%s: markdown file must be valid UTF-8: %s", rulepkg.UpdateURLScanInvalidUTF8.ID, path)
 	}
 	return content.String(), nil
 }

@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	policypkg "github.com/watany-dev/gokui/internal/policy"
+	rulepkg "github.com/watany-dev/gokui/internal/rule"
 )
 
 func TestRunUpdateDryRunRejectedAndError(t *testing.T) {
@@ -438,7 +439,7 @@ func TestRunUpdateDryRunRejectedAndError(t *testing.T) {
 		if !strings.Contains(stdout.String(), "\"error_code\": \""+updateCodeEvaluationError+"\"") {
 			t.Fatalf("stdout should include evaluation error_code, got %q", stdout.String())
 		}
-		if !strings.Contains(stdout.String(), "\"rule_id\": \""+ruleUpdateURLScanSymlink+"\"") {
+		if !strings.Contains(stdout.String(), "\"rule_id\": \""+rulepkg.UpdateURLScanSymlink.ID+"\"") {
 			t.Fatalf("stdout should include URL-scan symlink rule_id, got %q", stdout.String())
 		}
 	})
@@ -476,7 +477,7 @@ func TestRunUpdateDryRunRejectedAndError(t *testing.T) {
 		if !strings.Contains(stdout.String(), "\"error_code\": \""+updateCodeEvaluationError+"\"") {
 			t.Fatalf("stdout should include evaluation error_code, got %q", stdout.String())
 		}
-		if !strings.Contains(stdout.String(), "\"rule_id\": \""+ruleUpdateURLScanInvalidUTF8+"\"") {
+		if !strings.Contains(stdout.String(), "\"rule_id\": \""+rulepkg.UpdateURLScanInvalidUTF8.ID+"\"") {
 			t.Fatalf("stdout should include URL-scan utf8 rule_id, got %q", stdout.String())
 		}
 	})
@@ -520,7 +521,7 @@ func TestRunUpdateDryRunRejectedAndError(t *testing.T) {
 		if !strings.Contains(stdout.String(), "\"error_code\": \""+updateCodeEvaluationError+"\"") {
 			t.Fatalf("stdout should include evaluation error_code, got %q", stdout.String())
 		}
-		if !strings.Contains(stdout.String(), "\"rule_id\": \""+ruleUpdateExecutableScanSymlink+"\"") {
+		if !strings.Contains(stdout.String(), "\"rule_id\": \""+rulepkg.UpdateExecutableScanSymlink.ID+"\"") {
 			t.Fatalf("stdout should include executable-scan symlink rule_id, got %q", stdout.String())
 		}
 	})

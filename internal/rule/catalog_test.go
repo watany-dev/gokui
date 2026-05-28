@@ -83,6 +83,15 @@ func TestCatalogIncludesScanRules(t *testing.T) {
 		{InstallReportSpecialFile, "INSTALL_REPORT_SPECIAL_FILE", SeverityHigh},
 		{InstallReportSourceChangedDuringRead, "INSTALL_REPORT_SOURCE_CHANGED_DURING_READ", SeverityHigh},
 		{LockVerifyPathSymlink, "LOCK_VERIFY_PATH_SYMLINK_DETECTED", SeverityHigh},
+		{UpdateTargetSymlink, "UPDATE_TARGET_SYMLINK_DETECTED", SeverityHigh},
+		{UpdateTargetEntrySymlink, "UPDATE_TARGET_ENTRY_SYMLINK_DETECTED", SeverityHigh},
+		{UpdateURLScanSymlink, "UPDATE_URL_SCAN_SYMLINK_DETECTED", SeverityHigh},
+		{UpdateURLScanSpecialFile, "UPDATE_URL_SCAN_SPECIAL_FILE", SeverityHigh},
+		{UpdateURLScanSourceChangedDuringRead, "UPDATE_URL_SCAN_SOURCE_CHANGED_DURING_READ", SeverityHigh},
+		{UpdateURLScanInvalidUTF8, "UPDATE_URL_SCAN_INVALID_UTF8", SeverityHigh},
+		{UpdateExecutableScanSymlink, "UPDATE_EXECUTABLE_SCAN_SYMLINK_DETECTED", SeverityHigh},
+		{UpdateExecutableScanSpecialFile, "UPDATE_EXECUTABLE_SCAN_SPECIAL_FILE", SeverityHigh},
+		{UpdateSkillStatus, "UPDATE_SKILL_STATUS", SeverityHigh},
 	}
 
 	for _, tc := range cases {

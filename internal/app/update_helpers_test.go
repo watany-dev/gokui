@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	policypkg "github.com/watany-dev/gokui/internal/policy"
+	rulepkg "github.com/watany-dev/gokui/internal/rule"
 )
 
 func TestUpdateHelpers(t *testing.T) {
@@ -104,7 +105,7 @@ func TestUpdateHelpers(t *testing.T) {
 		}
 
 		_, err := collectURLs(linkRoot)
-		if err == nil || !strings.Contains(err.Error(), ruleUpdateURLScanSymlink) {
+		if err == nil || !strings.Contains(err.Error(), rulepkg.UpdateURLScanSymlink.ID) {
 			t.Fatalf("expected URL-scan root symlink rejection, got %v", err)
 		}
 	})
@@ -116,7 +117,7 @@ func TestUpdateHelpers(t *testing.T) {
 		}
 
 		_, err := collectURLs(rootFile)
-		if err == nil || !strings.Contains(err.Error(), ruleUpdateURLScanSpecialFile) {
+		if err == nil || !strings.Contains(err.Error(), rulepkg.UpdateURLScanSpecialFile.ID) {
 			t.Fatalf("expected URL-scan non-directory rejection, got %v", err)
 		}
 	})
@@ -136,7 +137,7 @@ func TestUpdateHelpers(t *testing.T) {
 		}
 
 		_, err := collectURLs(root)
-		if err == nil || !strings.Contains(err.Error(), ruleUpdateURLScanSymlink) {
+		if err == nil || !strings.Contains(err.Error(), rulepkg.UpdateURLScanSymlink.ID) {
 			t.Fatalf("expected URL-scan symlink rejection, got %v", err)
 		}
 	})
@@ -156,7 +157,7 @@ func TestUpdateHelpers(t *testing.T) {
 		}
 
 		_, err := collectURLs(root)
-		if err == nil || !strings.Contains(err.Error(), ruleUpdateURLScanSpecialFile) {
+		if err == nil || !strings.Contains(err.Error(), rulepkg.UpdateURLScanSpecialFile.ID) {
 			t.Fatalf("expected URL-scan special-file rejection, got %v", err)
 		}
 	})
@@ -199,7 +200,7 @@ func TestUpdateHelpers(t *testing.T) {
 		}
 
 		_, err := collectExecutableFiles(root)
-		if err == nil || !strings.Contains(err.Error(), ruleUpdateExecutableScanSymlink) {
+		if err == nil || !strings.Contains(err.Error(), rulepkg.UpdateExecutableScanSymlink.ID) {
 			t.Fatalf("expected executable-scan symlink rejection, got %v", err)
 		}
 	})
@@ -246,7 +247,7 @@ func TestUpdateHelpers(t *testing.T) {
 		}
 
 		_, err := collectExecutableFiles(linkRoot)
-		if err == nil || !strings.Contains(err.Error(), ruleUpdateExecutableScanSymlink) {
+		if err == nil || !strings.Contains(err.Error(), rulepkg.UpdateExecutableScanSymlink.ID) {
 			t.Fatalf("expected executable-scan root symlink rejection, got %v", err)
 		}
 	})
@@ -258,7 +259,7 @@ func TestUpdateHelpers(t *testing.T) {
 		}
 
 		_, err := collectExecutableFiles(rootFile)
-		if err == nil || !strings.Contains(err.Error(), ruleUpdateExecutableScanSpecialFile) {
+		if err == nil || !strings.Contains(err.Error(), rulepkg.UpdateExecutableScanSpecialFile.ID) {
 			t.Fatalf("expected executable-scan non-directory rejection, got %v", err)
 		}
 	})
@@ -278,7 +279,7 @@ func TestUpdateHelpers(t *testing.T) {
 		}
 
 		_, err := collectExecutableFiles(root)
-		if err == nil || !strings.Contains(err.Error(), ruleUpdateExecutableScanSpecialFile) {
+		if err == nil || !strings.Contains(err.Error(), rulepkg.UpdateExecutableScanSpecialFile.ID) {
 			t.Fatalf("expected executable-scan special-file rejection, got %v", err)
 		}
 	})
@@ -310,7 +311,7 @@ func TestUpdateHelpers(t *testing.T) {
 		}
 
 		_, err = readURLScanContent(bytes.NewReader([]byte{0xff}), path, root)
-		if err == nil || !strings.Contains(err.Error(), ruleUpdateURLScanInvalidUTF8) {
+		if err == nil || !strings.Contains(err.Error(), rulepkg.UpdateURLScanInvalidUTF8.ID) {
 			t.Fatalf("expected invalid utf-8 URL scan error, got %v", err)
 		}
 	})
@@ -340,7 +341,7 @@ func TestUpdateHelpers(t *testing.T) {
 			t.Fatalf("write invalid utf-8 markdown: %v", err)
 		}
 		_, err := collectURLs(root)
-		if err == nil || !strings.Contains(err.Error(), ruleUpdateURLScanInvalidUTF8) {
+		if err == nil || !strings.Contains(err.Error(), rulepkg.UpdateURLScanInvalidUTF8.ID) {
 			t.Fatalf("expected URL scan invalid-utf8 error, got %v", err)
 		}
 	})
@@ -365,7 +366,7 @@ func TestUpdateHelpers(t *testing.T) {
 			t.Fatalf("lstat root dir: %v", err)
 		}
 		err = ensureURLScanRegularFile(dirInfo, root, root)
-		if err == nil || !strings.Contains(err.Error(), ruleUpdateURLScanSpecialFile) {
+		if err == nil || !strings.Contains(err.Error(), rulepkg.UpdateURLScanSpecialFile.ID) {
 			t.Fatalf("expected non-regular file error, got %v", err)
 		}
 	})
@@ -394,7 +395,7 @@ func TestUpdateHelpers(t *testing.T) {
 			t.Fatalf("same file identity should pass, got %v", err)
 		}
 		err = ensureURLScanStableFile(firstInfo, secondInfo, secondPath, root)
-		if err == nil || !strings.Contains(err.Error(), ruleUpdateURLScanSourceChanged) {
+		if err == nil || !strings.Contains(err.Error(), rulepkg.UpdateURLScanSourceChangedDuringRead.ID) {
 			t.Fatalf("expected changed-source error, got %v", err)
 		}
 	})
