@@ -89,25 +89,19 @@ func runLockVerify(args []string, stdout io.Writer, stderr io.Writer) int {
 	requestedSARIF := argsRequestFormat(args, formatpkg.SARIF)
 	parsed, err := parseLockVerifyArgs(args)
 	if err != nil {
+		report := lockVerifyErrorReport{
+			SchemaVersion: reportSchemaVersion,
+			SkillPath:     extractLockVerifyPathArg(args),
+			Status:        reportStatusError,
+			ErrorCode:     lockVerifyErrorCodeArgsInvalid,
+			Message:       err.Error(),
+			Note:          "lock verify failed before path validation",
+		}
 		if requestedJSON {
-			return writeLockVerifyJSONError(stdout, stderr, lockVerifyErrorReport{
-				SchemaVersion: reportSchemaVersion,
-				SkillPath:     extractLockVerifyPathArg(args),
-				Status:        reportStatusError,
-				ErrorCode:     lockVerifyErrorCodeArgsInvalid,
-				Message:       err.Error(),
-				Note:          "lock verify failed before path validation",
-			})
+			return writeLockVerifyJSONError(stdout, stderr, report)
 		}
 		if requestedSARIF {
-			return writeLockVerifySARIFError(stdout, stderr, lockVerifyErrorReport{
-				SchemaVersion: reportSchemaVersion,
-				SkillPath:     extractLockVerifyPathArg(args),
-				Status:        reportStatusError,
-				ErrorCode:     lockVerifyErrorCodeArgsInvalid,
-				Message:       err.Error(),
-				Note:          "lock verify failed before path validation",
-			})
+			return writeLockVerifySARIFError(stdout, stderr, report)
 		}
 		_, _ = fmt.Fprintf(stderr, "%s\n\n%s\n", err.Error(), usage())
 		return exitcode.Error.Int()
@@ -123,11 +117,8 @@ func runLockVerify(args []string, stdout io.Writer, stderr io.Writer) int {
 			Message:       verifyErr.Error(),
 			Note:          "lock verify failed before producing drift report",
 		}
-		switch formatpkg.Format(parsed.Format) {
-		case formatpkg.JSON:
-			return writeLockVerifyJSONError(stdout, stderr, errorReport)
-		case formatpkg.SARIF:
-			return writeLockVerifySARIFError(stdout, stderr, errorReport)
+		if emitLockVerifyStructuredError(parsed.Format, stdout, stderr, errorReport) {
+			return exitcode.Error.Int()
 		}
 		_, _ = fmt.Fprintln(stderr, verifyErr.Error())
 		return exitcode.Error.Int()

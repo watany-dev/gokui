@@ -6,6 +6,7 @@ import (
 	"sort"
 	"strings"
 
+	formatpkg "github.com/watany-dev/gokui/internal/cli/format"
 	reportpkg "github.com/watany-dev/gokui/internal/report"
 )
 
@@ -132,6 +133,13 @@ func writeLockVerifyJSONError(stdout io.Writer, stderr io.Writer, report lockVer
 func writeLockVerifySARIFError(stdout io.Writer, stderr io.Writer, report lockVerifyErrorReport) int {
 	report.Status, report.ErrorCode, report.RuleID = normalizeStructuredErrorFields(report.ErrorCode, report.RuleID, report.Message, lockVerifyErrorCodeUnknown)
 	return writeSARIFErrorReport(stdout, stderr, buildLockVerifySARIFErrorReport(report), "lock verify")
+}
+
+func emitLockVerifyStructuredError(format string, stdout io.Writer, stderr io.Writer, report lockVerifyErrorReport) bool {
+	return emitStructuredError(formatpkg.Format(format),
+		func() { _ = writeLockVerifyJSONError(stdout, stderr, report) },
+		func() { _ = writeLockVerifySARIFError(stdout, stderr, report) },
+	)
 }
 
 func buildLockVerifySARIFErrorReport(report lockVerifyErrorReport) reportpkg.SARIFDocument {
