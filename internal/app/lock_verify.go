@@ -105,7 +105,7 @@ func runLockVerify(args []string, stdout io.Writer, stderr io.Writer) int {
 			return writeLockVerifyJSONError(stdout, stderr, lockVerifyErrorReport{
 				SchemaVersion: reportSchemaVersion,
 				SkillPath:     extractLockVerifyPathArg(args),
-				Status:        "ERROR",
+				Status:        reportStatusError,
 				ErrorCode:     lockVerifyErrorCodeArgsInvalid,
 				Message:       err.Error(),
 				Note:          "lock verify failed before path validation",
@@ -115,7 +115,7 @@ func runLockVerify(args []string, stdout io.Writer, stderr io.Writer) int {
 			return writeLockVerifySARIFError(stdout, stderr, lockVerifyErrorReport{
 				SchemaVersion: reportSchemaVersion,
 				SkillPath:     extractLockVerifyPathArg(args),
-				Status:        "ERROR",
+				Status:        reportStatusError,
 				ErrorCode:     lockVerifyErrorCodeArgsInvalid,
 				Message:       err.Error(),
 				Note:          "lock verify failed before path validation",
@@ -130,7 +130,7 @@ func runLockVerify(args []string, stdout io.Writer, stderr io.Writer) int {
 		errorReport := lockVerifyErrorReport{
 			SchemaVersion: reportSchemaVersion,
 			SkillPath:     filepath.Clean(parsed.Path),
-			Status:        "ERROR",
+			Status:        reportStatusError,
 			ErrorCode:     classifyLockVerifyError(verifyErr),
 			Message:       verifyErr.Error(),
 			Note:          "lock verify failed before producing drift report",

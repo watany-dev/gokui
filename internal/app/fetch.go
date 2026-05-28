@@ -87,7 +87,7 @@ func runFetchWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps fe
 		sourceArg := extractFetchSourceArg(args)
 		report := fetchErrorReport{
 			SchemaVersion: reportSchemaVersion,
-			Status:        "ERROR",
+			Status:        reportStatusError,
 			ErrorCode:     fetchErrorCodeArgsInvalid,
 			Message:       err.Error(),
 			Source: source{
@@ -111,7 +111,7 @@ func runFetchWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps fe
 	if sourceKind != "github-source" {
 		if emitFetchStructuredError(parsed.Format, stdout, stderr, fetchErrorReport{
 			SchemaVersion: reportSchemaVersion,
-			Status:        "ERROR",
+			Status:        reportStatusError,
 			ErrorCode:     fetchErrorCodeSourceUnsupported,
 			Message:       "fetch currently supports github sources only",
 			Source: source{
@@ -131,7 +131,7 @@ func runFetchWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps fe
 	if err != nil {
 		if emitFetchStructuredError(parsed.Format, stdout, stderr, fetchErrorReport{
 			SchemaVersion: reportSchemaVersion,
-			Status:        "ERROR",
+			Status:        reportStatusError,
 			ErrorCode:     fetchErrorCodeSourceInvalid,
 			Message:       fmt.Sprintf("invalid github source: %v", err),
 			Source: source{
@@ -149,7 +149,7 @@ func runFetchWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps fe
 	if !srcpkg.IsCommitPinnedRef(spec.Ref) {
 		if emitFetchStructuredError(parsed.Format, stdout, stderr, fetchErrorReport{
 			SchemaVersion: reportSchemaVersion,
-			Status:        "ERROR",
+			Status:        reportStatusError,
 			ErrorCode:     fetchErrorCodeSourceRefNotPinned,
 			Message:       "fetch requires a commit-pinned ref (e.g. @8f3c2d1a4b5c6d7e8f901234567890abcdef1234)",
 			Source: source{
@@ -172,7 +172,7 @@ func runFetchWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps fe
 	if err != nil {
 		if emitFetchStructuredError(parsed.Format, stdout, stderr, fetchErrorReport{
 			SchemaVersion: reportSchemaVersion,
-			Status:        "ERROR",
+			Status:        reportStatusError,
 			ErrorCode:     fetchErrorCodeSourceDownloadFailed,
 			Message:       err.Error(),
 			Source: source{
@@ -192,7 +192,7 @@ func runFetchWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps fe
 	if err != nil {
 		if emitFetchStructuredError(parsed.Format, stdout, stderr, fetchErrorReport{
 			SchemaVersion: reportSchemaVersion,
-			Status:        "ERROR",
+			Status:        reportStatusError,
 			ErrorCode:     fetchErrorCodeSkillInvalid,
 			Message:       err.Error(),
 			Source: source{
@@ -212,7 +212,7 @@ func runFetchWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps fe
 	if err := rejectSymlinkPath(outRoot, "fetch output root", ruleFetchOutputSymlink); err != nil {
 		if emitFetchStructuredError(parsed.Format, stdout, stderr, fetchErrorReport{
 			SchemaVersion: reportSchemaVersion,
-			Status:        "ERROR",
+			Status:        reportStatusError,
 			ErrorCode:     fetchErrorCodeOutputPrepareFailed,
 			Message:       err.Error(),
 			Source: source{
@@ -230,7 +230,7 @@ func runFetchWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps fe
 	if err := os.MkdirAll(outRoot, 0o755); err != nil {
 		if emitFetchStructuredError(parsed.Format, stdout, stderr, fetchErrorReport{
 			SchemaVersion: reportSchemaVersion,
-			Status:        "ERROR",
+			Status:        reportStatusError,
 			ErrorCode:     fetchErrorCodeOutputPrepareFailed,
 			Message:       fmt.Sprintf("failed to prepare fetch output root: %v", err),
 			Source: source{
@@ -250,7 +250,7 @@ func runFetchWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps fe
 	if err != nil {
 		if emitFetchStructuredError(parsed.Format, stdout, stderr, fetchErrorReport{
 			SchemaVersion: reportSchemaVersion,
-			Status:        "ERROR",
+			Status:        reportStatusError,
 			ErrorCode:     fetchErrorCodeCopyFailed,
 			Message:       err.Error(),
 			Source: source{
@@ -271,7 +271,7 @@ func runFetchWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps fe
 	if err != nil {
 		if emitFetchStructuredError(parsed.Format, stdout, stderr, fetchErrorReport{
 			SchemaVersion: reportSchemaVersion,
-			Status:        "ERROR",
+			Status:        reportStatusError,
 			ErrorCode:     fetchErrorCodeDigestFailed,
 			Message:       err.Error(),
 			Source: source{
@@ -296,7 +296,7 @@ func runFetchWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps fe
 	}); err != nil {
 		if emitFetchStructuredError(parsed.Format, stdout, stderr, fetchErrorReport{
 			SchemaVersion: reportSchemaVersion,
-			Status:        "ERROR",
+			Status:        reportStatusError,
 			ErrorCode:     fetchErrorCodeMetadataWriteFailed,
 			Message:       err.Error(),
 			Source: source{
@@ -319,7 +319,7 @@ func runFetchWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps fe
 			Kind:  sourceKind,
 		},
 		Output:   dest,
-		Decision: "FETCHED",
+		Decision: reportDecisionFetchDone,
 		Note:     "pre-release fetch materializes commit-pinned github source into quarantine",
 	}
 

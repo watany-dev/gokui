@@ -181,7 +181,7 @@ func runInstallWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps 
 			sourceKind := detectSourceKind(sourceArg)
 			return writeInstallJSONError(stdout, stderr, installErrorReport{
 				SchemaVersion: reportSchemaVersion,
-				Status:        "ERROR",
+				Status:        reportStatusError,
 				ErrorCode:     installErrorCodeArgsInvalid,
 				Message:       err.Error(),
 				Source: source{
@@ -198,7 +198,7 @@ func runInstallWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps 
 			sourceKind := detectSourceKind(sourceArg)
 			return writeInstallSARIFError(stdout, stderr, installErrorReport{
 				SchemaVersion: reportSchemaVersion,
-				Status:        "ERROR",
+				Status:        reportStatusError,
 				ErrorCode:     installErrorCodeArgsInvalid,
 				Message:       err.Error(),
 				Source: source{
@@ -217,7 +217,7 @@ func runInstallWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps 
 	if policyErr != nil {
 		if emitInstallStructuredError(parsed.Format, stdout, stderr, installErrorReport{
 			SchemaVersion: reportSchemaVersion,
-			Status:        "ERROR",
+			Status:        reportStatusError,
 			ErrorCode:     installErrorCodePolicyLoadFailed,
 			Message:       policyErr.Error(),
 			Source: source{
@@ -240,7 +240,7 @@ func runInstallWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps 
 			if errors.Is(statErr, os.ErrNotExist) {
 				if emitInstallStructuredError(parsed.Format, stdout, stderr, installErrorReport{
 					SchemaVersion: reportSchemaVersion,
-					Status:        "ERROR",
+					Status:        reportStatusError,
 					ErrorCode:     installErrorCodeSourceNotFound,
 					Message:       fmt.Sprintf("install source not found: %s", parsed.Source),
 					Source: source{
@@ -259,7 +259,7 @@ func runInstallWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps 
 			accessErr := fmt.Sprintf("failed to access install source: %v", statErr)
 			if emitInstallStructuredError(parsed.Format, stdout, stderr, installErrorReport{
 				SchemaVersion: reportSchemaVersion,
-				Status:        "ERROR",
+				Status:        reportStatusError,
 				ErrorCode:     installErrorCodeSourcePrepareFailed,
 				Message:       accessErr,
 				Source: source{
@@ -284,7 +284,7 @@ func runInstallWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps 
 	if err != nil {
 		if emitInstallStructuredError(parsed.Format, stdout, stderr, installErrorReport{
 			SchemaVersion: reportSchemaVersion,
-			Status:        "ERROR",
+			Status:        reportStatusError,
 			ErrorCode:     installErrorCodeSourcePrepareFailed,
 			Message:       err.Error(),
 			Source: source{
@@ -308,7 +308,7 @@ func runInstallWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps 
 		if repoPolicyErr != nil {
 			if emitInstallStructuredError(parsed.Format, stdout, stderr, installErrorReport{
 				SchemaVersion: reportSchemaVersion,
-				Status:        "ERROR",
+				Status:        reportStatusError,
 				ErrorCode:     installErrorCodePolicyLoadFailed,
 				Message:       repoPolicyErr.Error(),
 				Source: source{
@@ -337,7 +337,7 @@ func runInstallWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps 
 	if _, err := policypkg.ParseProfile(parsed.Profile); err != nil {
 		if emitInstallStructuredError(parsed.Format, stdout, stderr, installErrorReport{
 			SchemaVersion: reportSchemaVersion,
-			Status:        "ERROR",
+			Status:        reportStatusError,
 			ErrorCode:     installErrorCodeProfileUnsupported,
 			Message:       fmt.Sprintf("unsupported profile: %s (supported: %s)", parsed.Profile, policypkg.SupportedProfilesCSV()),
 			Source: source{
@@ -356,7 +356,7 @@ func runInstallWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps 
 	if err := validateInstallOverridesPolicy(parsed.Profile, parsed.Overrides, effectivePolicyLoaded, effectivePolicy); err != nil {
 		if emitInstallStructuredError(parsed.Format, stdout, stderr, installErrorReport{
 			SchemaVersion: reportSchemaVersion,
-			Status:        "ERROR",
+			Status:        reportStatusError,
 			ErrorCode:     installErrorCodeOverrideNotAllowed,
 			Message:       err.Error(),
 			Source: source{
@@ -377,7 +377,7 @@ func runInstallWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps 
 	if err != nil {
 		if emitInstallStructuredError(parsed.Format, stdout, stderr, installErrorReport{
 			SchemaVersion: reportSchemaVersion,
-			Status:        "ERROR",
+			Status:        reportStatusError,
 			ErrorCode:     installErrorCodePolicyLoadFailed,
 			Message:       err.Error(),
 			Source: source{
@@ -399,7 +399,7 @@ func runInstallWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps 
 	if err != nil {
 		if emitInstallStructuredError(parsed.Format, stdout, stderr, installErrorReport{
 			SchemaVersion: reportSchemaVersion,
-			Status:        "ERROR",
+			Status:        reportStatusError,
 			ErrorCode:     installErrorCodeEvaluationFailed,
 			Message:       err.Error(),
 			Source: source{
@@ -420,7 +420,7 @@ func runInstallWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps 
 	if err != nil {
 		if emitInstallStructuredError(parsed.Format, stdout, stderr, installErrorReport{
 			SchemaVersion: reportSchemaVersion,
-			Status:        "ERROR",
+			Status:        reportStatusError,
 			ErrorCode:     installErrorCodeSourceMetadataFailed,
 			Message:       err.Error(),
 			Source: source{
@@ -449,7 +449,7 @@ func runInstallWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps 
 		Note:              "pre-release install applies profile-based structural and markdown checks",
 	}
 
-	if decision == "REJECTED" {
+	if decision == reportDecisionRejected {
 		report.ErrorCode = installErrorCodePolicyRejected
 		if parsed.Format == "json" {
 			out, err := json.MarshalIndent(report, "", "  ")
@@ -484,7 +484,7 @@ func runInstallWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps 
 	if targetErr != nil {
 		if emitInstallStructuredError(parsed.Format, stdout, stderr, installErrorReport{
 			SchemaVersion: reportSchemaVersion,
-			Status:        "ERROR",
+			Status:        reportStatusError,
 			ErrorCode:     installErrorCodeTargetInvalid,
 			Message:       targetErr.Error(),
 			Source:        installSource,
@@ -500,7 +500,7 @@ func runInstallWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps 
 	if err := rejectSymlinkPath(targetRoot, "install target root", ruleInstallTargetSymlink); err != nil {
 		if emitInstallStructuredError(parsed.Format, stdout, stderr, installErrorReport{
 			SchemaVersion: reportSchemaVersion,
-			Status:        "ERROR",
+			Status:        reportStatusError,
 			ErrorCode:     installErrorCodeTargetInvalid,
 			Message:       err.Error(),
 			Source:        installSource,
@@ -517,7 +517,7 @@ func runInstallWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps 
 	if err := os.MkdirAll(targetRoot, 0o755); err != nil {
 		if emitInstallStructuredError(parsed.Format, stdout, stderr, installErrorReport{
 			SchemaVersion: reportSchemaVersion,
-			Status:        "ERROR",
+			Status:        reportStatusError,
 			ErrorCode:     installErrorCodeTargetPrepareFailed,
 			Message:       fmt.Sprintf("failed to create install target root: %v", err),
 			Source:        installSource,
@@ -536,7 +536,7 @@ func runInstallWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps 
 	if err != nil {
 		if emitInstallStructuredError(parsed.Format, stdout, stderr, installErrorReport{
 			SchemaVersion: reportSchemaVersion,
-			Status:        "ERROR",
+			Status:        reportStatusError,
 			ErrorCode:     installErrorCodeWriteFailed,
 			Message:       err.Error(),
 			Source:        installSource,
@@ -850,7 +850,7 @@ func evaluateSkillWithOverrides(skillRoot string, profile string, overrideRuleID
 			})
 		}
 		if _, shouldReject := rejectSeveritySet[strings.ToLower(strings.TrimSpace(effectiveSeverity))]; shouldReject {
-			decision = "REJECTED"
+			decision = reportDecisionRejected
 		}
 	}
 	for _, ruleID := range overrideRuleIDs {

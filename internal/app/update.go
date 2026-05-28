@@ -193,7 +193,7 @@ func runUpdateWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps u
 		if requestedJSON {
 			return writeUpdateJSONError(stdout, stderr, updateErrorReport{
 				SchemaVersion: reportSchemaVersion,
-				Status:        "ERROR",
+				Status:        reportStatusError,
 				ErrorCode:     updateFatalCodeArgsInvalid,
 				Message:       err.Error(),
 				Target:        extractUpdateTargetArg(args),
@@ -203,7 +203,7 @@ func runUpdateWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps u
 		if requestedSARIF {
 			return writeUpdateSARIFError(stdout, stderr, updateErrorReport{
 				SchemaVersion: reportSchemaVersion,
-				Status:        "ERROR",
+				Status:        reportStatusError,
 				ErrorCode:     updateFatalCodeArgsInvalid,
 				Message:       err.Error(),
 				Target:        extractUpdateTargetArg(args),
@@ -218,7 +218,7 @@ func runUpdateWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps u
 	if err != nil {
 		if emitUpdateStructuredError(parsed.Format, stdout, stderr, updateErrorReport{
 			SchemaVersion: reportSchemaVersion,
-			Status:        "ERROR",
+			Status:        reportStatusError,
 			ErrorCode:     updateFatalCodeTargetInvalid,
 			Message:       err.Error(),
 			Target:        parsed.Target,
@@ -232,7 +232,7 @@ func runUpdateWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps u
 	if err := rejectSymlinkPath(targetRoot, "update target root", ruleUpdateTargetSymlink); err != nil {
 		if emitUpdateStructuredError(parsed.Format, stdout, stderr, updateErrorReport{
 			SchemaVersion: reportSchemaVersion,
-			Status:        "ERROR",
+			Status:        reportStatusError,
 			ErrorCode:     updateFatalCodeTargetInvalid,
 			Message:       err.Error(),
 			Target:        parsed.Target,
@@ -248,7 +248,7 @@ func runUpdateWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps u
 	if policyErr != nil {
 		if emitUpdateStructuredError(parsed.Format, stdout, stderr, updateErrorReport{
 			SchemaVersion: reportSchemaVersion,
-			Status:        "ERROR",
+			Status:        reportStatusError,
 			ErrorCode:     updateFatalCodePolicyLoadFail,
 			Message:       policyErr.Error(),
 			Target:        targetRoot,
@@ -268,7 +268,7 @@ func runUpdateWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps u
 		}
 		if emitUpdateStructuredError(parsed.Format, stdout, stderr, updateErrorReport{
 			SchemaVersion: reportSchemaVersion,
-			Status:        "ERROR",
+			Status:        reportStatusError,
 			ErrorCode:     errorCode,
 			Message:       err.Error(),
 			Target:        targetRoot,
@@ -425,9 +425,9 @@ func parseUpdateArgs(args []string) (updateArgs, error) {
 func buildUpdateSARIFReport(report updateReport) reportpkg.SARIFDocument {
 	decision := "PASS"
 	if report.Summary.Errors > 0 {
-		decision = "ERROR"
+		decision = reportStatusError
 	} else if report.Summary.Rejected > 0 {
-		decision = "REJECTED"
+		decision = reportDecisionRejected
 	} else if report.Summary.Changed > 0 {
 		decision = "CHANGED"
 	}
@@ -454,7 +454,7 @@ func buildUpdateSARIFReport(report updateReport) reportpkg.SARIFDocument {
 			}
 			continue
 		}
-		if skill.Status != "ERROR" && skill.Status != "REJECTED" {
+		if skill.Status != reportStatusError && skill.Status != reportDecisionRejected {
 			continue
 		}
 		ruleID := skill.RuleID
@@ -549,7 +549,7 @@ func buildUpdateReportWithDeps(targetRoot string, policyLoaded bool, cfg policyp
 		lockPath := filepath.Join(skillPath, installLockFile)
 		lock, err := readInstallLock(lockPath)
 		if err != nil {
-			item.Status = "ERROR"
+			item.Status = reportStatusError
 			item.ErrorCode = updateCodeLockfileInvalid
 			item.Message = "missing or invalid lockfile"
 			item.RuleID = rulepkg.InferIDForJSONError(item.Message)
@@ -564,7 +564,7 @@ func buildUpdateReportWithDeps(targetRoot string, policyLoaded bool, cfg policyp
 
 		enriched, err := evaluateUpdateSkillWithDeps(item, lock, policyLoaded, cfg, deps)
 		if err != nil {
-			item.Status = "ERROR"
+			item.Status = reportStatusError
 			item.ErrorCode = updateCodeEvaluationError
 			item.Message = err.Error()
 			item.RuleID = rulepkg.InferIDForJSONError(item.Message)
@@ -613,7 +613,7 @@ func evaluateUpdateSkillWithDeps(item updateSkillItem, lock installLock, policyL
 
 	effectivePolicy, effectivePolicyLoaded, repoPolicyErr := resolveUpdateEvaluationPolicyWithDeps(inputs.kind, skillRoot, policyLoaded, cfg, deps)
 	if repoPolicyErr != nil {
-		return failUpdateSkillItem(item, lock, "ERROR", updateCodeEvaluationError, repoPolicyErr.Error()), nil
+		return failUpdateSkillItem(item, lock, reportStatusError, updateCodeEvaluationError, repoPolicyErr.Error()), nil
 	}
 
 	findingsEvaluation, err := evaluateUpdateSourceFindings(skillRoot, inputs.policyProfile, effectivePolicyLoaded, effectivePolicy, lock.Policy.SeverityOverrides)
@@ -672,7 +672,7 @@ func evaluateUpdateSourceFindings(skillRoot string, policyProfile string, policy
 	rejectSeverities, err := policypkg.EffectiveRejectSeverities(policypkg.NormalizeProfile(policyProfile), policyLoaded, cfg)
 	if err != nil {
 		return updateSourceFindingsEvaluation{
-			failure: &updateSkillFailure{"ERROR", updateCodeEvaluationError, err.Error()},
+			failure: &updateSkillFailure{reportStatusError, updateCodeEvaluationError, err.Error()},
 		}, nil
 	}
 	rejectSet := rejectSeverities.Strings()
@@ -728,7 +728,7 @@ func validateUpdateLockForEvaluation(item updateSkillItem, lock installLock) (up
 
 func checkUpdateLockEnvelope(ctx *updateLockEvaluationContext) *updateSkillFailure {
 	if err := validateUpdateLockEnvelope(ctx.lock, ctx.item.Name); err != nil {
-		return &updateSkillFailure{"ERROR", updateCodeLockfileInvalid, err.Error()}
+		return &updateSkillFailure{reportStatusError, updateCodeLockfileInvalid, err.Error()}
 	}
 	return nil
 }
@@ -736,7 +736,7 @@ func checkUpdateLockEnvelope(ctx *updateLockEvaluationContext) *updateSkillFailu
 func checkUpdateLockPolicy(ctx *updateLockEvaluationContext) *updateSkillFailure {
 	policyProfile, err := validateUpdateLockPolicy(ctx.lock.Policy)
 	if err != nil {
-		return &updateSkillFailure{"ERROR", updateCodeLockfileInvalid, err.Error()}
+		return &updateSkillFailure{reportStatusError, updateCodeLockfileInvalid, err.Error()}
 	}
 	ctx.inputs.policyProfile = policyProfile
 	return nil
@@ -758,14 +758,14 @@ func checkUpdateLockGitHubSource(ctx *updateLockEvaluationContext) *updateSkillF
 
 func checkUpdateLockSkillSnapshot(ctx *updateLockEvaluationContext) *updateSkillFailure {
 	if err := validateUpdateLockSkillSnapshot(ctx.lock); err != nil {
-		return &updateSkillFailure{"ERROR", updateCodeLockfileInvalid, err.Error()}
+		return &updateSkillFailure{reportStatusError, updateCodeLockfileInvalid, err.Error()}
 	}
 	return nil
 }
 
 func checkUpdateLockInstallReport(ctx *updateLockEvaluationContext) *updateSkillFailure {
 	if err := validateUpdateLockAgainstInstallReport(ctx.item.Path, ctx.lock); err != nil {
-		return &updateSkillFailure{"ERROR", updateCodeLockfileInvalid, err.Error()}
+		return &updateSkillFailure{reportStatusError, updateCodeLockfileInvalid, err.Error()}
 	}
 	return nil
 }
@@ -791,19 +791,19 @@ func validateUpdateGitHubSource(installedPath string, sourceInput string, kind s
 	}
 	spec, parseErr := srcpkg.ParseGitHubSource(sourceInput)
 	if parseErr != nil {
-		return &updateSkillFailure{"ERROR", updateCodeGitHubSourceBad, fmt.Sprintf("invalid github source in lockfile: %v", parseErr)}
+		return &updateSkillFailure{reportStatusError, updateCodeGitHubSourceBad, fmt.Sprintf("invalid github source in lockfile: %v", parseErr)}
 	}
 	if sourceInput != canonicalGitHubSourceInput(spec) {
-		return &updateSkillFailure{"ERROR", updateCodeLockfileInvalid, "github lock source input must be canonical"}
+		return &updateSkillFailure{reportStatusError, updateCodeLockfileInvalid, "github lock source input must be canonical"}
 	}
 	if !srcpkg.IsCommitPinnedRef(spec.Ref) {
-		return &updateSkillFailure{"REJECTED", updateCodeGitHubRefFloating, "floating github refs are not eligible for update; commit-pinned ref required"}
+		return &updateSkillFailure{reportDecisionRejected, updateCodeGitHubRefFloating, "floating github refs are not eligible for update; commit-pinned ref required"}
 	}
 	if err := verifyInstalledSourceMetadata(installedPath, source{
 		Input: sourceInput,
 		Kind:  kind,
 	}); err != nil {
-		return &updateSkillFailure{"ERROR", updateCodeSourceMetadataBad, err.Error()}
+		return &updateSkillFailure{reportStatusError, updateCodeSourceMetadataBad, err.Error()}
 	}
 	return nil
 }
@@ -901,7 +901,7 @@ func evaluateUpdateFindings(findings []inspectFinding, configuredOverrides []sev
 			activeByRule[finding.ID] = override
 		}
 		if _, shouldReject := rejectSet[strings.ToLower(strings.TrimSpace(effectiveSeverity))]; shouldReject {
-			decision = "REJECTED"
+			decision = reportDecisionRejected
 		}
 	}
 
@@ -919,8 +919,8 @@ func evaluateUpdateFindings(findings []inspectFinding, configuredOverrides []sev
 
 func finalizeUpdateSkillStatus(item updateSkillItem) updateSkillItem {
 	switch {
-	case item.Decision == "REJECTED":
-		item.Status = "REJECTED"
+	case item.Decision == reportDecisionRejected:
+		item.Status = reportDecisionRejected
 		item.ErrorCode = updateCodePolicyRejected
 		item.Message = "fresh policy evaluation rejected update source"
 	case updateSkillHasChanges(item):
@@ -993,78 +993,78 @@ func validateUpdateLockSource(lockSource lockSource) (string, string, *updateSki
 	sourceInputRaw := lockSource.Input
 	sourceInput := strings.TrimSpace(sourceInputRaw)
 	if strings.IndexFunc(sourceInputRaw, isC0OrC1ControlRune) >= 0 {
-		return "", "", &updateSkillFailure{"ERROR", updateCodeLockfileInvalid, "lock source input must not contain C0/C1 control characters"}
+		return "", "", &updateSkillFailure{reportStatusError, updateCodeLockfileInvalid, "lock source input must not contain C0/C1 control characters"}
 	}
 	if containsSeverityOverrideDisallowedUnicode(sourceInputRaw) && detectSourceKind(sourceInput) != "github-source" {
-		return "", "", &updateSkillFailure{"ERROR", updateCodeLockfileInvalid, "lock source input must not contain Unicode bidi, zero-width, tag, or variation-selector characters"}
+		return "", "", &updateSkillFailure{reportStatusError, updateCodeLockfileInvalid, "lock source input must not contain Unicode bidi, zero-width, tag, or variation-selector characters"}
 	}
 	if sourceInput == "" {
-		return "", "", &updateSkillFailure{"ERROR", updateCodeLockfileInvalid, "lock source input is empty"}
+		return "", "", &updateSkillFailure{reportStatusError, updateCodeLockfileInvalid, "lock source input is empty"}
 	}
 	if sourceInputRaw != sourceInput {
-		return "", "", &updateSkillFailure{"ERROR", updateCodeLockfileInvalid, "lock source input must not contain leading or trailing whitespace"}
+		return "", "", &updateSkillFailure{reportStatusError, updateCodeLockfileInvalid, "lock source input must not contain leading or trailing whitespace"}
 	}
 
 	kindRaw := lockSource.Kind
 	kind := strings.TrimSpace(kindRaw)
 	detectedKind := detectSourceKind(sourceInput)
 	if strings.IndexFunc(kindRaw, isC0OrC1ControlRune) >= 0 {
-		return "", "", &updateSkillFailure{"ERROR", updateCodeLockfileInvalid, "lock source kind must not contain C0/C1 control characters"}
+		return "", "", &updateSkillFailure{reportStatusError, updateCodeLockfileInvalid, "lock source kind must not contain C0/C1 control characters"}
 	}
 	if containsSeverityOverrideDisallowedUnicode(kindRaw) {
-		return "", "", &updateSkillFailure{"ERROR", updateCodeLockfileInvalid, "lock source kind must not contain Unicode bidi, zero-width, tag, or variation-selector characters"}
+		return "", "", &updateSkillFailure{reportStatusError, updateCodeLockfileInvalid, "lock source kind must not contain Unicode bidi, zero-width, tag, or variation-selector characters"}
 	}
 	if kind == "" {
-		return "", "", &updateSkillFailure{"ERROR", updateCodeLockfileInvalid, "lock source kind is empty"}
+		return "", "", &updateSkillFailure{reportStatusError, updateCodeLockfileInvalid, "lock source kind is empty"}
 	}
 	if kindRaw != kind {
-		return "", "", &updateSkillFailure{"ERROR", updateCodeLockfileInvalid, "lock source kind must not contain leading or trailing whitespace"}
+		return "", "", &updateSkillFailure{reportStatusError, updateCodeLockfileInvalid, "lock source kind must not contain leading or trailing whitespace"}
 	}
 	if kind != strings.ToLower(kind) {
-		return "", "", &updateSkillFailure{"ERROR", updateCodeLockfileInvalid, "lock source kind must be canonical lowercase"}
+		return "", "", &updateSkillFailure{reportStatusError, updateCodeLockfileInvalid, "lock source kind must be canonical lowercase"}
 	}
 	expectedType := sourceTypeFromKind(kind)
 	if expectedType == "unknown" {
-		return "", "", &updateSkillFailure{"ERROR", updateCodeLockfileInvalid, fmt.Sprintf("unsupported source kind in lockfile: %s", kind)}
+		return "", "", &updateSkillFailure{reportStatusError, updateCodeLockfileInvalid, fmt.Sprintf("unsupported source kind in lockfile: %s", kind)}
 	}
 	if expectedType != "github" {
 		cleanedInput := filepath.Clean(sourceInput)
 		if sourceInput != cleanedInput {
-			return "", "", &updateSkillFailure{"ERROR", updateCodeLockfileInvalid, "lock source input must be a canonical cleaned path for local/archive sources"}
+			return "", "", &updateSkillFailure{reportStatusError, updateCodeLockfileInvalid, "lock source input must be a canonical cleaned path for local/archive sources"}
 		}
 	}
 	if kind != detectedKind {
-		return "", "", &updateSkillFailure{"ERROR", updateCodeSourceMetadataBad, fmt.Sprintf("lock source kind does not match source input: kind=%s detected=%s", kind, detectedKind)}
+		return "", "", &updateSkillFailure{reportStatusError, updateCodeSourceMetadataBad, fmt.Sprintf("lock source kind does not match source input: kind=%s detected=%s", kind, detectedKind)}
 	}
 
 	sourceTypeRaw := lockSource.Type
 	sourceType := strings.TrimSpace(sourceTypeRaw)
 	if strings.IndexFunc(sourceTypeRaw, isC0OrC1ControlRune) >= 0 {
-		return "", "", &updateSkillFailure{"ERROR", updateCodeLockfileInvalid, "lock source type must not contain C0/C1 control characters"}
+		return "", "", &updateSkillFailure{reportStatusError, updateCodeLockfileInvalid, "lock source type must not contain C0/C1 control characters"}
 	}
 	if containsSeverityOverrideDisallowedUnicode(sourceTypeRaw) {
-		return "", "", &updateSkillFailure{"ERROR", updateCodeLockfileInvalid, "lock source type must not contain Unicode bidi, zero-width, tag, or variation-selector characters"}
+		return "", "", &updateSkillFailure{reportStatusError, updateCodeLockfileInvalid, "lock source type must not contain Unicode bidi, zero-width, tag, or variation-selector characters"}
 	}
 	if sourceType == "" {
-		return "", "", &updateSkillFailure{"ERROR", updateCodeLockfileInvalid, "lock source type is empty"}
+		return "", "", &updateSkillFailure{reportStatusError, updateCodeLockfileInvalid, "lock source type is empty"}
 	}
 	if sourceTypeRaw != sourceType {
-		return "", "", &updateSkillFailure{"ERROR", updateCodeLockfileInvalid, "lock source type must not contain leading or trailing whitespace"}
+		return "", "", &updateSkillFailure{reportStatusError, updateCodeLockfileInvalid, "lock source type must not contain leading or trailing whitespace"}
 	}
 	if sourceType != strings.ToLower(sourceType) {
-		return "", "", &updateSkillFailure{"ERROR", updateCodeLockfileInvalid, "lock source type must be canonical lowercase"}
+		return "", "", &updateSkillFailure{reportStatusError, updateCodeLockfileInvalid, "lock source type must be canonical lowercase"}
 	}
 	if sourceType != expectedType {
-		return "", "", &updateSkillFailure{"ERROR", updateCodeLockfileInvalid, fmt.Sprintf("source type mismatch for kind %s: expected %s, got %s", kind, expectedType, sourceType)}
+		return "", "", &updateSkillFailure{reportStatusError, updateCodeLockfileInvalid, fmt.Sprintf("source type mismatch for kind %s: expected %s, got %s", kind, expectedType, sourceType)}
 	}
 	return sourceInput, kind, nil
 }
 
 func classifyUpdateSourcePrepareFailure(kind string, err error) (status string, code string) {
-	status = "ERROR"
+	status = reportStatusError
 	code = updateCodeSourcePrepareError
 	if kind == "github-source" && isGitHubRefNotPinnedError(err) {
-		return "REJECTED", updateCodeGitHubRefFloating
+		return reportDecisionRejected, updateCodeGitHubRefFloating
 	}
 	return status, code
 }
@@ -1232,7 +1232,7 @@ func summarizeUpdateSkills(skills []updateSkillItem) updateSummary {
 			out.UpToDate++
 		case "CHANGED":
 			out.Changed++
-		case "REJECTED":
+		case reportDecisionRejected:
 			out.Rejected++
 		case "SKIPPED":
 			out.Skipped++

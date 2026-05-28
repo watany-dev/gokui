@@ -29,6 +29,12 @@ type Config struct {
 	Date    string
 }
 
+const (
+	reportStatusError       = "ERROR"
+	reportDecisionRejected  = "REJECTED"
+	reportDecisionFetchDone = "FETCHED"
+)
+
 type inspectReport struct {
 	SchemaVersion string           `json:"schema_version"`
 	PreRelease    bool             `json:"pre_release"`
@@ -212,7 +218,7 @@ func runVetWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps vetD
 		sourceArg := extractInspectSourceArg(args)
 		report := inspectErrorReport{
 			SchemaVersion: reportSchemaVersion,
-			Status:        "ERROR",
+			Status:        reportStatusError,
 			ErrorCode:     inspectErrorCodeArgsInvalid,
 			Message:       err.Error(),
 			Source: source{
@@ -239,7 +245,7 @@ func runVetWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps vetD
 		msg := "vet does not accept github sources; use local-dir, zip, or tar input"
 		if emitInspectStructuredError(format, stdout, stderr, inspectErrorReport{
 			SchemaVersion: reportSchemaVersion,
-			Status:        "ERROR",
+			Status:        reportStatusError,
 			ErrorCode:     inspectErrorCodeSourceInvalid,
 			Message:       msg,
 			Source: source{
@@ -259,7 +265,7 @@ func runVetWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps vetD
 	if policyErr != nil {
 		if emitInspectStructuredError(format, stdout, stderr, inspectErrorReport{
 			SchemaVersion: reportSchemaVersion,
-			Status:        "ERROR",
+			Status:        reportStatusError,
 			ErrorCode:     inspectErrorCodePolicyLoadFailed,
 			Message:       policyErr.Error(),
 			Source: source{
@@ -280,7 +286,7 @@ func runVetWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps vetD
 		if repoPolicyErr != nil {
 			if emitInspectStructuredError(format, stdout, stderr, inspectErrorReport{
 				SchemaVersion: reportSchemaVersion,
-				Status:        "ERROR",
+				Status:        reportStatusError,
 				ErrorCode:     inspectErrorCodePolicyLoadFailed,
 				Message:       repoPolicyErr.Error(),
 				Source: source{
@@ -307,7 +313,7 @@ func runVetWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps vetD
 		msg := fmt.Sprintf("unsupported profile: %s (supported: %s)", profile, policypkg.SupportedProfilesCSV())
 		if emitInspectStructuredError(format, stdout, stderr, inspectErrorReport{
 			SchemaVersion: reportSchemaVersion,
-			Status:        "ERROR",
+			Status:        reportStatusError,
 			ErrorCode:     inspectErrorCodeArgsInvalid,
 			Message:       msg,
 			Source: source{
@@ -325,7 +331,7 @@ func runVetWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps vetD
 	if rejectSetErr != nil {
 		if emitInspectStructuredError(format, stdout, stderr, inspectErrorReport{
 			SchemaVersion: reportSchemaVersion,
-			Status:        "ERROR",
+			Status:        reportStatusError,
 			ErrorCode:     inspectErrorCodePolicyLoadFailed,
 			Message:       rejectSetErr.Error(),
 			Source: source{
@@ -358,7 +364,7 @@ func runVetWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps vetD
 	if format == "json" {
 		out, _ := json.MarshalIndent(report, "", "  ")
 		_, _ = fmt.Fprintf(stdout, "%s\n", out)
-		if report.Decision == "REJECTED" {
+		if report.Decision == reportDecisionRejected {
 			return exitcode.Rejected.Int()
 		}
 		return exitcode.OK.Int()
@@ -366,7 +372,7 @@ func runVetWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps vetD
 	if format == "review-json" {
 		out, _ := json.MarshalIndent(buildInspectReviewReport(report), "", "  ")
 		_, _ = fmt.Fprintf(stdout, "%s\n", out)
-		if report.Decision == "REJECTED" {
+		if report.Decision == reportDecisionRejected {
 			return exitcode.Rejected.Int()
 		}
 		return exitcode.OK.Int()
@@ -374,7 +380,7 @@ func runVetWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps vetD
 	if format == "sarif" {
 		out, _ := json.MarshalIndent(buildInspectSARIFReport(report), "", "  ")
 		_, _ = fmt.Fprintf(stdout, "%s\n", out)
-		if report.Decision == "REJECTED" {
+		if report.Decision == reportDecisionRejected {
 			return exitcode.Rejected.Int()
 		}
 		return exitcode.OK.Int()
@@ -382,7 +388,7 @@ func runVetWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps vetD
 	if format == "compact" {
 		summary := strings.Replace(buildInspectCompactSummary(report), "inspect ", "vet ", 1)
 		_, _ = fmt.Fprintf(stdout, "%s\n", summary)
-		if report.Decision == "REJECTED" {
+		if report.Decision == reportDecisionRejected {
 			return exitcode.Rejected.Int()
 		}
 		return exitcode.OK.Int()
@@ -395,7 +401,7 @@ func runVetWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps vetD
 	for _, finding := range report.Findings {
 		_, _ = fmt.Fprintf(stdout, "- [%s] %s %s:%d %s\n", strings.ToUpper(finding.Severity), finding.ID, finding.File, finding.Line, finding.Summary)
 	}
-	if report.Decision == "REJECTED" {
+	if report.Decision == reportDecisionRejected {
 		return exitcode.Rejected.Int()
 	}
 	return exitcode.OK.Int()
@@ -422,7 +428,7 @@ func buildVetReportFromInspectJSON(raw []byte, input string, sourceKind string, 
 			Input: input,
 			Kind:  sourceKind,
 		},
-		Decision: "REJECTED",
+		Decision: reportDecisionRejected,
 		Findings: []inspectFinding{},
 		Note:     "vet failed to parse inspect report; fail-closed rejection applied",
 	}
@@ -467,7 +473,7 @@ func runInspectWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps 
 		sourceArg := extractInspectSourceArg(args)
 		report := inspectErrorReport{
 			SchemaVersion: reportSchemaVersion,
-			Status:        "ERROR",
+			Status:        reportStatusError,
 			ErrorCode:     inspectErrorCodeArgsInvalid,
 			Message:       err.Error(),
 			Source: source{
@@ -498,7 +504,7 @@ func runInspectWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps 
 				if structuredOutput {
 					return emitInspectStructuredErrorCode(format, stdout, stderr, inspectErrorReport{
 						SchemaVersion: reportSchemaVersion,
-						Status:        "ERROR",
+						Status:        reportStatusError,
 						ErrorCode:     inspectErrorCodeSourceNotFound,
 						Message:       fmt.Sprintf("inspect source not found: %s", input),
 						Source: source{
@@ -515,7 +521,7 @@ func runInspectWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps 
 			if structuredOutput {
 				return emitInspectStructuredErrorCode(format, stdout, stderr, inspectErrorReport{
 					SchemaVersion: reportSchemaVersion,
-					Status:        "ERROR",
+					Status:        reportStatusError,
 					ErrorCode:     inspectErrorCodeSourcePrepareFailed,
 					Message:       accessErr,
 					Source: source{
@@ -539,7 +545,7 @@ func runInspectWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps 
 			if structuredOutput {
 				return emitInspectStructuredErrorCode(format, stdout, stderr, inspectErrorReport{
 					SchemaVersion: reportSchemaVersion,
-					Status:        "ERROR",
+					Status:        reportStatusError,
 					ErrorCode:     inspectErrorCodeSourceInvalid,
 					Message:       fmt.Sprintf("invalid github source: %v", parseErr),
 					Source: source{
@@ -557,7 +563,7 @@ func runInspectWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps 
 			if structuredOutput {
 				return emitInspectStructuredErrorCode(format, stdout, stderr, inspectErrorReport{
 					SchemaVersion: reportSchemaVersion,
-					Status:        "ERROR",
+					Status:        reportStatusError,
 					ErrorCode:     inspectErrorCodeGitHubRefNotPinned,
 					Message:       msg,
 					Source: source{
@@ -578,7 +584,7 @@ func runInspectWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps 
 			if structuredOutput {
 				return emitInspectStructuredErrorCode(format, stdout, stderr, inspectErrorReport{
 					SchemaVersion: reportSchemaVersion,
-					Status:        "ERROR",
+					Status:        reportStatusError,
 					ErrorCode:     inspectErrorCodeSourcePrepareFailed,
 					Message:       prepErr.Error(),
 					Source: source{
@@ -596,7 +602,7 @@ func runInspectWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps 
 			if structuredOutput {
 				return emitInspectStructuredErrorCode(format, stdout, stderr, inspectErrorReport{
 					SchemaVersion: reportSchemaVersion,
-					Status:        "ERROR",
+					Status:        reportStatusError,
 					ErrorCode:     inspectErrorCodeScanFailed,
 					Message:       scanErr.Error(),
 					Source: source{
@@ -624,7 +630,7 @@ func runInspectWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps 
 				}
 				return emitInspectStructuredErrorCode(format, stdout, stderr, inspectErrorReport{
 					SchemaVersion: reportSchemaVersion,
-					Status:        "ERROR",
+					Status:        reportStatusError,
 					ErrorCode:     errorCode,
 					Message:       validateErr.Error(),
 					Source: source{
@@ -642,7 +648,7 @@ func runInspectWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps 
 			if structuredOutput {
 				return emitInspectStructuredErrorCode(format, stdout, stderr, inspectErrorReport{
 					SchemaVersion: reportSchemaVersion,
-					Status:        "ERROR",
+					Status:        reportStatusError,
 					ErrorCode:     inspectErrorCodeScanFailed,
 					Message:       scanErr.Error(),
 					Source: source{
@@ -677,7 +683,7 @@ func runInspectWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps 
 			return exitcode.Error.Int()
 		}
 		_, _ = fmt.Fprintf(stdout, "%s\n", out)
-		if report.Decision == "REJECTED" {
+		if report.Decision == reportDecisionRejected {
 			return exitcode.Rejected.Int()
 		}
 		return exitcode.OK.Int()
@@ -689,7 +695,7 @@ func runInspectWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps 
 			return exitcode.Error.Int()
 		}
 		_, _ = fmt.Fprintf(stdout, "%s\n", out)
-		if report.Decision == "REJECTED" {
+		if report.Decision == reportDecisionRejected {
 			return exitcode.Rejected.Int()
 		}
 		return exitcode.OK.Int()
@@ -701,14 +707,14 @@ func runInspectWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps 
 			return exitcode.Error.Int()
 		}
 		_, _ = fmt.Fprintf(stdout, "%s\n", out)
-		if report.Decision == "REJECTED" {
+		if report.Decision == reportDecisionRejected {
 			return exitcode.Rejected.Int()
 		}
 		return exitcode.OK.Int()
 	}
 	if format == "compact" {
 		_, _ = fmt.Fprintf(stdout, "%s\n", buildInspectCompactSummary(report))
-		if report.Decision == "REJECTED" {
+		if report.Decision == reportDecisionRejected {
 			return exitcode.Rejected.Int()
 		}
 		return exitcode.OK.Int()
@@ -721,7 +727,7 @@ func runInspectWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps 
 	for _, finding := range report.Findings {
 		_, _ = fmt.Fprintf(stdout, "- [%s] %s %s:%d %s\n", strings.ToUpper(finding.Severity), finding.ID, finding.File, finding.Line, finding.Summary)
 	}
-	if report.Decision == "REJECTED" {
+	if report.Decision == reportDecisionRejected {
 		return exitcode.Rejected.Int()
 	}
 	return exitcode.OK.Int()
@@ -749,7 +755,7 @@ func toInspectFindings(scanFindings []scan.Finding) ([]inspectFinding, string) {
 			Summary:  finding.Summary,
 		})
 		if scan.IsRejectable(finding) {
-			decision = "REJECTED"
+			decision = reportDecisionRejected
 		}
 	}
 	return findings, decision
@@ -895,7 +901,7 @@ func decisionForInspectFindings(findings []inspectFinding, rejectSet map[string]
 	for _, finding := range findings {
 		sev := strings.ToLower(strings.TrimSpace(finding.Severity))
 		if _, reject := rejectSet[sev]; reject {
-			return "REJECTED"
+			return reportDecisionRejected
 		}
 	}
 	return "PASS"
@@ -904,7 +910,7 @@ func decisionForInspectFindings(findings []inspectFinding, rejectSet map[string]
 func decodeInspectErrorPayload(raw []byte) inspectErrorReport {
 	out := inspectErrorReport{
 		SchemaVersion: reportSchemaVersion,
-		Status:        "ERROR",
+		Status:        reportStatusError,
 		ErrorCode:     inspectErrorCodeUnknown,
 		Message:       "failed to process inspect error report",
 		Source: source{
@@ -996,7 +1002,7 @@ func buildInspectSARIFReport(report inspectReport) reportpkg.SARIFDocument {
 				},
 				Results: []reportpkg.SARIFResult(results),
 				Invocations: []reportpkg.SARIFInvocation{
-					{ExecutionSuccessful: report.Decision != "REJECTED"},
+					{ExecutionSuccessful: report.Decision != reportDecisionRejected},
 				},
 				Properties: reportpkg.SARIFProperties{
 					SchemaVersion: report.SchemaVersion,
@@ -1140,7 +1146,7 @@ func normalizeStructuredErrorFields(errorCode string, ruleID string, message str
 	if ruleID == "" {
 		ruleID = rulepkg.InferIDForJSONError(message)
 	}
-	return "ERROR", errorCode, ruleID
+	return reportStatusError, errorCode, ruleID
 }
 
 func writeIndentedJSONLine(stdout io.Writer, stderr io.Writer, payload any, renderError string) int {
