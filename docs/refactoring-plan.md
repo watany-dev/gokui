@@ -132,6 +132,12 @@ Recent completed increments:
 - install-report hardening documentation sync coverage is split into
   `docs_sync_install_report_hardening_test.go`, separating install report
   assertions from the broader hardening documentation sync file.
+- severity override hardening documentation sync coverage is split into
+  `docs_sync_severity_override_hardening_test.go`, separating override audit
+  assertions from the broader hardening documentation sync file.
+- lockfile hardening documentation sync coverage is split into
+  `docs_sync_lock_hardening_test.go`, leaving the broad hardening sync file for
+  cross-cutting scan/update/policy documentation assertions.
 - SARIF error document construction now uses a shared helper for structured
   error rule ID resolution while keeping command-specific SARIF properties at
   the output boundary.
