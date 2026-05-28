@@ -559,10 +559,6 @@ func buildUpdateCompactSummary(report updateReport) string {
 	)
 }
 
-func buildUpdateReport(targetRoot string, policyLoaded bool, cfg policypkg.Config) (updateReport, error) {
-	return buildUpdateReportWithDeps(targetRoot, policyLoaded, cfg, defaultUpdateDeps())
-}
-
 func buildUpdateReportWithDeps(targetRoot string, policyLoaded bool, cfg policypkg.Config, deps updateDeps) (updateReport, error) {
 	deps = normalizeUpdateDeps(deps)
 	cleanTarget := filepath.Clean(targetRoot)
@@ -644,10 +640,6 @@ func buildUpdateReportWithDeps(targetRoot string, policyLoaded bool, cfg policyp
 
 func isUpdateTargetReadError(err error) bool {
 	return errors.Is(err, errUpdateTargetRead)
-}
-
-func evaluateUpdateSkill(item updateSkillItem, lock installLock, policyLoaded bool, cfg policypkg.Config) (updateSkillItem, error) {
-	return evaluateUpdateSkillWithDeps(item, lock, policyLoaded, cfg, defaultUpdateDeps())
 }
 
 func evaluateUpdateSkillWithDeps(item updateSkillItem, lock installLock, policyLoaded bool, cfg policypkg.Config, deps updateDeps) (updateSkillItem, error) {
@@ -825,10 +817,6 @@ func checkUpdateLockInstallReport(ctx *updateLockEvaluationContext) *updateSkill
 		return &updateSkillFailure{"ERROR", updateCodeLockfileInvalid, err.Error()}
 	}
 	return nil
-}
-
-func resolveUpdateEvaluationPolicy(kind string, skillRoot string, policyLoaded bool, cfg policypkg.Config) (policypkg.Config, bool, error) {
-	return resolveUpdateEvaluationPolicyWithDeps(kind, skillRoot, policyLoaded, cfg, defaultUpdateDeps())
 }
 
 func resolveUpdateEvaluationPolicyWithDeps(kind string, skillRoot string, policyLoaded bool, cfg policypkg.Config, deps updateDeps) (policypkg.Config, bool, error) {
