@@ -369,7 +369,7 @@ func writeFetchSARIFError(stdout io.Writer, stderr io.Writer, report fetchErrorR
 }
 
 func emitFetchStructuredError(format string, stdout io.Writer, stderr io.Writer, report fetchErrorReport) bool {
-	return emitStructuredError(format,
+	return emitStructuredError(formatpkg.Format(format),
 		func() { _ = writeFetchJSONError(stdout, stderr, report) },
 		func() { _ = writeFetchSARIFError(stdout, stderr, report) },
 	)

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 
+	formatpkg "github.com/watany-dev/gokui/internal/cli/format"
 	reportpkg "github.com/watany-dev/gokui/internal/report"
 )
 
@@ -79,7 +80,7 @@ func buildInstallSARIFErrorReport(report installErrorReport) reportpkg.SARIFDocu
 }
 
 func emitInstallStructuredError(format string, stdout io.Writer, stderr io.Writer, report installErrorReport) bool {
-	return emitStructuredError(format,
+	return emitStructuredError(formatpkg.Format(format),
 		func() { _ = writeInstallJSONError(stdout, stderr, report) },
 		func() { _ = writeInstallSARIFError(stdout, stderr, report) },
 	)

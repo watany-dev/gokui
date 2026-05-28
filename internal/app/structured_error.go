@@ -14,8 +14,8 @@ import (
 
 var errorCodePattern = regexp.MustCompile(`^[A-Z0-9_]+$`)
 
-func emitStructuredError(format string, writeJSON func(), writeSARIF func()) bool {
-	switch formatpkg.Format(format) {
+func emitStructuredError(format formatpkg.Format, writeJSON func(), writeSARIF func()) bool {
+	switch format {
 	case formatpkg.JSON:
 		writeJSON()
 		return true

@@ -2,6 +2,7 @@ package app
 
 import (
 	"errors"
+	formatpkg "github.com/watany-dev/gokui/internal/cli/format"
 	policypkg "github.com/watany-dev/gokui/internal/policy"
 	"strings"
 	"testing"
@@ -347,21 +348,21 @@ func TestEmitStructuredError(t *testing.T) {
 	writeJSON := func() { jsonCalls++ }
 	writeSARIF := func() { sarifCalls++ }
 
-	if !emitStructuredError("json", writeJSON, writeSARIF) {
+	if !emitStructuredError(formatpkg.JSON, writeJSON, writeSARIF) {
 		t.Fatal("json format should be handled")
 	}
 	if jsonCalls != 1 || sarifCalls != 0 {
 		t.Fatalf("json/sarif calls = %d/%d, want 1/0", jsonCalls, sarifCalls)
 	}
 
-	if !emitStructuredError("sarif", writeJSON, writeSARIF) {
+	if !emitStructuredError(formatpkg.SARIF, writeJSON, writeSARIF) {
 		t.Fatal("sarif format should be handled")
 	}
 	if jsonCalls != 1 || sarifCalls != 1 {
 		t.Fatalf("json/sarif calls = %d/%d, want 1/1", jsonCalls, sarifCalls)
 	}
 
-	if emitStructuredError("human", writeJSON, writeSARIF) {
+	if emitStructuredError(formatpkg.Human, writeJSON, writeSARIF) {
 		t.Fatal("human format should not be handled")
 	}
 	if jsonCalls != 1 || sarifCalls != 1 {
