@@ -9,6 +9,7 @@ import (
 
 	"github.com/watany-dev/gokui/internal/cli/exitcode"
 	formatpkg "github.com/watany-dev/gokui/internal/cli/format"
+	reportpkg "github.com/watany-dev/gokui/internal/report"
 	rulepkg "github.com/watany-dev/gokui/internal/rule"
 )
 
@@ -66,6 +67,10 @@ func structuredErrorRuleID(errorCode string, ruleID string) string {
 		return ruleID
 	}
 	return errorCode
+}
+
+func buildStructuredSARIFErrorReport(errorCode string, ruleID string, message string, properties reportpkg.SARIFProperties) reportpkg.SARIFDocument {
+	return reportpkg.SARIFErrorDocument(structuredErrorRuleID(errorCode, ruleID), errorCode, message, properties)
 }
 
 func writeJSONErrorReport(stdout io.Writer, stderr io.Writer, payload any, command string) int {

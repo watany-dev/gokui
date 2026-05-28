@@ -79,7 +79,7 @@ func installArgsErrorReport(args []string, err error) installErrorReport {
 }
 
 func buildInstallSARIFErrorReport(report installErrorReport) reportpkg.SARIFDocument {
-	return reportpkg.SARIFErrorDocument(structuredErrorRuleID(report.ErrorCode, report.RuleID), report.ErrorCode, report.Message, reportpkg.SARIFProperties{
+	return buildStructuredSARIFErrorReport(report.ErrorCode, report.RuleID, report.Message, reportpkg.SARIFProperties{
 		SchemaVersion: report.SchemaVersion,
 		PreRelease:    true,
 		SourceInput:   report.Source.Input,
