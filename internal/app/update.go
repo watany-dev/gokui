@@ -164,25 +164,12 @@ func runUpdateWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps u
 
 	parsed, err := parseUpdateArgs(args)
 	if err != nil {
+		report := updateArgsErrorReport(args, err)
 		if requestedFormat == formatpkg.JSON {
-			return writeUpdateJSONError(stdout, stderr, updateErrorReport{
-				SchemaVersion: reportSchemaVersion,
-				Status:        reportStatusError,
-				ErrorCode:     updateFatalCodeArgsInvalid,
-				Message:       err.Error(),
-				Target:        extractUpdateTargetArg(args),
-				Note:          "update failed before target resolution",
-			})
+			return writeUpdateJSONError(stdout, stderr, report)
 		}
 		if requestedFormat == formatpkg.SARIF {
-			return writeUpdateSARIFError(stdout, stderr, updateErrorReport{
-				SchemaVersion: reportSchemaVersion,
-				Status:        reportStatusError,
-				ErrorCode:     updateFatalCodeArgsInvalid,
-				Message:       err.Error(),
-				Target:        extractUpdateTargetArg(args),
-				Note:          "update failed before target resolution",
-			})
+			return writeUpdateSARIFError(stdout, stderr, report)
 		}
 		_, _ = fmt.Fprintf(stderr, "%s\n\n%s\n", err.Error(), usage())
 		return exitcode.Error.Int()

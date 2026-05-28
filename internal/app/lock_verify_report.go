@@ -135,6 +135,17 @@ func writeLockVerifySARIFError(stdout io.Writer, stderr io.Writer, report lockVe
 	return writeSARIFErrorReport(stdout, stderr, buildLockVerifySARIFErrorReport(report), "lock verify")
 }
 
+func lockVerifyArgsErrorReport(args []string, err error) lockVerifyErrorReport {
+	return lockVerifyErrorReport{
+		SchemaVersion: reportSchemaVersion,
+		SkillPath:     extractLockVerifyPathArg(args),
+		Status:        reportStatusError,
+		ErrorCode:     lockVerifyErrorCodeArgsInvalid,
+		Message:       err.Error(),
+		Note:          "lock verify failed before path validation",
+	}
+}
+
 func emitLockVerifyStructuredError(format string, stdout io.Writer, stderr io.Writer, report lockVerifyErrorReport) bool {
 	return emitStructuredError(formatpkg.Format(format),
 		func() { _ = writeLockVerifyJSONError(stdout, stderr, report) },

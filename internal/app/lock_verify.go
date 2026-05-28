@@ -88,14 +88,7 @@ func runLockVerify(args []string, stdout io.Writer, stderr io.Writer) int {
 	requestedFormat, _ := requestedStructuredFormat(args, false)
 	parsed, err := parseLockVerifyArgs(args)
 	if err != nil {
-		report := lockVerifyErrorReport{
-			SchemaVersion: reportSchemaVersion,
-			SkillPath:     extractLockVerifyPathArg(args),
-			Status:        reportStatusError,
-			ErrorCode:     lockVerifyErrorCodeArgsInvalid,
-			Message:       err.Error(),
-			Note:          "lock verify failed before path validation",
-		}
+		report := lockVerifyArgsErrorReport(args, err)
 		if requestedFormat == formatpkg.JSON {
 			return writeLockVerifyJSONError(stdout, stderr, report)
 		}

@@ -21,6 +21,17 @@ func writeUpdateSARIFError(stdout io.Writer, stderr io.Writer, report updateErro
 	return writeSARIFErrorReport(stdout, stderr, buildUpdateSARIFErrorReport(report), "update")
 }
 
+func updateArgsErrorReport(args []string, err error) updateErrorReport {
+	return updateErrorReport{
+		SchemaVersion: reportSchemaVersion,
+		Status:        reportStatusError,
+		ErrorCode:     updateFatalCodeArgsInvalid,
+		Message:       err.Error(),
+		Target:        extractUpdateTargetArg(args),
+		Note:          "update failed before target resolution",
+	}
+}
+
 func buildUpdateSARIFErrorReport(report updateErrorReport) reportpkg.SARIFDocument {
 	return reportpkg.SARIFErrorDocument(structuredErrorRuleID(report.ErrorCode, report.RuleID), report.ErrorCode, report.Message, reportpkg.SARIFProperties{
 		SchemaVersion: report.SchemaVersion,
