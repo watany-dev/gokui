@@ -752,11 +752,7 @@ func writeInstallSARIFError(stdout io.Writer, stderr io.Writer, report installEr
 }
 
 func buildInstallSARIFErrorReport(report installErrorReport) reportpkg.SARIFDocument {
-	ruleID := report.ErrorCode
-	if report.RuleID != "" {
-		ruleID = report.RuleID
-	}
-	return reportpkg.SARIFErrorDocument(ruleID, report.ErrorCode, report.Message, reportpkg.SARIFProperties{
+	return reportpkg.SARIFErrorDocument(structuredErrorRuleID(report.ErrorCode, report.RuleID), report.ErrorCode, report.Message, reportpkg.SARIFProperties{
 		SchemaVersion: report.SchemaVersion,
 		PreRelease:    true,
 		SourceInput:   report.Source.Input,

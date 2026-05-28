@@ -361,11 +361,7 @@ func writeLockVerifySARIFError(stdout io.Writer, stderr io.Writer, report lockVe
 }
 
 func buildLockVerifySARIFErrorReport(report lockVerifyErrorReport) reportpkg.SARIFDocument {
-	ruleID := report.ErrorCode
-	if report.RuleID != "" {
-		ruleID = report.RuleID
-	}
-	return reportpkg.SARIFErrorDocument(ruleID, report.ErrorCode, report.Message, reportpkg.SARIFProperties{
+	return reportpkg.SARIFErrorDocument(structuredErrorRuleID(report.ErrorCode, report.RuleID), report.ErrorCode, report.Message, reportpkg.SARIFProperties{
 		SchemaVersion: report.SchemaVersion,
 		PreRelease:    true,
 		SourceInput:   report.SkillPath,

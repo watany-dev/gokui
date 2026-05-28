@@ -1080,11 +1080,7 @@ func writeInspectSARIFError(stdout io.Writer, stderr io.Writer, report inspectEr
 }
 
 func buildInspectSARIFErrorReport(report inspectErrorReport) reportpkg.SARIFDocument {
-	ruleID := report.ErrorCode
-	if report.RuleID != "" {
-		ruleID = report.RuleID
-	}
-	return reportpkg.SARIFErrorDocument(ruleID, report.ErrorCode, report.Message, reportpkg.SARIFProperties{
+	return reportpkg.SARIFErrorDocument(structuredErrorRuleID(report.ErrorCode, report.RuleID), report.ErrorCode, report.Message, reportpkg.SARIFProperties{
 		SchemaVersion: report.SchemaVersion,
 		PreRelease:    true,
 		SourceInput:   report.Source.Input,
@@ -1129,6 +1125,13 @@ func normalizeStructuredErrorFields(errorCode string, ruleID string, message str
 		ruleID = rulepkg.InferIDForJSONError(message)
 	}
 	return reportStatusError, errorCode, ruleID
+}
+
+func structuredErrorRuleID(errorCode string, ruleID string) string {
+	if ruleID != "" {
+		return ruleID
+	}
+	return errorCode
 }
 
 func writeIndentedJSONLine(stdout io.Writer, stderr io.Writer, payload any, renderError string) int {
