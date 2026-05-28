@@ -129,6 +129,9 @@ Recent completed increments:
 - source metadata hardening documentation sync coverage is split into
   `docs_sync_source_metadata_hardening_test.go`, separating source metadata
   assertions from the broader hardening documentation sync file.
+- install-report hardening documentation sync coverage is split into
+  `docs_sync_install_report_hardening_test.go`, separating install report
+  assertions from the broader hardening documentation sync file.
 - SARIF error document construction now uses a shared helper for structured
   error rule ID resolution while keeping command-specific SARIF properties at
   the output boundary.
