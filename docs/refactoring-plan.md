@@ -122,16 +122,20 @@ make test
 Current inventory notes:
 
 - #7 is partially represented by `internal/rule`; keep open until scattered
-  app/source rule constants are fully catalog-backed and registry sync tests
-  cover the roadmap table.
+  app/source rule constants are fully catalog-backed. The audit found the
+  catalog and scan registry tests present, but command error-code constants and
+  GitHub fetch guard errors still need an explicit catalog boundary decision.
 - #10 is partially represented by shared SARIF document/types in
-  `internal/report`; keep open until command-specific SARIF builders are
-  reduced to a common builder/config shape.
+  `internal/report`; keep open until remaining command-specific SARIF property
+  and structured-error builders are reduced to a common builder/config shape.
 - #12 is represented by `source.GitHubFetcher`, option-based configuration, and
   option-based tests; candidate to close after repository write access is
   available.
 - #13 is represented by split `internal/scan` implementation and test files;
   candidate to close after repository write access is available.
+- #14 is represented by `scan.Finding` creation through `internal/rule` values
+  and registry sync tests; candidate to close after repository write access is
+  available.
 - #15 is partially represented by `internal/safefs` stable/root/path helpers;
   keep open until remaining app-specific `ensure*Stable*` wrappers are reduced
   to thin policy/error adapters or removed.
@@ -139,11 +143,12 @@ Current inventory notes:
   `internal/safefs` path helpers; candidate to close after repository write
   access is available.
 - #17 is partially represented by `internal/policy` profile/severity types and
-  `internal/cli/exitcode`; keep open until app command returns and severity
-  comparisons consistently use the typed values.
+  `internal/cli/exitcode`; app command returns now use typed exit codes, but
+  keep open until app-level severity fields and comparisons consistently use the
+  typed values or are explicitly classified as wire-boundary strings.
 - #18 is represented by `internal/policy/override.go` and
-  `SeverityOverrideAuditSet`; candidate to close after repository write access
-  is available.
+  `SeverityOverrideAuditSet`; app currently uses an alias to the policy type,
+  so this is a candidate to close after repository write access is available.
 - #3, #4, #5, and #19 are partially represented but still need final audit before
   closing because `internal/app` remains the compatibility owner for command
   orchestration and many contract tests.
