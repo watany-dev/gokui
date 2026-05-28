@@ -1,12 +1,10 @@
 package app
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"os"
-	"strings"
 
 	"github.com/watany-dev/gokui/internal/cli/exitcode"
 	"github.com/watany-dev/gokui/internal/scan"
@@ -242,59 +240,5 @@ func runInspectWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps 
 		Note:     note,
 	}
 
-	if format == "json" {
-		out, marshalErr := json.MarshalIndent(report, "", "  ")
-		if marshalErr != nil {
-			_, _ = fmt.Fprintln(stderr, "failed to render inspect report")
-			return exitcode.Error.Int()
-		}
-		_, _ = fmt.Fprintf(stdout, "%s\n", out)
-		if report.Decision == reportDecisionRejected {
-			return exitcode.Rejected.Int()
-		}
-		return exitcode.OK.Int()
-	}
-	if format == "review-json" {
-		out, marshalErr := json.MarshalIndent(buildInspectReviewReport(report), "", "  ")
-		if marshalErr != nil {
-			_, _ = fmt.Fprintln(stderr, "failed to render inspect review report")
-			return exitcode.Error.Int()
-		}
-		_, _ = fmt.Fprintf(stdout, "%s\n", out)
-		if report.Decision == reportDecisionRejected {
-			return exitcode.Rejected.Int()
-		}
-		return exitcode.OK.Int()
-	}
-	if format == "sarif" {
-		out, marshalErr := json.MarshalIndent(buildInspectSARIFReport(report), "", "  ")
-		if marshalErr != nil {
-			_, _ = fmt.Fprintln(stderr, "failed to render inspect SARIF report")
-			return exitcode.Error.Int()
-		}
-		_, _ = fmt.Fprintf(stdout, "%s\n", out)
-		if report.Decision == reportDecisionRejected {
-			return exitcode.Rejected.Int()
-		}
-		return exitcode.OK.Int()
-	}
-	if format == "compact" {
-		_, _ = fmt.Fprintf(stdout, "%s\n", buildInspectCompactSummary(report))
-		if report.Decision == reportDecisionRejected {
-			return exitcode.Rejected.Int()
-		}
-		return exitcode.OK.Int()
-	}
-
-	_, _ = fmt.Fprintln(stdout, "gokui inspect report (pre-release)")
-	_, _ = fmt.Fprintf(stdout, "source: %s (%s)\n", report.Source.Input, report.Source.Kind)
-	_, _ = fmt.Fprintf(stdout, "decision: %s\n", report.Decision)
-	_, _ = fmt.Fprintf(stdout, "findings: %d\n", len(report.Findings))
-	for _, finding := range report.Findings {
-		_, _ = fmt.Fprintf(stdout, "- [%s] %s %s:%d %s\n", strings.ToUpper(finding.Severity), finding.ID, finding.File, finding.Line, finding.Summary)
-	}
-	if report.Decision == reportDecisionRejected {
-		return exitcode.Rejected.Int()
-	}
-	return exitcode.OK.Int()
+	return writeInspectSuccessReport(format, report, stdout, stderr)
 }
