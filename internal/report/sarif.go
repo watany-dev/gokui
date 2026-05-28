@@ -22,21 +22,30 @@ func SARIFLevelForSeverity(severity string) string {
 	}
 }
 
-func SARIFRuleForError(ruleID string, errorCode string) SARIFRule {
+func SARIFRuleForFinding(ruleID string, summary string) SARIFRule {
 	return SARIFRule{
 		ID: ruleID,
 		ShortDescription: SARIFMessageContainer{
-			Text: errorCode,
+			Text: summary,
 		},
 	}
 }
 
-func SARIFResultForError(ruleID string, message string) SARIFResult {
+func SARIFRuleForError(ruleID string, errorCode string) SARIFRule {
+	return SARIFRuleForFinding(ruleID, errorCode)
+}
+
+func SARIFResultForFinding(ruleID string, level string, message string, locations []SARIFLocation) SARIFResult {
 	return SARIFResult{
-		RuleID:  ruleID,
-		Level:   "error",
-		Message: SARIFMessageContainer{Text: message},
+		RuleID:    ruleID,
+		Level:     level,
+		Message:   SARIFMessageContainer{Text: message},
+		Locations: locations,
 	}
+}
+
+func SARIFResultForError(ruleID string, message string) SARIFResult {
+	return SARIFResultForFinding(ruleID, "error", message, nil)
 }
 
 func SARIFLocationForFile(file string, line int) SARIFLocation {
@@ -69,12 +78,7 @@ func SARIFDocumentForFindings(findings []SARIFFinding, executionSuccessful bool,
 			continue
 		}
 		seen[finding.ID] = struct{}{}
-		rules = append(rules, SARIFRule{
-			ID: finding.ID,
-			ShortDescription: SARIFMessageContainer{
-				Text: finding.Summary,
-			},
-		})
+		rules = append(rules, SARIFRuleForFinding(finding.ID, finding.Summary))
 	}
 	sort.Slice(rules, func(i, j int) bool {
 		return rules[i].ID < rules[j].ID
@@ -82,15 +86,11 @@ func SARIFDocumentForFindings(findings []SARIFFinding, executionSuccessful bool,
 
 	results := make([]SARIFResult, 0, len(findings))
 	for _, finding := range findings {
-		result := SARIFResult{
-			RuleID:  finding.ID,
-			Level:   SARIFLevelForSeverity(finding.Severity),
-			Message: SARIFMessageContainer{Text: finding.Summary},
-		}
+		var locations []SARIFLocation
 		if finding.File != "" {
-			result.Locations = []SARIFLocation{SARIFLocationForFile(finding.File, finding.Line)}
+			locations = []SARIFLocation{SARIFLocationForFile(finding.File, finding.Line)}
 		}
-		results = append(results, result)
+		results = append(results, SARIFResultForFinding(finding.ID, SARIFLevelForSeverity(finding.Severity), finding.Summary, locations))
 	}
 
 	return SARIFDocumentForRun(rules, results, executionSuccessful, properties)

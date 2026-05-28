@@ -36,9 +36,18 @@ func TestSARIFMetadataConstants(t *testing.T) {
 }
 
 func TestSARIFErrorHelpers(t *testing.T) {
+	findingRule := SARIFRuleForFinding("RULE_FINDING", "finding summary")
+	if findingRule.ID != "RULE_FINDING" || findingRule.ShortDescription.Text != "finding summary" {
+		t.Fatalf("SARIFRuleForFinding() = %+v", findingRule)
+	}
 	rule := SARIFRuleForError("RULE_ONE", "ERROR_ONE")
 	if rule.ID != "RULE_ONE" || rule.ShortDescription.Text != "ERROR_ONE" {
 		t.Fatalf("SARIFRuleForError() = %+v", rule)
+	}
+	location := SARIFLocationForFile("file.md", 3)
+	findingResult := SARIFResultForFinding("RULE_FINDING", "warning", "finding message", []SARIFLocation{location})
+	if findingResult.RuleID != "RULE_FINDING" || findingResult.Level != "warning" || findingResult.Message.Text != "finding message" || len(findingResult.Locations) != 1 {
+		t.Fatalf("SARIFResultForFinding() = %+v", findingResult)
 	}
 	result := SARIFResultForError("RULE_ONE", "failed")
 	if result.RuleID != "RULE_ONE" || result.Level != "error" || result.Message.Text != "failed" {

@@ -36,12 +36,7 @@ func buildLockVerifySARIFReport(report lockVerifyReport) reportpkg.SARIFDocument
 
 	rules := make([]reportpkg.SARIFRule, 0, len(report.Checks))
 	for _, check := range report.Checks {
-		rules = append(rules, reportpkg.SARIFRule{
-			ID: check.Code,
-			ShortDescription: reportpkg.SARIFMessageContainer{
-				Text: fmt.Sprintf("lock verify check: %s", check.Name),
-			},
-		})
+		rules = append(rules, reportpkg.SARIFRuleForFinding(check.Code, fmt.Sprintf("lock verify check: %s", check.Name)))
 	}
 	sort.Slice(rules, func(i, j int) bool {
 		return rules[i].ID < rules[j].ID
@@ -52,11 +47,7 @@ func buildLockVerifySARIFReport(report lockVerifyReport) reportpkg.SARIFDocument
 		if check.OK {
 			continue
 		}
-		results = append(results, reportpkg.SARIFResult{
-			RuleID:  check.Code,
-			Level:   "error",
-			Message: reportpkg.SARIFMessageContainer{Text: check.Detail},
-		})
+		results = append(results, reportpkg.SARIFResultForFinding(check.Code, "error", check.Detail, nil))
 		if check.Code != lockVerifyCodeFileDigests {
 			continue
 		}
@@ -104,16 +95,16 @@ func buildLockVerifySARIFReport(report lockVerifyReport) reportpkg.SARIFDocument
 }
 
 func lockVerifyDriftSARIFResult(ruleID string, path string, reason string) reportpkg.SARIFResult {
-	result := reportpkg.SARIFResult{
-		RuleID:  ruleID,
-		Level:   "error",
-		Message: reportpkg.SARIFMessageContainer{Text: fmt.Sprintf("%s: %s", reason, path)},
-	}
+	message := fmt.Sprintf("%s: %s", reason, path)
 	if strings.TrimSpace(path) == "" {
-		return result
+		return reportpkg.SARIFResultForFinding(ruleID, "error", message, nil)
 	}
-	result.Locations = []reportpkg.SARIFLocation{reportpkg.SARIFLocationForFile(path, 0)}
-	return result
+	return reportpkg.SARIFResultForFinding(
+		ruleID,
+		"error",
+		message,
+		[]reportpkg.SARIFLocation{reportpkg.SARIFLocationForFile(path, 0)},
+	)
 }
 
 func writeLockVerifyJSONError(stdout io.Writer, stderr io.Writer, report lockVerifyErrorReport) int {
