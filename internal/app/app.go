@@ -13,7 +13,6 @@ import (
 	"github.com/watany-dev/gokui/internal/cli/exitcode"
 	policypkg "github.com/watany-dev/gokui/internal/policy"
 	"github.com/watany-dev/gokui/internal/scan"
-	skillpkg "github.com/watany-dev/gokui/internal/skill"
 	srcpkg "github.com/watany-dev/gokui/internal/source"
 )
 
@@ -30,11 +29,6 @@ const (
 )
 
 type severityOverrideAudit = policypkg.SeverityOverrideAudit
-
-var (
-	maxSkillFrontmatterBytes int64 = 1_000_000
-	errInspectSourceNotFound       = skillpkg.ErrInspectSourceNotFound
-)
 
 const (
 	inspectErrorCodeArgsInvalid         = "INSPECT_ARGS_INVALID"
@@ -724,26 +718,4 @@ func decodeInspectErrorPayload(raw []byte) inspectErrorReport {
 		out.Message = "inspect failed"
 	}
 	return out
-}
-
-func detectSourceKind(input string) string {
-	lower := strings.ToLower(input)
-	switch {
-	case strings.HasPrefix(input, "github:"):
-		return "github-source"
-	case strings.HasSuffix(lower, ".zip"):
-		return "zip"
-	case strings.HasSuffix(lower, ".tar"), strings.HasSuffix(lower, ".tar.gz"), strings.HasSuffix(lower, ".tgz"):
-		return "tar"
-	default:
-		return "local-dir"
-	}
-}
-
-func validateLocalDirInspectSource(input string) error {
-	return skillpkg.ValidateLocalDirInspectSource(input, maxSkillFrontmatterBytes)
-}
-
-func isInspectSourceNotFoundError(err error) bool {
-	return errors.Is(err, errInspectSourceNotFound)
 }

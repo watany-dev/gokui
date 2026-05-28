@@ -5,12 +5,19 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/watany-dev/gokui/internal/materialize"
+	skillpkg "github.com/watany-dev/gokui/internal/skill"
 	srcpkg "github.com/watany-dev/gokui/internal/source"
 )
 
 var errGitHubRefNotPinned = errors.New("github source requires a commit-pinned ref")
+
+var (
+	maxSkillFrontmatterBytes int64 = 1_000_000
+	errInspectSourceNotFound       = skillpkg.ErrInspectSourceNotFound
+)
 
 type policyEvaluationSourceDeps struct {
 	FetchGitHubSkill func(srcpkg.GitHubSpec) (string, func(), error)
@@ -115,6 +122,28 @@ func prepareArchiveInspectSource(input string, sourceKind string) (string, func(
 	}
 
 	return skillRoot, cleanup, nil
+}
+
+func detectSourceKind(input string) string {
+	lower := strings.ToLower(input)
+	switch {
+	case strings.HasPrefix(input, "github:"):
+		return "github-source"
+	case strings.HasSuffix(lower, ".zip"):
+		return "zip"
+	case strings.HasSuffix(lower, ".tar"), strings.HasSuffix(lower, ".tar.gz"), strings.HasSuffix(lower, ".tgz"):
+		return "tar"
+	default:
+		return "local-dir"
+	}
+}
+
+func validateLocalDirInspectSource(input string) error {
+	return skillpkg.ValidateLocalDirInspectSource(input, maxSkillFrontmatterBytes)
+}
+
+func isInspectSourceNotFoundError(err error) bool {
+	return errors.Is(err, errInspectSourceNotFound)
 }
 
 func isGitHubRefNotPinnedError(err error) bool {
