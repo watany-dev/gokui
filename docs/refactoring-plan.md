@@ -71,6 +71,8 @@ Recent completed increments:
 - SARIF findings-to-rules/results construction moved into `internal/report`;
   app-level inspect/fetch/install/update builders now adapt command findings
   into report findings before setting command-specific SARIF properties.
+- SARIF file-location construction now lives in `internal/report`, and
+  lock-verify drift results use the shared helper.
 
 Validation already run after the latest parser/format increments:
 
@@ -103,6 +105,7 @@ go test ./internal/app -run 'Args|Fetch|Inspect|Vet|Install|Update|LockVerify|Er
 go test ./internal/app -run 'Args|Fetch|Inspect|Vet|Install|Update|LockVerify|Error|JSON|SARIF|Review'
 go test ./internal/app -run 'Error|SARIF|JSON|Fetch|Inspect|Install|Update|LockVerify'
 go test ./internal/report ./internal/app -run 'SARIF|Inspect|Fetch|Install|Update'
+go test ./internal/report ./internal/app -run 'SARIF|LockVerify'
 make test
 ```
 
