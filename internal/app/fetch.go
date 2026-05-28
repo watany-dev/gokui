@@ -424,15 +424,14 @@ func parseFetchArgs(args []string) (fetchArgs, error) {
 }
 
 func buildFetchSARIFReport(report fetchReport) reportpkg.SARIFDocument {
-	inspectEquivalent := inspectReport{
-		SchemaVersion: report.SchemaVersion,
-		PreRelease:    true,
-		Source:        report.Source,
-		Decision:      report.Decision,
-		Findings:      []inspectFinding{},
-		Note:          fmt.Sprintf("fetch output=%s; %s", report.Output, report.Note),
-	}
-	return buildInspectSARIFReport(inspectEquivalent)
+	return buildFindingsSARIFReport(
+		report.SchemaVersion,
+		true,
+		report.Source,
+		report.Decision,
+		nil,
+		fmt.Sprintf("fetch output=%s; %s", report.Output, report.Note),
+	)
 }
 
 func buildFetchSARIFErrorReport(report fetchErrorReport) reportpkg.SARIFDocument {

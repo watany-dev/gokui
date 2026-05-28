@@ -657,13 +657,13 @@ func parseInstallArgs(args []string) (installArgs, error) {
 }
 
 func buildInstallSARIFReport(report installReport, target string) reportpkg.SARIFDocument {
-	inspectEquivalent := inspectReport{
-		SchemaVersion: report.SchemaVersion,
-		PreRelease:    true,
-		Source:        report.Source,
-		Decision:      report.Decision,
-		Findings:      report.Findings,
-		Note: fmt.Sprintf(
+	return buildFindingsSARIFReport(
+		report.SchemaVersion,
+		true,
+		report.Source,
+		report.Decision,
+		report.Findings,
+		fmt.Sprintf(
 			"install target=%s profile=%s installed=%t path=%s error_code=%s overrides=%d; %s",
 			target,
 			report.PolicyProfile,
@@ -673,8 +673,7 @@ func buildInstallSARIFReport(report installReport, target string) reportpkg.SARI
 			len(report.SeverityOverrides),
 			report.Note,
 		),
-	}
-	return buildInspectSARIFReport(inspectEquivalent)
+	)
 }
 
 func buildInstallCompactSummary(report installReport, target string) string {

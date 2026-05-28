@@ -456,18 +456,17 @@ func buildUpdateSARIFReport(report updateReport) reportpkg.SARIFDocument {
 		})
 	}
 
-	inspectEquivalent := inspectReport{
-		SchemaVersion: report.SchemaVersion,
-		PreRelease:    true,
-		Source: source{
+	sarif := buildFindingsSARIFReport(
+		report.SchemaVersion,
+		true,
+		source{
 			Input: report.Target,
 			Kind:  "update-target",
 		},
-		Decision: decision,
-		Findings: findings,
-		Note:     report.Note,
-	}
-	sarif := buildInspectSARIFReport(inspectEquivalent)
+		decision,
+		findings,
+		report.Note,
+	)
 	if len(sarif.Runs) > 0 {
 		sarif.Runs[0].Invocations = []reportpkg.SARIFInvocation{
 			{ExecutionSuccessful: report.Summary.Errors == 0 && report.Summary.Rejected == 0},

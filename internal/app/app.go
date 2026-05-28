@@ -937,9 +937,13 @@ func buildInspectCompactSummary(report inspectReport) string {
 }
 
 func buildInspectSARIFReport(report inspectReport) reportpkg.SARIFDocument {
+	return buildFindingsSARIFReport(report.SchemaVersion, report.PreRelease, report.Source, report.Decision, report.Findings, report.Note)
+}
+
+func buildFindingsSARIFReport(schemaVersion string, preRelease bool, src source, decision string, findings []inspectFinding, note string) reportpkg.SARIFDocument {
 	rules := make([]reportpkg.SARIFRule, 0)
-	seen := make(map[string]struct{}, len(report.Findings))
-	for _, finding := range report.Findings {
+	seen := make(map[string]struct{}, len(findings))
+	for _, finding := range findings {
 		if _, ok := seen[finding.ID]; ok {
 			continue
 		}
@@ -955,8 +959,8 @@ func buildInspectSARIFReport(report inspectReport) reportpkg.SARIFDocument {
 		return rules[i].ID < rules[j].ID
 	})
 
-	results := make([]reportpkg.SARIFResult, 0, len(report.Findings))
-	for _, finding := range report.Findings {
+	results := make([]reportpkg.SARIFResult, 0, len(findings))
+	for _, finding := range findings {
 		result := reportpkg.SARIFResult{
 			RuleID:  finding.ID,
 			Level:   reportpkg.SARIFLevelForSeverity(finding.Severity),
@@ -981,14 +985,14 @@ func buildInspectSARIFReport(report inspectReport) reportpkg.SARIFDocument {
 	return reportpkg.SARIFDocumentForRun(
 		rules,
 		results,
-		report.Decision != reportDecisionRejected,
+		decision != reportDecisionRejected,
 		reportpkg.SARIFProperties{
-			SchemaVersion: report.SchemaVersion,
-			PreRelease:    report.PreRelease,
-			SourceInput:   report.Source.Input,
-			SourceKind:    report.Source.Kind,
-			Decision:      report.Decision,
-			Note:          report.Note,
+			SchemaVersion: schemaVersion,
+			PreRelease:    preRelease,
+			SourceInput:   src.Input,
+			SourceKind:    src.Kind,
+			Decision:      decision,
+			Note:          note,
 		},
 	)
 }
