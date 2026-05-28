@@ -317,10 +317,6 @@ func TestUpdateHelpers(t *testing.T) {
 	})
 
 	t.Run("collectURLs enforces max scan file count", func(t *testing.T) {
-		origLimit := updateMaxScanFiles
-		updateMaxScanFiles = 2
-		t.Cleanup(func() { updateMaxScanFiles = origLimit })
-
 		root := t.TempDir()
 		for i := 0; i < 3; i++ {
 			name := filepath.Join(root, fmt.Sprintf("doc-%d.md", i))
@@ -328,7 +324,7 @@ func TestUpdateHelpers(t *testing.T) {
 				t.Fatalf("write markdown %d: %v", i, err)
 			}
 		}
-		_, err := collectURLs(root)
+		_, err := collectURLsWithLimits(root, updateScanLimits{MaxURLScanFileBytes: updateMaxURLScanFileBytes, MaxScanFiles: 2})
 		if err == nil || !strings.Contains(err.Error(), "URL scan exceeded max file count") {
 			t.Fatalf("expected URL scan max-file error, got %v", err)
 		}
@@ -401,10 +397,6 @@ func TestUpdateHelpers(t *testing.T) {
 	})
 
 	t.Run("collectExecutableFiles enforces max scan file count", func(t *testing.T) {
-		origLimit := updateMaxScanFiles
-		updateMaxScanFiles = 2
-		t.Cleanup(func() { updateMaxScanFiles = origLimit })
-
 		root := t.TempDir()
 		for i := 0; i < 3; i++ {
 			name := filepath.Join(root, fmt.Sprintf("run-%d.sh", i))
@@ -412,7 +404,7 @@ func TestUpdateHelpers(t *testing.T) {
 				t.Fatalf("write executable %d: %v", i, err)
 			}
 		}
-		_, err := collectExecutableFiles(root)
+		_, err := collectExecutableFilesWithLimits(root, updateScanLimits{MaxURLScanFileBytes: updateMaxURLScanFileBytes, MaxScanFiles: 2})
 		if err == nil || !strings.Contains(err.Error(), "executable scan exceeded max file count") {
 			t.Fatalf("expected executable scan max-file error, got %v", err)
 		}

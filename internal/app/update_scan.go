@@ -19,12 +19,28 @@ import (
 
 var updateURLPattern = regexp.MustCompile(`(?i)(?:https?://\[[0-9a-z:._%-]+\](?::\d+)?[^\s<>"')]*|https?://[^\s<>"')\]]+|//\[[0-9a-z:._%-]+\](?::\d+)?[^\s<>"')]*|//[^\s<>"')\]]+)`)
 
-var (
+const (
 	updateMaxURLScanFileBytes int64 = 1_000_000
 	updateMaxScanFiles              = 10_000
 )
 
+type updateScanLimits struct {
+	MaxURLScanFileBytes int64
+	MaxScanFiles        int
+}
+
+func defaultUpdateScanLimits() updateScanLimits {
+	return updateScanLimits{
+		MaxURLScanFileBytes: updateMaxURLScanFileBytes,
+		MaxScanFiles:        updateMaxScanFiles,
+	}
+}
+
 func collectURLs(root string) ([]string, error) {
+	return collectURLsWithLimits(root, defaultUpdateScanLimits())
+}
+
+func collectURLsWithLimits(root string, limits updateScanLimits) ([]string, error) {
 	if err := ensureUpdateScanRoot(root, "URL scan", rulepkg.UpdateURLScanSymlink.ID, rulepkg.UpdateURLScanSpecialFile.ID); err != nil {
 		return nil, err
 	}
@@ -71,10 +87,10 @@ func collectURLs(root string) ([]string, error) {
 			return err
 		}
 		scannedFiles++
-		if scannedFiles > updateMaxScanFiles {
-			return fmt.Errorf("URL scan exceeded max file count: %d", updateMaxScanFiles)
+		if scannedFiles > limits.MaxScanFiles {
+			return fmt.Errorf("URL scan exceeded max file count: %d", limits.MaxScanFiles)
 		}
-		content, err := readURLScanContent(f, path, root)
+		content, err := readURLScanContentWithLimit(f, path, root, limits.MaxURLScanFileBytes)
 		if err != nil {
 			return err
 		}
@@ -118,6 +134,10 @@ func ensureURLScanStableFile(previous os.FileInfo, current os.FileInfo, path str
 }
 
 func collectExecutableFiles(root string) ([]string, error) {
+	return collectExecutableFilesWithLimits(root, defaultUpdateScanLimits())
+}
+
+func collectExecutableFilesWithLimits(root string, limits updateScanLimits) ([]string, error) {
 	if err := ensureUpdateScanRoot(root, "executable scan", rulepkg.UpdateExecutableScanSymlink.ID, rulepkg.UpdateExecutableScanSpecialFile.ID); err != nil {
 		return nil, err
 	}
@@ -149,8 +169,8 @@ func collectExecutableFiles(root string) ([]string, error) {
 			return fmt.Errorf("%s: executable scan input contains non-regular file: %s", rulepkg.UpdateExecutableScanSpecialFile.ID, path)
 		}
 		scannedFiles++
-		if scannedFiles > updateMaxScanFiles {
-			return fmt.Errorf("executable scan exceeded max file count: %d", updateMaxScanFiles)
+		if scannedFiles > limits.MaxScanFiles {
+			return fmt.Errorf("executable scan exceeded max file count: %d", limits.MaxScanFiles)
 		}
 		if info.Mode().Perm()&0o111 == 0 {
 			return nil
@@ -169,8 +189,12 @@ func collectExecutableFiles(root string) ([]string, error) {
 }
 
 func readURLScanContent(r io.Reader, path string, root string) (string, error) {
+	return readURLScanContentWithLimit(r, path, root, updateMaxURLScanFileBytes)
+}
+
+func readURLScanContentWithLimit(r io.Reader, path string, root string, limit int64) (string, error) {
 	var content bytes.Buffer
-	if _, err := limitio.CopyWithStrictLimit(&content, r, updateMaxURLScanFileBytes); err != nil {
+	if _, err := limitio.CopyWithStrictLimit(&content, r, limit); err != nil {
 		if errors.Is(err, limitio.ErrSizeExceeded) {
 			rel, relErr := filepath.Rel(root, path)
 			if relErr == nil {

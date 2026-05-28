@@ -100,6 +100,8 @@ Recent completed increments:
   validation, source preparation, policy resolution, findings evaluation, and
   change/risk evaluation while preserving existing status and error-code
   behavior.
+- update URL/executable scan limits now use explicit helper inputs in focused
+  tests instead of mutating package globals for max-file scenarios.
 - SARIF error document construction now uses a shared helper for structured
   error rule ID resolution while keeping command-specific SARIF properties at
   the output boundary.
