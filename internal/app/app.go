@@ -10,15 +10,17 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
-	"strconv"
 	"strings"
 	"unicode/utf8"
 
-	"github.com/watany-dev/gokui/internal/limitio"
+	"github.com/watany-dev/gokui/internal/cli/exitcode"
 	"github.com/watany-dev/gokui/internal/materialize"
+	policypkg "github.com/watany-dev/gokui/internal/policy"
+	reportpkg "github.com/watany-dev/gokui/internal/report"
+	rulepkg "github.com/watany-dev/gokui/internal/rule"
 	"github.com/watany-dev/gokui/internal/scan"
+	skillpkg "github.com/watany-dev/gokui/internal/skill"
 	srcpkg "github.com/watany-dev/gokui/internal/source"
-	yaml "go.yaml.in/yaml/v4"
 )
 
 type Config struct {
@@ -63,74 +65,19 @@ type inspectReviewSummary struct {
 	Low      int `json:"low"`
 }
 
-type inspectSARIFReport struct {
-	Version string            `json:"version"`
-	Schema  string            `json:"$schema"`
-	Runs    []inspectSARIFRun `json:"runs"`
-}
-
-type inspectSARIFRun struct {
-	Tool        inspectSARIFTool         `json:"tool"`
-	Results     []inspectSARIFResult     `json:"results"`
-	Invocations []inspectSARIFInvocation `json:"invocations,omitempty"`
-	Properties  inspectSARIFProperties   `json:"properties"`
-}
-
-type inspectSARIFTool struct {
-	Driver inspectSARIFDriver `json:"driver"`
-}
-
-type inspectSARIFDriver struct {
-	Name    string             `json:"name"`
-	Version string             `json:"version"`
-	Rules   []inspectSARIFRule `json:"rules,omitempty"`
-}
-
-type inspectSARIFRule struct {
-	ID               string                       `json:"id"`
-	ShortDescription inspectSARIFMessageContainer `json:"shortDescription"`
-}
-
-type inspectSARIFMessageContainer struct {
-	Text string `json:"text"`
-}
-
-type inspectSARIFResult struct {
-	RuleID    string                       `json:"ruleId"`
-	Level     string                       `json:"level"`
-	Message   inspectSARIFMessageContainer `json:"message"`
-	Locations []inspectSARIFLocation       `json:"locations,omitempty"`
-}
-
-type inspectSARIFLocation struct {
-	PhysicalLocation inspectSARIFPhysicalLocation `json:"physicalLocation"`
-}
-
-type inspectSARIFPhysicalLocation struct {
-	ArtifactLocation inspectSARIFArtifactLocation `json:"artifactLocation"`
-	Region           *inspectSARIFRegion          `json:"region,omitempty"`
-}
-
-type inspectSARIFArtifactLocation struct {
-	URI string `json:"uri"`
-}
-
-type inspectSARIFRegion struct {
-	StartLine int `json:"startLine"`
-}
-
-type inspectSARIFInvocation struct {
-	ExecutionSuccessful bool `json:"executionSuccessful"`
-}
-
-type inspectSARIFProperties struct {
-	SchemaVersion string `json:"schema_version"`
-	PreRelease    bool   `json:"pre_release"`
-	SourceInput   string `json:"source_input"`
-	SourceKind    string `json:"source_kind"`
-	Decision      string `json:"decision"`
-	Note          string `json:"note"`
-}
+type inspectSARIFReport = reportpkg.SARIFDocument
+type inspectSARIFRun = reportpkg.SARIFRun
+type inspectSARIFTool = reportpkg.SARIFTool
+type inspectSARIFDriver = reportpkg.SARIFDriver
+type inspectSARIFRule = reportpkg.SARIFRule
+type inspectSARIFMessageContainer = reportpkg.SARIFMessageContainer
+type inspectSARIFResult = reportpkg.SARIFResult
+type inspectSARIFLocation = reportpkg.SARIFLocation
+type inspectSARIFPhysicalLocation = reportpkg.SARIFPhysicalLocation
+type inspectSARIFArtifactLocation = reportpkg.SARIFArtifactLocation
+type inspectSARIFRegion = reportpkg.SARIFRegion
+type inspectSARIFInvocation = reportpkg.SARIFInvocation
+type inspectSARIFProperties = reportpkg.SARIFProperties
 
 type inspectErrorReport struct {
 	SchemaVersion string `json:"schema_version"`
@@ -155,56 +102,26 @@ type inspectFinding struct {
 	Summary  string `json:"summary"`
 }
 
-// severityOverrideAudit records explicit policy severity adjustments.
-// Current strict-profile behavior records an empty list unless overrides are enabled in future phases.
-type severityOverrideAudit struct {
-	RuleID            string `json:"rule_id"`
-	PreviousSeverity  string `json:"previous_severity"`
-	EffectiveSeverity string `json:"effective_severity"`
-	Justification     string `json:"justification"`
-	ApprovedBy        string `json:"approved_by"`
-	Source            string `json:"source"`
-	AppliedAt         string `json:"applied_at"`
-}
-
-func cloneSeverityOverrides(in []severityOverrideAudit) []severityOverrideAudit {
-	if len(in) == 0 {
-		return []severityOverrideAudit{}
-	}
-	out := make([]severityOverrideAudit, len(in))
-	copy(out, in)
-	return out
-}
-
-type skillFrontmatter struct {
-	Name        string
-	Description string
-}
+type severityOverrideAudit = policypkg.SeverityOverrideAudit
 
 var (
-	skillNamePattern                 = regexp.MustCompile(`^[a-z0-9]+(?:-[a-z0-9]+)*$`)
-	descriptionURLPattern            = regexp.MustCompile(`(?i)\b(?:https?://|ftp://|www\.)\S+`)
-	descriptionCommandPattern        = regexp.MustCompile(`(?i)\b(run|execute|exec|invoke|call|use)\b.{0,30}\b(bash|sh|zsh|pwsh|powershell|python|node|npm|npx|uvx|go|curl|wget|terminal|command)\b`)
-	descriptionOverridePattern       = regexp.MustCompile(`(?i)\b(ignore|override|bypass)\b.{0,40}\b(previous|prior|system|higher|earlier)\b.{0,20}\b(instruction|instructions|prompt|prompts)\b`)
-	ruleIDPrefixPattern              = regexp.MustCompile(`^([A-Z][A-Z0-9_]+):\s`)
-	ruleIDAnywherePattern            = regexp.MustCompile(`(?:^|[^A-Z0-9_])([A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+):\s`)
-	errorCodePattern                 = regexp.MustCompile(`^[A-Z0-9_]+$`)
-	maxSkillFrontmatterBytes   int64 = 1_000_000
-	errInspectSourceNotFound         = errors.New("inspect source not found")
-	runInspectForVet                 = runInspect
+	errorCodePattern               = regexp.MustCompile(`^[A-Z0-9_]+$`)
+	maxSkillFrontmatterBytes int64 = 1_000_000
+	errInspectSourceNotFound       = skillpkg.ErrInspectSourceNotFound
+	runInspectForVet               = runInspect
 )
 
-const ruleSkillFrontmatterTooLarge = "SKILL_FRONTMATTER_TOO_LARGE"
+const ruleSkillFrontmatterTooLarge = skillpkg.RuleFrontmatterTooLarge
 const (
-	ruleInspectSourceSymlink          = "INSPECT_SOURCE_SYMLINK_DETECTED"
-	ruleSkillFrontmatterSymlink       = "SKILL_FRONTMATTER_SYMLINK_DETECTED"
-	ruleSkillFrontmatterSpecialFile   = "SKILL_FRONTMATTER_SPECIAL_FILE"
-	ruleSkillFrontmatterInvalidUTF8   = "SKILL_FRONTMATTER_INVALID_UTF8"
-	ruleSkillFrontmatterSourceChanged = "SKILL_FRONTMATTER_SOURCE_CHANGED_DURING_READ"
+	ruleInspectSourceSymlink          = skillpkg.RuleInspectSourceSymlink
+	ruleSkillFrontmatterSymlink       = skillpkg.RuleFrontmatterSymlink
+	ruleSkillFrontmatterSpecialFile   = skillpkg.RuleFrontmatterSpecialFile
+	ruleSkillFrontmatterInvalidUTF8   = skillpkg.RuleFrontmatterInvalidUTF8
+	ruleSkillFrontmatterSourceChanged = skillpkg.RuleFrontmatterSourceChanged
 )
 
 const (
-	descriptionToolInjectionRuleID      = "DESCRIPTION_TOOL_INJECTION"
+	descriptionToolInjectionRuleID      = skillpkg.RuleDescriptionToolInjection
 	inspectErrorCodeArgsInvalid         = "INSPECT_ARGS_INVALID"
 	inspectErrorCodeSourceNotFound      = "INSPECT_SOURCE_NOT_FOUND"
 	inspectErrorCodeSourceInvalid       = "INSPECT_SOURCE_INVALID"
@@ -237,12 +154,12 @@ func BuildVersionString(cfg Config) string {
 func Run(args []string, stdout io.Writer, stderr io.Writer, cfg Config) int {
 	if len(args) == 0 {
 		_, _ = fmt.Fprintln(stderr, usage())
-		return 1
+		return exitcode.Error.Int()
 	}
 
 	if len(args) == 1 && args[0] == "version" {
 		_, _ = fmt.Fprintln(stdout, BuildVersionString(cfg))
-		return 0
+		return exitcode.OK.Int()
 	}
 
 	switch args[0] {
@@ -261,11 +178,11 @@ func Run(args []string, stdout io.Writer, stderr io.Writer, cfg Config) int {
 			return runLockVerify(args[2:], stdout, stderr)
 		}
 		_, _ = fmt.Fprintf(stderr, "unknown command: %s\n\n%s\n", strings.Join(args, " "), usage())
-		return 1
+		return exitcode.Error.Int()
 	}
 
 	_, _ = fmt.Fprintf(stderr, "unknown command: %s\n\n%s\n", strings.Join(args, " "), usage())
-	return 1
+	return exitcode.Error.Int()
 }
 
 func usage() string {
@@ -310,7 +227,7 @@ func runVet(args []string, stdout io.Writer, stderr io.Writer) int {
 			return writeInspectJSONError(stdout, stderr, report)
 		}
 		_, _ = fmt.Fprintf(stderr, "%s\n\n%s\n", err.Error(), usage())
-		return 1
+		return exitcode.Error.Int()
 	}
 
 	sourceKind := detectSourceKind(input)
@@ -327,10 +244,10 @@ func runVet(args []string, stdout io.Writer, stderr io.Writer) int {
 			},
 			Note: "vet supports only local sources",
 		}) {
-			return 1
+			return exitcode.Error.Int()
 		}
 		_, _ = fmt.Fprintf(stderr, "%s\n\n%s\n", msg, usage())
-		return 1
+		return exitcode.Error.Int()
 	}
 	profile = normalizePolicyProfile(profile)
 
@@ -347,10 +264,10 @@ func runVet(args []string, stdout io.Writer, stderr io.Writer) int {
 			},
 			Note: "vet failed while loading policy configuration",
 		}) {
-			return 1
+			return exitcode.Error.Int()
 		}
 		_, _ = fmt.Fprintln(stderr, policyErr.Error())
-		return 1
+		return exitcode.Error.Int()
 	}
 	effectivePolicy := userPolicy
 	effectivePolicyLoaded := policyLoaded
@@ -368,10 +285,10 @@ func runVet(args []string, stdout io.Writer, stderr io.Writer) int {
 				},
 				Note: "vet failed while loading repository policy configuration",
 			}) {
-				return 1
+				return exitcode.Error.Int()
 			}
 			_, _ = fmt.Fprintln(stderr, repoPolicyErr.Error())
-			return 1
+			return exitcode.Error.Int()
 		}
 		if repoPolicyFound {
 			effectivePolicy = repoPolicy
@@ -395,10 +312,10 @@ func runVet(args []string, stdout io.Writer, stderr io.Writer) int {
 			},
 			Note: "vet policy profile validation failed",
 		}) {
-			return 1
+			return exitcode.Error.Int()
 		}
 		_, _ = fmt.Fprintf(stderr, "%s\n\n%s\n", msg, usage())
-		return 1
+		return exitcode.Error.Int()
 	}
 	rejectSet, rejectSetErr := effectiveRejectSeveritySetForProfile(profile, effectivePolicyLoaded, effectivePolicy)
 	if rejectSetErr != nil {
@@ -413,10 +330,10 @@ func runVet(args []string, stdout io.Writer, stderr io.Writer) int {
 			},
 			Note: "vet policy reject_severities configuration is invalid",
 		}) {
-			return 1
+			return exitcode.Error.Int()
 		}
 		_, _ = fmt.Fprintln(stderr, rejectSetErr.Error())
-		return 1
+		return exitcode.Error.Int()
 	}
 
 	var inspectStdout bytes.Buffer
@@ -425,10 +342,10 @@ func runVet(args []string, stdout io.Writer, stderr io.Writer) int {
 	if inspectCode == 1 {
 		errorReport := decodeInspectErrorPayload(inspectStdout.Bytes())
 		if emitInspectStructuredError(format, stdout, stderr, errorReport) {
-			return 1
+			return exitcode.Error.Int()
 		}
 		_, _ = fmt.Fprintln(stderr, errorReport.Message)
-		return 1
+		return exitcode.Error.Int()
 	}
 
 	report := buildVetReportFromInspectJSON(inspectStdout.Bytes(), input, sourceKind, profile, rejectSet)
@@ -437,33 +354,33 @@ func runVet(args []string, stdout io.Writer, stderr io.Writer) int {
 		out, _ := json.MarshalIndent(report, "", "  ")
 		_, _ = fmt.Fprintf(stdout, "%s\n", out)
 		if report.Decision == "REJECTED" {
-			return 2
+			return exitcode.Rejected.Int()
 		}
-		return 0
+		return exitcode.OK.Int()
 	}
 	if format == "review-json" {
 		out, _ := json.MarshalIndent(buildInspectReviewReport(report), "", "  ")
 		_, _ = fmt.Fprintf(stdout, "%s\n", out)
 		if report.Decision == "REJECTED" {
-			return 2
+			return exitcode.Rejected.Int()
 		}
-		return 0
+		return exitcode.OK.Int()
 	}
 	if format == "sarif" {
 		out, _ := json.MarshalIndent(buildInspectSARIFReport(report), "", "  ")
 		_, _ = fmt.Fprintf(stdout, "%s\n", out)
 		if report.Decision == "REJECTED" {
-			return 2
+			return exitcode.Rejected.Int()
 		}
-		return 0
+		return exitcode.OK.Int()
 	}
 	if format == "compact" {
 		summary := strings.Replace(buildInspectCompactSummary(report), "inspect ", "vet ", 1)
 		_, _ = fmt.Fprintf(stdout, "%s\n", summary)
 		if report.Decision == "REJECTED" {
-			return 2
+			return exitcode.Rejected.Int()
 		}
-		return 0
+		return exitcode.OK.Int()
 	}
 
 	_, _ = fmt.Fprintln(stdout, "gokui vet report (pre-release)")
@@ -474,9 +391,9 @@ func runVet(args []string, stdout io.Writer, stderr io.Writer) int {
 		_, _ = fmt.Fprintf(stdout, "- [%s] %s %s:%d %s\n", strings.ToUpper(finding.Severity), finding.ID, finding.File, finding.Line, finding.Summary)
 	}
 	if report.Decision == "REJECTED" {
-		return 2
+		return exitcode.Rejected.Int()
 	}
-	return 0
+	return exitcode.OK.Int()
 }
 
 func buildVetReportFromInspectJSON(raw []byte, input string, sourceKind string, profile string, rejectSet map[string]struct{}) inspectReport {
@@ -534,7 +451,7 @@ func runInspect(args []string, stdout io.Writer, stderr io.Writer) int {
 			return writeInspectJSONError(stdout, stderr, report)
 		}
 		_, _ = fmt.Fprintf(stderr, "%s\n\n%s\n", err.Error(), usage())
-		return 1
+		return exitcode.Error.Int()
 	}
 	structuredOutput := format == "json" || format == "sarif" || format == "review-json"
 
@@ -557,7 +474,7 @@ func runInspect(args []string, stdout io.Writer, stderr io.Writer) int {
 					})
 				}
 				_, _ = fmt.Fprintf(stderr, "inspect source not found: %s\n", input)
-				return 1
+				return exitcode.Error.Int()
 			}
 			accessErr := fmt.Sprintf("failed to access inspect source: %v", statErr)
 			if structuredOutput {
@@ -574,7 +491,7 @@ func runInspect(args []string, stdout io.Writer, stderr io.Writer) int {
 				})
 			}
 			_, _ = fmt.Fprintln(stderr, accessErr)
-			return 1
+			return exitcode.Error.Int()
 		}
 	}
 
@@ -598,7 +515,7 @@ func runInspect(args []string, stdout io.Writer, stderr io.Writer) int {
 				})
 			}
 			_, _ = fmt.Fprintf(stderr, "invalid github source: %v\n", parseErr)
-			return 1
+			return exitcode.Error.Int()
 		}
 		if !srcpkg.IsCommitPinnedRef(spec.Ref) {
 			msg := "inspect github source requires a commit-pinned ref (e.g. @8f3c2d1a4b5c6d7e8f901234567890abcdef1234)"
@@ -616,7 +533,7 @@ func runInspect(args []string, stdout io.Writer, stderr io.Writer) int {
 				})
 			}
 			_, _ = fmt.Fprintln(stderr, msg)
-			return 1
+			return exitcode.Error.Int()
 		}
 		skillRoot, cleanup, prepErr := preparePolicyEvaluationSource(input, sourceKind)
 		if cleanup != nil {
@@ -637,7 +554,7 @@ func runInspect(args []string, stdout io.Writer, stderr io.Writer) int {
 				})
 			}
 			_, _ = fmt.Fprintln(stderr, prepErr.Error())
-			return 1
+			return exitcode.Error.Int()
 		}
 		scanFindings, scanErr := scan.ScanSkillRoot(skillRoot)
 		if scanErr != nil {
@@ -655,7 +572,7 @@ func runInspect(args []string, stdout io.Writer, stderr io.Writer) int {
 				})
 			}
 			_, _ = fmt.Fprintln(stderr, scanErr.Error())
-			return 1
+			return exitcode.Error.Int()
 		}
 		findings, decision = toInspectFindings(scanFindings)
 		note = "pre-release inspect includes structural and markdown checks (github commit-pinned source)"
@@ -683,7 +600,7 @@ func runInspect(args []string, stdout io.Writer, stderr io.Writer) int {
 				})
 			}
 			_, _ = fmt.Fprintln(stderr, validateErr.Error())
-			return 1
+			return exitcode.Error.Int()
 		}
 		scanFindings, scanErr := scan.ScanSkillRoot(skillRoot)
 		if scanErr != nil {
@@ -701,7 +618,7 @@ func runInspect(args []string, stdout io.Writer, stderr io.Writer) int {
 				})
 			}
 			_, _ = fmt.Fprintln(stderr, scanErr.Error())
-			return 1
+			return exitcode.Error.Int()
 		}
 		findings, decision = toInspectFindings(scanFindings)
 	}
@@ -722,44 +639,44 @@ func runInspect(args []string, stdout io.Writer, stderr io.Writer) int {
 		out, marshalErr := json.MarshalIndent(report, "", "  ")
 		if marshalErr != nil {
 			_, _ = fmt.Fprintln(stderr, "failed to render inspect report")
-			return 1
+			return exitcode.Error.Int()
 		}
 		_, _ = fmt.Fprintf(stdout, "%s\n", out)
 		if report.Decision == "REJECTED" {
-			return 2
+			return exitcode.Rejected.Int()
 		}
-		return 0
+		return exitcode.OK.Int()
 	}
 	if format == "review-json" {
 		out, marshalErr := json.MarshalIndent(buildInspectReviewReport(report), "", "  ")
 		if marshalErr != nil {
 			_, _ = fmt.Fprintln(stderr, "failed to render inspect review report")
-			return 1
+			return exitcode.Error.Int()
 		}
 		_, _ = fmt.Fprintf(stdout, "%s\n", out)
 		if report.Decision == "REJECTED" {
-			return 2
+			return exitcode.Rejected.Int()
 		}
-		return 0
+		return exitcode.OK.Int()
 	}
 	if format == "sarif" {
 		out, marshalErr := json.MarshalIndent(buildInspectSARIFReport(report), "", "  ")
 		if marshalErr != nil {
 			_, _ = fmt.Fprintln(stderr, "failed to render inspect SARIF report")
-			return 1
+			return exitcode.Error.Int()
 		}
 		_, _ = fmt.Fprintf(stdout, "%s\n", out)
 		if report.Decision == "REJECTED" {
-			return 2
+			return exitcode.Rejected.Int()
 		}
-		return 0
+		return exitcode.OK.Int()
 	}
 	if format == "compact" {
 		_, _ = fmt.Fprintf(stdout, "%s\n", buildInspectCompactSummary(report))
 		if report.Decision == "REJECTED" {
-			return 2
+			return exitcode.Rejected.Int()
 		}
-		return 0
+		return exitcode.OK.Int()
 	}
 
 	_, _ = fmt.Fprintln(stdout, "gokui inspect report (pre-release)")
@@ -770,9 +687,9 @@ func runInspect(args []string, stdout io.Writer, stderr io.Writer) int {
 		_, _ = fmt.Fprintf(stdout, "- [%s] %s %s:%d %s\n", strings.ToUpper(finding.Severity), finding.ID, finding.File, finding.Line, finding.Summary)
 	}
 	if report.Decision == "REJECTED" {
-		return 2
+		return exitcode.Rejected.Int()
 	}
-	return 0
+	return exitcode.OK.Int()
 }
 
 func toInspectFindings(scanFindings []scan.Finding) ([]inspectFinding, string) {
@@ -971,33 +888,11 @@ func decodeInspectErrorPayload(raw []byte) inspectErrorReport {
 }
 
 func buildInspectCompactSummary(report inspectReport) string {
-	critical := 0
-	high := 0
-	medium := 0
-	low := 0
+	severities := make([]string, 0, len(report.Findings))
 	for _, finding := range report.Findings {
-		switch finding.Severity {
-		case "critical":
-			critical++
-		case "high":
-			high++
-		case "medium":
-			medium++
-		case "low":
-			low++
-		}
+		severities = append(severities, finding.Severity)
 	}
-	return fmt.Sprintf(
-		"inspect decision=%s findings=%d critical=%d high=%d medium=%d low=%d source_kind=%s source=%q",
-		report.Decision,
-		len(report.Findings),
-		critical,
-		high,
-		medium,
-		low,
-		report.Source.Kind,
-		report.Source.Input,
-	)
+	return reportpkg.InspectCompactSummary(report.Decision, report.Source.Kind, report.Source.Input, severities)
 }
 
 func buildInspectSARIFReport(report inspectReport) inspectSARIFReport {
@@ -1043,14 +938,14 @@ func buildInspectSARIFReport(report inspectReport) inspectSARIFReport {
 	}
 
 	return inspectSARIFReport{
-		Version: "2.1.0",
-		Schema:  "https://json.schemastore.org/sarif-2.1.0.json",
+		Version: reportpkg.SARIFVersion,
+		Schema:  reportpkg.SARIFSchema,
 		Runs: []inspectSARIFRun{
 			{
 				Tool: inspectSARIFTool{
 					Driver: inspectSARIFDriver{
-						Name:    "gokui",
-						Version: "pre-release",
+						Name:    reportpkg.SARIFDriverName,
+						Version: reportpkg.SARIFDriverVersion,
 						Rules:   rules,
 					},
 				},
@@ -1072,16 +967,7 @@ func buildInspectSARIFReport(report inspectReport) inspectSARIFReport {
 }
 
 func inspectSeverityToSARIFLevel(severity string) string {
-	switch severity {
-	case "critical", "high":
-		return "error"
-	case "medium":
-		return "warning"
-	case "low":
-		return "note"
-	default:
-		return "warning"
-	}
+	return reportpkg.SARIFLevelForSeverity(severity)
 }
 
 func inspectArgsRequestJSON(args []string) bool {
@@ -1147,10 +1033,10 @@ func writeInspectJSONError(stdout io.Writer, stderr io.Writer, report inspectErr
 	out, err := json.MarshalIndent(report, "", "  ")
 	if err != nil {
 		_, _ = fmt.Fprintln(stderr, "failed to render inspect error report")
-		return 1
+		return exitcode.Error.Int()
 	}
 	_, _ = fmt.Fprintf(stdout, "%s\n", out)
-	return 1
+	return exitcode.Error.Int()
 }
 
 func writeInspectSARIFError(stdout io.Writer, stderr io.Writer, report inspectErrorReport) int {
@@ -1162,10 +1048,10 @@ func writeInspectSARIFError(stdout io.Writer, stderr io.Writer, report inspectEr
 	out, err := json.MarshalIndent(buildInspectSARIFErrorReport(report), "", "  ")
 	if err != nil {
 		_, _ = fmt.Fprintln(stderr, "failed to render inspect SARIF error report")
-		return 1
+		return exitcode.Error.Int()
 	}
 	_, _ = fmt.Fprintf(stdout, "%s\n", out)
-	return 1
+	return exitcode.Error.Int()
 }
 
 func buildInspectSARIFErrorReport(report inspectErrorReport) inspectSARIFReport {
@@ -1173,46 +1059,14 @@ func buildInspectSARIFErrorReport(report inspectErrorReport) inspectSARIFReport 
 	if report.RuleID != "" {
 		ruleID = report.RuleID
 	}
-	return inspectSARIFReport{
-		Version: "2.1.0",
-		Schema:  "https://json.schemastore.org/sarif-2.1.0.json",
-		Runs: []inspectSARIFRun{
-			{
-				Tool: inspectSARIFTool{
-					Driver: inspectSARIFDriver{
-						Name:    "gokui",
-						Version: "pre-release",
-						Rules: []inspectSARIFRule{
-							{
-								ID: ruleID,
-								ShortDescription: inspectSARIFMessageContainer{
-									Text: report.ErrorCode,
-								},
-							},
-						},
-					},
-				},
-				Results: []inspectSARIFResult{
-					{
-						RuleID:  ruleID,
-						Level:   "error",
-						Message: inspectSARIFMessageContainer{Text: report.Message},
-					},
-				},
-				Invocations: []inspectSARIFInvocation{
-					{ExecutionSuccessful: false},
-				},
-				Properties: inspectSARIFProperties{
-					SchemaVersion: report.SchemaVersion,
-					PreRelease:    true,
-					SourceInput:   report.Source.Input,
-					SourceKind:    report.Source.Kind,
-					Decision:      report.Status,
-					Note:          fmt.Sprintf("%s; error_code=%s", report.Note, report.ErrorCode),
-				},
-			},
-		},
-	}
+	return reportpkg.SARIFErrorDocument(ruleID, report.ErrorCode, report.Message, inspectSARIFProperties{
+		SchemaVersion: report.SchemaVersion,
+		PreRelease:    true,
+		SourceInput:   report.Source.Input,
+		SourceKind:    report.Source.Kind,
+		Decision:      report.Status,
+		Note:          fmt.Sprintf("%s; error_code=%s", report.Note, report.ErrorCode),
+	})
 }
 
 func emitInspectStructuredError(format string, stdout io.Writer, stderr io.Writer, report inspectErrorReport) bool {
@@ -1233,26 +1087,11 @@ func emitInspectStructuredError(format string, stdout io.Writer, stderr io.Write
 
 func emitInspectStructuredErrorCode(format string, stdout io.Writer, stderr io.Writer, report inspectErrorReport) int {
 	_ = emitInspectStructuredError(format, stdout, stderr, report)
-	return 1
-}
-
-func inferRuleIDFromMessage(message string) string {
-	match := ruleIDPrefixPattern.FindStringSubmatch(strings.TrimSpace(message))
-	if len(match) != 2 {
-		return ""
-	}
-	return match[1]
+	return exitcode.Error.Int()
 }
 
 func inferRuleIDForJSONError(message string) string {
-	if id := inferRuleIDFromMessage(message); id != "" {
-		return id
-	}
-	match := ruleIDAnywherePattern.FindStringSubmatch(message)
-	if len(match) != 2 {
-		return ""
-	}
-	return match[1]
+	return rulepkg.InferIDForJSONError(message)
 }
 
 func normalizeJSONErrorCode(code string, fallback string) string {
@@ -1306,9 +1145,7 @@ func buildInspectReviewReport(report inspectReport) inspectReviewReport {
 }
 
 func neutralizeReviewText(text string) string {
-	valid := strings.ToValidUTF8(text, "\uFFFD")
-	quoted := strconv.QuoteToASCII(valid)
-	return quoted[1 : len(quoted)-1]
+	return reportpkg.NeutralizeReviewText(text)
 }
 
 func detectSourceKind(input string) string {
@@ -1326,264 +1163,9 @@ func detectSourceKind(input string) string {
 }
 
 func validateLocalDirInspectSource(input string) error {
-	if err := rejectSymlinkPath(input, "inspect local source", ruleInspectSourceSymlink); err != nil {
-		return err
-	}
-	info, lstatErr := os.Lstat(input)
-	if lstatErr != nil {
-		return fmt.Errorf("%w: %s", errInspectSourceNotFound, input)
-	}
-	if info.Mode()&os.ModeSymlink != 0 {
-		return fmt.Errorf("%s: inspect local source must not be a symlink: %s", ruleInspectSourceSymlink, input)
-	}
-	if !info.IsDir() {
-		return fmt.Errorf("inspect local source must be a directory: %s", input)
-	}
-
-	skillPath := filepath.Join(input, "SKILL.md")
-	if err := rejectSymlinkPath(skillPath, "inspect local source SKILL.md", ruleSkillFrontmatterSymlink); err != nil {
-		return err
-	}
-	skillInfo, skillErr := os.Lstat(skillPath)
-	if skillErr != nil {
-		return fmt.Errorf("inspect local dir must contain SKILL.md at root: %s", input)
-	}
-	if skillInfo.Mode()&os.ModeSymlink != 0 {
-		return fmt.Errorf("%s: inspect local source SKILL.md must not be a symlink: %s", ruleSkillFrontmatterSymlink, skillPath)
-	}
-
-	meta, err := validateSkillFrontmatter(skillPath)
-	if err != nil {
-		return err
-	}
-
-	dirName := filepath.Base(filepath.Clean(input))
-	if dirName != meta.Name {
-		return fmt.Errorf("frontmatter name must match directory name: name=%s dir=%s", meta.Name, dirName)
-	}
-
-	return nil
+	return skillpkg.ValidateLocalDirInspectSource(input, maxSkillFrontmatterBytes)
 }
 
 func isInspectSourceNotFoundError(err error) bool {
 	return errors.Is(err, errInspectSourceNotFound)
-}
-
-func validateSkillFrontmatter(skillPath string) (skillFrontmatter, error) {
-	info, statErr := os.Lstat(skillPath)
-	if statErr != nil {
-		return skillFrontmatter{}, fmt.Errorf("failed to read SKILL.md: %s", skillPath)
-	}
-	if info.Mode()&os.ModeSymlink != 0 {
-		return skillFrontmatter{}, fmt.Errorf("%s: SKILL.md must not be a symlink: %s", ruleSkillFrontmatterSymlink, skillPath)
-	}
-	if !info.Mode().IsRegular() {
-		return skillFrontmatter{}, fmt.Errorf("%s: SKILL.md must be a regular file: %s", ruleSkillFrontmatterSpecialFile, skillPath)
-	}
-	f, err := os.Open(skillPath)
-	if err != nil {
-		return skillFrontmatter{}, fmt.Errorf("failed to read SKILL.md: %s", skillPath)
-	}
-	defer f.Close()
-	currentInfo, statErr := f.Stat()
-	if statErr != nil {
-		return skillFrontmatter{}, fmt.Errorf("failed to read SKILL.md: %s", skillPath)
-	}
-	if err := ensureSkillFrontmatterStableFile(info, currentInfo, skillPath); err != nil {
-		return skillFrontmatter{}, err
-	}
-	var content bytes.Buffer
-	if _, err := limitio.CopyWithStrictLimit(&content, f, maxSkillFrontmatterBytes); err != nil {
-		if errors.Is(err, limitio.ErrSizeExceeded) {
-			return skillFrontmatter{}, fmt.Errorf("%s: SKILL.md exceeds size limit: %s", ruleSkillFrontmatterTooLarge, skillPath)
-		}
-		return skillFrontmatter{}, fmt.Errorf("failed to read SKILL.md: %s", skillPath)
-	}
-	if !utf8.Valid(content.Bytes()) {
-		return skillFrontmatter{}, fmt.Errorf("%s: SKILL.md must be valid UTF-8: %s", ruleSkillFrontmatterInvalidUTF8, skillPath)
-	}
-
-	text := strings.ReplaceAll(content.String(), "\r\n", "\n")
-	lines := strings.Split(text, "\n")
-	if len(lines) == 0 || lines[0] != "---" {
-		return skillFrontmatter{}, fmt.Errorf("SKILL.md must start with YAML frontmatter: %s", skillPath)
-	}
-
-	end := -1
-	for i := 1; i < len(lines); i++ {
-		if lines[i] == "---" {
-			end = i
-			break
-		}
-	}
-	if end < 0 {
-		return skillFrontmatter{}, fmt.Errorf("SKILL.md frontmatter is not closed: %s", skillPath)
-	}
-
-	frontmatter := strings.Join(lines[1:end], "\n")
-	root, err := parseFrontmatterYAML(frontmatter)
-	if err != nil {
-		return skillFrontmatter{}, fmt.Errorf("invalid SKILL.md frontmatter YAML: %s", skillPath)
-	}
-
-	if err := validateFrontmatterYAML(root); err != nil {
-		return skillFrontmatter{}, err
-	}
-
-	if err := validateNoDuplicateKeys(root); err != nil {
-		return skillFrontmatter{}, err
-	}
-
-	name, okName := frontmatterStringField(root, "name")
-	description, okDescription := frontmatterStringField(root, "description")
-	if !okName || !okDescription || strings.TrimSpace(name) == "" || strings.TrimSpace(description) == "" {
-		return skillFrontmatter{}, fmt.Errorf("frontmatter must include non-empty string fields: name and description")
-	}
-
-	if err := validateSkillName(name); err != nil {
-		return skillFrontmatter{}, err
-	}
-	if err := validateSkillDescription(description); err != nil {
-		return skillFrontmatter{}, err
-	}
-
-	return skillFrontmatter{
-		Name:        name,
-		Description: description,
-	}, nil
-}
-
-func ensureSkillFrontmatterStableFile(previous os.FileInfo, current os.FileInfo, skillPath string) error {
-	if os.SameFile(previous, current) {
-		return nil
-	}
-	return fmt.Errorf("%s: SKILL.md changed during read: %s", ruleSkillFrontmatterSourceChanged, skillPath)
-}
-
-func parseFrontmatterYAML(frontmatter string) (*yaml.Node, error) {
-	var doc yaml.Node
-	decoder := yaml.NewDecoder(strings.NewReader(frontmatter))
-	if err := decoder.Decode(&doc); err != nil {
-		return nil, err
-	}
-
-	var extra yaml.Node
-	if err := decoder.Decode(&extra); err == nil {
-		return nil, fmt.Errorf("multiple YAML documents are not allowed")
-	} else if err != io.EOF {
-		return nil, err
-	}
-
-	if doc.Kind != yaml.DocumentNode || len(doc.Content) != 1 || doc.Content[0].Kind != yaml.MappingNode {
-		return nil, fmt.Errorf("frontmatter root must be a YAML mapping")
-	}
-
-	return doc.Content[0], nil
-}
-
-func validateFrontmatterYAML(node *yaml.Node) error {
-	if node == nil {
-		return fmt.Errorf("frontmatter root must be a YAML mapping")
-	}
-
-	if node.Kind == yaml.AliasNode {
-		return fmt.Errorf("YAML aliases are not allowed in SKILL.md frontmatter")
-	}
-	if node.Anchor != "" {
-		return fmt.Errorf("YAML anchors are not allowed in SKILL.md frontmatter")
-	}
-	if isCustomYAMLTag(node.Tag) {
-		return fmt.Errorf("custom YAML tags are not allowed in SKILL.md frontmatter")
-	}
-
-	if node.Kind == yaml.MappingNode {
-		for i := 0; i+1 < len(node.Content); i += 2 {
-			key := node.Content[i]
-			if key.Kind == yaml.ScalarNode && key.Value == "<<" {
-				return fmt.Errorf("YAML merge keys are not allowed in SKILL.md frontmatter")
-			}
-			if key.Tag == "!!merge" {
-				return fmt.Errorf("YAML merge keys are not allowed in SKILL.md frontmatter")
-			}
-		}
-	}
-
-	for _, child := range node.Content {
-		if err := validateFrontmatterYAML(child); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func isCustomYAMLTag(tag string) bool {
-	if tag == "" {
-		return false
-	}
-	return strings.HasPrefix(tag, "!") && !strings.HasPrefix(tag, "!!")
-}
-
-func validateNoDuplicateKeys(root *yaml.Node) error {
-	seen := make(map[string]struct{}, len(root.Content)/2)
-	for i := 0; i+1 < len(root.Content); i += 2 {
-		key := root.Content[i]
-		if key.Kind != yaml.ScalarNode {
-			continue
-		}
-
-		if _, ok := seen[key.Value]; ok {
-			return fmt.Errorf("duplicate frontmatter key: %s", key.Value)
-		}
-		seen[key.Value] = struct{}{}
-	}
-	return nil
-}
-
-func frontmatterStringField(root *yaml.Node, field string) (string, bool) {
-	for i := 0; i+1 < len(root.Content); i += 2 {
-		key := root.Content[i]
-		value := root.Content[i+1]
-		if key.Kind != yaml.ScalarNode || key.Value != field {
-			continue
-		}
-		if value.Kind != yaml.ScalarNode {
-			return "", false
-		}
-		return value.Value, true
-	}
-	return "", false
-}
-
-func validateSkillName(name string) error {
-	if len(name) > 64 {
-		return fmt.Errorf("frontmatter name is invalid: must be at most 64 characters")
-	}
-	if !skillNamePattern.MatchString(name) {
-		return fmt.Errorf("frontmatter name is invalid: expected lowercase ASCII letters, digits, and single hyphens")
-	}
-	return nil
-}
-
-func validateSkillDescription(description string) error {
-	trimmed := strings.TrimSpace(description)
-	if trimmed == "" {
-		return fmt.Errorf("frontmatter must include non-empty string fields: name and description")
-	}
-	if utf8.RuneCountInString(trimmed) > 1024 {
-		return fmt.Errorf("description must be 1 to 1024 characters")
-	}
-	if descriptionURLPattern.MatchString(trimmed) {
-		return fmt.Errorf("description must not contain URLs")
-	}
-	if strings.Contains(trimmed, "```") {
-		return fmt.Errorf("description must not contain code fences")
-	}
-	if descriptionOverridePattern.MatchString(trimmed) {
-		return fmt.Errorf("%s: description must not contain prompt override language", descriptionToolInjectionRuleID)
-	}
-	if descriptionCommandPattern.MatchString(trimmed) {
-		return fmt.Errorf("%s: description must not include tool or command execution instructions", descriptionToolInjectionRuleID)
-	}
-	return nil
 }

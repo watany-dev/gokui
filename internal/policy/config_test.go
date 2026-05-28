@@ -179,6 +179,9 @@ func TestResolvePolicyPath(t *testing.T) {
 	})
 
 	t.Run("falls back to home config path", func(t *testing.T) {
+		if runtime.GOOS == "windows" {
+			t.Skip("home resolution semantics differ on windows")
+		}
 		home := t.TempDir()
 		t.Setenv("HOME", home)
 		t.Setenv(envPolicyPath, "")
@@ -221,6 +224,58 @@ func TestRejectSymlinkPath(t *testing.T) {
 			t.Fatalf("expected path validation error, got %v", err)
 		}
 	})
+}
+
+func TestIsRootLevelPathComponent(t *testing.T) {
+	if isRootLevelPathComponent("relative/path") {
+		t.Fatal("relative path must not be treated as root-level component")
+	}
+	if isRootLevelPathComponent(string(os.PathSeparator)) {
+		t.Fatal("filesystem root must not be treated as root-level component")
+	}
+	rootChild := rootChildPathForTest(t)
+	if !isRootLevelPathComponent(rootChild) {
+		t.Fatalf("expected root child to be treated as root-level component: %q", rootChild)
+	}
+	deeper := filepath.Join(rootChild, "tmp")
+	if isRootLevelPathComponent(deeper) {
+		t.Fatalf("deeper path must not be treated as root-level component: %q", deeper)
+	}
+}
+
+func TestRejectSymlinkPathAllowsRootLevelSymlinkComponent(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("absolute root-level symlink layout differs on windows")
+	}
+
+	info, err := os.Lstat("/bin")
+	if err != nil {
+		t.Skipf("skip: lstat /bin failed: %v", err)
+	}
+	if info.Mode()&os.ModeSymlink == 0 {
+		t.Skip("/bin is not a symlink on this environment")
+	}
+
+	path := filepath.Join("/bin", "gokui-root-level-symlink-guard-test.toml")
+	if err := rejectSymlinkPath(path); err != nil {
+		t.Fatalf("expected root-level symlink component to be allowed, got %v", err)
+	}
+}
+
+func rootChildPathForTest(t *testing.T) string {
+	t.Helper()
+	if runtime.GOOS != "windows" {
+		return filepath.Join(string(os.PathSeparator), "var")
+	}
+	cwd, err := os.Getwd()
+	if err != nil {
+		t.Skipf("skip: getwd failed on windows: %v", err)
+	}
+	vol := filepath.VolumeName(cwd)
+	if vol == "" {
+		t.Skip("skip: windows volume name unavailable")
+	}
+	return filepath.Join(vol+string(os.PathSeparator), "var")
 }
 
 func TestNormalizeProfileConfigs(t *testing.T) {

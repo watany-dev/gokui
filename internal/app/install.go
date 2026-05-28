@@ -15,8 +15,11 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/watany-dev/gokui/internal/cli/exitcode"
 	"github.com/watany-dev/gokui/internal/limitio"
 	policypkg "github.com/watany-dev/gokui/internal/policy"
+	reportpkg "github.com/watany-dev/gokui/internal/report"
+	"github.com/watany-dev/gokui/internal/safefs"
 	"github.com/watany-dev/gokui/internal/scan"
 	srcpkg "github.com/watany-dev/gokui/internal/source"
 )
@@ -191,7 +194,7 @@ func runInstall(args []string, stdout io.Writer, stderr io.Writer) int {
 			})
 		}
 		_, _ = fmt.Fprintf(stderr, "%s\n\n%s\n", err.Error(), usage())
-		return 1
+		return exitcode.Error.Int()
 	}
 	loadedPolicy, foundPolicy, policyErr := loadUserPolicyConfig()
 	if policyErr != nil {
@@ -208,10 +211,10 @@ func runInstall(args []string, stdout io.Writer, stderr io.Writer) int {
 			PolicyProfile: parsed.Profile,
 			Note:          "failed to load user policy profile",
 		}) {
-			return 1
+			return exitcode.Error.Int()
 		}
 		_, _ = fmt.Fprintln(stderr, policyErr.Error())
-		return 1
+		return exitcode.Error.Int()
 	}
 	sourceKind := detectSourceKind(parsed.Source)
 
@@ -231,10 +234,10 @@ func runInstall(args []string, stdout io.Writer, stderr io.Writer) int {
 					PolicyProfile: parsed.Profile,
 					Note:          "install source must exist before policy evaluation",
 				}) {
-					return 1
+					return exitcode.Error.Int()
 				}
 				_, _ = fmt.Fprintf(stderr, "install source not found: %s\n", parsed.Source)
-				return 1
+				return exitcode.Error.Int()
 			}
 			accessErr := fmt.Sprintf("failed to access install source: %v", statErr)
 			if emitInstallStructuredError(parsed.Format, stdout, stderr, installErrorReport{
@@ -250,10 +253,10 @@ func runInstall(args []string, stdout io.Writer, stderr io.Writer) int {
 				PolicyProfile: parsed.Profile,
 				Note:          "install source access check failed",
 			}) {
-				return 1
+				return exitcode.Error.Int()
 			}
 			_, _ = fmt.Fprintln(stderr, accessErr)
-			return 1
+			return exitcode.Error.Int()
 		}
 	}
 
@@ -275,10 +278,10 @@ func runInstall(args []string, stdout io.Writer, stderr io.Writer) int {
 			PolicyProfile: parsed.Profile,
 			Note:          "install source preparation failed",
 		}) {
-			return 1
+			return exitcode.Error.Int()
 		}
 		_, _ = fmt.Fprintln(stderr, err.Error())
-		return 1
+		return exitcode.Error.Int()
 	}
 
 	effectivePolicy := loadedPolicy
@@ -299,10 +302,10 @@ func runInstall(args []string, stdout io.Writer, stderr io.Writer) int {
 				PolicyProfile: parsed.Profile,
 				Note:          "failed to load repository policy profile",
 			}) {
-				return 1
+				return exitcode.Error.Int()
 			}
 			_, _ = fmt.Fprintln(stderr, repoPolicyErr.Error())
-			return 1
+			return exitcode.Error.Int()
 		}
 		if repoPolicyFound {
 			effectivePolicy = repoPolicy
@@ -328,10 +331,10 @@ func runInstall(args []string, stdout io.Writer, stderr io.Writer) int {
 			PolicyProfile: parsed.Profile,
 			Note:          "install policy profile validation failed",
 		}) {
-			return 1
+			return exitcode.Error.Int()
 		}
 		_, _ = fmt.Fprintf(stderr, "unsupported profile: %s (supported: %s)\n", parsed.Profile, supportedPolicyProfilesCSV())
-		return 1
+		return exitcode.Error.Int()
 	}
 	if err := validateInstallOverridesPolicy(parsed.Profile, parsed.Overrides, effectivePolicyLoaded, effectivePolicy); err != nil {
 		if emitInstallStructuredError(parsed.Format, stdout, stderr, installErrorReport{
@@ -347,10 +350,10 @@ func runInstall(args []string, stdout io.Writer, stderr io.Writer) int {
 			PolicyProfile: parsed.Profile,
 			Note:          "install override policy validation failed",
 		}) {
-			return 1
+			return exitcode.Error.Int()
 		}
 		_, _ = fmt.Fprintln(stderr, err.Error())
-		return 1
+		return exitcode.Error.Int()
 	}
 
 	rejectSet, err := effectiveRejectSeveritySetForProfile(parsed.Profile, effectivePolicyLoaded, effectivePolicy)
@@ -368,10 +371,10 @@ func runInstall(args []string, stdout io.Writer, stderr io.Writer) int {
 			PolicyProfile: parsed.Profile,
 			Note:          "policy reject_severities configuration is invalid",
 		}) {
-			return 1
+			return exitcode.Error.Int()
 		}
 		_, _ = fmt.Fprintln(stderr, err.Error())
-		return 1
+		return exitcode.Error.Int()
 	}
 
 	findings, decision, overrides, err := evaluateSkillWithOverrides(skillRoot, parsed.Profile, parsed.Overrides, rejectSet)
@@ -389,10 +392,10 @@ func runInstall(args []string, stdout io.Writer, stderr io.Writer) int {
 			PolicyProfile: parsed.Profile,
 			Note:          "install policy evaluation failed",
 		}) {
-			return 1
+			return exitcode.Error.Int()
 		}
 		_, _ = fmt.Fprintln(stderr, err.Error())
-		return 1
+		return exitcode.Error.Int()
 	}
 
 	installSource, err := resolveSourceForInstall(skillRoot, parsed.Source, sourceKind)
@@ -410,10 +413,10 @@ func runInstall(args []string, stdout io.Writer, stderr io.Writer) int {
 			PolicyProfile: parsed.Profile,
 			Note:          "install source metadata validation failed",
 		}) {
-			return 1
+			return exitcode.Error.Int()
 		}
 		_, _ = fmt.Fprintln(stderr, err.Error())
-		return 1
+		return exitcode.Error.Int()
 	}
 
 	report := installReport{
@@ -434,19 +437,19 @@ func runInstall(args []string, stdout io.Writer, stderr io.Writer) int {
 			out, err := json.MarshalIndent(report, "", "  ")
 			if err != nil {
 				_, _ = fmt.Fprintln(stderr, "failed to render install report")
-				return 1
+				return exitcode.Error.Int()
 			}
 			_, _ = fmt.Fprintf(stdout, "%s\n", out)
-			return 2
+			return exitcode.Rejected.Int()
 		}
 		if parsed.Format == "sarif" {
 			out, _ := json.MarshalIndent(buildInstallSARIFReport(report, parsed.Target), "", "  ")
 			_, _ = fmt.Fprintf(stdout, "%s\n", out)
-			return 2
+			return exitcode.Rejected.Int()
 		}
 		if parsed.Format == "compact" {
 			_, _ = fmt.Fprintf(stdout, "%s\n", buildInstallCompactSummary(report, parsed.Target))
-			return 2
+			return exitcode.Rejected.Int()
 		}
 		_, _ = fmt.Fprintln(stdout, "gokui install report (pre-release)")
 		_, _ = fmt.Fprintf(stdout, "source: %s (%s)\n", report.Source.Input, report.Source.Kind)
@@ -456,7 +459,7 @@ func runInstall(args []string, stdout io.Writer, stderr io.Writer) int {
 		for _, finding := range report.Findings {
 			_, _ = fmt.Fprintf(stdout, "- [%s] %s %s:%d %s\n", strings.ToUpper(finding.Severity), finding.ID, finding.File, finding.Line, finding.Summary)
 		}
-		return 2
+		return exitcode.Rejected.Int()
 	}
 
 	targetRoot, targetErr := resolveInstallTarget(parsed.Target)
@@ -471,10 +474,10 @@ func runInstall(args []string, stdout io.Writer, stderr io.Writer) int {
 			PolicyProfile: parsed.Profile,
 			Note:          "install target validation failed",
 		}) {
-			return 1
+			return exitcode.Error.Int()
 		}
 		_, _ = fmt.Fprintln(stderr, targetErr.Error())
-		return 1
+		return exitcode.Error.Int()
 	}
 	if err := rejectSymlinkPath(targetRoot, "install target root", ruleInstallTargetSymlink); err != nil {
 		if emitInstallStructuredError(parsed.Format, stdout, stderr, installErrorReport{
@@ -487,10 +490,10 @@ func runInstall(args []string, stdout io.Writer, stderr io.Writer) int {
 			PolicyProfile: parsed.Profile,
 			Note:          "install target validation failed",
 		}) {
-			return 1
+			return exitcode.Error.Int()
 		}
 		_, _ = fmt.Fprintln(stderr, err.Error())
-		return 1
+		return exitcode.Error.Int()
 	}
 
 	if err := os.MkdirAll(targetRoot, 0o755); err != nil {
@@ -504,10 +507,10 @@ func runInstall(args []string, stdout io.Writer, stderr io.Writer) int {
 			PolicyProfile: parsed.Profile,
 			Note:          "install target preparation failed",
 		}) {
-			return 1
+			return exitcode.Error.Int()
 		}
 		_, _ = fmt.Fprintf(stderr, "failed to create install target root: %v\n", err)
-		return 1
+		return exitcode.Error.Int()
 	}
 
 	skillName := filepath.Base(filepath.Clean(skillRoot))
@@ -523,10 +526,10 @@ func runInstall(args []string, stdout io.Writer, stderr io.Writer) int {
 			PolicyProfile: parsed.Profile,
 			Note:          "install write step failed",
 		}) {
-			return 1
+			return exitcode.Error.Int()
 		}
 		_, _ = fmt.Fprintln(stderr, err.Error())
-		return 1
+		return exitcode.Error.Int()
 	}
 	report.Installed = true
 	report.InstalledPath = installedPath
@@ -534,19 +537,19 @@ func runInstall(args []string, stdout io.Writer, stderr io.Writer) int {
 		out, err := json.MarshalIndent(report, "", "  ")
 		if err != nil {
 			_, _ = fmt.Fprintln(stderr, "failed to render install report")
-			return 1
+			return exitcode.Error.Int()
 		}
 		_, _ = fmt.Fprintf(stdout, "%s\n", out)
-		return 0
+		return exitcode.OK.Int()
 	}
 	if parsed.Format == "sarif" {
 		out, _ := json.MarshalIndent(buildInstallSARIFReport(report, parsed.Target), "", "  ")
 		_, _ = fmt.Fprintf(stdout, "%s\n", out)
-		return 0
+		return exitcode.OK.Int()
 	}
 	if parsed.Format == "compact" {
 		_, _ = fmt.Fprintf(stdout, "%s\n", buildInstallCompactSummary(report, parsed.Target))
-		return 0
+		return exitcode.OK.Int()
 	}
 
 	_, _ = fmt.Fprintln(stdout, "gokui install report (pre-release)")
@@ -561,7 +564,7 @@ func runInstall(args []string, stdout io.Writer, stderr io.Writer) int {
 	default:
 		_, _ = fmt.Fprintf(stdout, "installed: %s\n", installedPath)
 	}
-	return 0
+	return exitcode.OK.Int()
 }
 
 func parseInstallArgs(args []string) (installArgs, error) {
@@ -664,30 +667,19 @@ func buildInstallSARIFReport(report installReport, target string) inspectSARIFRe
 }
 
 func buildInstallCompactSummary(report installReport, target string) string {
-	critical := 0
-	high := 0
-	medium := 0
-	low := 0
+	severities := make([]string, 0, len(report.Findings))
 	for _, finding := range report.Findings {
-		switch finding.Severity {
-		case "critical":
-			critical++
-		case "high":
-			high++
-		case "medium":
-			medium++
-		case "low":
-			low++
-		}
+		severities = append(severities, finding.Severity)
 	}
+	counts := reportpkg.CountSeverities(severities)
 	return fmt.Sprintf(
 		"install decision=%s findings=%d critical=%d high=%d medium=%d low=%d overrides=%d installed=%t profile=%s target=%q source_kind=%s source=%q error_code=%s",
 		report.Decision,
 		len(report.Findings),
-		critical,
-		high,
-		medium,
-		low,
+		counts.Critical,
+		counts.High,
+		counts.Medium,
+		counts.Low,
 		len(report.SeverityOverrides),
 		report.Installed,
 		report.PolicyProfile,
@@ -773,10 +765,10 @@ func writeInstallJSONError(stdout io.Writer, stderr io.Writer, report installErr
 	out, err := json.MarshalIndent(report, "", "  ")
 	if err != nil {
 		_, _ = fmt.Fprintln(stderr, "failed to render install error report")
-		return 1
+		return exitcode.Error.Int()
 	}
 	_, _ = fmt.Fprintf(stdout, "%s\n", out)
-	return 1
+	return exitcode.Error.Int()
 }
 
 func writeInstallSARIFError(stdout io.Writer, stderr io.Writer, report installErrorReport) int {
@@ -788,10 +780,10 @@ func writeInstallSARIFError(stdout io.Writer, stderr io.Writer, report installEr
 	out, err := json.MarshalIndent(buildInstallSARIFErrorReport(report), "", "  ")
 	if err != nil {
 		_, _ = fmt.Fprintln(stderr, "failed to render install sarif error report")
-		return 1
+		return exitcode.Error.Int()
 	}
 	_, _ = fmt.Fprintf(stdout, "%s\n", out)
-	return 1
+	return exitcode.Error.Int()
 }
 
 func buildInstallSARIFErrorReport(report installErrorReport) inspectSARIFReport {
@@ -799,52 +791,20 @@ func buildInstallSARIFErrorReport(report installErrorReport) inspectSARIFReport 
 	if report.RuleID != "" {
 		ruleID = report.RuleID
 	}
-	return inspectSARIFReport{
-		Version: "2.1.0",
-		Schema:  "https://json.schemastore.org/sarif-2.1.0.json",
-		Runs: []inspectSARIFRun{
-			{
-				Tool: inspectSARIFTool{
-					Driver: inspectSARIFDriver{
-						Name:    "gokui",
-						Version: "pre-release",
-						Rules: []inspectSARIFRule{
-							{
-								ID: ruleID,
-								ShortDescription: inspectSARIFMessageContainer{
-									Text: report.ErrorCode,
-								},
-							},
-						},
-					},
-				},
-				Results: []inspectSARIFResult{
-					{
-						RuleID:  ruleID,
-						Level:   "error",
-						Message: inspectSARIFMessageContainer{Text: report.Message},
-					},
-				},
-				Invocations: []inspectSARIFInvocation{
-					{ExecutionSuccessful: false},
-				},
-				Properties: inspectSARIFProperties{
-					SchemaVersion: report.SchemaVersion,
-					PreRelease:    true,
-					SourceInput:   report.Source.Input,
-					SourceKind:    report.Source.Kind,
-					Decision:      report.Status,
-					Note: fmt.Sprintf(
-						"target=%s profile=%s; %s; error_code=%s",
-						report.Target,
-						report.PolicyProfile,
-						report.Note,
-						report.ErrorCode,
-					),
-				},
-			},
-		},
-	}
+	return reportpkg.SARIFErrorDocument(ruleID, report.ErrorCode, report.Message, inspectSARIFProperties{
+		SchemaVersion: report.SchemaVersion,
+		PreRelease:    true,
+		SourceInput:   report.Source.Input,
+		SourceKind:    report.Source.Kind,
+		Decision:      report.Status,
+		Note: fmt.Sprintf(
+			"target=%s profile=%s; %s; error_code=%s",
+			report.Target,
+			report.PolicyProfile,
+			report.Note,
+			report.ErrorCode,
+		),
+	})
 }
 
 func emitInstallStructuredError(format string, stdout io.Writer, stderr io.Writer, report installErrorReport) bool {
@@ -1068,7 +1028,10 @@ func copyTreeNormalized(srcRoot string, dstRoot string) error {
 		}
 		destPath := filepath.Join(dstRoot, rel)
 		if d.IsDir() {
-			return os.MkdirAll(destPath, 0o755)
+			if err := os.MkdirAll(destPath, 0o755); err != nil {
+				return fmt.Errorf("failed to create install directory: %w", err)
+			}
+			return nil
 		}
 		if !srcInfo.Mode().IsRegular() {
 			return fmt.Errorf("%s: install source contains non-regular file: %s", ruleInstallSourceSpecialFile, rel)
@@ -1095,48 +1058,24 @@ func copyTreeNormalized(srcRoot string, dstRoot string) error {
 		if err := os.MkdirAll(filepath.Dir(destPath), 0o755); err != nil {
 			return fmt.Errorf("failed to create install directory: %w", err)
 		}
-		written, err := copyFileWithModeChecked(path, destPath, 0o644, maxCopyBytes, srcInfo)
+		written, err := limitio.CopyFileWithModeChecked(path, destPath, 0o644, maxCopyBytes, srcInfo, ensureInstallSourceStableFromOpen)
 		if err != nil {
+			if limitio.IsSizeExceeded(err) {
+				return fmt.Errorf("%s: install source file exceeds size limit during copy: %s", ruleInstallSourceFileTooLarge, path)
+			}
+			if strings.HasPrefix(err.Error(), "failed to open source file") ||
+				strings.HasPrefix(err.Error(), "failed to create destination file") ||
+				strings.Contains(err.Error(), ruleInstallSourceChanged) {
+				return err
+			}
+			if !strings.HasPrefix(err.Error(), "failed to copy file contents") {
+				return fmt.Errorf("failed to copy file contents: %w", err)
+			}
 			return err
 		}
 		totalBytes += written
 		return nil
 	})
-}
-
-func copyFileWithModeChecked(src string, dst string, mode os.FileMode, maxBytes int64, expectedInfo os.FileInfo) (int64, error) {
-	in, err := os.Open(src)
-	if err != nil {
-		return 0, fmt.Errorf("failed to open source file: %w", err)
-	}
-	defer in.Close()
-	if expectedInfo != nil {
-		if err := ensureInstallSourceStableFromOpen(expectedInfo, in, src); err != nil {
-			return 0, err
-		}
-	}
-
-	out, err := os.OpenFile(dst, os.O_CREATE|os.O_EXCL|os.O_WRONLY, mode)
-	if err != nil {
-		return 0, fmt.Errorf("failed to create destination file: %w", err)
-	}
-	defer func() {
-		_ = out.Close()
-	}()
-
-	written, err := copyWithStrictLimit(out, in, maxBytes)
-	if err != nil {
-		_ = os.Remove(dst)
-		if limitio.IsSizeExceeded(err) {
-			return 0, fmt.Errorf("%s: install source file exceeds size limit during copy: %s", ruleInstallSourceFileTooLarge, src)
-		}
-		return 0, fmt.Errorf("failed to copy file contents: %w", err)
-	}
-	return written, nil
-}
-
-func copyWithStrictLimit(dst io.Writer, src io.Reader, maxBytes int64) (int64, error) {
-	return limitio.CopyWithStrictLimit(dst, src, maxBytes)
 }
 
 func writeInstallMetadata(stagedSkill string, report installReport) error {
@@ -1227,7 +1166,7 @@ func buildInstallLock(stagedSkill string, report installReport) (installLock, er
 		Policy: lockPolicy{
 			Profile:           report.PolicyProfile,
 			Decision:          strings.ToLower(report.Decision),
-			SeverityOverrides: cloneSeverityOverrides(report.SeverityOverrides),
+			SeverityOverrides: []severityOverrideAudit(policypkg.SeverityOverrideAuditSet(report.SeverityOverrides).Clone()),
 		},
 		Findings: summary,
 	}, nil
@@ -1297,7 +1236,7 @@ func buildFileDigestsFiltered(root string, exclude map[string]struct{}) ([]lockF
 		if totalBytes > installMaxDigestTotalBytes {
 			return fmt.Errorf("%s: digest input exceeds max total bytes: %d", ruleInstallDigestTotalBytesExceeded, installMaxDigestTotalBytes)
 		}
-		sum, size, err := hashFileWithLimitChecked(path, installMaxDigestFileBytes, info)
+		sum, size, err := limitio.HashSHA256FileWithLimitChecked(path, installMaxDigestFileBytes, info, ensureInstallDigestStableFromOpen)
 		if err != nil {
 			if errors.Is(err, limitio.ErrSizeExceeded) {
 				return fmt.Errorf("%s: digest input file exceeds size limit: %s", ruleInstallDigestFileTooLarge, rel)
@@ -1330,67 +1269,38 @@ func buildFileDigestsFiltered(root string, exclude map[string]struct{}) ([]lockF
 }
 
 func ensureInstallTreeRoot(root string, label string, symlinkRuleID string, specialRuleID string) error {
-	rootInfo, err := os.Lstat(root)
-	if err != nil {
-		return err
-	}
-	if rootInfo.Mode()&os.ModeSymlink != 0 {
-		return fmt.Errorf("%s: %s root must not be a symlink: %s", symlinkRuleID, label, root)
-	}
-	if !rootInfo.IsDir() {
-		return fmt.Errorf("%s: %s root must be a directory: %s", specialRuleID, label, root)
-	}
-	return nil
-}
-
-func hashFileWithLimitChecked(path string, maxBytes int64, expectedInfo os.FileInfo) (sum string, size int64, err error) {
-	f, err := os.Open(path)
-	if err != nil {
-		return "", 0, fmt.Errorf("failed to open file for hashing: %w", err)
-	}
-	defer f.Close()
-	if expectedInfo != nil {
-		if err := ensureInstallDigestStableFromOpen(expectedInfo, f, path); err != nil {
-			return "", 0, err
-		}
-	}
-
-	hasher := sha256.New()
-	var n int64
-	if maxBytes >= 0 {
-		n, err = limitio.CopyWithStrictLimit(hasher, f, maxBytes)
-	} else {
-		n, err = io.Copy(hasher, f)
-	}
-	if err != nil {
-		if errors.Is(err, limitio.ErrSizeExceeded) {
-			return "", 0, err
-		}
-		return "", 0, fmt.Errorf("failed to hash file: %w", err)
-	}
-	return hex.EncodeToString(hasher.Sum(nil)), n, nil
+	return safefs.RootCheck{
+		Root:          root,
+		Label:         label,
+		SymlinkRuleID: symlinkRuleID,
+		SpecialRuleID: specialRuleID,
+	}.Validate()
 }
 
 func ensureInstallSourceStableFromOpen(previous os.FileInfo, opened fileInfoStatter, src string) error {
-	current, err := opened.Stat()
-	if err != nil {
-		return fmt.Errorf("failed to open source file: %s", src)
-	}
-	if os.SameFile(previous, current) {
-		return nil
-	}
-	return fmt.Errorf("%s: install source file changed during copy: %s", ruleInstallSourceChanged, src)
+	return safefs.Sentinel{
+		Previous: previous,
+		Path:     src,
+		StatError: func(path string) error {
+			return fmt.Errorf("failed to open source file: %s", path)
+		},
+		ChangedError: func(path string) error {
+			return fmt.Errorf("%s: install source file changed during copy: %s", ruleInstallSourceChanged, path)
+		},
+	}.CheckOpened(opened)
 }
 
 func ensureInstallDigestStableFromOpen(previous os.FileInfo, opened fileInfoStatter, path string) error {
-	current, err := opened.Stat()
-	if err != nil {
-		return fmt.Errorf("failed to open file for hashing: %s", path)
-	}
-	if os.SameFile(previous, current) {
-		return nil
-	}
-	return fmt.Errorf("%s: digest input file changed during hash: %s", ruleInstallDigestSourceChanged, path)
+	return safefs.Sentinel{
+		Previous: previous,
+		Path:     path,
+		StatError: func(path string) error {
+			return fmt.Errorf("failed to open file for hashing: %s", path)
+		},
+		ChangedError: func(path string) error {
+			return fmt.Errorf("%s: digest input file changed during hash: %s", ruleInstallDigestSourceChanged, path)
+		},
+	}.CheckOpened(opened)
 }
 
 func readInstallLock(path string) (installLock, error) {
@@ -1447,14 +1357,16 @@ func readInstallLock(path string) (installLock, error) {
 }
 
 func ensureInstallLockStableFromOpen(previous os.FileInfo, opened fileInfoStatter, path string) error {
-	current, err := opened.Stat()
-	if err != nil {
-		return fmt.Errorf("failed to read install lockfile: %s", path)
-	}
-	if os.SameFile(previous, current) {
-		return nil
-	}
-	return fmt.Errorf("%s: install lockfile changed during read: %s", ruleLockfileSourceChanged, path)
+	return safefs.Sentinel{
+		Previous: previous,
+		Path:     path,
+		StatError: func(path string) error {
+			return fmt.Errorf("failed to read install lockfile: %s", path)
+		},
+		ChangedError: func(path string) error {
+			return fmt.Errorf("%s: install lockfile changed during read: %s", ruleLockfileSourceChanged, path)
+		},
+	}.CheckOpened(opened)
 }
 
 func provenanceMatches(existing installLock, incoming installLock) bool {
@@ -1555,7 +1467,7 @@ func validateInstallLockForProvenanceReuse(lock installLock, expectedSkillName s
 	if err := validateLockFindingSummary(lock.Findings); err != nil {
 		return fmt.Errorf("lock findings summary is invalid: %v", err)
 	}
-	if err := validateSeverityOverrideAudit(lock.Policy.SeverityOverrides); err != nil {
+	if err := policypkg.SeverityOverrideAuditSet(lock.Policy.SeverityOverrides).Validate(); err != nil {
 		return fmt.Errorf("lock policy severity_overrides is invalid: %v", err)
 	}
 

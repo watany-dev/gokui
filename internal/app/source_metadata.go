@@ -12,6 +12,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/watany-dev/gokui/internal/limitio"
+	"github.com/watany-dev/gokui/internal/safefs"
 	srcpkg "github.com/watany-dev/gokui/internal/source"
 )
 
@@ -58,6 +59,17 @@ func writeSourceMetadata(skillRoot string, meta sourceMetadata) error {
 }
 
 func readSourceMetadata(skillRoot string) (sourceMetadata, bool, error) {
+	rootInfo, rootErr := os.Lstat(skillRoot)
+	if rootErr != nil {
+		if os.IsNotExist(rootErr) {
+			return sourceMetadata{}, false, nil
+		}
+		return sourceMetadata{}, false, fmt.Errorf("failed to read source metadata: %w", rootErr)
+	}
+	if !rootInfo.IsDir() {
+		return sourceMetadata{}, false, fmt.Errorf("failed to read source metadata: %s is not a directory", skillRoot)
+	}
+
 	path := filepath.Join(skillRoot, sourceMetadataFile)
 	if err := rejectSymlinkPath(path, "source metadata file", ruleSourceMetadataSymlink); err != nil {
 		return sourceMetadata{}, false, err
@@ -111,10 +123,13 @@ func readSourceMetadata(skillRoot string) (sourceMetadata, bool, error) {
 }
 
 func ensureSourceMetadataStableFile(previous os.FileInfo, current os.FileInfo, path string) error {
-	if os.SameFile(previous, current) {
-		return nil
-	}
-	return fmt.Errorf("%s: source metadata file changed during read: %s", ruleSourceMetadataSourceChanged, path)
+	return safefs.Sentinel{
+		Previous: previous,
+		Path:     path,
+		ChangedError: func(path string) error {
+			return fmt.Errorf("%s: source metadata file changed during read: %s", ruleSourceMetadataSourceChanged, path)
+		},
+	}.CheckCurrent(current)
 }
 
 func validateSourceMetadata(meta sourceMetadata) error {
