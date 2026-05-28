@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	reportpkg "github.com/watany-dev/gokui/internal/report"
+	skillpkg "github.com/watany-dev/gokui/internal/skill"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -753,7 +754,7 @@ func TestRunInspectVetCommands(t *testing.T) {
 		if !strings.Contains(stdout.String(), "\"error_code\": \""+inspectErrorCodeSourcePrepareFailed+"\"") {
 			t.Fatalf("stdout should include source-prepare-failed code, got %q", stdout.String())
 		}
-		if !strings.Contains(stdout.String(), "\"rule_id\": \""+ruleSkillFrontmatterTooLarge+"\"") {
+		if !strings.Contains(stdout.String(), "\"rule_id\": \""+skillpkg.RuleFrontmatterTooLarge+"\"") {
 			t.Fatalf("stdout should include frontmatter size rule_id, got %q", stdout.String())
 		}
 	})
@@ -781,7 +782,7 @@ func TestRunInspectVetCommands(t *testing.T) {
 		if !strings.Contains(stdout.String(), "\"error_code\": \""+inspectErrorCodeSourcePrepareFailed+"\"") {
 			t.Fatalf("stdout should include source-prepare-failed error_code, got %q", stdout.String())
 		}
-		if !strings.Contains(stdout.String(), "\"rule_id\": \""+ruleSkillFrontmatterInvalidUTF8+"\"") {
+		if !strings.Contains(stdout.String(), "\"rule_id\": \""+skillpkg.RuleFrontmatterInvalidUTF8+"\"") {
 			t.Fatalf("stdout should include frontmatter utf-8 rule_id, got %q", stdout.String())
 		}
 	})

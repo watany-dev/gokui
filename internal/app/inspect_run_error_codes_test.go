@@ -8,6 +8,8 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+
+	skillpkg "github.com/watany-dev/gokui/internal/skill"
 )
 
 func TestRunInspectJSONErrorCodes(t *testing.T) {
@@ -175,7 +177,7 @@ func TestRunInspectJSONErrorCodes(t *testing.T) {
 		if !strings.Contains(stdout.String(), "\"error_code\": \""+inspectErrorCodeSourcePrepareFailed+"\"") {
 			t.Fatalf("stdout should include source-prepare-failed code, got %q", stdout.String())
 		}
-		if !strings.Contains(stdout.String(), "\"rule_id\": \""+ruleInspectSourceSymlink+"\"") {
+		if !strings.Contains(stdout.String(), "\"rule_id\": \""+skillpkg.RuleInspectSourceSymlink+"\"") {
 			t.Fatalf("stdout should include source symlink rule_id, got %q", stdout.String())
 		}
 	})

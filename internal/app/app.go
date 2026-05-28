@@ -102,17 +102,7 @@ var (
 	errInspectSourceNotFound       = skillpkg.ErrInspectSourceNotFound
 )
 
-const ruleSkillFrontmatterTooLarge = skillpkg.RuleFrontmatterTooLarge
 const (
-	ruleInspectSourceSymlink          = skillpkg.RuleInspectSourceSymlink
-	ruleSkillFrontmatterSymlink       = skillpkg.RuleFrontmatterSymlink
-	ruleSkillFrontmatterSpecialFile   = skillpkg.RuleFrontmatterSpecialFile
-	ruleSkillFrontmatterInvalidUTF8   = skillpkg.RuleFrontmatterInvalidUTF8
-	ruleSkillFrontmatterSourceChanged = skillpkg.RuleFrontmatterSourceChanged
-)
-
-const (
-	descriptionToolInjectionRuleID      = skillpkg.RuleDescriptionToolInjection
 	inspectErrorCodeArgsInvalid         = "INSPECT_ARGS_INVALID"
 	inspectErrorCodeSourceNotFound      = "INSPECT_SOURCE_NOT_FOUND"
 	inspectErrorCodeSourceInvalid       = "INSPECT_SOURCE_INVALID"

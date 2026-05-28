@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	policypkg "github.com/watany-dev/gokui/internal/policy"
 	reportpkg "github.com/watany-dev/gokui/internal/report"
+	skillpkg "github.com/watany-dev/gokui/internal/skill"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -591,7 +592,7 @@ func TestValidateLocalDirInspectSource(t *testing.T) {
 		}
 
 		err := validateLocalDirInspectSource(link)
-		if err == nil || !strings.Contains(err.Error(), ruleInspectSourceSymlink) {
+		if err == nil || !strings.Contains(err.Error(), skillpkg.RuleInspectSourceSymlink) {
 			t.Fatalf("expected source symlink rejection, got %v", err)
 		}
 	})
@@ -620,7 +621,7 @@ func TestValidateLocalDirInspectSource(t *testing.T) {
 		}
 
 		err := validateLocalDirInspectSource(filepath.Join(linkParent, "ancestor-skill"))
-		if err == nil || !strings.Contains(err.Error(), ruleInspectSourceSymlink) {
+		if err == nil || !strings.Contains(err.Error(), skillpkg.RuleInspectSourceSymlink) {
 			t.Fatalf("expected ancestor source symlink rejection, got %v", err)
 		}
 	})
@@ -644,7 +645,7 @@ func TestValidateLocalDirInspectSource(t *testing.T) {
 		}
 
 		err := validateLocalDirInspectSource(dir)
-		if err == nil || !strings.Contains(err.Error(), ruleSkillFrontmatterSymlink) {
+		if err == nil || !strings.Contains(err.Error(), skillpkg.RuleFrontmatterSymlink) {
 			t.Fatalf("expected SKILL symlink rejection, got %v", err)
 		}
 	})
@@ -660,7 +661,7 @@ func TestValidateLocalDirInspectSource(t *testing.T) {
 		}
 
 		err := validateLocalDirInspectSource(dir)
-		if err == nil || !strings.Contains(err.Error(), ruleSkillFrontmatterSpecialFile) {
+		if err == nil || !strings.Contains(err.Error(), skillpkg.RuleFrontmatterSpecialFile) {
 			t.Fatalf("expected non-regular SKILL rejection, got %v", err)
 		}
 	})
