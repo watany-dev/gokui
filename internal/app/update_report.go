@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	formatpkg "github.com/watany-dev/gokui/internal/cli/format"
 	reportpkg "github.com/watany-dev/gokui/internal/report"
 	rulepkg "github.com/watany-dev/gokui/internal/rule"
 )
@@ -44,9 +43,9 @@ func buildUpdateSARIFErrorReport(report updateErrorReport) reportpkg.SARIFDocume
 }
 
 func emitUpdateStructuredError(format string, stdout io.Writer, stderr io.Writer, report updateErrorReport) bool {
-	return emitStructuredError(formatpkg.Format(format),
-		func() { _ = writeUpdateJSONError(stdout, stderr, report) },
-		func() { _ = writeUpdateSARIFError(stdout, stderr, report) },
+	return emitCommandStructuredError(format,
+		func() int { return writeUpdateJSONError(stdout, stderr, report) },
+		func() int { return writeUpdateSARIFError(stdout, stderr, report) },
 	)
 }
 

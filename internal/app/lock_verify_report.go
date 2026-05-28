@@ -6,7 +6,6 @@ import (
 	"sort"
 	"strings"
 
-	formatpkg "github.com/watany-dev/gokui/internal/cli/format"
 	reportpkg "github.com/watany-dev/gokui/internal/report"
 )
 
@@ -147,9 +146,9 @@ func lockVerifyArgsErrorReport(args []string, err error) lockVerifyErrorReport {
 }
 
 func emitLockVerifyStructuredError(format string, stdout io.Writer, stderr io.Writer, report lockVerifyErrorReport) bool {
-	return emitStructuredError(formatpkg.Format(format),
-		func() { _ = writeLockVerifyJSONError(stdout, stderr, report) },
-		func() { _ = writeLockVerifySARIFError(stdout, stderr, report) },
+	return emitCommandStructuredError(format,
+		func() int { return writeLockVerifyJSONError(stdout, stderr, report) },
+		func() int { return writeLockVerifySARIFError(stdout, stderr, report) },
 	)
 }
 

@@ -368,9 +368,9 @@ func fetchArgsErrorReport(args []string, err error) fetchErrorReport {
 }
 
 func emitFetchStructuredError(format string, stdout io.Writer, stderr io.Writer, report fetchErrorReport) bool {
-	return emitStructuredError(formatpkg.Format(format),
-		func() { _ = writeFetchJSONError(stdout, stderr, report) },
-		func() { _ = writeFetchSARIFError(stdout, stderr, report) },
+	return emitCommandStructuredError(format,
+		func() int { return writeFetchJSONError(stdout, stderr, report) },
+		func() int { return writeFetchSARIFError(stdout, stderr, report) },
 	)
 }
 

@@ -27,6 +27,13 @@ func emitStructuredError(format formatpkg.Format, writeJSON func(), writeSARIF f
 	}
 }
 
+func emitCommandStructuredError(format string, writeJSON func() int, writeSARIF func() int) bool {
+	return emitStructuredError(formatpkg.Format(format),
+		func() { _ = writeJSON() },
+		func() { _ = writeSARIF() },
+	)
+}
+
 func writeRequestedStructuredError(format formatpkg.Format, writeJSON func() int, writeSARIF func() int) (int, bool) {
 	switch format {
 	case formatpkg.JSON, formatpkg.ReviewJSON:
