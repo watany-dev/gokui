@@ -37,7 +37,7 @@ func parseInspectArgs(args []string) (input string, format string, err error) {
 	if input == "" {
 		return "", "", fmt.Errorf("inspect source is required")
 	}
-	if format != "human" && format != "json" && format != "sarif" && format != "compact" && format != "review-json" {
+	if !supportsReviewCommandFormat(format) {
 		return "", "", fmt.Errorf("unsupported inspect format: %s", format)
 	}
 	return input, format, nil

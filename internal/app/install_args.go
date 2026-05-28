@@ -61,7 +61,7 @@ func parseInstallArgs(args []string) (installArgs, error) {
 	if out.Target == "" {
 		return installArgs{}, fmt.Errorf("install target is required")
 	}
-	if out.Format != "human" && out.Format != "json" && out.Format != "sarif" && out.Format != "compact" {
+	if !supportsCommandFormat(out.Format) {
 		return installArgs{}, fmt.Errorf("unsupported install format: %s", out.Format)
 	}
 	if len(out.Overrides) > 0 {

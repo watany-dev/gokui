@@ -37,7 +37,7 @@ func parseLockVerifyArgs(args []string) (lockVerifyArgs, error) {
 			out.Path = arg
 		}
 	}
-	if out.Format != "human" && out.Format != "json" && out.Format != "sarif" && out.Format != "compact" {
+	if !supportsCommandFormat(out.Format) {
 		return lockVerifyArgs{}, fmt.Errorf("unsupported lock verify format: %s", out.Format)
 	}
 	return out, nil

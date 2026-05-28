@@ -46,7 +46,7 @@ func parseUpdateArgs(args []string) (updateArgs, error) {
 	if !out.DryRun {
 		return updateArgs{}, fmt.Errorf("update currently requires --dry-run")
 	}
-	if out.Format != "human" && out.Format != "json" && out.Format != "sarif" && out.Format != "compact" {
+	if !supportsCommandFormat(out.Format) {
 		return updateArgs{}, fmt.Errorf("unsupported update format: %s", out.Format)
 	}
 	return out, nil

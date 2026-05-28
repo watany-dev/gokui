@@ -14,6 +14,14 @@ func argsRequestFormat(args []string, format string) bool {
 	return false
 }
 
+func supportsCommandFormat(format string) bool {
+	return format == "human" || format == "json" || format == "sarif" || format == "compact"
+}
+
+func supportsReviewCommandFormat(format string) bool {
+	return supportsCommandFormat(format) || format == "review-json"
+}
+
 func firstPositionalArg(args []string, valueFlags ...string) string {
 	skipValue := make(map[string]struct{}, len(valueFlags))
 	for _, flag := range valueFlags {

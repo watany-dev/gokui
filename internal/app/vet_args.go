@@ -50,7 +50,7 @@ func parseVetArgs(args []string) (input string, format string, profile string, p
 	if input == "" {
 		return "", "", "", false, fmt.Errorf("vet source is required")
 	}
-	if format != "human" && format != "json" && format != "sarif" && format != "compact" && format != "review-json" {
+	if !supportsReviewCommandFormat(format) {
 		return "", "", "", false, fmt.Errorf("unsupported vet format: %s", format)
 	}
 	return input, format, profile, profileSet, nil

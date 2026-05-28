@@ -46,7 +46,7 @@ func parseFetchArgs(args []string) (fetchArgs, error) {
 	if strings.TrimSpace(out.Out) == "" {
 		return fetchArgs{}, fmt.Errorf("fetch output root is required (--out)")
 	}
-	if out.Format != "human" && out.Format != "json" && out.Format != "sarif" && out.Format != "compact" {
+	if !supportsCommandFormat(out.Format) {
 		return fetchArgs{}, fmt.Errorf("unsupported fetch format: %s", out.Format)
 	}
 	return out, nil
