@@ -144,12 +144,12 @@ func buildFindingsSARIFReport(schemaVersion string, preRelease bool, src source,
 
 func writeInspectJSONError(stdout io.Writer, stderr io.Writer, report inspectErrorReport) int {
 	report.Status, report.ErrorCode, report.RuleID = normalizeStructuredErrorFields(report.ErrorCode, report.RuleID, report.Message, inspectErrorCodeUnknown)
-	return writeIndentedJSONLine(stdout, stderr, report, "failed to render inspect error report")
+	return writeJSONErrorReport(stdout, stderr, report, "inspect")
 }
 
 func writeInspectSARIFError(stdout io.Writer, stderr io.Writer, report inspectErrorReport) int {
 	report.Status, report.ErrorCode, report.RuleID = normalizeStructuredErrorFields(report.ErrorCode, report.RuleID, report.Message, inspectErrorCodeUnknown)
-	return writeIndentedJSONLine(stdout, stderr, buildInspectSARIFErrorReport(report), "failed to render inspect SARIF error report")
+	return writeSARIFErrorReport(stdout, stderr, buildInspectSARIFErrorReport(report), "inspect")
 }
 
 func buildInspectSARIFErrorReport(report inspectErrorReport) reportpkg.SARIFDocument {

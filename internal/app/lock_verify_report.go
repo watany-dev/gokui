@@ -126,12 +126,12 @@ func lockVerifyDriftSARIFResult(ruleID string, path string, reason string) repor
 
 func writeLockVerifyJSONError(stdout io.Writer, stderr io.Writer, report lockVerifyErrorReport) int {
 	report.Status, report.ErrorCode, report.RuleID = normalizeStructuredErrorFields(report.ErrorCode, report.RuleID, report.Message, lockVerifyErrorCodeUnknown)
-	return writeIndentedJSONLine(stdout, stderr, report, "failed to render lock verify error report")
+	return writeJSONErrorReport(stdout, stderr, report, "lock verify")
 }
 
 func writeLockVerifySARIFError(stdout io.Writer, stderr io.Writer, report lockVerifyErrorReport) int {
 	report.Status, report.ErrorCode, report.RuleID = normalizeStructuredErrorFields(report.ErrorCode, report.RuleID, report.Message, lockVerifyErrorCodeUnknown)
-	return writeIndentedJSONLine(stdout, stderr, buildLockVerifySARIFErrorReport(report), "failed to render lock verify sarif error report")
+	return writeSARIFErrorReport(stdout, stderr, buildLockVerifySARIFErrorReport(report), "lock verify")
 }
 
 func buildLockVerifySARIFErrorReport(report lockVerifyErrorReport) reportpkg.SARIFDocument {

@@ -13,12 +13,12 @@ import (
 
 func writeUpdateJSONError(stdout io.Writer, stderr io.Writer, report updateErrorReport) int {
 	report.Status, report.ErrorCode, report.RuleID = normalizeStructuredErrorFields(report.ErrorCode, report.RuleID, report.Message, updateFatalCodeUnknown)
-	return writeIndentedJSONLine(stdout, stderr, report, "failed to render update error report")
+	return writeJSONErrorReport(stdout, stderr, report, "update")
 }
 
 func writeUpdateSARIFError(stdout io.Writer, stderr io.Writer, report updateErrorReport) int {
 	report.Status, report.ErrorCode, report.RuleID = normalizeStructuredErrorFields(report.ErrorCode, report.RuleID, report.Message, updateFatalCodeUnknown)
-	return writeIndentedJSONLine(stdout, stderr, buildUpdateSARIFErrorReport(report), "failed to render update sarif error report")
+	return writeSARIFErrorReport(stdout, stderr, buildUpdateSARIFErrorReport(report), "update")
 }
 
 func buildUpdateSARIFErrorReport(report updateErrorReport) reportpkg.SARIFDocument {

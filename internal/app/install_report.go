@@ -54,12 +54,12 @@ func buildInstallCompactSummary(report installReport, target string) string {
 
 func writeInstallJSONError(stdout io.Writer, stderr io.Writer, report installErrorReport) int {
 	report.Status, report.ErrorCode, report.RuleID = normalizeStructuredErrorFields(report.ErrorCode, report.RuleID, report.Message, installErrorCodeUnknown)
-	return writeIndentedJSONLine(stdout, stderr, report, "failed to render install error report")
+	return writeJSONErrorReport(stdout, stderr, report, "install")
 }
 
 func writeInstallSARIFError(stdout io.Writer, stderr io.Writer, report installErrorReport) int {
 	report.Status, report.ErrorCode, report.RuleID = normalizeStructuredErrorFields(report.ErrorCode, report.RuleID, report.Message, installErrorCodeUnknown)
-	return writeIndentedJSONLine(stdout, stderr, buildInstallSARIFErrorReport(report), "failed to render install sarif error report")
+	return writeSARIFErrorReport(stdout, stderr, buildInstallSARIFErrorReport(report), "install")
 }
 
 func buildInstallSARIFErrorReport(report installErrorReport) reportpkg.SARIFDocument {

@@ -360,12 +360,12 @@ func normalizeFetchDeps(deps fetchDeps) fetchDeps {
 
 func writeFetchJSONError(stdout io.Writer, stderr io.Writer, report fetchErrorReport) int {
 	report.Status, report.ErrorCode, report.RuleID = normalizeStructuredErrorFields(report.ErrorCode, report.RuleID, report.Message, fetchErrorCodeUnknown)
-	return writeIndentedJSONLine(stdout, stderr, report, "failed to render fetch error report")
+	return writeJSONErrorReport(stdout, stderr, report, "fetch")
 }
 
 func writeFetchSARIFError(stdout io.Writer, stderr io.Writer, report fetchErrorReport) int {
 	report.Status, report.ErrorCode, report.RuleID = normalizeStructuredErrorFields(report.ErrorCode, report.RuleID, report.Message, fetchErrorCodeUnknown)
-	return writeIndentedJSONLine(stdout, stderr, buildFetchSARIFErrorReport(report), "failed to render fetch SARIF error report")
+	return writeSARIFErrorReport(stdout, stderr, buildFetchSARIFErrorReport(report), "fetch")
 }
 
 func emitFetchStructuredError(format string, stdout io.Writer, stderr io.Writer, report fetchErrorReport) bool {

@@ -42,6 +42,14 @@ func structuredErrorRuleID(errorCode string, ruleID string) string {
 	return errorCode
 }
 
+func writeJSONErrorReport(stdout io.Writer, stderr io.Writer, payload any, command string) int {
+	return writeIndentedJSONLine(stdout, stderr, payload, fmt.Sprintf("failed to render %s error report", command))
+}
+
+func writeSARIFErrorReport(stdout io.Writer, stderr io.Writer, payload any, command string) int {
+	return writeIndentedJSONLine(stdout, stderr, payload, fmt.Sprintf("failed to render %s sarif error report", command))
+}
+
 func writeIndentedJSONLine(stdout io.Writer, stderr io.Writer, payload any, renderError string) int {
 	out, err := json.MarshalIndent(payload, "", "  ")
 	if err != nil {
