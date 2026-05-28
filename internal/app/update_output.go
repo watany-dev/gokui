@@ -6,18 +6,20 @@ import (
 	"io"
 
 	"github.com/watany-dev/gokui/internal/cli/exitcode"
+	formatpkg "github.com/watany-dev/gokui/internal/cli/format"
 )
 
 func writeUpdateSuccessReport(format string, report updateReport, stdout io.Writer) int {
-	if format == "json" {
+	switch formatpkg.Format(format) {
+	case formatpkg.JSON:
 		out, _ := json.MarshalIndent(report, "", "  ")
 		_, _ = fmt.Fprintf(stdout, "%s\n", out)
-	} else if format == "sarif" {
+	case formatpkg.SARIF:
 		out, _ := json.MarshalIndent(buildUpdateSARIFReport(report), "", "  ")
 		_, _ = fmt.Fprintf(stdout, "%s\n", out)
-	} else if format == "compact" {
+	case formatpkg.Compact:
 		_, _ = fmt.Fprintf(stdout, "%s\n", buildUpdateCompactSummary(report))
-	} else {
+	default:
 		_, _ = fmt.Fprintln(stdout, "gokui update report (pre-release)")
 		_, _ = fmt.Fprintf(stdout, "target: %s\n", report.Target)
 		_, _ = fmt.Fprintf(stdout, "skills: %d\n", report.Summary.Total)

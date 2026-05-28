@@ -7,34 +7,33 @@ import (
 	"strings"
 
 	"github.com/watany-dev/gokui/internal/cli/exitcode"
+	formatpkg "github.com/watany-dev/gokui/internal/cli/format"
 )
 
 func writeVetSuccessReport(format string, report inspectReport, stdout io.Writer) int {
-	if format == "json" {
+	switch formatpkg.Format(format) {
+	case formatpkg.JSON:
 		out, _ := json.MarshalIndent(report, "", "  ")
 		_, _ = fmt.Fprintf(stdout, "%s\n", out)
 		if report.Decision == reportDecisionRejected {
 			return exitcode.Rejected.Int()
 		}
 		return exitcode.OK.Int()
-	}
-	if format == "review-json" {
+	case formatpkg.ReviewJSON:
 		out, _ := json.MarshalIndent(buildInspectReviewReport(report), "", "  ")
 		_, _ = fmt.Fprintf(stdout, "%s\n", out)
 		if report.Decision == reportDecisionRejected {
 			return exitcode.Rejected.Int()
 		}
 		return exitcode.OK.Int()
-	}
-	if format == "sarif" {
+	case formatpkg.SARIF:
 		out, _ := json.MarshalIndent(buildInspectSARIFReport(report), "", "  ")
 		_, _ = fmt.Fprintf(stdout, "%s\n", out)
 		if report.Decision == reportDecisionRejected {
 			return exitcode.Rejected.Int()
 		}
 		return exitcode.OK.Int()
-	}
-	if format == "compact" {
+	case formatpkg.Compact:
 		summary := strings.Replace(buildInspectCompactSummary(report), "inspect ", "vet ", 1)
 		_, _ = fmt.Fprintf(stdout, "%s\n", summary)
 		if report.Decision == reportDecisionRejected {

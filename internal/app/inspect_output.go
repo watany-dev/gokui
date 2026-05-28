@@ -7,10 +7,12 @@ import (
 	"strings"
 
 	"github.com/watany-dev/gokui/internal/cli/exitcode"
+	formatpkg "github.com/watany-dev/gokui/internal/cli/format"
 )
 
 func writeInspectSuccessReport(format string, report inspectReport, stdout io.Writer, stderr io.Writer) int {
-	if format == "json" {
+	switch formatpkg.Format(format) {
+	case formatpkg.JSON:
 		out, marshalErr := json.MarshalIndent(report, "", "  ")
 		if marshalErr != nil {
 			_, _ = fmt.Fprintln(stderr, "failed to render inspect report")
@@ -21,8 +23,7 @@ func writeInspectSuccessReport(format string, report inspectReport, stdout io.Wr
 			return exitcode.Rejected.Int()
 		}
 		return exitcode.OK.Int()
-	}
-	if format == "review-json" {
+	case formatpkg.ReviewJSON:
 		out, marshalErr := json.MarshalIndent(buildInspectReviewReport(report), "", "  ")
 		if marshalErr != nil {
 			_, _ = fmt.Fprintln(stderr, "failed to render inspect review report")
@@ -33,8 +34,7 @@ func writeInspectSuccessReport(format string, report inspectReport, stdout io.Wr
 			return exitcode.Rejected.Int()
 		}
 		return exitcode.OK.Int()
-	}
-	if format == "sarif" {
+	case formatpkg.SARIF:
 		out, marshalErr := json.MarshalIndent(buildInspectSARIFReport(report), "", "  ")
 		if marshalErr != nil {
 			_, _ = fmt.Fprintln(stderr, "failed to render inspect SARIF report")
@@ -45,8 +45,7 @@ func writeInspectSuccessReport(format string, report inspectReport, stdout io.Wr
 			return exitcode.Rejected.Int()
 		}
 		return exitcode.OK.Int()
-	}
-	if format == "compact" {
+	case formatpkg.Compact:
 		_, _ = fmt.Fprintf(stdout, "%s\n", buildInspectCompactSummary(report))
 		if report.Decision == reportDecisionRejected {
 			return exitcode.Rejected.Int()
