@@ -112,6 +112,8 @@ Recent completed increments:
 - inspect oversized-frontmatter JSON error coverage now injects the inspect
   source preparation dependency instead of mutating the app-level frontmatter
   size limit.
+- vet now evaluates local sources directly through source preparation and
+  scanning instead of invoking `inspect --format json` and reparsing its output.
 - SARIF error document construction now uses a shared helper for structured
   error rule ID resolution while keeping command-specific SARIF properties at
   the output boundary.
@@ -215,6 +217,9 @@ Current inventory notes:
   inspect, vet, install, update, policy-evaluation source preparation, and lock
   verify; focused oversized-limit tests no longer mutate package globals, but
   broader command dependency seams still need a final audit.
+- #8 is represented by direct vet source preparation and scanning; the old
+  inspect JSON round trip and fail-closed JSON reparse path have been removed,
+  so this is a candidate to close after repository write access is available.
 - #3, #4, #5, and #19 are partially represented but still need final audit before
   closing because `internal/app` remains the compatibility owner for command
   orchestration and many contract tests.

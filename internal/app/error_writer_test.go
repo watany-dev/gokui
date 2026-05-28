@@ -387,7 +387,7 @@ func TestEmitStructuredError(t *testing.T) {
 
 func TestNormalizeCommandDepsDefaults(t *testing.T) {
 	vet := normalizeVetDeps(vetDeps{})
-	if vet.LoadUserPolicy == nil || vet.LoadRepositoryPolicy == nil || vet.RunInspect == nil {
+	if vet.LoadUserPolicy == nil || vet.LoadRepositoryPolicy == nil || vet.PrepareInspectSource == nil {
 		t.Fatal("normalizeVetDeps should fill all defaults")
 	}
 

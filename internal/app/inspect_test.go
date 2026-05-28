@@ -300,37 +300,6 @@ func TestBuildInspectReviewReportNeutralizesText(t *testing.T) {
 	}
 }
 
-func TestDecodeInspectErrorPayload(t *testing.T) {
-	t.Run("valid payload keeps message", func(t *testing.T) {
-		raw := []byte(`{"schema_version":"0.1.0-draft","status":"ERROR","error_code":"INSPECT_ARGS_INVALID","message":"inspect source is required","source":{"input":"","kind":"local-dir"},"note":"x"}`)
-		got := decodeInspectErrorPayload(raw)
-		if got.ErrorCode != inspectErrorCodeArgsInvalid {
-			t.Fatalf("error_code = %q, want %q", got.ErrorCode, inspectErrorCodeArgsInvalid)
-		}
-		if got.Message != "inspect source is required" {
-			t.Fatalf("message = %q", got.Message)
-		}
-	})
-
-	t.Run("invalid payload falls back to trimmed raw message", func(t *testing.T) {
-		got := decodeInspectErrorPayload([]byte("not-json"))
-		if got.ErrorCode != inspectErrorCodeUnknown {
-			t.Fatalf("error_code = %q, want %q", got.ErrorCode, inspectErrorCodeUnknown)
-		}
-		if got.Message != "not-json" {
-			t.Fatalf("message = %q, want raw payload", got.Message)
-		}
-	})
-
-	t.Run("empty message uses default", func(t *testing.T) {
-		raw := []byte(`{"schema_version":"0.1.0-draft","status":"ERROR","error_code":"INSPECT_ARGS_INVALID","message":"   ","source":{"input":"","kind":"local-dir"},"note":"x"}`)
-		got := decodeInspectErrorPayload(raw)
-		if got.Message != "inspect failed" {
-			t.Fatalf("message = %q, want inspect failed", got.Message)
-		}
-	})
-}
-
 func TestDetectSourceKind(t *testing.T) {
 	cases := []struct {
 		in   string

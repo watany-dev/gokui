@@ -19,8 +19,8 @@ func normalizeVetDeps(deps vetDeps) vetDeps {
 	if deps.LoadRepositoryPolicy == nil {
 		deps.LoadRepositoryPolicy = policypkg.LoadRepositoryPolicy
 	}
-	if deps.RunInspect == nil {
-		deps.RunInspect = runInspect
+	if deps.PrepareInspectSource == nil {
+		deps.PrepareInspectSource = prepareInspectSource
 	}
 	return deps
 }

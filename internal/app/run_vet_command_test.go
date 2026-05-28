@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	reportpkg "github.com/watany-dev/gokui/internal/report"
-	"io"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -549,31 +548,6 @@ func TestRunVetCommands(t *testing.T) {
 		}
 	})
 
-	t.Run("vet inspect-error payload rejects non-utf8 in json", func(t *testing.T) {
-		var stdout bytes.Buffer
-		var stderr bytes.Buffer
-
-		fixturePath := filepath.FromSlash("../../fixtures/clean-skill")
-		code := runVetWithDeps([]string{fixturePath, "--format", "json"}, &stdout, &stderr, vetDeps{
-			RunInspect: func(args []string, stdout io.Writer, stderr io.Writer) int {
-				_, _ = stdout.Write([]byte{0xff})
-				return 1
-			},
-		})
-		if code != 1 {
-			t.Fatalf("Run() code = %d, want 1\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
-		}
-		if stderr.Len() != 0 {
-			t.Fatalf("stderr should be empty for json errors, got %q", stderr.String())
-		}
-		if !strings.Contains(stdout.String(), "\"error_code\": \""+inspectErrorCodeUnknown+"\"") {
-			t.Fatalf("stdout should include inspect unknown error code, got %q", stdout.String())
-		}
-		if !strings.Contains(stdout.String(), "inspect error payload must be valid UTF-8") {
-			t.Fatalf("stdout should include utf-8 payload error message, got %q", stdout.String())
-		}
-	})
-
 	t.Run("vet inspect-source errors are surfaced in human output", func(t *testing.T) {
 		var stdout bytes.Buffer
 		var stderr bytes.Buffer
@@ -586,64 +560,6 @@ func TestRunVetCommands(t *testing.T) {
 		}
 		if !strings.Contains(stderr.String(), "inspect source not found") {
 			t.Fatalf("stderr should include source-not-found message, got %q", stderr.String())
-		}
-	})
-
-	t.Run("vet fails closed when inspect json is malformed", func(t *testing.T) {
-		var stdout bytes.Buffer
-		var stderr bytes.Buffer
-
-		fixturePath := filepath.FromSlash("../../fixtures/clean-skill")
-		code := runVetWithDeps([]string{fixturePath, "--format", "json"}, &stdout, &stderr, vetDeps{
-			RunInspect: func(args []string, stdout io.Writer, stderr io.Writer) int {
-				_, _ = stdout.Write([]byte("{"))
-				return 0
-			},
-		})
-		if code != 2 {
-			t.Fatalf("Run() code = %d, want 2\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
-		}
-		if stderr.Len() != 0 {
-			t.Fatalf("stderr should be empty for json output, got %q", stderr.String())
-		}
-		var report inspectReport
-		if err := json.Unmarshal(stdout.Bytes(), &report); err != nil {
-			t.Fatalf("report json parse failed: %v", err)
-		}
-		if report.Decision != "REJECTED" {
-			t.Fatalf("decision = %q, want REJECTED", report.Decision)
-		}
-		if !strings.Contains(report.Note, "fail-closed rejection applied") {
-			t.Fatalf("note should include fail-closed marker, got %q", report.Note)
-		}
-	})
-
-	t.Run("vet fails closed when inspect json is non-utf8", func(t *testing.T) {
-		var stdout bytes.Buffer
-		var stderr bytes.Buffer
-
-		fixturePath := filepath.FromSlash("../../fixtures/clean-skill")
-		code := runVetWithDeps([]string{fixturePath, "--format", "json"}, &stdout, &stderr, vetDeps{
-			RunInspect: func(args []string, stdout io.Writer, stderr io.Writer) int {
-				_, _ = stdout.Write([]byte{0xff})
-				return 0
-			},
-		})
-		if code != 2 {
-			t.Fatalf("Run() code = %d, want 2\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
-		}
-		if stderr.Len() != 0 {
-			t.Fatalf("stderr should be empty for json output, got %q", stderr.String())
-		}
-		var report inspectReport
-		if err := json.Unmarshal(stdout.Bytes(), &report); err != nil {
-			t.Fatalf("report json parse failed: %v", err)
-		}
-		if report.Decision != "REJECTED" {
-			t.Fatalf("decision = %q, want REJECTED", report.Decision)
-		}
-		if !strings.Contains(report.Note, "non-UTF-8") {
-			t.Fatalf("note should include non-utf8 marker, got %q", report.Note)
 		}
 	})
 

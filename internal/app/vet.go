@@ -1,26 +1,26 @@
 package app
 
 import (
-	"bytes"
 	"fmt"
 	"io"
 	"strings"
 
 	"github.com/watany-dev/gokui/internal/cli/exitcode"
 	policypkg "github.com/watany-dev/gokui/internal/policy"
+	"github.com/watany-dev/gokui/internal/scan"
 )
 
 type vetDeps struct {
 	LoadUserPolicy       func() (policypkg.Config, bool, error)
 	LoadRepositoryPolicy func(string) (policypkg.Config, bool, error)
-	RunInspect           func(args []string, stdout io.Writer, stderr io.Writer) int
+	PrepareInspectSource func(input string, sourceKind string) (string, func(), error)
 }
 
 func defaultVetDeps() vetDeps {
 	return vetDeps{
 		LoadUserPolicy:       policypkg.LoadUserPolicy,
 		LoadRepositoryPolicy: policypkg.LoadRepositoryPolicy,
-		RunInspect:           runInspect,
+		PrepareInspectSource: prepareInspectSource,
 	}
 }
 
@@ -147,19 +147,68 @@ func runVetWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps vetD
 	}
 	rejectSet := rejectSeverities.Strings()
 
-	var inspectStdout bytes.Buffer
-	var inspectStderr bytes.Buffer
-	inspectCode := deps.RunInspect([]string{input, "--format", "json"}, &inspectStdout, &inspectStderr)
-	if inspectCode == 1 {
-		errorReport := decodeInspectErrorPayload(inspectStdout.Bytes())
+	skillRoot, cleanup, prepErr := deps.PrepareInspectSource(input, sourceKind)
+	if cleanup != nil {
+		defer cleanup()
+	}
+	if prepErr != nil {
+		errorCode := inspectErrorCodeSourcePrepareFailed
+		if isInspectSourceNotFoundError(prepErr) {
+			errorCode = inspectErrorCodeSourceNotFound
+		}
+		errorReport := inspectErrorReport{
+			SchemaVersion: reportSchemaVersion,
+			Status:        reportStatusError,
+			ErrorCode:     errorCode,
+			Message:       prepErr.Error(),
+			Source: source{
+				Input: input,
+				Kind:  sourceKind,
+			},
+			Note: "vet source preparation failed",
+		}
 		if emitInspectStructuredError(format, stdout, stderr, errorReport) {
 			return exitcode.Error.Int()
 		}
-		_, _ = fmt.Fprintln(stderr, errorReport.Message)
+		_, _ = fmt.Fprintln(stderr, prepErr.Error())
+		return exitcode.Error.Int()
+	}
+	scanFindings, scanErr := scan.ScanSkillRoot(skillRoot)
+	if scanErr != nil {
+		errorReport := inspectErrorReport{
+			SchemaVersion: reportSchemaVersion,
+			Status:        reportStatusError,
+			ErrorCode:     inspectErrorCodeScanFailed,
+			Message:       scanErr.Error(),
+			Source: source{
+				Input: input,
+				Kind:  sourceKind,
+			},
+			Note: "vet scanning failed",
+		}
+		if emitInspectStructuredError(format, stdout, stderr, errorReport) {
+			return exitcode.Error.Int()
+		}
+		_, _ = fmt.Fprintln(stderr, scanErr.Error())
 		return exitcode.Error.Int()
 	}
 
-	report := buildVetReportFromInspectJSON(inspectStdout.Bytes(), input, sourceKind, profile, rejectSet)
+	findings, _ := toInspectFindings(scanFindings)
+	report := buildVetReportFromFindings(input, sourceKind, profile, findings, rejectSet)
 
 	return writeVetSuccessReport(format, report, stdout)
+}
+
+func buildVetReportFromFindings(input string, sourceKind string, profile string, findings []inspectFinding, rejectSet map[string]struct{}) inspectReport {
+	return inspectReport{
+		SchemaVersion: reportSchemaVersion,
+		PreRelease:    true,
+		Source: source{
+			Input: input,
+			Kind:  sourceKind,
+		},
+		Decision: decisionForInspectFindings(findings, rejectSet),
+		Findings: findings,
+		Note:     fmt.Sprintf("pre-release inspect includes structural and markdown checks (vet profile=%s)", profile),
+	}
 }

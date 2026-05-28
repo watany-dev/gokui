@@ -1,11 +1,9 @@
 package app
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 	"strings"
-	"unicode/utf8"
 
 	"github.com/watany-dev/gokui/internal/cli/exitcode"
 	formatpkg "github.com/watany-dev/gokui/internal/cli/format"
@@ -239,62 +237,4 @@ func decisionForInspectFindings(findings []inspectFinding, rejectSet map[string]
 		}
 	}
 	return "PASS"
-}
-
-func decodeInspectErrorPayload(raw []byte) inspectErrorReport {
-	out := inspectErrorReport{
-		SchemaVersion: reportSchemaVersion,
-		Status:        reportStatusError,
-		ErrorCode:     inspectErrorCodeUnknown,
-		Message:       "failed to process inspect error report",
-		Source: source{
-			Input: "",
-			Kind:  "local-dir",
-		},
-		Note: "vet failed while decoding inspect error report",
-	}
-	if !utf8.Valid(raw) {
-		out.Message = "inspect error payload must be valid UTF-8"
-		out.Note = "vet failed while decoding inspect error report (non-UTF-8 payload)"
-		return out
-	}
-	if err := json.Unmarshal(raw, &out); err != nil {
-		message := strings.TrimSpace(string(raw))
-		if message == "" {
-			return out
-		}
-		out.Message = message
-		return out
-	}
-	if strings.TrimSpace(out.Message) == "" {
-		out.Message = "inspect failed"
-	}
-	return out
-}
-
-func buildVetReportFromInspectJSON(raw []byte, input string, sourceKind string, profile string, rejectSet map[string]struct{}) inspectReport {
-	report := inspectReport{
-		SchemaVersion: reportSchemaVersion,
-		PreRelease:    true,
-		Source: source{
-			Input: input,
-			Kind:  sourceKind,
-		},
-		Decision: reportDecisionRejected,
-		Findings: []inspectFinding{},
-		Note:     "vet failed to parse inspect report; fail-closed rejection applied",
-	}
-	if !utf8.Valid(raw) {
-		report.Note = "vet rejected non-UTF-8 inspect report; fail-closed rejection applied"
-		report.Note = fmt.Sprintf("%s (vet profile=%s)", report.Note, profile)
-		return report
-	}
-	if err := json.Unmarshal(raw, &report); err != nil {
-		report.Note = fmt.Sprintf("vet failed to parse inspect report (%v); fail-closed rejection applied", err)
-		report.Note = fmt.Sprintf("%s (vet profile=%s)", report.Note, profile)
-		return report
-	}
-	report.Decision = decisionForInspectFindings(report.Findings, rejectSet)
-	report.Note = fmt.Sprintf("%s (vet profile=%s)", report.Note, profile)
-	return report
 }
