@@ -149,6 +149,9 @@ Recent completed increments:
 - structured SARIF error report builders now pass command fields through a
   report-level input shape; app-level builders no longer assemble SARIF
   properties before calling `internal/report`.
+- inspect/vet parser and argument helper tests are split into
+  `inspect_args_test.go`, narrowing `inspect_test.go` to report and source
+  preparation behavior.
 - SARIF error document construction now uses a shared helper for structured
   error rule ID resolution while keeping command-specific SARIF properties at
   the output boundary.
@@ -218,6 +221,7 @@ go test ./internal/report ./internal/app -run 'SARIF|LockVerify|StructuredError|
 go test ./internal/report ./internal/app -run 'SARIFError|StructuredError|Error|Fetch|Inspect|Install|Update|LockVerify'
 go test ./internal/report ./internal/app -run 'PreReleaseSARIF|StructuredErrorSARIFProperties|SARIFError|StructuredError|Error'
 go test ./internal/report ./internal/app -run 'SARIFError|StructuredError|Error|Fetch|Inspect|Install|Update|LockVerify'
+go test ./internal/app -run 'ParseInspectArgs|ParseVetArgs|InspectArgJSONHelpers|BuildInspect|DetectSourceKind|PrepareInspect'
 make test
 make check
 ```
