@@ -7,13 +7,14 @@ import (
 )
 
 func TestValidateInstallLockForProvenanceReuse(t *testing.T) {
+	sourceInput := filepath.Clean(filepath.Join(t.TempDir(), "skill"))
 	valid := installLock{
 		Schema:      "gokui.lock/v1",
 		Name:        "skill",
 		InstalledAt: "2026-05-24T00:00:00Z",
 		Source: lockSource{
 			Type:  "local",
-			Input: filepath.Clean("/tmp/skill"),
+			Input: sourceInput,
 			Kind:  "local-dir",
 		},
 		Skill: lockSkill{
@@ -450,21 +451,21 @@ func TestValidateInstallLockForProvenanceReuse(t *testing.T) {
 		{
 			name: "source input has control character",
 			mutate: func(l *installLock) {
-				l.Source.Input = "/tmp/skill\npayload"
+				l.Source.Input = sourceInput + "\npayload"
 			},
 			detailPart: "source input must not contain C0/C1 control characters",
 		},
 		{
 			name: "source input has C1 control character",
 			mutate: func(l *installLock) {
-				l.Source.Input = "/tmp/skill\u0085payload"
+				l.Source.Input = sourceInput + "\u0085payload"
 			},
 			detailPart: "source input must not contain C0/C1 control characters",
 		},
 		{
 			name: "source input has C1 control character at edge",
 			mutate: func(l *installLock) {
-				l.Source.Input = "\u0085/tmp/skill"
+				l.Source.Input = "\u0085" + sourceInput
 			},
 			detailPart: "source input must not contain C0/C1 control characters",
 		},
@@ -492,14 +493,14 @@ func TestValidateInstallLockForProvenanceReuse(t *testing.T) {
 		{
 			name: "source input has DEL control character at edge",
 			mutate: func(l *installLock) {
-				l.Source.Input = "\u007f/tmp/skill"
+				l.Source.Input = "\u007f" + sourceInput
 			},
 			detailPart: "source input must not contain C0/C1 control characters",
 		},
 		{
 			name: "source input has unicode obfuscation character",
 			mutate: func(l *installLock) {
-				l.Source.Input = "/tmp/skill\u200dpayload"
+				l.Source.Input = sourceInput + "\u200dpayload"
 			},
 			detailPart: "source input must not contain Unicode bidi, zero-width, tag, or variation-selector characters",
 		},
@@ -583,7 +584,7 @@ func TestValidateInstallLockForProvenanceReuse(t *testing.T) {
 		{
 			name: "non-canonical local source path",
 			mutate: func(l *installLock) {
-				l.Source.Input = "/tmp/skill/../skill"
+				l.Source.Input = sourceInput + string(filepath.Separator) + ".." + string(filepath.Separator) + filepath.Base(sourceInput)
 			},
 			detailPart: "source input must be a canonical cleaned path for local/archive sources",
 		},

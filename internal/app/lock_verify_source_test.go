@@ -37,15 +37,15 @@ func TestVerifyLockSourceChecks(t *testing.T) {
 	if ok, _ := verifyLockSource(lock); ok {
 		t.Fatal("input with surrounding whitespace should fail")
 	}
-	lock.Source.Input = "/tmp/skill\npayload"
+	lock.Source.Input = sourceInput + "\npayload"
 	if ok, _ := verifyLockSource(lock); ok {
 		t.Fatal("input with C0 control characters should fail")
 	}
-	lock.Source.Input = "/tmp/skill\u0085payload"
+	lock.Source.Input = sourceInput + "\u0085payload"
 	if ok, _ := verifyLockSource(lock); ok {
 		t.Fatal("input with C1 control characters should fail")
 	}
-	lock.Source.Input = "\u0085/tmp/skill"
+	lock.Source.Input = "\u0085" + sourceInput
 	if ok, _ := verifyLockSource(lock); ok {
 		t.Fatal("input with edge C1 control characters should fail")
 	}
@@ -61,7 +61,7 @@ func TestVerifyLockSourceChecks(t *testing.T) {
 	} else if !strings.Contains(detail, "must not contain C0/C1 control characters") {
 		t.Fatalf("input with DEL control characters only should surface control detail, got %q", detail)
 	}
-	lock.Source.Input = "\u007f/tmp/skill"
+	lock.Source.Input = "\u007f" + sourceInput
 	if ok, detail := verifyLockSource(lock); ok {
 		t.Fatal("input with DEL edge control characters should fail")
 	} else if !strings.Contains(detail, "must not contain C0/C1 control characters") {
@@ -152,12 +152,12 @@ func TestVerifyLockSourceChecks(t *testing.T) {
 		t.Fatal("type with uppercase letters should fail")
 	}
 	lock.Source.Type = "local"
-	lock.Source.Input = "/tmp/skill/../skill"
+	lock.Source.Input = sourceInput + string(filepath.Separator) + ".." + string(filepath.Separator) + filepath.Base(sourceInput)
 	if ok, _ := verifyLockSource(lock); ok {
 		t.Fatal("non-canonical local input path should fail")
 	}
 
-	lock.Source.Input = "/tmp/skill"
+	lock.Source.Input = sourceInput
 	lock.Source.Kind = "unsupported"
 	if ok, _ := verifyLockSource(lock); ok {
 		t.Fatal("unsupported kind should fail")

@@ -60,13 +60,14 @@ func TestEvaluateUpdateSkillLockValidationBranches(t *testing.T) {
 	})
 
 	t.Run("lock source input with control characters is lockfile invalid", func(t *testing.T) {
+		sourceInput := filepath.Clean(filepath.Join(t.TempDir(), "skill"))
 		lock := installLock{
 			Schema:      "gokui.lock/v1",
 			Name:        "control-source-input",
 			InstalledAt: "2026-05-24T00:00:00Z",
 			Source: lockSource{
 				Type:  "local",
-				Input: "/tmp/skill\npayload",
+				Input: sourceInput + "\npayload",
 				Kind:  "local-dir",
 			},
 			Skill: lockSkill{
@@ -109,13 +110,14 @@ func TestEvaluateUpdateSkillLockValidationBranches(t *testing.T) {
 	})
 
 	t.Run("lock source input with unicode obfuscation characters is lockfile invalid", func(t *testing.T) {
+		sourceInput := filepath.Clean(filepath.Join(t.TempDir(), "skill"))
 		lock := installLock{
 			Schema:      "gokui.lock/v1",
 			Name:        "unicode-source-input",
 			InstalledAt: "2026-05-24T00:00:00Z",
 			Source: lockSource{
 				Type:  "local",
-				Input: "/tmp/skill\u200dpayload",
+				Input: sourceInput + "\u200dpayload",
 				Kind:  "local-dir",
 			},
 			Skill: lockSkill{
@@ -158,13 +160,14 @@ func TestEvaluateUpdateSkillLockValidationBranches(t *testing.T) {
 	})
 
 	t.Run("lock source input with edge C1 control character is lockfile invalid", func(t *testing.T) {
+		sourceInput := filepath.Clean(filepath.Join(t.TempDir(), "skill"))
 		lock := installLock{
 			Schema:      "gokui.lock/v1",
 			Name:        "edge-control-source-input",
 			InstalledAt: "2026-05-24T00:00:00Z",
 			Source: lockSource{
 				Type:  "local",
-				Input: "\u0085/tmp/skill",
+				Input: "\u0085" + sourceInput,
 				Kind:  "local-dir",
 			},
 			Skill: lockSkill{
@@ -354,13 +357,14 @@ func TestEvaluateUpdateSkillLockValidationBranches(t *testing.T) {
 	})
 
 	t.Run("lock source input with DEL-edge control character is lockfile invalid", func(t *testing.T) {
+		sourceInput := filepath.Clean(filepath.Join(t.TempDir(), "skill"))
 		lock := installLock{
 			Schema:      "gokui.lock/v1",
 			Name:        "del-edge-source-input",
 			InstalledAt: "2026-05-24T00:00:00Z",
 			Source: lockSource{
 				Type:  "local",
-				Input: "\u007f/tmp/skill",
+				Input: "\u007f" + sourceInput,
 				Kind:  "local-dir",
 			},
 			Skill: lockSkill{
