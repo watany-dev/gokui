@@ -19,6 +19,7 @@ import (
 	"github.com/watany-dev/gokui/internal/limitio"
 	policypkg "github.com/watany-dev/gokui/internal/policy"
 	reportpkg "github.com/watany-dev/gokui/internal/report"
+	rulepkg "github.com/watany-dev/gokui/internal/rule"
 	"github.com/watany-dev/gokui/internal/safefs"
 	srcpkg "github.com/watany-dev/gokui/internal/source"
 )
@@ -67,8 +68,6 @@ const ruleInstallReportSymlink = "INSTALL_REPORT_SYMLINK_DETECTED"
 const ruleInstallReportSpecialFile = "INSTALL_REPORT_SPECIAL_FILE"
 const ruleInstallReportSourceChanged = "INSTALL_REPORT_SOURCE_CHANGED_DURING_READ"
 const ruleLockVerifyPathSymlink = "LOCK_VERIFY_PATH_SYMLINK_DETECTED"
-const ruleLockfileSourceChanged = "LOCKFILE_SOURCE_CHANGED_DURING_READ"
-
 const (
 	lockVerifyCodeSchema         = "LOCK_SCHEMA"
 	lockVerifyCodeName           = "SKILL_NAME"
@@ -382,10 +381,10 @@ func verifyLock(skillPath string) (lockVerifyReport, error) {
 		return lockVerifyReport{}, fmt.Errorf("%w: %s", errLockfileReadFailed, lockPath)
 	}
 	if linkInfo.Mode()&os.ModeSymlink != 0 {
-		return lockVerifyReport{}, fmt.Errorf("%s: %w (symlink is not allowed): %s", ruleLockfileSymlink, errLockfileReadFailed, lockPath)
+		return lockVerifyReport{}, fmt.Errorf("%s: %w (symlink is not allowed): %s", rulepkg.LockfileSymlink.ID, errLockfileReadFailed, lockPath)
 	}
 	if !linkInfo.Mode().IsRegular() {
-		return lockVerifyReport{}, fmt.Errorf("%s: %w (regular file required): %s", ruleLockfileSpecialFile, errLockfileReadFailed, lockPath)
+		return lockVerifyReport{}, fmt.Errorf("%s: %w (regular file required): %s", rulepkg.LockfileSpecialFile.ID, errLockfileReadFailed, lockPath)
 	}
 
 	f, err := os.Open(lockPath)
@@ -399,12 +398,12 @@ func verifyLock(skillPath string) (lockVerifyReport, error) {
 	var lockRaw bytes.Buffer
 	if _, err := limitio.CopyWithStrictLimit(&lockRaw, f, maxLockVerifyLockFileBytes); err != nil {
 		if errors.Is(err, limitio.ErrSizeExceeded) {
-			return lockVerifyReport{}, fmt.Errorf("%s: %w (size exceeds limit): %s", ruleLockfileTooLarge, errLockfileReadFailed, lockPath)
+			return lockVerifyReport{}, fmt.Errorf("%s: %w (size exceeds limit): %s", rulepkg.LockfileTooLarge.ID, errLockfileReadFailed, lockPath)
 		}
 		return lockVerifyReport{}, fmt.Errorf("%w: %s", errLockfileReadFailed, lockPath)
 	}
 	if !utf8.Valid(lockRaw.Bytes()) {
-		return lockVerifyReport{}, fmt.Errorf("%s: %w (must be valid UTF-8): %s", ruleLockfileInvalidUTF8, errLockfileInvalidJSON, lockPath)
+		return lockVerifyReport{}, fmt.Errorf("%s: %w (must be valid UTF-8): %s", rulepkg.LockfileInvalidUTF8.ID, errLockfileInvalidJSON, lockPath)
 	}
 
 	var lock installLock
@@ -919,7 +918,7 @@ func ensureLockfileStableFromOpen(previous os.FileInfo, opened fileInfoStatter, 
 			return fmt.Errorf("%w: %s", errLockfileReadFailed, path)
 		},
 		ChangedError: func(path string) error {
-			return fmt.Errorf("%s: %w (file changed during read): %s", ruleLockfileSourceChanged, errLockfileReadFailed, path)
+			return fmt.Errorf("%s: %w (file changed during read): %s", rulepkg.LockfileSourceChangedDuringRead.ID, errLockfileReadFailed, path)
 		},
 	}.CheckOpened(opened)
 }

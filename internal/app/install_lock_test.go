@@ -8,6 +8,8 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+
+	rulepkg "github.com/watany-dev/gokui/internal/rule"
 )
 
 func TestReadInstallLockAndProvenanceMatches(t *testing.T) {
@@ -61,7 +63,7 @@ func TestReadInstallLockAndProvenanceMatches(t *testing.T) {
 		if err := os.WriteFile(invalidUTF8Path, invalidUTF8, 0o644); err != nil {
 			t.Fatalf("write invalid utf-8 lock: %v", err)
 		}
-		if _, err := readInstallLock(invalidUTF8Path); err == nil || !strings.Contains(err.Error(), ruleLockfileInvalidUTF8) {
+		if _, err := readInstallLock(invalidUTF8Path); err == nil || !strings.Contains(err.Error(), rulepkg.LockfileInvalidUTF8.ID) {
 			t.Fatalf("expected invalid utf-8 lockfile error, got %v", err)
 		}
 
@@ -115,7 +117,7 @@ func TestReadInstallLockAndProvenanceMatches(t *testing.T) {
 		if err := os.Mkdir(lockDirPath, 0o755); err != nil {
 			t.Fatalf("mkdir lock-dir: %v", err)
 		}
-		if _, err := readInstallLock(lockDirPath); err == nil || !strings.Contains(err.Error(), ruleLockfileSpecialFile) {
+		if _, err := readInstallLock(lockDirPath); err == nil || !strings.Contains(err.Error(), rulepkg.LockfileSpecialFile.ID) {
 			t.Fatalf("expected special-file error for directory lockfile path, got %v", err)
 		}
 
@@ -128,7 +130,7 @@ func TestReadInstallLockAndProvenanceMatches(t *testing.T) {
 			if err := os.Symlink("real.lock", symlink); err != nil {
 				t.Fatalf("create lock symlink: %v", err)
 			}
-			if _, err := readInstallLock(symlink); err == nil || !strings.Contains(err.Error(), ruleLockfileSymlink) {
+			if _, err := readInstallLock(symlink); err == nil || !strings.Contains(err.Error(), rulepkg.LockfileSymlink.ID) {
 				t.Fatalf("expected lockfile symlink rejection, got %v", err)
 			}
 
@@ -148,7 +150,7 @@ func TestReadInstallLockAndProvenanceMatches(t *testing.T) {
 			if err := os.Symlink("real-parent", linkParent); err != nil {
 				t.Fatalf("create parent symlink: %v", err)
 			}
-			if _, err := readInstallLock(filepath.Join(linkParent, "nested", "nested.lock")); err == nil || !strings.Contains(err.Error(), ruleLockfileSymlink) {
+			if _, err := readInstallLock(filepath.Join(linkParent, "nested", "nested.lock")); err == nil || !strings.Contains(err.Error(), rulepkg.LockfileSymlink.ID) {
 				t.Fatalf("expected ancestor symlink lockfile rejection, got %v", err)
 			}
 		}
@@ -160,7 +162,7 @@ func TestReadInstallLockAndProvenanceMatches(t *testing.T) {
 		if err := os.WriteFile(oversizedPath, []byte(`{"schema":"gokui.lock/v1"}`), 0o644); err != nil {
 			t.Fatalf("write oversized lock: %v", err)
 		}
-		if _, err := readInstallLock(oversizedPath); err == nil || !strings.Contains(err.Error(), ruleLockfileTooLarge) {
+		if _, err := readInstallLock(oversizedPath); err == nil || !strings.Contains(err.Error(), rulepkg.LockfileTooLarge.ID) {
 			t.Fatalf("expected oversized lockfile error, got %v", err)
 		}
 
@@ -191,7 +193,7 @@ func TestReadInstallLockAndProvenanceMatches(t *testing.T) {
 			t.Fatalf("open second lock: %v", err)
 		}
 		defer secondOpened.Close()
-		if err := ensureInstallLockStableFromOpen(firstInfo, secondOpened, secondPath); err == nil || !strings.Contains(err.Error(), ruleLockfileSourceChanged) {
+		if err := ensureInstallLockStableFromOpen(firstInfo, secondOpened, secondPath); err == nil || !strings.Contains(err.Error(), rulepkg.LockfileSourceChangedDuringRead.ID) {
 			t.Fatalf("expected source-changed install lock error, got %v", err)
 		}
 	})

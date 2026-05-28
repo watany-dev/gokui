@@ -3,6 +3,7 @@ package app
 import (
 	"encoding/json"
 	reportpkg "github.com/watany-dev/gokui/internal/report"
+	rulepkg "github.com/watany-dev/gokui/internal/rule"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -195,7 +196,7 @@ func TestRunLockVerifyErrorPathsAndDriftKinds(t *testing.T) {
 		if !strings.Contains(stdout.String(), "\"error_code\": \""+lockVerifyErrorCodeReadLockfile+"\"") {
 			t.Fatalf("stdout should include read-lockfile error code, got %q", stdout.String())
 		}
-		if !strings.Contains(stdout.String(), "\"rule_id\": \""+ruleLockfileSymlink+"\"") {
+		if !strings.Contains(stdout.String(), "\"rule_id\": \""+rulepkg.LockfileSymlink.ID+"\"") {
 			t.Fatalf("stdout should include lockfile symlink rule_id, got %q", stdout.String())
 		}
 	}
@@ -218,7 +219,7 @@ func TestRunLockVerifyErrorPathsAndDriftKinds(t *testing.T) {
 	if !strings.Contains(stdout.String(), "\"error_code\": \""+lockVerifyErrorCodeReadLockfile+"\"") {
 		t.Fatalf("stdout should include read-lockfile error code, got %q", stdout.String())
 	}
-	if !strings.Contains(stdout.String(), "\"rule_id\": \""+ruleLockfileTooLarge+"\"") {
+	if !strings.Contains(stdout.String(), "\"rule_id\": \""+rulepkg.LockfileTooLarge.ID+"\"") {
 		t.Fatalf("stdout should include lockfile-too-large rule_id, got %q", stdout.String())
 	}
 	maxLockVerifyLockFileBytes = origLimit
@@ -239,7 +240,7 @@ func TestRunLockVerifyErrorPathsAndDriftKinds(t *testing.T) {
 	if !strings.Contains(stdout.String(), "\"error_code\": \""+lockVerifyErrorCodeReadLockfile+"\"") {
 		t.Fatalf("stdout should include read-lockfile error code, got %q", stdout.String())
 	}
-	if !strings.Contains(stdout.String(), "\"rule_id\": \""+ruleLockfileSpecialFile+"\"") {
+	if !strings.Contains(stdout.String(), "\"rule_id\": \""+rulepkg.LockfileSpecialFile.ID+"\"") {
 		t.Fatalf("stdout should include lockfile special-file rule_id, got %q", stdout.String())
 	}
 
@@ -274,7 +275,7 @@ func TestRunLockVerifyErrorPathsAndDriftKinds(t *testing.T) {
 		if !strings.Contains(stdout.String(), "\"error_code\": \""+lockVerifyErrorCodeDigestFailed+"\"") {
 			t.Fatalf("stdout should include digest-failed error_code, got %q", stdout.String())
 		}
-		if !strings.Contains(stdout.String(), "\"rule_id\": \""+ruleInstallDigestSymlink+"\"") {
+		if !strings.Contains(stdout.String(), "\"rule_id\": \""+rulepkg.InstallDigestSymlink.ID+"\"") {
 			t.Fatalf("stdout should include digest symlink rule_id, got %q", stdout.String())
 		}
 	}

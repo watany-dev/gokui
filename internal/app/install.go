@@ -19,6 +19,7 @@ import (
 	"github.com/watany-dev/gokui/internal/limitio"
 	policypkg "github.com/watany-dev/gokui/internal/policy"
 	reportpkg "github.com/watany-dev/gokui/internal/report"
+	rulepkg "github.com/watany-dev/gokui/internal/rule"
 	"github.com/watany-dev/gokui/internal/safefs"
 	"github.com/watany-dev/gokui/internal/scan"
 	srcpkg "github.com/watany-dev/gokui/internal/source"
@@ -38,27 +39,6 @@ var (
 	installMaxDigestTotalBytes int64 = 200 * 1024 * 1024
 	installMaxDigestFileBytes  int64 = 20 * 1024 * 1024
 	errDigestBuildFailed             = errors.New("failed to digest installed files")
-)
-
-const (
-	ruleLockfileTooLarge                = "LOCKFILE_TOO_LARGE"
-	ruleLockfileInvalidUTF8             = "LOCKFILE_INVALID_UTF8"
-	ruleLockfileSymlink                 = "LOCKFILE_SYMLINK_DETECTED"
-	ruleLockfileSpecialFile             = "LOCKFILE_SPECIAL_FILE"
-	ruleInstallTargetSymlink            = "INSTALL_TARGET_SYMLINK_DETECTED"
-	ruleInstallTargetEntrySymlink       = "INSTALL_TARGET_ENTRY_SYMLINK_DETECTED"
-	ruleInstallSourceFileCountExceeded  = "INSTALL_SOURCE_FILE_COUNT_EXCEEDED"
-	ruleInstallSourceTotalBytesExceeded = "INSTALL_SOURCE_TOTAL_BYTES_EXCEEDED"
-	ruleInstallSourceFileTooLarge       = "INSTALL_SOURCE_FILE_TOO_LARGE"
-	ruleInstallSourceSymlink            = "INSTALL_SOURCE_SYMLINK_DETECTED"
-	ruleInstallSourceSpecialFile        = "INSTALL_SOURCE_SPECIAL_FILE"
-	ruleInstallSourceChanged            = "INSTALL_SOURCE_CHANGED_DURING_COPY"
-	ruleInstallDigestSymlink            = "INSTALL_DIGEST_SYMLINK_DETECTED"
-	ruleInstallDigestFileCountExceeded  = "INSTALL_DIGEST_FILE_COUNT_EXCEEDED"
-	ruleInstallDigestTotalBytesExceeded = "INSTALL_DIGEST_TOTAL_BYTES_EXCEEDED"
-	ruleInstallDigestFileTooLarge       = "INSTALL_DIGEST_FILE_TOO_LARGE"
-	ruleInstallDigestSpecialFile        = "INSTALL_DIGEST_SPECIAL_FILE"
-	ruleInstallDigestSourceChanged      = "INSTALL_DIGEST_SOURCE_CHANGED_DURING_HASH"
 )
 
 type installArgs struct {
@@ -497,7 +477,7 @@ func runInstallWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps 
 		_, _ = fmt.Fprintln(stderr, targetErr.Error())
 		return exitcode.Error.Int()
 	}
-	if err := rejectSymlinkPath(targetRoot, "install target root", ruleInstallTargetSymlink); err != nil {
+	if err := rejectSymlinkPath(targetRoot, "install target root", rulepkg.InstallTargetSymlink.ID); err != nil {
 		if emitInstallStructuredError(parsed.Format, stdout, stderr, installErrorReport{
 			SchemaVersion: reportSchemaVersion,
 			Status:        reportStatusError,
@@ -897,7 +877,7 @@ const (
 
 func installSkillAtomic(skillRoot string, targetRoot string, skillName string, report installReport) (string, installResult, error) {
 	finalPath := filepath.Join(targetRoot, skillName)
-	if err := rejectSymlinkPath(finalPath, "install target entry", ruleInstallTargetEntrySymlink); err != nil {
+	if err := rejectSymlinkPath(finalPath, "install target entry", rulepkg.InstallTargetEntrySymlink.ID); err != nil {
 		return "", "", err
 	}
 
@@ -956,7 +936,7 @@ func installSkillAtomic(skillRoot string, targetRoot string, skillName string, r
 }
 
 func copyTreeNormalized(srcRoot string, dstRoot string) error {
-	if err := ensureInstallTreeRoot(srcRoot, "install source", ruleInstallSourceSymlink, ruleInstallSourceSpecialFile); err != nil {
+	if err := ensureInstallTreeRoot(srcRoot, "install source", rulepkg.InstallSourceSymlink.ID, rulepkg.InstallSourceSpecialFile.ID); err != nil {
 		return err
 	}
 	files := 0
@@ -979,7 +959,7 @@ func copyTreeNormalized(srcRoot string, dstRoot string) error {
 			return fmt.Errorf("failed to stat source file during install: %w", err)
 		}
 		if srcInfo.Mode()&os.ModeSymlink != 0 {
-			return fmt.Errorf("%s: install source contains symlink: %s", ruleInstallSourceSymlink, rel)
+			return fmt.Errorf("%s: install source contains symlink: %s", rulepkg.InstallSourceSymlink.ID, rel)
 		}
 		destPath := filepath.Join(dstRoot, rel)
 		if d.IsDir() {
@@ -989,21 +969,21 @@ func copyTreeNormalized(srcRoot string, dstRoot string) error {
 			return nil
 		}
 		if !srcInfo.Mode().IsRegular() {
-			return fmt.Errorf("%s: install source contains non-regular file: %s", ruleInstallSourceSpecialFile, rel)
+			return fmt.Errorf("%s: install source contains non-regular file: %s", rulepkg.InstallSourceSpecialFile.ID, rel)
 		}
 		if srcInfo.Size() > installMaxCopyFileBytes {
-			return fmt.Errorf("%s: install source file exceeds size limit: %s", ruleInstallSourceFileTooLarge, rel)
+			return fmt.Errorf("%s: install source file exceeds size limit: %s", rulepkg.InstallSourceFileTooLarge.ID, rel)
 		}
 		files++
 		if files > installMaxCopyFiles {
-			return fmt.Errorf("%s: install source exceeds max file count: %d", ruleInstallSourceFileCountExceeded, installMaxCopyFiles)
+			return fmt.Errorf("%s: install source exceeds max file count: %d", rulepkg.InstallSourceFileCountExceeded.ID, installMaxCopyFiles)
 		}
 		remainingTotal := installMaxCopyTotalBytes - totalBytes
 		if remainingTotal <= 0 {
-			return fmt.Errorf("%s: install source exceeds max total bytes: %d", ruleInstallSourceTotalBytesExceeded, installMaxCopyTotalBytes)
+			return fmt.Errorf("%s: install source exceeds max total bytes: %d", rulepkg.InstallSourceTotalBytesExceeded.ID, installMaxCopyTotalBytes)
 		}
 		if srcInfo.Size() > remainingTotal {
-			return fmt.Errorf("%s: install source exceeds max total bytes: %d", ruleInstallSourceTotalBytesExceeded, installMaxCopyTotalBytes)
+			return fmt.Errorf("%s: install source exceeds max total bytes: %d", rulepkg.InstallSourceTotalBytesExceeded.ID, installMaxCopyTotalBytes)
 		}
 		maxCopyBytes := installMaxCopyFileBytes
 		if remainingTotal < maxCopyBytes {
@@ -1016,11 +996,11 @@ func copyTreeNormalized(srcRoot string, dstRoot string) error {
 		written, err := limitio.CopyFileWithModeChecked(path, destPath, 0o644, maxCopyBytes, srcInfo, ensureInstallSourceStableFromOpen)
 		if err != nil {
 			if limitio.IsSizeExceeded(err) {
-				return fmt.Errorf("%s: install source file exceeds size limit during copy: %s", ruleInstallSourceFileTooLarge, path)
+				return fmt.Errorf("%s: install source file exceeds size limit during copy: %s", rulepkg.InstallSourceFileTooLarge.ID, path)
 			}
 			if strings.HasPrefix(err.Error(), "failed to open source file") ||
 				strings.HasPrefix(err.Error(), "failed to create destination file") ||
-				strings.Contains(err.Error(), ruleInstallSourceChanged) {
+				strings.Contains(err.Error(), rulepkg.InstallSourceChangedDuringCopy.ID) {
 				return err
 			}
 			if !strings.HasPrefix(err.Error(), "failed to copy file contents") {
@@ -1148,7 +1128,7 @@ func buildFileDigestsForLock(root string) ([]lockFileHash, string, error) {
 }
 
 func buildFileDigestsFiltered(root string, exclude map[string]struct{}) ([]lockFileHash, string, error) {
-	if err := ensureInstallTreeRoot(root, "digest input", ruleInstallDigestSymlink, ruleInstallDigestSpecialFile); err != nil {
+	if err := ensureInstallTreeRoot(root, "digest input", rulepkg.InstallDigestSymlink.ID, rulepkg.InstallDigestSpecialFile.ID); err != nil {
 		return nil, "", fmt.Errorf("%w: %w", errDigestBuildFailed, err)
 	}
 	files := make([]lockFileHash, 0, 32)
@@ -1172,29 +1152,29 @@ func buildFileDigestsFiltered(root string, exclude map[string]struct{}) ([]lockF
 			return fmt.Errorf("failed to stat file for digest: %w", err)
 		}
 		if info.Mode()&os.ModeSymlink != 0 {
-			return fmt.Errorf("%s: digest input contains symlink: %s", ruleInstallDigestSymlink, rel)
+			return fmt.Errorf("%s: digest input contains symlink: %s", rulepkg.InstallDigestSymlink.ID, rel)
 		}
 		if !info.Mode().IsRegular() {
-			return fmt.Errorf("%s: digest input contains non-regular file: %s", ruleInstallDigestSpecialFile, rel)
+			return fmt.Errorf("%s: digest input contains non-regular file: %s", rulepkg.InstallDigestSpecialFile.ID, rel)
 		}
 		if _, skip := exclude[rel]; skip {
 			return nil
 		}
 		if info.Size() > installMaxDigestFileBytes {
-			return fmt.Errorf("%s: digest input file exceeds size limit: %s", ruleInstallDigestFileTooLarge, rel)
+			return fmt.Errorf("%s: digest input file exceeds size limit: %s", rulepkg.InstallDigestFileTooLarge.ID, rel)
 		}
 		digestedFiles++
 		if digestedFiles > installMaxDigestFiles {
-			return fmt.Errorf("%s: digest input exceeds max file count: %d", ruleInstallDigestFileCountExceeded, installMaxDigestFiles)
+			return fmt.Errorf("%s: digest input exceeds max file count: %d", rulepkg.InstallDigestFileCountExceeded.ID, installMaxDigestFiles)
 		}
 		totalBytes += info.Size()
 		if totalBytes > installMaxDigestTotalBytes {
-			return fmt.Errorf("%s: digest input exceeds max total bytes: %d", ruleInstallDigestTotalBytesExceeded, installMaxDigestTotalBytes)
+			return fmt.Errorf("%s: digest input exceeds max total bytes: %d", rulepkg.InstallDigestTotalBytesExceeded.ID, installMaxDigestTotalBytes)
 		}
 		sum, size, err := limitio.HashSHA256FileWithLimitChecked(path, installMaxDigestFileBytes, info, ensureInstallDigestStableFromOpen)
 		if err != nil {
 			if errors.Is(err, limitio.ErrSizeExceeded) {
-				return fmt.Errorf("%s: digest input file exceeds size limit: %s", ruleInstallDigestFileTooLarge, rel)
+				return fmt.Errorf("%s: digest input file exceeds size limit: %s", rulepkg.InstallDigestFileTooLarge.ID, rel)
 			}
 			return err
 		}
@@ -1240,7 +1220,7 @@ func ensureInstallSourceStableFromOpen(previous os.FileInfo, opened fileInfoStat
 			return fmt.Errorf("failed to open source file: %s", path)
 		},
 		ChangedError: func(path string) error {
-			return fmt.Errorf("%s: install source file changed during copy: %s", ruleInstallSourceChanged, path)
+			return fmt.Errorf("%s: install source file changed during copy: %s", rulepkg.InstallSourceChangedDuringCopy.ID, path)
 		},
 	}.CheckOpened(opened)
 }
@@ -1253,13 +1233,13 @@ func ensureInstallDigestStableFromOpen(previous os.FileInfo, opened fileInfoStat
 			return fmt.Errorf("failed to open file for hashing: %s", path)
 		},
 		ChangedError: func(path string) error {
-			return fmt.Errorf("%s: digest input file changed during hash: %s", ruleInstallDigestSourceChanged, path)
+			return fmt.Errorf("%s: digest input file changed during hash: %s", rulepkg.InstallDigestSourceChangedDuringHash.ID, path)
 		},
 	}.CheckOpened(opened)
 }
 
 func readInstallLock(path string) (installLock, error) {
-	if err := rejectSymlinkPath(path, "install lockfile", ruleLockfileSymlink); err != nil {
+	if err := rejectSymlinkPath(path, "install lockfile", rulepkg.LockfileSymlink.ID); err != nil {
 		return installLock{}, err
 	}
 	linkInfo, lstatErr := os.Lstat(path)
@@ -1267,10 +1247,10 @@ func readInstallLock(path string) (installLock, error) {
 		return installLock{}, fmt.Errorf("failed to read install lockfile: %s", path)
 	}
 	if linkInfo.Mode()&os.ModeSymlink != 0 {
-		return installLock{}, fmt.Errorf("%s: install lockfile must not be a symlink: %s", ruleLockfileSymlink, path)
+		return installLock{}, fmt.Errorf("%s: install lockfile must not be a symlink: %s", rulepkg.LockfileSymlink.ID, path)
 	}
 	if !linkInfo.Mode().IsRegular() {
-		return installLock{}, fmt.Errorf("%s: install lockfile must be a regular file: %s", ruleLockfileSpecialFile, path)
+		return installLock{}, fmt.Errorf("%s: install lockfile must be a regular file: %s", rulepkg.LockfileSpecialFile.ID, path)
 	}
 
 	f, err := os.Open(path)
@@ -1284,12 +1264,12 @@ func readInstallLock(path string) (installLock, error) {
 	var raw bytes.Buffer
 	if _, err := limitio.CopyWithStrictLimit(&raw, f, maxInstallLockFileBytes); err != nil {
 		if errors.Is(err, limitio.ErrSizeExceeded) {
-			return installLock{}, fmt.Errorf("%s: install lockfile exceeds size limit: %s", ruleLockfileTooLarge, path)
+			return installLock{}, fmt.Errorf("%s: install lockfile exceeds size limit: %s", rulepkg.LockfileTooLarge.ID, path)
 		}
 		return installLock{}, fmt.Errorf("failed to read install lockfile: %s", path)
 	}
 	if !utf8.Valid(raw.Bytes()) {
-		return installLock{}, fmt.Errorf("%s: install lockfile must be valid UTF-8: %s", ruleLockfileInvalidUTF8, path)
+		return installLock{}, fmt.Errorf("%s: install lockfile must be valid UTF-8: %s", rulepkg.LockfileInvalidUTF8.ID, path)
 	}
 
 	var lock installLock
@@ -1319,7 +1299,7 @@ func ensureInstallLockStableFromOpen(previous os.FileInfo, opened fileInfoStatte
 			return fmt.Errorf("failed to read install lockfile: %s", path)
 		},
 		ChangedError: func(path string) error {
-			return fmt.Errorf("%s: install lockfile changed during read: %s", ruleLockfileSourceChanged, path)
+			return fmt.Errorf("%s: install lockfile changed during read: %s", rulepkg.LockfileSourceChangedDuringRead.ID, path)
 		},
 	}.CheckOpened(opened)
 }

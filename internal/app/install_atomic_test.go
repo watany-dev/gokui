@@ -7,6 +7,8 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+
+	rulepkg "github.com/watany-dev/gokui/internal/rule"
 )
 
 func TestInstallSkillAtomicWritesMetadata(t *testing.T) {
@@ -397,7 +399,7 @@ func TestInstallSkillAtomicExistingTargetValidation(t *testing.T) {
 		}
 
 		_, _, err := installSkillAtomic(src, targetRoot, "symlink-target-entry-skill", report)
-		if err == nil || !strings.Contains(err.Error(), ruleInstallTargetEntrySymlink) {
+		if err == nil || !strings.Contains(err.Error(), rulepkg.InstallTargetEntrySymlink.ID) {
 			t.Fatalf("expected target-entry symlink rejection, got %v", err)
 		}
 	})

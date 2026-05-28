@@ -12,6 +12,7 @@ import (
 	"testing/quick"
 
 	"github.com/watany-dev/gokui/internal/limitio"
+	rulepkg "github.com/watany-dev/gokui/internal/rule"
 )
 
 func TestBuildFileDigestsAndSourceType(t *testing.T) {
@@ -137,7 +138,7 @@ func TestCopyFileWithModeAndHashErrors(t *testing.T) {
 
 		dst := filepath.Join(root, "out.txt")
 		_, err = limitio.CopyFileWithModeChecked(second, dst, 0o644, 1024, firstInfo, ensureInstallSourceStableFromOpen)
-		if err == nil || !strings.Contains(err.Error(), ruleInstallSourceChanged) {
+		if err == nil || !strings.Contains(err.Error(), rulepkg.InstallSourceChangedDuringCopy.ID) {
 			t.Fatalf("expected source-changed copy error, got %v", err)
 		}
 		if _, statErr := os.Stat(dst); !os.IsNotExist(statErr) {
@@ -192,7 +193,7 @@ func TestCopyFileWithModeAndHashErrors(t *testing.T) {
 			t.Fatalf("lstat first: %v", err)
 		}
 		_, _, err = limitio.HashSHA256FileWithLimitChecked(second, 1024, firstInfo, ensureInstallDigestStableFromOpen)
-		if err == nil || !strings.Contains(err.Error(), ruleInstallDigestSourceChanged) {
+		if err == nil || !strings.Contains(err.Error(), rulepkg.InstallDigestSourceChangedDuringHash.ID) {
 			t.Fatalf("expected digest source-changed error, got %v", err)
 		}
 	})
@@ -499,7 +500,7 @@ func TestWriteInstallMetadataAndBuildDigestsErrors(t *testing.T) {
 			t.Fatalf("create symlink: %v", err)
 		}
 		_, _, err := buildFileDigestsFiltered(root, nil)
-		if err == nil || !strings.Contains(err.Error(), ruleInstallDigestSymlink) {
+		if err == nil || !strings.Contains(err.Error(), rulepkg.InstallDigestSymlink.ID) {
 			t.Fatalf("expected digest symlink error, got %v", err)
 		}
 	})
@@ -521,7 +522,7 @@ func TestWriteInstallMetadataAndBuildDigestsErrors(t *testing.T) {
 			t.Fatalf("create root symlink: %v", err)
 		}
 		_, _, err := buildFileDigestsFiltered(linkRoot, nil)
-		if err == nil || !strings.Contains(err.Error(), ruleInstallDigestSymlink) {
+		if err == nil || !strings.Contains(err.Error(), rulepkg.InstallDigestSymlink.ID) {
 			t.Fatalf("expected digest symlink-root error, got %v", err)
 		}
 	})
@@ -532,7 +533,7 @@ func TestWriteInstallMetadataAndBuildDigestsErrors(t *testing.T) {
 			t.Fatalf("write root file: %v", err)
 		}
 		_, _, err := buildFileDigestsFiltered(rootFile, nil)
-		if err == nil || !strings.Contains(err.Error(), ruleInstallDigestSpecialFile) {
+		if err == nil || !strings.Contains(err.Error(), rulepkg.InstallDigestSpecialFile.ID) {
 			t.Fatalf("expected digest non-directory root error, got %v", err)
 		}
 	})
@@ -547,7 +548,7 @@ func TestWriteInstallMetadataAndBuildDigestsErrors(t *testing.T) {
 			t.Fatalf("mkfifo: %v", err)
 		}
 		_, _, err := buildFileDigestsFiltered(root, nil)
-		if err == nil || !strings.Contains(err.Error(), ruleInstallDigestSpecialFile) {
+		if err == nil || !strings.Contains(err.Error(), rulepkg.InstallDigestSpecialFile.ID) {
 			t.Fatalf("expected digest special-file error, got %v", err)
 		}
 	})
@@ -565,7 +566,7 @@ func TestWriteInstallMetadataAndBuildDigestsErrors(t *testing.T) {
 			t.Fatalf("write b.txt: %v", err)
 		}
 		_, _, err := buildFileDigestsFiltered(root, nil)
-		if err == nil || !strings.Contains(err.Error(), ruleInstallDigestFileCountExceeded) {
+		if err == nil || !strings.Contains(err.Error(), rulepkg.InstallDigestFileCountExceeded.ID) {
 			t.Fatalf("expected max-file-count digest error, got %v", err)
 		}
 	})
@@ -580,7 +581,7 @@ func TestWriteInstallMetadataAndBuildDigestsErrors(t *testing.T) {
 			t.Fatalf("write a.txt: %v", err)
 		}
 		_, _, err := buildFileDigestsFiltered(root, nil)
-		if err == nil || !strings.Contains(err.Error(), ruleInstallDigestTotalBytesExceeded) {
+		if err == nil || !strings.Contains(err.Error(), rulepkg.InstallDigestTotalBytesExceeded.ID) {
 			t.Fatalf("expected max-total-bytes digest error, got %v", err)
 		}
 	})
@@ -595,7 +596,7 @@ func TestWriteInstallMetadataAndBuildDigestsErrors(t *testing.T) {
 			t.Fatalf("write a.txt: %v", err)
 		}
 		_, _, err := buildFileDigestsFiltered(root, nil)
-		if err == nil || !strings.Contains(err.Error(), ruleInstallDigestFileTooLarge) {
+		if err == nil || !strings.Contains(err.Error(), rulepkg.InstallDigestFileTooLarge.ID) {
 			t.Fatalf("expected max-file-bytes digest error, got %v", err)
 		}
 	})

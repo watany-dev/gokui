@@ -269,6 +269,101 @@ var (
 		Severity:    SeverityHigh,
 		Description: "source metadata must be valid UTF-8",
 	}
+	LockfileTooLarge = Rule{
+		ID:          "LOCKFILE_TOO_LARGE",
+		Severity:    SeverityHigh,
+		Description: "install lockfile exceeds the size limit",
+	}
+	LockfileInvalidUTF8 = Rule{
+		ID:          "LOCKFILE_INVALID_UTF8",
+		Severity:    SeverityHigh,
+		Description: "install lockfile must be valid UTF-8",
+	}
+	LockfileSymlink = Rule{
+		ID:          "LOCKFILE_SYMLINK_DETECTED",
+		Severity:    SeverityHigh,
+		Description: "install lockfile path contains a symlink",
+	}
+	LockfileSpecialFile = Rule{
+		ID:          "LOCKFILE_SPECIAL_FILE",
+		Severity:    SeverityHigh,
+		Description: "install lockfile path is not a regular file",
+	}
+	LockfileSourceChangedDuringRead = Rule{
+		ID:          "LOCKFILE_SOURCE_CHANGED_DURING_READ",
+		Severity:    SeverityHigh,
+		Description: "install lockfile changed while being read",
+	}
+	InstallTargetSymlink = Rule{
+		ID:          "INSTALL_TARGET_SYMLINK_DETECTED",
+		Severity:    SeverityHigh,
+		Description: "install target root is a symlink",
+	}
+	InstallTargetEntrySymlink = Rule{
+		ID:          "INSTALL_TARGET_ENTRY_SYMLINK_DETECTED",
+		Severity:    SeverityHigh,
+		Description: "install target entry is a symlink",
+	}
+	InstallSourceFileCountExceeded = Rule{
+		ID:          "INSTALL_SOURCE_FILE_COUNT_EXCEEDED",
+		Severity:    SeverityHigh,
+		Description: "install source exceeds maximum file count",
+	}
+	InstallSourceTotalBytesExceeded = Rule{
+		ID:          "INSTALL_SOURCE_TOTAL_BYTES_EXCEEDED",
+		Severity:    SeverityHigh,
+		Description: "install source exceeds maximum total bytes",
+	}
+	InstallSourceFileTooLarge = Rule{
+		ID:          "INSTALL_SOURCE_FILE_TOO_LARGE",
+		Severity:    SeverityHigh,
+		Description: "install source file exceeds the size limit",
+	}
+	InstallSourceSymlink = Rule{
+		ID:          "INSTALL_SOURCE_SYMLINK_DETECTED",
+		Severity:    SeverityHigh,
+		Description: "install source contains a symlink",
+	}
+	InstallSourceSpecialFile = Rule{
+		ID:          "INSTALL_SOURCE_SPECIAL_FILE",
+		Severity:    SeverityHigh,
+		Description: "install source contains a non-regular file",
+	}
+	InstallSourceChangedDuringCopy = Rule{
+		ID:          "INSTALL_SOURCE_CHANGED_DURING_COPY",
+		Severity:    SeverityHigh,
+		Description: "install source changed while being copied",
+	}
+	InstallDigestSymlink = Rule{
+		ID:          "INSTALL_DIGEST_SYMLINK_DETECTED",
+		Severity:    SeverityHigh,
+		Description: "digest input contains a symlink",
+	}
+	InstallDigestFileCountExceeded = Rule{
+		ID:          "INSTALL_DIGEST_FILE_COUNT_EXCEEDED",
+		Severity:    SeverityHigh,
+		Description: "digest input exceeds maximum file count",
+	}
+	InstallDigestTotalBytesExceeded = Rule{
+		ID:          "INSTALL_DIGEST_TOTAL_BYTES_EXCEEDED",
+		Severity:    SeverityHigh,
+		Description: "digest input exceeds maximum total bytes",
+	}
+	InstallDigestFileTooLarge = Rule{
+		ID:          "INSTALL_DIGEST_FILE_TOO_LARGE",
+		Severity:    SeverityHigh,
+		Description: "digest input file exceeds the size limit",
+	}
+	InstallDigestSpecialFile = Rule{
+		ID:          "INSTALL_DIGEST_SPECIAL_FILE",
+		Severity:    SeverityHigh,
+		Description: "digest input contains a non-regular file",
+	}
+	InstallDigestSourceChangedDuringHash = Rule{
+		ID:          "INSTALL_DIGEST_SOURCE_CHANGED_DURING_HASH",
+		Severity:    SeverityHigh,
+		Description: "digest input changed while being hashed",
+	}
 )
 
 var catalog = []Rule{
@@ -322,6 +417,25 @@ var catalog = []Rule{
 	SourceMetadataSpecialFile,
 	SourceMetadataSourceChangedDuringRead,
 	SourceMetadataInvalidUTF8,
+	LockfileTooLarge,
+	LockfileInvalidUTF8,
+	LockfileSymlink,
+	LockfileSpecialFile,
+	LockfileSourceChangedDuringRead,
+	InstallTargetSymlink,
+	InstallTargetEntrySymlink,
+	InstallSourceFileCountExceeded,
+	InstallSourceTotalBytesExceeded,
+	InstallSourceFileTooLarge,
+	InstallSourceSymlink,
+	InstallSourceSpecialFile,
+	InstallSourceChangedDuringCopy,
+	InstallDigestSymlink,
+	InstallDigestFileCountExceeded,
+	InstallDigestTotalBytesExceeded,
+	InstallDigestFileTooLarge,
+	InstallDigestSpecialFile,
+	InstallDigestSourceChangedDuringHash,
 }
 
 var catalogByID = buildCatalogByID(catalog)

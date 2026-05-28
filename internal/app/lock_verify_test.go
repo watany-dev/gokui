@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	reportpkg "github.com/watany-dev/gokui/internal/report"
+	rulepkg "github.com/watany-dev/gokui/internal/rule"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -243,7 +244,7 @@ func TestVerifyLockErrorsAndDiff(t *testing.T) {
 		t.Fatalf("write invalid utf-8 lock: %v", err)
 	}
 	_, err = verifyLock(invalidUTF8Dir)
-	if err == nil || !strings.Contains(err.Error(), ruleLockfileInvalidUTF8) || !strings.Contains(err.Error(), "invalid lockfile JSON") {
+	if err == nil || !strings.Contains(err.Error(), rulepkg.LockfileInvalidUTF8.ID) || !strings.Contains(err.Error(), "invalid lockfile JSON") {
 		t.Fatalf("expected invalid utf-8 lockfile JSON error, got %v", err)
 	}
 
@@ -257,7 +258,7 @@ func TestVerifyLockErrorsAndDiff(t *testing.T) {
 			t.Fatalf("write oversized lockfile: %v", err)
 		}
 		_, err := verifyLock(oversizedDir)
-		if err == nil || !strings.Contains(err.Error(), ruleLockfileTooLarge) || !strings.Contains(err.Error(), "failed to read lockfile") {
+		if err == nil || !strings.Contains(err.Error(), rulepkg.LockfileTooLarge.ID) || !strings.Contains(err.Error(), "failed to read lockfile") {
 			t.Fatalf("expected oversized lockfile read failure, got %v", err)
 		}
 	})
@@ -268,7 +269,7 @@ func TestVerifyLockErrorsAndDiff(t *testing.T) {
 			t.Fatalf("mkdir lock path dir: %v", err)
 		}
 		_, err := verifyLock(dirWithLockDir)
-		if err == nil || !strings.Contains(err.Error(), ruleLockfileSpecialFile) {
+		if err == nil || !strings.Contains(err.Error(), rulepkg.LockfileSpecialFile.ID) {
 			t.Fatalf("expected lockfile special-file error for directory path, got %v", err)
 		}
 	})
@@ -355,7 +356,7 @@ func TestLockVerifyStableFileHelpers(t *testing.T) {
 	}
 	defer changed.Close()
 	err = ensureLockfileStableFromOpen(firstInfo, changed, secondPath)
-	if err == nil || !strings.Contains(err.Error(), ruleLockfileSourceChanged) || !strings.Contains(err.Error(), "failed to read lockfile") {
+	if err == nil || !strings.Contains(err.Error(), rulepkg.LockfileSourceChangedDuringRead.ID) || !strings.Contains(err.Error(), "failed to read lockfile") {
 		t.Fatalf("expected lockfile source-changed read error, got %v", err)
 	}
 	err = ensureInstallReportStableFromOpen(firstInfo, changed, secondPath)

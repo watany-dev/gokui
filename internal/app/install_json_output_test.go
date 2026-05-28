@@ -7,6 +7,8 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+
+	rulepkg "github.com/watany-dev/gokui/internal/rule"
 )
 
 func TestRunInstallJSONOutput(t *testing.T) {
@@ -419,7 +421,7 @@ func TestRunInstallJSONOutput(t *testing.T) {
 			if !strings.Contains(stdout.String(), "\"error_code\": \""+installErrorCodeWriteFailed+"\"") {
 				t.Fatalf("stdout should include write-failed error_code, got %q", stdout.String())
 			}
-			if !strings.Contains(stdout.String(), "\"rule_id\": \""+ruleInstallSourceFileCountExceeded+"\"") {
+			if !strings.Contains(stdout.String(), "\"rule_id\": \""+rulepkg.InstallSourceFileCountExceeded.ID+"\"") {
 				t.Fatalf("stdout should include copy-limit rule_id, got %q", stdout.String())
 			}
 		})

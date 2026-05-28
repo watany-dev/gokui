@@ -6,6 +6,8 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+
+	rulepkg "github.com/watany-dev/gokui/internal/rule"
 )
 
 func TestCopyTreeNormalizedRejectsSymlink(t *testing.T) {
@@ -48,7 +50,7 @@ func TestCopyTreeNormalizedRejectsSymlinkRoot(t *testing.T) {
 
 	dst := t.TempDir()
 	err := copyTreeNormalized(linkRoot, filepath.Join(dst, "copy"))
-	if err == nil || !strings.Contains(err.Error(), ruleInstallSourceSymlink) {
+	if err == nil || !strings.Contains(err.Error(), rulepkg.InstallSourceSymlink.ID) {
 		t.Fatalf("expected symlink-root rejection, got %v", err)
 	}
 }
@@ -61,7 +63,7 @@ func TestCopyTreeNormalizedRejectsNonDirectoryRoot(t *testing.T) {
 
 	dst := t.TempDir()
 	err := copyTreeNormalized(rootFile, filepath.Join(dst, "copy"))
-	if err == nil || !strings.Contains(err.Error(), ruleInstallSourceSpecialFile) {
+	if err == nil || !strings.Contains(err.Error(), rulepkg.InstallSourceSpecialFile.ID) {
 		t.Fatalf("expected non-directory-root rejection, got %v", err)
 	}
 }
@@ -79,7 +81,7 @@ func TestCopyTreeNormalizedRejectsSpecialFile(t *testing.T) {
 
 	dst := t.TempDir()
 	err := copyTreeNormalized(src, filepath.Join(dst, "copy"))
-	if err == nil || !strings.Contains(err.Error(), ruleInstallSourceSpecialFile) {
+	if err == nil || !strings.Contains(err.Error(), rulepkg.InstallSourceSpecialFile.ID) {
 		t.Fatalf("expected special-file rejection, got %v", err)
 	}
 }
@@ -98,7 +100,7 @@ func TestCopyTreeNormalizedLimitGuards(t *testing.T) {
 			t.Fatalf("write b.txt: %v", err)
 		}
 		err := copyTreeNormalized(src, filepath.Join(t.TempDir(), "dst"))
-		if err == nil || !strings.Contains(err.Error(), ruleInstallSourceFileCountExceeded) {
+		if err == nil || !strings.Contains(err.Error(), rulepkg.InstallSourceFileCountExceeded.ID) {
 			t.Fatalf("expected max-file-count copy error, got %v", err)
 		}
 	})
@@ -113,7 +115,7 @@ func TestCopyTreeNormalizedLimitGuards(t *testing.T) {
 			t.Fatalf("write a.txt: %v", err)
 		}
 		err := copyTreeNormalized(src, filepath.Join(t.TempDir(), "dst"))
-		if err == nil || !strings.Contains(err.Error(), ruleInstallSourceTotalBytesExceeded) {
+		if err == nil || !strings.Contains(err.Error(), rulepkg.InstallSourceTotalBytesExceeded.ID) {
 			t.Fatalf("expected max-total-bytes copy error, got %v", err)
 		}
 	})
@@ -128,7 +130,7 @@ func TestCopyTreeNormalizedLimitGuards(t *testing.T) {
 			t.Fatalf("write a.txt: %v", err)
 		}
 		err := copyTreeNormalized(src, filepath.Join(t.TempDir(), "dst"))
-		if err == nil || !strings.Contains(err.Error(), ruleInstallSourceTotalBytesExceeded) {
+		if err == nil || !strings.Contains(err.Error(), rulepkg.InstallSourceTotalBytesExceeded.ID) {
 			t.Fatalf("expected zero-budget copy error, got %v", err)
 		}
 	})
@@ -143,7 +145,7 @@ func TestCopyTreeNormalizedLimitGuards(t *testing.T) {
 			t.Fatalf("write a.txt: %v", err)
 		}
 		err := copyTreeNormalized(src, filepath.Join(t.TempDir(), "dst"))
-		if err == nil || !strings.Contains(err.Error(), ruleInstallSourceFileTooLarge) {
+		if err == nil || !strings.Contains(err.Error(), rulepkg.InstallSourceFileTooLarge.ID) {
 			t.Fatalf("expected max-file-bytes copy error, got %v", err)
 		}
 	})
