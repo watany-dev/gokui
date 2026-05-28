@@ -386,14 +386,15 @@ func buildFetchSARIFReport(report fetchReport) reportpkg.SARIFDocument {
 }
 
 func buildFetchSARIFErrorReport(report fetchErrorReport) reportpkg.SARIFDocument {
-	return buildStructuredSARIFErrorReport(report.ErrorCode, report.RuleID, report.Message, reportpkg.SARIFProperties{
-		SchemaVersion: report.SchemaVersion,
-		PreRelease:    true,
-		SourceInput:   report.Source.Input,
-		SourceKind:    report.Source.Kind,
-		Decision:      report.Status,
-		Note:          fmt.Sprintf("%s; error_code=%s output=%s", report.Note, report.ErrorCode, report.Output),
-	})
+	return buildStructuredSARIFErrorReport(report.ErrorCode, report.RuleID, report.Message,
+		structuredErrorSARIFPropertiesWithNote(
+			report.SchemaVersion,
+			report.Source.Input,
+			report.Source.Kind,
+			report.Status,
+			fmt.Sprintf("%s; error_code=%s output=%s", report.Note, report.ErrorCode, report.Output),
+		),
+	)
 }
 
 func buildFetchCompactSummary(report fetchReport) string {

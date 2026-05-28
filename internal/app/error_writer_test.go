@@ -350,6 +350,11 @@ func TestStructuredErrorSARIFProperties(t *testing.T) {
 	if props.Note != "failed; error_code=ERROR_CODE" {
 		t.Fatalf("note = %q, want error code suffix", props.Note)
 	}
+
+	props = structuredErrorSARIFPropertiesWithNote("v1", "input", "source-kind", "ERROR", "custom note")
+	if props.Note != "custom note" {
+		t.Fatalf("custom note = %q, want unchanged", props.Note)
+	}
 }
 
 func TestEmitStructuredError(t *testing.T) {

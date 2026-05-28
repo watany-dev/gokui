@@ -74,13 +74,17 @@ func buildStructuredSARIFErrorReport(errorCode string, ruleID string, message st
 }
 
 func structuredErrorSARIFProperties(schemaVersion string, sourceInput string, sourceKind string, status string, note string, errorCode string) reportpkg.SARIFProperties {
+	return structuredErrorSARIFPropertiesWithNote(schemaVersion, sourceInput, sourceKind, status, fmt.Sprintf("%s; error_code=%s", note, errorCode))
+}
+
+func structuredErrorSARIFPropertiesWithNote(schemaVersion string, sourceInput string, sourceKind string, status string, note string) reportpkg.SARIFProperties {
 	return reportpkg.SARIFProperties{
 		SchemaVersion: schemaVersion,
 		PreRelease:    true,
 		SourceInput:   sourceInput,
 		SourceKind:    sourceKind,
 		Decision:      status,
-		Note:          fmt.Sprintf("%s; error_code=%s", note, errorCode),
+		Note:          note,
 	}
 }
 

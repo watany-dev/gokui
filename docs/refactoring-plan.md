@@ -137,6 +137,7 @@ go test ./internal/safefs ./internal/app -run 'Stable|Install|LockVerify|SourceM
 go test ./internal/app -run 'SeverityOverride|Install|Update|Lock'
 go test ./internal/app -run 'StructuredError|SARIF|Inspect|Update|LockVerify|Error'
 go test ./internal/app -run 'Install|StructuredError|SARIF|Error'
+go test ./internal/app -run 'Fetch|StructuredError|SARIF|Error'
 make test
 ```
 
