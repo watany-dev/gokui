@@ -100,8 +100,8 @@ func runInstall(args []string, stdout io.Writer, stderr io.Writer) int {
 }
 
 func runInstallWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps installDeps) int {
-	requestedJSON := argsRequestFormat(args, "json")
-	requestedSARIF := argsRequestFormat(args, "sarif")
+	requestedJSON := argsRequestFormat(args, formatpkg.JSON)
+	requestedSARIF := argsRequestFormat(args, formatpkg.SARIF)
 	deps = normalizeInstallDeps(deps)
 
 	parsed, err := parseInstallArgs(args)

@@ -6,12 +6,12 @@ import (
 	formatpkg "github.com/watany-dev/gokui/internal/cli/format"
 )
 
-func argsRequestFormat(args []string, format string) bool {
+func argsRequestFormat(args []string, format formatpkg.Format) bool {
 	for i := 0; i < len(args); i++ {
-		if args[i] == "--format" && i+1 < len(args) && args[i+1] == format {
+		if args[i] == "--format" && i+1 < len(args) && args[i+1] == format.String() {
 			return true
 		}
-		if strings.HasPrefix(args[i], "--format=") && strings.TrimPrefix(args[i], "--format=") == format {
+		if strings.HasPrefix(args[i], "--format=") && strings.TrimPrefix(args[i], "--format=") == format.String() {
 			return true
 		}
 	}

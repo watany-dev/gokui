@@ -6,6 +6,7 @@ import (
 	"io"
 
 	"github.com/watany-dev/gokui/internal/cli/exitcode"
+	formatpkg "github.com/watany-dev/gokui/internal/cli/format"
 	policypkg "github.com/watany-dev/gokui/internal/policy"
 	rulepkg "github.com/watany-dev/gokui/internal/rule"
 )
@@ -158,8 +159,8 @@ func runUpdate(args []string, stdout io.Writer, stderr io.Writer) int {
 }
 
 func runUpdateWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps updateDeps) int {
-	requestedJSON := argsRequestFormat(args, "json")
-	requestedSARIF := argsRequestFormat(args, "sarif")
+	requestedJSON := argsRequestFormat(args, formatpkg.JSON)
+	requestedSARIF := argsRequestFormat(args, formatpkg.SARIF)
 	deps = normalizeUpdateDeps(deps)
 
 	parsed, err := parseUpdateArgs(args)

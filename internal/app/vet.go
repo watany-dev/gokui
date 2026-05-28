@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/watany-dev/gokui/internal/cli/exitcode"
+	formatpkg "github.com/watany-dev/gokui/internal/cli/format"
 	policypkg "github.com/watany-dev/gokui/internal/policy"
 )
 
@@ -29,9 +30,9 @@ func runVet(args []string, stdout io.Writer, stderr io.Writer) int {
 }
 
 func runVetWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps vetDeps) int {
-	requestedJSON := argsRequestFormat(args, "json")
-	requestedSARIF := argsRequestFormat(args, "sarif")
-	requestedReviewJSON := argsRequestFormat(args, "review-json")
+	requestedJSON := argsRequestFormat(args, formatpkg.JSON)
+	requestedSARIF := argsRequestFormat(args, formatpkg.SARIF)
+	requestedReviewJSON := argsRequestFormat(args, formatpkg.ReviewJSON)
 	deps = normalizeVetDeps(deps)
 	input, format, profile, profileSet, err := parseVetArgs(args)
 	if err != nil {

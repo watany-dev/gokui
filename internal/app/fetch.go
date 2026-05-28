@@ -76,8 +76,8 @@ func runFetch(args []string, stdout io.Writer, stderr io.Writer) int {
 }
 
 func runFetchWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps fetchDeps) int {
-	requestedJSON := argsRequestFormat(args, "json")
-	requestedSARIF := argsRequestFormat(args, "sarif")
+	requestedJSON := argsRequestFormat(args, formatpkg.JSON)
+	requestedSARIF := argsRequestFormat(args, formatpkg.SARIF)
 	deps = normalizeFetchDeps(deps)
 
 	parsed, err := parseFetchArgs(args)

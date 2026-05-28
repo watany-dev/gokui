@@ -29,9 +29,9 @@ func runInspect(args []string, stdout io.Writer, stderr io.Writer) int {
 }
 
 func runInspectWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps inspectDeps) int {
-	requestedJSON := argsRequestFormat(args, "json")
-	requestedSARIF := argsRequestFormat(args, "sarif")
-	requestedReviewJSON := argsRequestFormat(args, "review-json")
+	requestedJSON := argsRequestFormat(args, formatpkg.JSON)
+	requestedSARIF := argsRequestFormat(args, formatpkg.SARIF)
+	requestedReviewJSON := argsRequestFormat(args, formatpkg.ReviewJSON)
 	deps = normalizeInspectDeps(deps)
 	input, format, err := parseInspectArgs(args)
 	if err != nil {
