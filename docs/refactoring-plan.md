@@ -158,6 +158,8 @@ Recent completed increments:
 - the inspect command contract test file is renamed to
   `run_inspect_command_test.go` with an inspect-specific test name after the
   vet command contract was moved out.
+- remaining app-level GitHub archive rule-id assertions now use the
+  `internal/rule` catalog constant instead of a string literal.
 - SARIF error document construction now uses a shared helper for structured
   error rule ID resolution while keeping command-specific SARIF properties at
   the output boundary.
@@ -230,6 +232,7 @@ go test ./internal/report ./internal/app -run 'SARIFError|StructuredError|Error|
 go test ./internal/app -run 'ParseInspectArgs|ParseVetArgs|InspectArgJSONHelpers|BuildInspect|DetectSourceKind|PrepareInspect'
 go test ./internal/app -run 'TestRunInspectVetCommands|TestRunVetCommands'
 go test ./internal/app -run 'TestRunInspectCommand|TestRunVetCommands'
+go test ./internal/rule ./internal/source ./internal/app -run 'Catalog|GitHubArchive|FetchJSONErrorCodes'
 make test
 make check
 ```

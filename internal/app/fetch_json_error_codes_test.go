@@ -168,14 +168,14 @@ func TestRunFetchJSONErrorCodes(t *testing.T) {
 			&stderr,
 			fetchDeps{
 				FetchGitHubSkill: func(spec srcpkg.GitHubSpec) (string, func(), error) {
-					return "", nil, errors.New("GITHUB_ARCHIVE_SCHEME_INVALID: github archive URL must use https")
+					return "", nil, errors.New(rulepkg.GitHubArchiveSchemeInvalid.ID + ": github archive URL must use https")
 				},
 			},
 		)
 		if code != 1 || !strings.Contains(stdout.String(), fetchErrorCodeSourceDownloadFailed) {
 			t.Fatalf("expected source-download-failed code for https rule-prefixed error, got code=%d stdout=%q stderr=%q", code, stdout.String(), stderr.String())
 		}
-		if !strings.Contains(stdout.String(), "\"rule_id\": \"GITHUB_ARCHIVE_SCHEME_INVALID\"") {
+		if !strings.Contains(stdout.String(), "\"rule_id\": \""+rulepkg.GitHubArchiveSchemeInvalid.ID+"\"") {
 			t.Fatalf("stdout should include https rule_id, got %q", stdout.String())
 		}
 		stdout.Reset()
