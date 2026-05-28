@@ -8,7 +8,7 @@ import (
 )
 
 func parseVetArgs(args []string) (input string, format string, profile string, profileSet bool, err error) {
-	format = "human"
+	format = defaultCommandFormat()
 	profile = policypkg.ProfileStrict.String()
 	for i := 0; i < len(args); i++ {
 		arg := args[i]

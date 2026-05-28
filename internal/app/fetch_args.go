@@ -10,7 +10,7 @@ func extractFetchSourceArg(args []string) string {
 }
 
 func parseFetchArgs(args []string) (fetchArgs, error) {
-	out := fetchArgs{Format: "human"}
+	out := fetchArgs{Format: defaultCommandFormat()}
 	for i := 0; i < len(args); i++ {
 		arg := args[i]
 		switch {

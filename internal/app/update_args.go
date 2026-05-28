@@ -12,7 +12,7 @@ func extractUpdateTargetArg(args []string) string {
 func parseUpdateArgs(args []string) (updateArgs, error) {
 	out := updateArgs{
 		Target: "codex",
-		Format: "human",
+		Format: defaultCommandFormat(),
 	}
 
 	for i := 0; i < len(args); i++ {

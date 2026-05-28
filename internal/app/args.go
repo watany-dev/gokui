@@ -26,6 +26,10 @@ func supportsReviewCommandFormat(format string) bool {
 	return formatpkg.SupportsReviewCommand(format)
 }
 
+func defaultCommandFormat() string {
+	return formatpkg.Human.String()
+}
+
 func firstPositionalArg(args []string, valueFlags ...string) string {
 	skipValue := make(map[string]struct{}, len(valueFlags))
 	for _, flag := range valueFlags {

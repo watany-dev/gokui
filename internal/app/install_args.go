@@ -7,7 +7,7 @@ import (
 )
 
 func parseInstallArgs(args []string) (installArgs, error) {
-	out := installArgs{Profile: "strict", Format: "human"}
+	out := installArgs{Profile: "strict", Format: defaultCommandFormat()}
 	for i := 0; i < len(args); i++ {
 		arg := args[i]
 		switch {

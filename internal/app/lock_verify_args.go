@@ -15,7 +15,7 @@ func extractLockVerifyPathArg(args []string) string {
 func parseLockVerifyArgs(args []string) (lockVerifyArgs, error) {
 	out := lockVerifyArgs{
 		Path:   ".",
-		Format: "human",
+		Format: defaultCommandFormat(),
 	}
 	for i := 0; i < len(args); i++ {
 		arg := args[i]

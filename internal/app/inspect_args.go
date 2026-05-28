@@ -10,7 +10,7 @@ func extractInspectSourceArg(args []string) string {
 }
 
 func parseInspectArgs(args []string) (input string, format string, err error) {
-	format = "human"
+	format = defaultCommandFormat()
 	for i := 0; i < len(args); i++ {
 		arg := args[i]
 		if arg == "--format" {
