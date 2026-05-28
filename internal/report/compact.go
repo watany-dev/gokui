@@ -82,3 +82,26 @@ func InstallCompactSummary(input InstallCompactInput) string {
 		input.ErrorCode,
 	)
 }
+
+type UpdateCompactInput struct {
+	Total    int
+	UpToDate int
+	Changed  int
+	Rejected int
+	Skipped  int
+	Errors   int
+	Target   string
+}
+
+func UpdateCompactSummary(input UpdateCompactInput) string {
+	return fmt.Sprintf(
+		"update total=%d up_to_date=%d changed=%d rejected=%d skipped=%d errors=%d target=%q",
+		input.Total,
+		input.UpToDate,
+		input.Changed,
+		input.Rejected,
+		input.Skipped,
+		input.Errors,
+		input.Target,
+	)
+}

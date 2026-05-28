@@ -80,3 +80,29 @@ func TestInstallCompactSummary(t *testing.T) {
 		}
 	}
 }
+
+func TestUpdateCompactSummary(t *testing.T) {
+	got := UpdateCompactSummary(UpdateCompactInput{
+		Total:    5,
+		UpToDate: 1,
+		Changed:  2,
+		Rejected: 1,
+		Skipped:  0,
+		Errors:   1,
+		Target:   "codex",
+	})
+	required := []string{
+		"update total=5",
+		"up_to_date=1",
+		"changed=2",
+		"rejected=1",
+		"skipped=0",
+		"errors=1",
+		`target="codex"`,
+	}
+	for _, token := range required {
+		if !strings.Contains(got, token) {
+			t.Fatalf("summary should include %q, got %q", token, got)
+		}
+	}
+}

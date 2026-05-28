@@ -120,14 +120,13 @@ func buildUpdateSARIFReport(report updateReport) reportpkg.SARIFDocument {
 }
 
 func buildUpdateCompactSummary(report updateReport) string {
-	return fmt.Sprintf(
-		"update total=%d up_to_date=%d changed=%d rejected=%d skipped=%d errors=%d target=%q",
-		report.Summary.Total,
-		report.Summary.UpToDate,
-		report.Summary.Changed,
-		report.Summary.Rejected,
-		report.Summary.Skipped,
-		report.Summary.Errors,
-		report.Target,
-	)
+	return reportpkg.UpdateCompactSummary(reportpkg.UpdateCompactInput{
+		Total:    report.Summary.Total,
+		UpToDate: report.Summary.UpToDate,
+		Changed:  report.Summary.Changed,
+		Rejected: report.Summary.Rejected,
+		Skipped:  report.Summary.Skipped,
+		Errors:   report.Summary.Errors,
+		Target:   report.Target,
+	})
 }
