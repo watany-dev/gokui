@@ -7,6 +7,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/watany-dev/gokui/internal/rule"
 )
 
 func scanTargets(skillRoot string) ([]scanTarget, error) {
@@ -15,10 +17,10 @@ func scanTargets(skillRoot string) ([]scanTarget, error) {
 		return nil, fmt.Errorf("failed walking skill files for scan: %w", rootErr)
 	}
 	if rootInfo.Mode()&os.ModeSymlink != 0 {
-		return nil, fmt.Errorf("failed walking skill files for scan: %s: scan source root must not be a symlink: %s", ruleScanSymlinkInSource, skillRoot)
+		return nil, fmt.Errorf("failed walking skill files for scan: %s: scan source root must not be a symlink: %s", rule.SymlinkInScanSource.ID, skillRoot)
 	}
 	if !rootInfo.IsDir() {
-		return nil, fmt.Errorf("failed walking skill files for scan: %s: scan source root must be a directory: %s", ruleScanSpecialFile, skillRoot)
+		return nil, fmt.Errorf("failed walking skill files for scan: %s: scan source root must be a directory: %s", rule.SpecialFileInScanSource.ID, skillRoot)
 	}
 
 	entries := make([]scanTarget, 0, 16)
@@ -36,7 +38,7 @@ func scanTargets(skillRoot string) ([]scanTarget, error) {
 			return nil
 		}
 		if d.Type()&os.ModeSymlink != 0 {
-			return fmt.Errorf("%s: scan source contains symlink: %s", ruleScanSymlinkInSource, rel)
+			return fmt.Errorf("%s: scan source contains symlink: %s", rule.SymlinkInScanSource.ID, rel)
 		}
 		if d.IsDir() {
 			return nil
@@ -46,11 +48,11 @@ func scanTargets(skillRoot string) ([]scanTarget, error) {
 			return fmt.Errorf("failed to stat scan source file: %w", infoErr)
 		}
 		if !info.Mode().IsRegular() {
-			return fmt.Errorf("%s: scan source contains non-regular file: %s", ruleScanSpecialFile, rel)
+			return fmt.Errorf("%s: scan source contains non-regular file: %s", rule.SpecialFileInScanSource.ID, rel)
 		}
 		scannedFiles++
 		if scannedFiles > scanMaxFiles {
-			return fmt.Errorf("%s: scan source exceeded max file count: %d", ruleScanFileCount, scanMaxFiles)
+			return fmt.Errorf("%s: scan source exceeded max file count: %d", rule.ScanFileCountExceeded.ID, scanMaxFiles)
 		}
 		lower := strings.ToLower(d.Name())
 		if strings.HasSuffix(lower, ".md") {

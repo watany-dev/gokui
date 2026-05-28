@@ -40,6 +40,10 @@ func TestCatalogIncludesScanRules(t *testing.T) {
 		{PasteSiteURL, "PASTE_SITE_URL", SeverityMedium},
 		{ReleaseAssetURL, "RELEASE_ASSET_URL", SeverityMedium},
 		{RemoteImageURL, "REMOTE_IMAGE_URL", SeverityMedium},
+		{SymlinkInScanSource, "SYMLINK_IN_SCAN_SOURCE", SeverityHigh},
+		{ScanFileCountExceeded, "SCAN_FILE_COUNT_EXCEEDED", SeverityHigh},
+		{SpecialFileInScanSource, "SPECIAL_FILE_IN_SCAN_SOURCE", SeverityHigh},
+		{ScanSourceChangedDuringRead, "SCAN_SOURCE_CHANGED_DURING_READ", SeverityHigh},
 	}
 
 	for _, tc := range cases {

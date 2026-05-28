@@ -179,6 +179,26 @@ var (
 		Severity:    SeverityMedium,
 		Description: "remote Markdown image URL",
 	}
+	SymlinkInScanSource = Rule{
+		ID:          "SYMLINK_IN_SCAN_SOURCE",
+		Severity:    SeverityHigh,
+		Description: "scan source contains a symlink",
+	}
+	ScanFileCountExceeded = Rule{
+		ID:          "SCAN_FILE_COUNT_EXCEEDED",
+		Severity:    SeverityHigh,
+		Description: "scan source exceeds maximum file count",
+	}
+	SpecialFileInScanSource = Rule{
+		ID:          "SPECIAL_FILE_IN_SCAN_SOURCE",
+		Severity:    SeverityHigh,
+		Description: "scan source contains a non-regular file",
+	}
+	ScanSourceChangedDuringRead = Rule{
+		ID:          "SCAN_SOURCE_CHANGED_DURING_READ",
+		Severity:    SeverityHigh,
+		Description: "scan source changed while being read",
+	}
 )
 
 var catalog = []Rule{
@@ -214,6 +234,10 @@ var catalog = []Rule{
 	PasteSiteURL,
 	ReleaseAssetURL,
 	RemoteImageURL,
+	SymlinkInScanSource,
+	ScanFileCountExceeded,
+	SpecialFileInScanSource,
+	ScanSourceChangedDuringRead,
 }
 
 var catalogByID = buildCatalogByID(catalog)

@@ -8,6 +8,8 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+
+	"github.com/watany-dev/gokui/internal/rule"
 )
 
 func TestScanSkillRootLargeFile(t *testing.T) {
@@ -75,7 +77,7 @@ func TestScanSkillRootRejectsSymlinkSource(t *testing.T) {
 	}
 
 	_, err := ScanSkillRoot(root)
-	if err == nil || !strings.Contains(err.Error(), ruleScanSymlinkInSource) {
+	if err == nil || !strings.Contains(err.Error(), rule.SymlinkInScanSource.ID) {
 		t.Fatalf("expected symlink rule error, got %v", err)
 	}
 }
@@ -99,7 +101,7 @@ func TestScanSkillRootRejectsSymlinkRoot(t *testing.T) {
 	}
 
 	_, err := ScanSkillRoot(linkRoot)
-	if err == nil || !strings.Contains(err.Error(), ruleScanSymlinkInSource) {
+	if err == nil || !strings.Contains(err.Error(), rule.SymlinkInScanSource.ID) {
 		t.Fatalf("expected symlink-root rejection, got %v", err)
 	}
 }
@@ -111,7 +113,7 @@ func TestScanSkillRootRejectsNonDirectoryRoot(t *testing.T) {
 	}
 
 	_, err := ScanSkillRoot(rootFile)
-	if err == nil || !strings.Contains(err.Error(), ruleScanSpecialFile) {
+	if err == nil || !strings.Contains(err.Error(), rule.SpecialFileInScanSource.ID) {
 		t.Fatalf("expected non-directory root rejection, got %v", err)
 	}
 }
@@ -131,7 +133,7 @@ func TestScanSkillRootRejectsSpecialFileSource(t *testing.T) {
 	}
 
 	_, err := ScanSkillRoot(root)
-	if err == nil || !strings.Contains(err.Error(), ruleScanSpecialFile) {
+	if err == nil || !strings.Contains(err.Error(), rule.SpecialFileInScanSource.ID) {
 		t.Fatalf("expected special-file rule error, got %v", err)
 	}
 }
@@ -150,7 +152,7 @@ func TestScanSkillRootEnforcesMaxFileCount(t *testing.T) {
 	}
 
 	_, err := ScanSkillRoot(root)
-	if err == nil || !strings.Contains(err.Error(), ruleScanFileCount) {
+	if err == nil || !strings.Contains(err.Error(), rule.ScanFileCountExceeded.ID) {
 		t.Fatalf("expected max-file rule error, got %v", err)
 	}
 }
@@ -195,7 +197,7 @@ func TestScanTextFileErrorsAndDedup(t *testing.T) {
 			Relative: "dir-as-file",
 			Kind:     "markdown",
 		})
-		if err == nil || !strings.Contains(err.Error(), ruleScanSpecialFile) {
+		if err == nil || !strings.Contains(err.Error(), rule.SpecialFileInScanSource.ID) {
 			t.Fatalf("expected special-file error, got %v", err)
 		}
 	})
@@ -244,7 +246,7 @@ func TestScanTextFileErrorsAndDedup(t *testing.T) {
 			Kind:     "markdown",
 			Info:     originalInfo,
 		})
-		if err == nil || !strings.Contains(err.Error(), ruleScanSourceChanged) {
+		if err == nil || !strings.Contains(err.Error(), rule.ScanSourceChangedDuringRead.ID) {
 			t.Fatalf("expected changed-source error, got %v", err)
 		}
 	})
