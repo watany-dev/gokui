@@ -454,10 +454,27 @@ func buildVetReportFromInspectJSON(raw []byte, input string, sourceKind string, 
 	return report
 }
 
+type inspectDeps struct {
+	PrepareEvaluationSource func(input string, sourceKind string) (string, func(), error)
+	PrepareInspectSource    func(input string, sourceKind string) (string, func(), error)
+}
+
+func defaultInspectDeps() inspectDeps {
+	return inspectDeps{
+		PrepareEvaluationSource: preparePolicyEvaluationSource,
+		PrepareInspectSource:    prepareInspectSource,
+	}
+}
+
 func runInspect(args []string, stdout io.Writer, stderr io.Writer) int {
+	return runInspectWithDeps(args, stdout, stderr, defaultInspectDeps())
+}
+
+func runInspectWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps inspectDeps) int {
 	requestedJSON := inspectArgsRequestJSON(args)
 	requestedSARIF := inspectArgsRequestSARIF(args)
 	requestedReviewJSON := inspectArgsRequestReviewJSON(args)
+	deps = normalizeInspectDeps(deps)
 	input, format, err := parseInspectArgs(args)
 	if err != nil {
 		sourceArg := extractInspectSourceArg(args)
@@ -566,7 +583,7 @@ func runInspect(args []string, stdout io.Writer, stderr io.Writer) int {
 			_, _ = fmt.Fprintln(stderr, msg)
 			return exitcode.Error.Int()
 		}
-		skillRoot, cleanup, prepErr := preparePolicyEvaluationSource(input, sourceKind)
+		skillRoot, cleanup, prepErr := deps.PrepareEvaluationSource(input, sourceKind)
 		if cleanup != nil {
 			defer cleanup()
 		}
@@ -608,7 +625,7 @@ func runInspect(args []string, stdout io.Writer, stderr io.Writer) int {
 		findings, decision = toInspectFindings(scanFindings)
 		note = "pre-release inspect includes structural and markdown checks (github commit-pinned source)"
 	} else {
-		skillRoot, cleanup, validateErr := prepareInspectSource(input, sourceKind)
+		skillRoot, cleanup, validateErr := deps.PrepareInspectSource(input, sourceKind)
 		if cleanup != nil {
 			defer cleanup()
 		}
@@ -721,6 +738,16 @@ func runInspect(args []string, stdout io.Writer, stderr io.Writer) int {
 		return exitcode.Rejected.Int()
 	}
 	return exitcode.OK.Int()
+}
+
+func normalizeInspectDeps(deps inspectDeps) inspectDeps {
+	if deps.PrepareEvaluationSource == nil {
+		deps.PrepareEvaluationSource = preparePolicyEvaluationSource
+	}
+	if deps.PrepareInspectSource == nil {
+		deps.PrepareInspectSource = prepareInspectSource
+	}
+	return deps
 }
 
 func toInspectFindings(scanFindings []scan.Finding) ([]inspectFinding, string) {
