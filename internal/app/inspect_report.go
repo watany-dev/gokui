@@ -142,6 +142,21 @@ func buildFindingsSARIFReport(schemaVersion string, preRelease bool, src source,
 	)
 }
 
+func inspectArgsErrorReport(command string, args []string, err error) inspectErrorReport {
+	sourceArg := extractInspectSourceArg(args)
+	return inspectErrorReport{
+		SchemaVersion: reportSchemaVersion,
+		Status:        reportStatusError,
+		ErrorCode:     inspectErrorCodeArgsInvalid,
+		Message:       err.Error(),
+		Source: source{
+			Input: sourceArg,
+			Kind:  detectSourceKind(sourceArg),
+		},
+		Note: fmt.Sprintf("%s failed before source evaluation", command),
+	}
+}
+
 func writeInspectJSONError(stdout io.Writer, stderr io.Writer, report inspectErrorReport) int {
 	report.Status, report.ErrorCode, report.RuleID = normalizeStructuredErrorFields(report.ErrorCode, report.RuleID, report.Message, inspectErrorCodeUnknown)
 	return writeJSONErrorReport(stdout, stderr, report, "inspect")

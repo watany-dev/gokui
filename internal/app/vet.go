@@ -34,18 +34,7 @@ func runVetWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps vetD
 	deps = normalizeVetDeps(deps)
 	input, format, profile, profileSet, err := parseVetArgs(args)
 	if err != nil {
-		sourceArg := extractInspectSourceArg(args)
-		report := inspectErrorReport{
-			SchemaVersion: reportSchemaVersion,
-			Status:        reportStatusError,
-			ErrorCode:     inspectErrorCodeArgsInvalid,
-			Message:       err.Error(),
-			Source: source{
-				Input: sourceArg,
-				Kind:  detectSourceKind(sourceArg),
-			},
-			Note: "vet failed before source evaluation",
-		}
+		report := inspectArgsErrorReport("vet", args, err)
 		if requestedFormat == formatpkg.JSON {
 			return writeInspectJSONError(stdout, stderr, report)
 		}

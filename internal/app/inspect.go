@@ -33,18 +33,7 @@ func runInspectWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps 
 	deps = normalizeInspectDeps(deps)
 	input, format, err := parseInspectArgs(args)
 	if err != nil {
-		sourceArg := extractInspectSourceArg(args)
-		report := inspectErrorReport{
-			SchemaVersion: reportSchemaVersion,
-			Status:        reportStatusError,
-			ErrorCode:     inspectErrorCodeArgsInvalid,
-			Message:       err.Error(),
-			Source: source{
-				Input: sourceArg,
-				Kind:  detectSourceKind(sourceArg),
-			},
-			Note: "inspect failed before source evaluation",
-		}
+		report := inspectArgsErrorReport("inspect", args, err)
 		if requestedFormat == formatpkg.JSON {
 			return writeInspectJSONError(stdout, stderr, report)
 		}
