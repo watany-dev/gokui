@@ -39,6 +39,20 @@ func SARIFResultForError(ruleID string, message string) SARIFResult {
 	}
 }
 
+func SARIFLocationForFile(file string, line int) SARIFLocation {
+	location := SARIFLocation{
+		PhysicalLocation: SARIFPhysicalLocation{
+			ArtifactLocation: SARIFArtifactLocation{
+				URI: file,
+			},
+		},
+	}
+	if line > 0 {
+		location.PhysicalLocation.Region = &SARIFRegion{StartLine: line}
+	}
+	return location
+}
+
 type SARIFFinding struct {
 	ID       string
 	Severity string
@@ -73,18 +87,8 @@ func SARIFDocumentForFindings(findings []SARIFFinding, executionSuccessful bool,
 			Level:   SARIFLevelForSeverity(finding.Severity),
 			Message: SARIFMessageContainer{Text: finding.Summary},
 		}
-		location := SARIFLocation{
-			PhysicalLocation: SARIFPhysicalLocation{
-				ArtifactLocation: SARIFArtifactLocation{
-					URI: finding.File,
-				},
-			},
-		}
-		if finding.Line > 0 {
-			location.PhysicalLocation.Region = &SARIFRegion{StartLine: finding.Line}
-		}
 		if finding.File != "" {
-			result.Locations = []SARIFLocation{location}
+			result.Locations = []SARIFLocation{SARIFLocationForFile(finding.File, finding.Line)}
 		}
 		results = append(results, result)
 	}

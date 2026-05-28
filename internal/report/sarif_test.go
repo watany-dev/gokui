@@ -109,6 +109,21 @@ func TestSARIFDocumentForFindings(t *testing.T) {
 	}
 }
 
+func TestSARIFLocationForFile(t *testing.T) {
+	location := SARIFLocationForFile("path/to/file.md", 7)
+	if got := location.PhysicalLocation.ArtifactLocation.URI; got != "path/to/file.md" {
+		t.Fatalf("uri = %q, want path/to/file.md", got)
+	}
+	if location.PhysicalLocation.Region == nil || location.PhysicalLocation.Region.StartLine != 7 {
+		t.Fatalf("region = %+v, want startLine 7", location.PhysicalLocation.Region)
+	}
+
+	location = SARIFLocationForFile("path/to/file.md", 0)
+	if location.PhysicalLocation.Region != nil {
+		t.Fatalf("region = %+v, want nil", location.PhysicalLocation.Region)
+	}
+}
+
 func TestSARIFErrorDocument(t *testing.T) {
 	properties := SARIFProperties{
 		SchemaVersion: "1",

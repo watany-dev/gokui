@@ -112,15 +112,7 @@ func lockVerifyDriftSARIFResult(ruleID string, path string, reason string) repor
 	if strings.TrimSpace(path) == "" {
 		return result
 	}
-	result.Locations = []reportpkg.SARIFLocation{
-		{
-			PhysicalLocation: reportpkg.SARIFPhysicalLocation{
-				ArtifactLocation: reportpkg.SARIFArtifactLocation{
-					URI: path,
-				},
-			},
-		},
-	}
+	result.Locations = []reportpkg.SARIFLocation{reportpkg.SARIFLocationForFile(path, 0)}
 	return result
 }
 
