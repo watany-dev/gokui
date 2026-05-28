@@ -11,18 +11,19 @@ func parseUpdateArgs(args []string) (updateArgs, error) {
 		Target: "codex",
 		Format: defaultCommandFormat(),
 	}
+	parser := commandArgParser{
+		valueHandlers: []valueFlagHandler{
+			{flag: "--format", set: func(value string) { out.Format = value }},
+			{flag: "--target", set: func(value string) { out.Target = value }},
+		},
+		boolHandlers: []boolFlagHandler{
+			{flag: "--dry-run", set: func() { out.DryRun = true }},
+		},
+		handlePositional: func(arg string) error { return parseNoPositionalArg("update", arg) },
+	}
 
 	for i := 0; i < len(args); i++ {
-		next, err := parseCommandArg(args, i,
-			[]valueFlagHandler{
-				{flag: "--format", set: func(value string) { out.Format = value }},
-				{flag: "--target", set: func(value string) { out.Target = value }},
-			},
-			[]boolFlagHandler{
-				{flag: "--dry-run", set: func() { out.DryRun = true }},
-			},
-			func(arg string) error { return parseNoPositionalArg("update", arg) },
-		)
+		next, err := parser.parse(args, i)
 		if err != nil {
 			return updateArgs{}, err
 		}

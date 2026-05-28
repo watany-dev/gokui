@@ -56,6 +56,16 @@ type boolFlagHandler struct {
 
 type positionalArgHandler func(string) error
 
+type commandArgParser struct {
+	valueHandlers    []valueFlagHandler
+	boolHandlers     []boolFlagHandler
+	handlePositional positionalArgHandler
+}
+
+func (p commandArgParser) parse(args []string, index int) (nextIndex int, err error) {
+	return parseCommandArg(args, index, p.valueHandlers, p.boolHandlers, p.handlePositional)
+}
+
 func parseCommandArg(
 	args []string,
 	index int,

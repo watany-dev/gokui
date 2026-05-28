@@ -14,14 +14,16 @@ func parseLockVerifyArgs(args []string) (lockVerifyArgs, error) {
 		Path:   ".",
 		Format: defaultCommandFormat(),
 	}
+	parser := commandArgParser{
+		valueHandlers: []valueFlagHandler{
+			{flag: "--format", set: func(value string) { out.Format = value }},
+		},
+		handlePositional: func(arg string) error {
+			return parseOptionalPathPositionalArg(&out.Path, ".", "lock verify", arg)
+		},
+	}
 	for i := 0; i < len(args); i++ {
-		next, err := parseCommandArg(args, i,
-			[]valueFlagHandler{
-				{flag: "--format", set: func(value string) { out.Format = value }},
-			},
-			nil,
-			func(arg string) error { return parseOptionalPathPositionalArg(&out.Path, ".", "lock verify", arg) },
-		)
+		next, err := parser.parse(args, i)
 		if err != nil {
 			return lockVerifyArgs{}, err
 		}

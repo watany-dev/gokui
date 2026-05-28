@@ -11,15 +11,15 @@ func extractFetchSourceArg(args []string) string {
 
 func parseFetchArgs(args []string) (fetchArgs, error) {
 	out := fetchArgs{Format: defaultCommandFormat()}
+	parser := commandArgParser{
+		valueHandlers: []valueFlagHandler{
+			{flag: "--format", set: func(value string) { out.Format = value }},
+			{flag: "--out", set: func(value string) { out.Out = value }},
+		},
+		handlePositional: func(arg string) error { return parseSingleSourcePositionalArg(&out.Source, "fetch", arg) },
+	}
 	for i := 0; i < len(args); i++ {
-		next, err := parseCommandArg(args, i,
-			[]valueFlagHandler{
-				{flag: "--format", set: func(value string) { out.Format = value }},
-				{flag: "--out", set: func(value string) { out.Out = value }},
-			},
-			nil,
-			func(arg string) error { return parseSingleSourcePositionalArg(&out.Source, "fetch", arg) },
-		)
+		next, err := parser.parse(args, i)
 		if err != nil {
 			return fetchArgs{}, err
 		}

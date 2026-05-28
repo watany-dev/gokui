@@ -8,22 +8,22 @@ import (
 
 func parseInstallArgs(args []string) (installArgs, error) {
 	out := installArgs{Profile: "strict", Format: defaultCommandFormat()}
+	parser := commandArgParser{
+		valueHandlers: []valueFlagHandler{
+			{flag: "--format", set: func(value string) { out.Format = value }},
+			{flag: "--target", set: func(value string) { out.Target = value }},
+			{flag: "--profile", set: func(value string) {
+				out.Profile = value
+				out.ProfileSet = true
+			}},
+			{flag: "--override", set: func(value string) {
+				out.Overrides = append(out.Overrides, value)
+			}},
+		},
+		handlePositional: func(arg string) error { return parseSingleSourcePositionalArg(&out.Source, "install", arg) },
+	}
 	for i := 0; i < len(args); i++ {
-		next, err := parseCommandArg(args, i,
-			[]valueFlagHandler{
-				{flag: "--format", set: func(value string) { out.Format = value }},
-				{flag: "--target", set: func(value string) { out.Target = value }},
-				{flag: "--profile", set: func(value string) {
-					out.Profile = value
-					out.ProfileSet = true
-				}},
-				{flag: "--override", set: func(value string) {
-					out.Overrides = append(out.Overrides, value)
-				}},
-			},
-			nil,
-			func(arg string) error { return parseSingleSourcePositionalArg(&out.Source, "install", arg) },
-		)
+		next, err := parser.parse(args, i)
 		if err != nil {
 			return installArgs{}, err
 		}

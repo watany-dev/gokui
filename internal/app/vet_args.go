@@ -9,18 +9,18 @@ import (
 func parseVetArgs(args []string) (input string, format string, profile string, profileSet bool, err error) {
 	format = defaultCommandFormat()
 	profile = policypkg.ProfileStrict.String()
+	parser := commandArgParser{
+		valueHandlers: []valueFlagHandler{
+			{flag: "--format", set: func(value string) { format = value }},
+			{flag: "--profile", set: func(value string) {
+				profile = value
+				profileSet = true
+			}},
+		},
+		handlePositional: func(arg string) error { return parseSingleSourcePositionalArg(&input, "vet", arg) },
+	}
 	for i := 0; i < len(args); i++ {
-		next, err := parseCommandArg(args, i,
-			[]valueFlagHandler{
-				{flag: "--format", set: func(value string) { format = value }},
-				{flag: "--profile", set: func(value string) {
-					profile = value
-					profileSet = true
-				}},
-			},
-			nil,
-			func(arg string) error { return parseSingleSourcePositionalArg(&input, "vet", arg) },
-		)
+		next, err := parser.parse(args, i)
 		if err != nil {
 			return "", "", "", false, err
 		}
