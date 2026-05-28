@@ -370,21 +370,7 @@ func fetchArgsRequestSARIF(args []string) bool {
 }
 
 func extractFetchSourceArg(args []string) string {
-	for i := 0; i < len(args); i++ {
-		arg := args[i]
-		if arg == "--out" || arg == "--format" {
-			i++
-			continue
-		}
-		if strings.HasPrefix(arg, "--out=") || strings.HasPrefix(arg, "--format=") {
-			continue
-		}
-		if strings.HasPrefix(arg, "-") {
-			continue
-		}
-		return arg
-	}
-	return ""
+	return firstPositionalArg(args, "--out", "--format")
 }
 
 func writeFetchJSONError(stdout io.Writer, stderr io.Writer, report fetchErrorReport) int {

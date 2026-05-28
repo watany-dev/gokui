@@ -1039,15 +1039,23 @@ func argsRequestFormat(args []string, format string) bool {
 	return false
 }
 
-func extractInspectSourceArg(args []string) string {
+func firstPositionalArg(args []string, valueFlags ...string) string {
+	skipValue := make(map[string]struct{}, len(valueFlags))
+	for _, flag := range valueFlags {
+		skipValue[flag] = struct{}{}
+	}
 	for i := 0; i < len(args); i++ {
 		arg := args[i]
-		if arg == "--format" {
+		if _, ok := skipValue[arg]; ok {
 			i++
 			continue
 		}
-		if strings.HasPrefix(arg, "--format=") {
-			continue
+		if strings.HasPrefix(arg, "--") {
+			if flag, _, ok := strings.Cut(arg, "="); ok {
+				if _, skip := skipValue[flag]; skip {
+					continue
+				}
+			}
 		}
 		if strings.HasPrefix(arg, "-") {
 			continue
@@ -1055,6 +1063,22 @@ func extractInspectSourceArg(args []string) string {
 		return arg
 	}
 	return ""
+}
+
+func flagValueArg(args []string, flag string, fallback string) string {
+	for i := 0; i < len(args); i++ {
+		if args[i] == flag && i+1 < len(args) {
+			return args[i+1]
+		}
+		if value, ok := strings.CutPrefix(args[i], flag+"="); ok {
+			return value
+		}
+	}
+	return fallback
+}
+
+func extractInspectSourceArg(args []string) string {
+	return firstPositionalArg(args, "--format")
 }
 
 func writeInspectJSONError(stdout io.Writer, stderr io.Writer, report inspectErrorReport) int {

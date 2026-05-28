@@ -198,19 +198,8 @@ func lockVerifyArgsRequestSARIF(args []string) bool {
 }
 
 func extractLockVerifyPathArg(args []string) string {
-	for i := 0; i < len(args); i++ {
-		arg := args[i]
-		if arg == "--format" {
-			i++
-			continue
-		}
-		if strings.HasPrefix(arg, "--format=") {
-			continue
-		}
-		if strings.HasPrefix(arg, "-") {
-			continue
-		}
-		return arg
+	if path := firstPositionalArg(args, "--format"); path != "" {
+		return path
 	}
 	return "."
 }

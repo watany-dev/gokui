@@ -344,15 +344,7 @@ func updateArgsRequestSARIF(args []string) bool {
 }
 
 func extractUpdateTargetArg(args []string) string {
-	for i := 0; i < len(args); i++ {
-		if args[i] == "--target" && i+1 < len(args) {
-			return args[i+1]
-		}
-		if strings.HasPrefix(args[i], "--target=") {
-			return strings.TrimPrefix(args[i], "--target=")
-		}
-	}
-	return "codex"
+	return flagValueArg(args, "--target", "codex")
 }
 
 func writeUpdateJSONError(stdout io.Writer, stderr io.Writer, report updateErrorReport) int {

@@ -730,45 +730,15 @@ func installArgsRequestSARIF(args []string) bool {
 }
 
 func extractInstallSourceArg(args []string) string {
-	for i := 0; i < len(args); i++ {
-		arg := args[i]
-		if arg == "--target" || arg == "--profile" || arg == "--format" {
-			i++
-			continue
-		}
-		if strings.HasPrefix(arg, "--target=") || strings.HasPrefix(arg, "--profile=") || strings.HasPrefix(arg, "--format=") {
-			continue
-		}
-		if strings.HasPrefix(arg, "-") {
-			continue
-		}
-		return arg
-	}
-	return ""
+	return firstPositionalArg(args, "--target", "--profile", "--format")
 }
 
 func extractInstallTargetArg(args []string) string {
-	for i := 0; i < len(args); i++ {
-		if args[i] == "--target" && i+1 < len(args) {
-			return args[i+1]
-		}
-		if strings.HasPrefix(args[i], "--target=") {
-			return strings.TrimPrefix(args[i], "--target=")
-		}
-	}
-	return ""
+	return flagValueArg(args, "--target", "")
 }
 
 func extractInstallProfileArg(args []string) string {
-	for i := 0; i < len(args); i++ {
-		if args[i] == "--profile" && i+1 < len(args) {
-			return args[i+1]
-		}
-		if strings.HasPrefix(args[i], "--profile=") {
-			return strings.TrimPrefix(args[i], "--profile=")
-		}
-	}
-	return "strict"
+	return flagValueArg(args, "--profile", "strict")
 }
 
 func writeInstallJSONError(stdout io.Writer, stderr io.Writer, report installErrorReport) int {
