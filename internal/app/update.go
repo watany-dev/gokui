@@ -726,12 +726,13 @@ type updateSourceFindingsEvaluation struct {
 }
 
 func evaluateUpdateSourceFindings(skillRoot string, policyProfile string, policyLoaded bool, cfg policypkg.Config, configuredOverrides []severityOverrideAudit) (updateSourceFindingsEvaluation, error) {
-	rejectSet, err := effectiveRejectSeveritySetForProfile(policyProfile, policyLoaded, cfg)
+	rejectSeverities, err := policypkg.EffectiveRejectSeverities(policypkg.NormalizeProfile(policyProfile), policyLoaded, cfg)
 	if err != nil {
 		return updateSourceFindingsEvaluation{
 			failure: &updateSkillFailure{"ERROR", updateCodeEvaluationError, err.Error()},
 		}, nil
 	}
+	rejectSet := rejectSeverities.Strings()
 
 	findings, _, _, err := evaluateSkillWithOverrides(skillRoot, policyProfile, nil, rejectSet)
 	if err != nil {
@@ -1024,11 +1025,11 @@ func validateUpdateLockPolicy(policy lockPolicy) (string, error) {
 	if containsSeverityOverrideDisallowedUnicode(policyProfileRaw) {
 		return "", fmt.Errorf("lock policy profile must not contain Unicode bidi, zero-width, tag, or variation-selector characters")
 	}
-	policyProfile := normalizePolicyProfile(policyProfileRaw)
-	if policyProfileRaw != policyProfile {
+	policyProfile := policypkg.NormalizeProfile(policyProfileRaw)
+	if policyProfileRaw != policyProfile.String() {
 		return "", fmt.Errorf("lock policy profile must be canonical lowercase without surrounding whitespace")
 	}
-	if !isSupportedPolicyProfile(policyProfile) {
+	if _, err := policypkg.ParseProfile(policyProfile.String()); err != nil {
 		return "", fmt.Errorf("unsupported policy profile in lockfile: %s", policyProfileRaw)
 	}
 
@@ -1046,7 +1047,7 @@ func validateUpdateLockPolicy(policy lockPolicy) (string, error) {
 	if policyDecisionRaw != "pass" {
 		return "", fmt.Errorf("lock policy decision must be canonical lowercase pass")
 	}
-	return policyProfile, nil
+	return policyProfile.String(), nil
 }
 
 func validateUpdateLockSource(lockSource lockSource) (string, string, *updateSkillFailure) {

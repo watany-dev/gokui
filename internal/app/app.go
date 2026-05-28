@@ -267,7 +267,7 @@ func runVetWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps vetD
 		_, _ = fmt.Fprintf(stderr, "%s\n\n%s\n", msg, usage())
 		return exitcode.Error.Int()
 	}
-	profile = normalizePolicyProfile(profile)
+	profile = policypkg.NormalizeProfile(profile).String()
 
 	userPolicy, policyLoaded, policyErr := deps.LoadUserPolicy()
 	if policyErr != nil {
@@ -316,9 +316,9 @@ func runVetWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps vetD
 	if !profileSet && effectivePolicyLoaded && strings.TrimSpace(effectivePolicy.DefaultProfile) != "" {
 		profile = effectivePolicy.DefaultProfile
 	}
-	profile = normalizePolicyProfile(profile)
-	if !isSupportedPolicyProfile(profile) {
-		msg := fmt.Sprintf("unsupported profile: %s (supported: %s)", profile, supportedPolicyProfilesCSV())
+	profile = policypkg.NormalizeProfile(profile).String()
+	if _, err := policypkg.ParseProfile(profile); err != nil {
+		msg := fmt.Sprintf("unsupported profile: %s (supported: %s)", profile, policypkg.SupportedProfilesCSV())
 		if emitInspectStructuredError(format, stdout, stderr, inspectErrorReport{
 			SchemaVersion: reportSchemaVersion,
 			Status:        "ERROR",
@@ -335,7 +335,7 @@ func runVetWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps vetD
 		_, _ = fmt.Fprintf(stderr, "%s\n\n%s\n", msg, usage())
 		return exitcode.Error.Int()
 	}
-	rejectSet, rejectSetErr := effectiveRejectSeveritySetForProfile(profile, effectivePolicyLoaded, effectivePolicy)
+	rejectSeverities, rejectSetErr := policypkg.EffectiveRejectSeverities(policypkg.NormalizeProfile(profile), effectivePolicyLoaded, effectivePolicy)
 	if rejectSetErr != nil {
 		if emitInspectStructuredError(format, stdout, stderr, inspectErrorReport{
 			SchemaVersion: reportSchemaVersion,
@@ -353,6 +353,7 @@ func runVetWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps vetD
 		_, _ = fmt.Fprintln(stderr, rejectSetErr.Error())
 		return exitcode.Error.Int()
 	}
+	rejectSet := rejectSeverities.Strings()
 
 	var inspectStdout bytes.Buffer
 	var inspectStderr bytes.Buffer
@@ -857,7 +858,7 @@ func parseInspectArgs(args []string) (input string, format string, err error) {
 
 func parseVetArgs(args []string) (input string, format string, profile string, profileSet bool, err error) {
 	format = "human"
-	profile = policyProfileStrict
+	profile = policypkg.ProfileStrict.String()
 	for i := 0; i < len(args); i++ {
 		arg := args[i]
 		if arg == "--format" {

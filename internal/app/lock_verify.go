@@ -758,11 +758,11 @@ func verifyLockStructure(lock installLock) (bool, string) {
 	if trimmedProfile == "" {
 		return false, "lock policy profile is empty"
 	}
-	normalizedProfile := normalizePolicyProfile(trimmedProfile)
-	if lock.Policy.Profile != normalizedProfile {
+	normalizedProfile := policypkg.NormalizeProfile(trimmedProfile)
+	if lock.Policy.Profile != normalizedProfile.String() {
 		return false, "lock policy profile must be canonical lowercase without surrounding whitespace"
 	}
-	if !isSupportedPolicyProfile(normalizedProfile) {
+	if _, err := policypkg.ParseProfile(normalizedProfile.String()); err != nil {
 		return false, fmt.Sprintf("lock policy profile is unsupported: %s", lock.Policy.Profile)
 	}
 	trimmedDecision := strings.TrimSpace(lock.Policy.Decision)
@@ -917,7 +917,7 @@ func verifyInstallReport(skillPath string, lock installLock) (bool, string) {
 	if trimmedPolicyProfile != report.PolicyProfile {
 		return false, "install report policy profile must not contain leading or trailing whitespace"
 	}
-	if normalizePolicyProfile(report.PolicyProfile) != report.PolicyProfile {
+	if policypkg.NormalizeProfile(report.PolicyProfile).String() != report.PolicyProfile {
 		return false, "install report policy profile must be canonical lowercase without surrounding whitespace"
 	}
 	if report.PolicyProfile != lock.Policy.Profile {

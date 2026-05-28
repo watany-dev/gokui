@@ -332,14 +332,14 @@ func runInstallWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps 
 	if !parsed.ProfileSet && effectivePolicyLoaded && strings.TrimSpace(effectivePolicy.DefaultProfile) != "" {
 		parsed.Profile = effectivePolicy.DefaultProfile
 	}
-	parsed.Profile = normalizePolicyProfile(parsed.Profile)
+	parsed.Profile = policypkg.NormalizeProfile(parsed.Profile).String()
 
-	if !isSupportedPolicyProfile(parsed.Profile) {
+	if _, err := policypkg.ParseProfile(parsed.Profile); err != nil {
 		if emitInstallStructuredError(parsed.Format, stdout, stderr, installErrorReport{
 			SchemaVersion: reportSchemaVersion,
 			Status:        "ERROR",
 			ErrorCode:     installErrorCodeProfileUnsupported,
-			Message:       fmt.Sprintf("unsupported profile: %s (supported: %s)", parsed.Profile, supportedPolicyProfilesCSV()),
+			Message:       fmt.Sprintf("unsupported profile: %s (supported: %s)", parsed.Profile, policypkg.SupportedProfilesCSV()),
 			Source: source{
 				Input: parsed.Source,
 				Kind:  sourceKind,
@@ -350,7 +350,7 @@ func runInstallWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps 
 		}) {
 			return exitcode.Error.Int()
 		}
-		_, _ = fmt.Fprintf(stderr, "unsupported profile: %s (supported: %s)\n", parsed.Profile, supportedPolicyProfilesCSV())
+		_, _ = fmt.Fprintf(stderr, "unsupported profile: %s (supported: %s)\n", parsed.Profile, policypkg.SupportedProfilesCSV())
 		return exitcode.Error.Int()
 	}
 	if err := validateInstallOverridesPolicy(parsed.Profile, parsed.Overrides, effectivePolicyLoaded, effectivePolicy); err != nil {
@@ -373,7 +373,7 @@ func runInstallWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps 
 		return exitcode.Error.Int()
 	}
 
-	rejectSet, err := effectiveRejectSeveritySetForProfile(parsed.Profile, effectivePolicyLoaded, effectivePolicy)
+	rejectSeverities, err := policypkg.EffectiveRejectSeverities(policypkg.NormalizeProfile(parsed.Profile), effectivePolicyLoaded, effectivePolicy)
 	if err != nil {
 		if emitInstallStructuredError(parsed.Format, stdout, stderr, installErrorReport{
 			SchemaVersion: reportSchemaVersion,
@@ -393,6 +393,7 @@ func runInstallWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps 
 		_, _ = fmt.Fprintln(stderr, err.Error())
 		return exitcode.Error.Int()
 	}
+	rejectSet := rejectSeverities.Strings()
 
 	findings, decision, overrides, err := evaluateSkillWithOverrides(skillRoot, parsed.Profile, parsed.Overrides, rejectSet)
 	if err != nil {
@@ -854,8 +855,8 @@ func validateInstallOverridesPolicy(profile string, overrides []string, policyLo
 	if len(overrides) == 0 {
 		return nil
 	}
-	normalizedProfile := normalizePolicyProfile(profile)
-	if normalizedProfile == policyProfileResearch {
+	normalizedProfile := policypkg.NormalizeProfile(profile)
+	if normalizedProfile == policypkg.ProfileResearch {
 		return fmt.Errorf("overrides are not allowed for profile: %s", normalizedProfile)
 	}
 	if policyLoaded && !cfg.Overrides.Enabled {
@@ -876,9 +877,9 @@ func validateInstallOverridesPolicy(profile string, overrides []string, policyLo
 }
 
 func evaluateSkillWithOverrides(skillRoot string, profile string, overrideRuleIDs []string, rejectSeveritySet map[string]struct{}) ([]inspectFinding, string, []severityOverrideAudit, error) {
-	normalizedProfile := normalizePolicyProfile(profile)
-	if !isSupportedPolicyProfile(normalizedProfile) {
-		return nil, "", nil, fmt.Errorf("unsupported profile: %s (supported: %s)", normalizedProfile, supportedPolicyProfilesCSV())
+	normalizedProfile := policypkg.NormalizeProfile(profile)
+	if _, err := policypkg.ParseProfile(normalizedProfile.String()); err != nil {
+		return nil, "", nil, fmt.Errorf("unsupported profile: %s (supported: %s)", normalizedProfile, policypkg.SupportedProfilesCSV())
 	}
 
 	scanFindings, err := scan.ScanSkillRoot(skillRoot)
@@ -1475,10 +1476,10 @@ func validateInstallLockForProvenanceReuse(lock installLock, expectedSkillName s
 	if trimmedProfile == "" {
 		return fmt.Errorf("lock policy profile is empty")
 	}
-	if normalizePolicyProfile(trimmedProfile) != lock.Policy.Profile {
+	if policypkg.NormalizeProfile(trimmedProfile).String() != lock.Policy.Profile {
 		return fmt.Errorf("lock policy profile must be canonical lowercase without surrounding whitespace")
 	}
-	if !isSupportedPolicyProfile(lock.Policy.Profile) {
+	if _, err := policypkg.ParseProfile(lock.Policy.Profile); err != nil {
 		return fmt.Errorf("lock policy profile is unsupported: %s", lock.Policy.Profile)
 	}
 	trimmedDecision := strings.TrimSpace(lock.Policy.Decision)

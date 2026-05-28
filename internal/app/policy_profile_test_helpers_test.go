@@ -1,10 +1,6 @@
 package app
 
-import (
-	"strings"
-
-	policypkg "github.com/watany-dev/gokui/internal/policy"
-)
+import policypkg "github.com/watany-dev/gokui/internal/policy"
 
 const (
 	policyProfileStrict   = string(policypkg.ProfileStrict)
@@ -19,14 +15,6 @@ func normalizePolicyProfile(profile string) string {
 func isSupportedPolicyProfile(profile string) bool {
 	_, err := policypkg.ParseProfile(profile)
 	return err == nil
-}
-
-func supportedPolicyProfilesCSV() string {
-	return policypkg.SupportedProfilesCSV()
-}
-
-func shouldApplyRepositoryPolicy(sourceKind string) bool {
-	return strings.EqualFold(strings.TrimSpace(sourceKind), "local-dir")
 }
 
 func effectiveRejectSeveritySetForProfile(profile string, policyLoaded bool, cfg policypkg.Config) (map[string]struct{}, error) {
