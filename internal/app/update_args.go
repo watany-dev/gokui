@@ -37,9 +37,9 @@ func parseUpdateArgs(args []string) (updateArgs, error) {
 		case arg == "--dry-run":
 			out.DryRun = true
 		case strings.HasPrefix(arg, "-"):
-			return updateArgs{}, fmt.Errorf("unknown update option: %s", arg)
+			return updateArgs{}, unknownOptionError("update", arg)
 		default:
-			return updateArgs{}, fmt.Errorf("update does not accept positional arguments: %s", arg)
+			return updateArgs{}, positionalArgNotAcceptedError("update", arg)
 		}
 	}
 

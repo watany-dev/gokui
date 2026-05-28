@@ -29,12 +29,11 @@ func parseLockVerifyArgs(args []string) (lockVerifyArgs, error) {
 		}
 		switch {
 		case strings.HasPrefix(arg, "-"):
-			return lockVerifyArgs{}, fmt.Errorf("unknown lock verify option: %s", arg)
+			return lockVerifyArgs{}, unknownOptionError("lock verify", arg)
 		default:
-			if out.Path != "." {
-				return lockVerifyArgs{}, fmt.Errorf("lock verify accepts at most one path")
+			if err := setOptionalPathArg(&out.Path, ".", "lock verify", arg); err != nil {
+				return lockVerifyArgs{}, err
 			}
-			out.Path = arg
 		}
 	}
 	if !supportsCommandFormat(out.Format) {

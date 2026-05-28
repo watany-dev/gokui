@@ -74,6 +74,18 @@ func setSingleSourceArg(source *string, command string, arg string) error {
 	return nil
 }
 
+func setOptionalPathArg(path *string, defaultPath string, command string, arg string) error {
+	if *path != defaultPath {
+		return fmt.Errorf("%s accepts at most one path", command)
+	}
+	*path = arg
+	return nil
+}
+
+func positionalArgNotAcceptedError(command string, arg string) error {
+	return fmt.Errorf("%s does not accept positional arguments: %s", command, arg)
+}
+
 func firstPositionalArg(args []string, valueFlags ...string) string {
 	skipValue := make(map[string]struct{}, len(valueFlags))
 	for _, flag := range valueFlags {
