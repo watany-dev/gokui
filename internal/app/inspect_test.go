@@ -550,24 +550,6 @@ func TestBuildInspectCompactSummary(t *testing.T) {
 	}
 }
 
-func TestInspectSeverityToSARIFLevel(t *testing.T) {
-	cases := []struct {
-		in   string
-		want string
-	}{
-		{in: "critical", want: "error"},
-		{in: "high", want: "error"},
-		{in: "medium", want: "warning"},
-		{in: "low", want: "note"},
-		{in: "unknown", want: "warning"},
-	}
-	for _, tc := range cases {
-		if got := inspectSeverityToSARIFLevel(tc.in); got != tc.want {
-			t.Fatalf("inspectSeverityToSARIFLevel(%q) = %q, want %q", tc.in, got, tc.want)
-		}
-	}
-}
-
 func TestValidateLocalDirInspectSource(t *testing.T) {
 	writeSkillDir := func(t *testing.T, dirName, skillBody string) string {
 		t.Helper()

@@ -969,7 +969,7 @@ func buildInspectSARIFReport(report inspectReport) reportpkg.SARIFDocument {
 	for _, finding := range report.Findings {
 		result := reportpkg.SARIFResult{
 			RuleID:  finding.ID,
-			Level:   inspectSeverityToSARIFLevel(finding.Severity),
+			Level:   reportpkg.SARIFLevelForSeverity(finding.Severity),
 			Message: reportpkg.SARIFMessageContainer{Text: finding.Summary},
 		}
 		location := reportpkg.SARIFLocation{
@@ -1001,10 +1001,6 @@ func buildInspectSARIFReport(report inspectReport) reportpkg.SARIFDocument {
 			Note:          report.Note,
 		},
 	)
-}
-
-func inspectSeverityToSARIFLevel(severity string) string {
-	return reportpkg.SARIFLevelForSeverity(severity)
 }
 
 func inspectArgsRequestJSON(args []string) bool {
