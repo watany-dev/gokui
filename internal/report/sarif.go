@@ -62,6 +62,33 @@ func SARIFLocationForFile(file string, line int) SARIFLocation {
 	return location
 }
 
+func SortSARIFRulesByID(rules []SARIFRule) {
+	sort.Slice(rules, func(i, j int) bool {
+		return rules[i].ID < rules[j].ID
+	})
+}
+
+func SortSARIFResultsByRuleLocationMessage(results []SARIFResult) {
+	sort.Slice(results, func(i, j int) bool {
+		if results[i].RuleID != results[j].RuleID {
+			return results[i].RuleID < results[j].RuleID
+		}
+		uriI := SARIFResultLocationURI(results[i])
+		uriJ := SARIFResultLocationURI(results[j])
+		if uriI != uriJ {
+			return uriI < uriJ
+		}
+		return results[i].Message.Text < results[j].Message.Text
+	})
+}
+
+func SARIFResultLocationURI(result SARIFResult) string {
+	if len(result.Locations) == 0 {
+		return ""
+	}
+	return result.Locations[0].PhysicalLocation.ArtifactLocation.URI
+}
+
 type SARIFFinding struct {
 	ID       string
 	Severity string
@@ -80,9 +107,7 @@ func SARIFDocumentForFindings(findings []SARIFFinding, executionSuccessful bool,
 		seen[finding.ID] = struct{}{}
 		rules = append(rules, SARIFRuleForFinding(finding.ID, finding.Summary))
 	}
-	sort.Slice(rules, func(i, j int) bool {
-		return rules[i].ID < rules[j].ID
-	})
+	SortSARIFRulesByID(rules)
 
 	results := make([]SARIFResult, 0, len(findings))
 	for _, finding := range findings {

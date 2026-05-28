@@ -133,6 +133,31 @@ func TestSARIFLocationForFile(t *testing.T) {
 	}
 }
 
+func TestSARIFSortHelpers(t *testing.T) {
+	rules := []SARIFRule{
+		SARIFRuleForFinding("RULE_B", "b"),
+		SARIFRuleForFinding("RULE_A", "a"),
+	}
+	SortSARIFRulesByID(rules)
+	if rules[0].ID != "RULE_A" || rules[1].ID != "RULE_B" {
+		t.Fatalf("rules not sorted: %+v", rules)
+	}
+
+	results := []SARIFResult{
+		SARIFResultForFinding("RULE_B", "error", "z", []SARIFLocation{SARIFLocationForFile("b.txt", 0)}),
+		SARIFResultForFinding("RULE_A", "error", "z", nil),
+		SARIFResultForFinding("RULE_B", "error", "a", []SARIFLocation{SARIFLocationForFile("b.txt", 0)}),
+		SARIFResultForFinding("RULE_B", "error", "z", []SARIFLocation{SARIFLocationForFile("a.txt", 0)}),
+	}
+	SortSARIFResultsByRuleLocationMessage(results)
+	if results[0].RuleID != "RULE_A" || results[1].Locations[0].PhysicalLocation.ArtifactLocation.URI != "a.txt" || results[2].Message.Text != "a" {
+		t.Fatalf("results not sorted: %+v", results)
+	}
+	if got := SARIFResultLocationURI(results[0]); got != "" {
+		t.Fatalf("location uri = %q, want empty", got)
+	}
+}
+
 func TestSARIFErrorDocument(t *testing.T) {
 	properties := SARIFProperties{
 		SchemaVersion: "1",

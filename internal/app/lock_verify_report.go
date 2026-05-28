@@ -3,7 +3,6 @@ package app
 import (
 	"fmt"
 	"io"
-	"sort"
 	"strings"
 
 	reportpkg "github.com/watany-dev/gokui/internal/report"
@@ -38,9 +37,7 @@ func buildLockVerifySARIFReport(report lockVerifyReport) reportpkg.SARIFDocument
 	for _, check := range report.Checks {
 		rules = append(rules, reportpkg.SARIFRuleForFinding(check.Code, fmt.Sprintf("lock verify check: %s", check.Name)))
 	}
-	sort.Slice(rules, func(i, j int) bool {
-		return rules[i].ID < rules[j].ID
-	})
+	reportpkg.SortSARIFRulesByID(rules)
 
 	results := make([]reportpkg.SARIFResult, 0, 32)
 	for _, check := range report.Checks {
@@ -61,23 +58,7 @@ func buildLockVerifySARIFReport(report lockVerifyReport) reportpkg.SARIFDocument
 			results = append(results, lockVerifyDriftSARIFResult(check.Code, path, "unexpected file not listed in lock"))
 		}
 	}
-	sort.Slice(results, func(i, j int) bool {
-		if results[i].RuleID != results[j].RuleID {
-			return results[i].RuleID < results[j].RuleID
-		}
-		uriI := ""
-		if len(results[i].Locations) > 0 {
-			uriI = results[i].Locations[0].PhysicalLocation.ArtifactLocation.URI
-		}
-		uriJ := ""
-		if len(results[j].Locations) > 0 {
-			uriJ = results[j].Locations[0].PhysicalLocation.ArtifactLocation.URI
-		}
-		if uriI != uriJ {
-			return uriI < uriJ
-		}
-		return results[i].Message.Text < results[j].Message.Text
-	})
+	reportpkg.SortSARIFResultsByRuleLocationMessage(results)
 
 	return reportpkg.SARIFDocumentForRun(
 		rules,
