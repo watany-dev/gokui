@@ -37,6 +37,9 @@ Recent completed increments:
   existing priority order for ambiguous argument lists.
 - command parse-error report construction is split into command-specific helper
   functions for fetch, inspect/vet, install, update, and lock verify.
+- parse-error structured writer dispatch is centralized, and all command
+  parsers now read `--format` through one helper while preserving current error
+  text.
 
 Validation already run after the latest parser/format increments:
 
@@ -54,6 +57,9 @@ go test ./internal/app -run 'Args|Error|JSON|SARIF|Review|Fetch|Inspect|Vet|Inst
 go test ./internal/app -run 'Inspect|Vet|Args|Error|JSON|SARIF|Review'
 go test ./internal/app -run 'Update|LockVerify|Args|Error|JSON|SARIF'
 go test ./internal/app -run 'Fetch|Install|Args|Error|JSON|SARIF'
+go test ./internal/app -run 'Args|Error|JSON|SARIF|Review|Fetch|Inspect|Vet|Install|Update|LockVerify'
+go test ./internal/app -run 'Args|Fetch|Inspect|Update|Error|JSON|SARIF'
+go test ./internal/app -run 'Args|Install|Vet|LockVerify|Error|JSON|SARIF|Review'
 make test
 ```
 
@@ -295,9 +301,10 @@ slice:
 
 1. Audit #7, #10, #12, #13, #15, #16, #17, and #18 against the current code and
    close or update any issues whose requested implementation is now present.
-2. Continue #5 by moving command argument parsing toward a shared parser/spec
-   shape. Keep current error strings and pre-parse structured-output detection
-   stable while doing this.
+2. Continue #5 by moving non-format value flags (`--target`, `--profile`,
+   `--out`, `--override`) toward shared helpers or a shared parser/spec shape.
+   Keep current error strings and pre-parse structured-output detection stable
+   while doing this.
 3. Continue #4 by extracting any remaining command-specific structured-error
    branching where it can be done without changing current error strings,
    fallback source/target fields, or structured output contracts; defer changing
