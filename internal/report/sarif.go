@@ -100,6 +100,32 @@ type SARIFFinding struct {
 	Summary  string
 }
 
+type FindingsSARIFInput struct {
+	SchemaVersion string
+	PreRelease    bool
+	SourceInput   string
+	SourceKind    string
+	Decision      string
+	Rejected      bool
+	Note          string
+	Findings      []SARIFFinding
+}
+
+func SARIFDocumentForFindingsInput(input FindingsSARIFInput) SARIFDocument {
+	return SARIFDocumentForFindings(
+		input.Findings,
+		!input.Rejected,
+		SARIFProperties{
+			SchemaVersion: input.SchemaVersion,
+			PreRelease:    input.PreRelease,
+			SourceInput:   input.SourceInput,
+			SourceKind:    input.SourceKind,
+			Decision:      input.Decision,
+			Note:          input.Note,
+		},
+	)
+}
+
 func SARIFDocumentForFindings(findings []SARIFFinding, executionSuccessful bool, properties SARIFProperties) SARIFDocument {
 	rules := make([]SARIFRule, 0)
 	seen := make(map[string]struct{}, len(findings))

@@ -118,6 +118,36 @@ func TestSARIFDocumentForFindings(t *testing.T) {
 	}
 }
 
+func TestSARIFDocumentForFindingsInput(t *testing.T) {
+	doc := SARIFDocumentForFindingsInput(FindingsSARIFInput{
+		SchemaVersion: "1",
+		PreRelease:    true,
+		SourceInput:   "./skill",
+		SourceKind:    "local-dir",
+		Decision:      "REJECTED",
+		Rejected:      true,
+		Note:          "note",
+		Findings: []SARIFFinding{
+			{ID: "RULE_A", Severity: "high", Summary: "first"},
+		},
+	})
+	run := doc.Runs[0]
+	if run.Invocations[0].ExecutionSuccessful {
+		t.Fatal("rejected findings input should mark execution unsuccessful")
+	}
+	want := SARIFProperties{
+		SchemaVersion: "1",
+		PreRelease:    true,
+		SourceInput:   "./skill",
+		SourceKind:    "local-dir",
+		Decision:      "REJECTED",
+		Note:          "note",
+	}
+	if run.Properties != want {
+		t.Fatalf("properties = %+v, want %+v", run.Properties, want)
+	}
+}
+
 func TestSARIFDocumentForLockVerify(t *testing.T) {
 	doc := SARIFDocumentForLockVerify(LockVerifySARIFInput{
 		Status:         "DRIFTED",

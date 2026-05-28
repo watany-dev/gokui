@@ -94,18 +94,16 @@ func buildFindingsSARIFReport(schemaVersion string, preRelease bool, src source,
 			Summary:  finding.Summary,
 		})
 	}
-	return reportpkg.SARIFDocumentForFindings(
-		sarifFindings,
-		decision != reportDecisionRejected,
-		reportpkg.SARIFProperties{
-			SchemaVersion: schemaVersion,
-			PreRelease:    preRelease,
-			SourceInput:   src.Input,
-			SourceKind:    src.Kind,
-			Decision:      decision,
-			Note:          note,
-		},
-	)
+	return reportpkg.SARIFDocumentForFindingsInput(reportpkg.FindingsSARIFInput{
+		SchemaVersion: schemaVersion,
+		PreRelease:    preRelease,
+		SourceInput:   src.Input,
+		SourceKind:    src.Kind,
+		Decision:      decision,
+		Rejected:      decision == reportDecisionRejected,
+		Note:          note,
+		Findings:      sarifFindings,
+	})
 }
 
 func inspectArgsErrorReport(command string, args []string, err error) inspectErrorReport {

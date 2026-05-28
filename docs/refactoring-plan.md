@@ -114,6 +114,9 @@ Recent completed increments:
   size limit.
 - vet now evaluates local sources directly through source preparation and
   scanning instead of invoking `inspect --format json` and reparsing its output.
+- findings SARIF property assembly now uses a report-level input struct, so app
+  code adapts findings and leaves the common SARIF document shape in
+  `internal/report`.
 - SARIF error document construction now uses a shared helper for structured
   error rule ID resolution while keeping command-specific SARIF properties at
   the output boundary.
