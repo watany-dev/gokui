@@ -1,12 +1,16 @@
 package app
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"sort"
+	"strings"
+	"unicode/utf8"
 
 	"github.com/watany-dev/gokui/internal/cli/exitcode"
 	reportpkg "github.com/watany-dev/gokui/internal/report"
+	"github.com/watany-dev/gokui/internal/scan"
 )
 
 type inspectReport struct {
@@ -214,4 +218,63 @@ func buildInspectReviewReport(report inspectReport) inspectReviewReport {
 
 func neutralizeReviewText(text string) string {
 	return reportpkg.NeutralizeReviewText(text)
+}
+
+func toInspectFindings(scanFindings []scan.Finding) ([]inspectFinding, string) {
+	findings := make([]inspectFinding, 0, len(scanFindings))
+	decision := "PASS"
+	for _, finding := range scanFindings {
+		findings = append(findings, inspectFinding{
+			ID:       finding.ID,
+			Severity: finding.Severity,
+			File:     finding.File,
+			Line:     finding.Line,
+			Summary:  finding.Summary,
+		})
+		if scan.IsRejectable(finding) {
+			decision = reportDecisionRejected
+		}
+	}
+	return findings, decision
+}
+
+func decisionForInspectFindings(findings []inspectFinding, rejectSet map[string]struct{}) string {
+	for _, finding := range findings {
+		sev := strings.ToLower(strings.TrimSpace(finding.Severity))
+		if _, reject := rejectSet[sev]; reject {
+			return reportDecisionRejected
+		}
+	}
+	return "PASS"
+}
+
+func decodeInspectErrorPayload(raw []byte) inspectErrorReport {
+	out := inspectErrorReport{
+		SchemaVersion: reportSchemaVersion,
+		Status:        reportStatusError,
+		ErrorCode:     inspectErrorCodeUnknown,
+		Message:       "failed to process inspect error report",
+		Source: source{
+			Input: "",
+			Kind:  "local-dir",
+		},
+		Note: "vet failed while decoding inspect error report",
+	}
+	if !utf8.Valid(raw) {
+		out.Message = "inspect error payload must be valid UTF-8"
+		out.Note = "vet failed while decoding inspect error report (non-UTF-8 payload)"
+		return out
+	}
+	if err := json.Unmarshal(raw, &out); err != nil {
+		message := strings.TrimSpace(string(raw))
+		if message == "" {
+			return out
+		}
+		out.Message = message
+		return out
+	}
+	if strings.TrimSpace(out.Message) == "" {
+		out.Message = "inspect failed"
+	}
+	return out
 }
