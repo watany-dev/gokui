@@ -430,7 +430,7 @@ make build
 | #5 | 6 | Pair with #4 so parse failures and error envelopes share one path. |
 | #6 | 4 | Isolated update cleanup; avoid mixing with wire/domain conversion. |
 | #7 | 2 | Foundation for scan, report, and rule inference. |
-| #8 | 7 | Depends on inspect evaluator and report rendering separation. |
+| #8 | 7 | Direct vet evaluation is implemented; candidate to close after audit/write access. |
 | #9 | 8 | High blast-radius; defer until behavior is well covered. |
 | #10 | 3, 8 | Shared SARIF primitives first, wire cleanup later. |
 | #11 | 5 | Easier after leaf functions have moved out of `internal/app`. |
@@ -458,8 +458,8 @@ slice:
    current error strings, fallback source/target fields, `review-json`
    handling, command-specific SARIF properties, or structured output contracts;
    defer changing report wire structs until #9.
-4. Continue #8 only after #4 has a stable command error path and inspect report
-   rendering remains covered by contract tests.
+4. Audit #8 closure criteria now that vet no longer reparses inspect JSON;
+   keep inspect/vet report rendering covered by contract tests.
 
 ## Commit Hygiene
 
