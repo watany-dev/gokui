@@ -80,6 +80,9 @@ Recent completed increments:
 - production install/update/lock wire structs now use
   `policy.SeverityOverrideAudit` directly; the old app-local alias is test-only
   compatibility for existing contract tests.
+- structured SARIF error properties now use a shared helper for the common
+  schema/source/status/error-code fields; command builders keep only their
+  command-specific source kind and note text.
 - SARIF error document construction now uses a shared helper for structured
   error rule ID resolution while keeping command-specific SARIF properties at
   the output boundary.
@@ -132,6 +135,7 @@ go test ./internal/app -run 'Inspect|Vet|Install|Update|Severity|JSON|SARIF|Comp
 go test ./internal/scan ./internal/app -run 'Finding|Inspect|Vet|Install|Update|Severity|JSON|SARIF|Compact|Review'
 go test ./internal/safefs ./internal/app -run 'Stable|Install|LockVerify|SourceMetadata|URLScan|Digest|Copy|Hash'
 go test ./internal/app -run 'SeverityOverride|Install|Update|Lock'
+go test ./internal/app -run 'StructuredError|SARIF|Inspect|Update|LockVerify|Error'
 make test
 ```
 

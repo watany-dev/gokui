@@ -117,12 +117,7 @@ func emitLockVerifyStructuredError(format string, stdout io.Writer, stderr io.Wr
 }
 
 func buildLockVerifySARIFErrorReport(report lockVerifyErrorReport) reportpkg.SARIFDocument {
-	return buildStructuredSARIFErrorReport(report.ErrorCode, report.RuleID, report.Message, reportpkg.SARIFProperties{
-		SchemaVersion: report.SchemaVersion,
-		PreRelease:    true,
-		SourceInput:   report.SkillPath,
-		SourceKind:    "installed-skill",
-		Decision:      report.Status,
-		Note:          fmt.Sprintf("%s; error_code=%s", report.Note, report.ErrorCode),
-	})
+	return buildStructuredSARIFErrorReport(report.ErrorCode, report.RuleID, report.Message,
+		structuredErrorSARIFProperties(report.SchemaVersion, report.SkillPath, "installed-skill", report.Status, report.Note, report.ErrorCode),
+	)
 }

@@ -33,14 +33,9 @@ func updateArgsErrorReport(args []string, err error) updateErrorReport {
 }
 
 func buildUpdateSARIFErrorReport(report updateErrorReport) reportpkg.SARIFDocument {
-	return buildStructuredSARIFErrorReport(report.ErrorCode, report.RuleID, report.Message, reportpkg.SARIFProperties{
-		SchemaVersion: report.SchemaVersion,
-		PreRelease:    true,
-		SourceInput:   report.Target,
-		SourceKind:    "update-target",
-		Decision:      report.Status,
-		Note:          fmt.Sprintf("%s; error_code=%s", report.Note, report.ErrorCode),
-	})
+	return buildStructuredSARIFErrorReport(report.ErrorCode, report.RuleID, report.Message,
+		structuredErrorSARIFProperties(report.SchemaVersion, report.Target, "update-target", report.Status, report.Note, report.ErrorCode),
+	)
 }
 
 func emitUpdateStructuredError(format string, stdout io.Writer, stderr io.Writer, report updateErrorReport) bool {

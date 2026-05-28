@@ -342,6 +342,16 @@ func TestNormalizeStructuredErrorFields(t *testing.T) {
 	}
 }
 
+func TestStructuredErrorSARIFProperties(t *testing.T) {
+	props := structuredErrorSARIFProperties("v1", "input", "source-kind", "ERROR", "failed", "ERROR_CODE")
+	if props.SchemaVersion != "v1" || !props.PreRelease || props.SourceInput != "input" || props.SourceKind != "source-kind" || props.Decision != "ERROR" {
+		t.Fatalf("unexpected properties: %+v", props)
+	}
+	if props.Note != "failed; error_code=ERROR_CODE" {
+		t.Fatalf("note = %q, want error code suffix", props.Note)
+	}
+}
+
 func TestEmitStructuredError(t *testing.T) {
 	var jsonCalls int
 	var sarifCalls int

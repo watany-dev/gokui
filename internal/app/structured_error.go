@@ -73,6 +73,17 @@ func buildStructuredSARIFErrorReport(errorCode string, ruleID string, message st
 	return reportpkg.SARIFErrorDocument(structuredErrorRuleID(errorCode, ruleID), errorCode, message, properties)
 }
 
+func structuredErrorSARIFProperties(schemaVersion string, sourceInput string, sourceKind string, status string, note string, errorCode string) reportpkg.SARIFProperties {
+	return reportpkg.SARIFProperties{
+		SchemaVersion: schemaVersion,
+		PreRelease:    true,
+		SourceInput:   sourceInput,
+		SourceKind:    sourceKind,
+		Decision:      status,
+		Note:          fmt.Sprintf("%s; error_code=%s", note, errorCode),
+	}
+}
+
 func writeJSONErrorReport(stdout io.Writer, stderr io.Writer, payload any, command string) int {
 	return writeIndentedJSONLine(stdout, stderr, payload, fmt.Sprintf("failed to render %s error report", command))
 }
