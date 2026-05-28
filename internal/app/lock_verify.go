@@ -50,12 +50,14 @@ type lockVerifyCheck struct {
 	Detail string `json:"detail"`
 }
 
-const maxInstallReportFileBytes int64 = 1_000_000
+const (
+	maxLockVerifyLockFileBytes int64 = 1_000_000
+	maxInstallReportFileBytes  int64 = 1_000_000
+)
 
 var (
-	maxLockVerifyLockFileBytes int64 = 1_000_000
-	errLockfileReadFailed            = errors.New("failed to read lockfile")
-	errLockfileInvalidJSON           = errors.New("invalid lockfile JSON")
+	errLockfileReadFailed  = errors.New("failed to read lockfile")
+	errLockfileInvalidJSON = errors.New("invalid lockfile JSON")
 )
 
 const (
@@ -85,7 +87,24 @@ type lockVerifyDriftInfo struct {
 
 type fileInfoStatter = limitio.FileInfoStatter
 
+type lockVerifyDeps struct {
+	VerifyLock func(skillPath string) (lockVerifyReport, error)
+}
+
+func defaultLockVerifyDeps() lockVerifyDeps {
+	return lockVerifyDeps{
+		VerifyLock: verifyLock,
+	}
+}
+
 func runLockVerify(args []string, stdout io.Writer, stderr io.Writer) int {
+	return runLockVerifyWithDeps(args, stdout, stderr, defaultLockVerifyDeps())
+}
+
+func runLockVerifyWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps lockVerifyDeps) int {
+	if deps.VerifyLock == nil {
+		deps.VerifyLock = verifyLock
+	}
 	requestedFormat, _ := requestedStructuredFormat(args, false)
 	parsed, err := parseLockVerifyArgs(args)
 	if err != nil {
@@ -96,7 +115,7 @@ func runLockVerify(args []string, stdout io.Writer, stderr io.Writer) int {
 		)
 	}
 
-	report, verifyErr := verifyLock(parsed.Path)
+	report, verifyErr := deps.VerifyLock(parsed.Path)
 	if verifyErr != nil {
 		errorReport := lockVerifyErrorReport{
 			SchemaVersion: reportSchemaVersion,

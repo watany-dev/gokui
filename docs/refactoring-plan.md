@@ -107,8 +107,8 @@ Recent completed increments:
   dependency instead of mutating copy limit globals.
 - install lock, source metadata, lock verify, and install-report oversized-file
   unit tests now use explicit read-limit helpers instead of mutating package
-  globals; the remaining command-run oversized lockfile coverage still uses the
-  lock-verify command's package-level limit.
+  globals, and lock verify command-run tests inject the verifier dependency for
+  oversized lockfile coverage.
 - SARIF error document construction now uses a shared helper for structured
   error rule ID resolution while keeping command-specific SARIF properties at
   the output boundary.

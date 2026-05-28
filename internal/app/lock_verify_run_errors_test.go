@@ -203,13 +203,15 @@ func TestRunLockVerifyErrorPathsAndDriftKinds(t *testing.T) {
 
 	stdout.Reset()
 	stderr.Reset()
-	origLimit := maxLockVerifyLockFileBytes
-	maxLockVerifyLockFileBytes = 8
 	oversizedDir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(oversizedDir, installLockFile), []byte(`{"schema":"gokui.lock/v1"}`), 0o644); err != nil {
 		t.Fatalf("write oversized lockfile: %v", err)
 	}
-	code = runLockVerify([]string{oversizedDir, "--format", "json"}, &stdout, &stderr)
+	code = runLockVerifyWithDeps([]string{oversizedDir, "--format", "json"}, &stdout, &stderr, lockVerifyDeps{
+		VerifyLock: func(skillPath string) (lockVerifyReport, error) {
+			return verifyLockWithLimit(skillPath, 8)
+		},
+	})
 	if code != 1 {
 		t.Fatalf("runLockVerify(oversized lock json) code = %d, want 1", code)
 	}
@@ -222,7 +224,6 @@ func TestRunLockVerifyErrorPathsAndDriftKinds(t *testing.T) {
 	if !strings.Contains(stdout.String(), "\"rule_id\": \""+rulepkg.LockfileTooLarge.ID+"\"") {
 		t.Fatalf("stdout should include lockfile-too-large rule_id, got %q", stdout.String())
 	}
-	maxLockVerifyLockFileBytes = origLimit
 
 	stdout.Reset()
 	stderr.Reset()
