@@ -12,20 +12,16 @@ func parseVetArgs(args []string) (input string, format string, profile string, p
 	profile = policypkg.ProfileStrict.String()
 	for i := 0; i < len(args); i++ {
 		arg := args[i]
-		if formatValue, next, ok, formatErr := parseFormatArg(args, i); ok {
-			if formatErr != nil {
-				return "", "", "", false, formatErr
+		if next, ok, err := parseValueFlagHandlers(args, i,
+			valueFlagHandler{flag: "--format", set: func(value string) { format = value }},
+			valueFlagHandler{flag: "--profile", set: func(value string) {
+				profile = value
+				profileSet = true
+			}},
+		); ok {
+			if err != nil {
+				return "", "", "", false, err
 			}
-			format = formatValue
-			i = next
-			continue
-		}
-		if profileValue, next, ok, profileErr := parseValueFlagArg(args, i, "--profile"); ok {
-			if profileErr != nil {
-				return "", "", "", false, profileErr
-			}
-			profile = profileValue
-			profileSet = true
 			i = next
 			continue
 		}

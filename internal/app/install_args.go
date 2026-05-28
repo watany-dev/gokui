@@ -10,36 +10,20 @@ func parseInstallArgs(args []string) (installArgs, error) {
 	out := installArgs{Profile: "strict", Format: defaultCommandFormat()}
 	for i := 0; i < len(args); i++ {
 		arg := args[i]
-		if formatValue, next, ok, err := parseFormatArg(args, i); ok {
+		if next, ok, err := parseValueFlagHandlers(args, i,
+			valueFlagHandler{flag: "--format", set: func(value string) { out.Format = value }},
+			valueFlagHandler{flag: "--target", set: func(value string) { out.Target = value }},
+			valueFlagHandler{flag: "--profile", set: func(value string) {
+				out.Profile = value
+				out.ProfileSet = true
+			}},
+			valueFlagHandler{flag: "--override", set: func(value string) {
+				out.Overrides = append(out.Overrides, value)
+			}},
+		); ok {
 			if err != nil {
 				return installArgs{}, err
 			}
-			out.Format = formatValue
-			i = next
-			continue
-		}
-		if targetValue, next, ok, err := parseValueFlagArg(args, i, "--target"); ok {
-			if err != nil {
-				return installArgs{}, err
-			}
-			out.Target = targetValue
-			i = next
-			continue
-		}
-		if profileValue, next, ok, err := parseValueFlagArg(args, i, "--profile"); ok {
-			if err != nil {
-				return installArgs{}, err
-			}
-			out.Profile = profileValue
-			out.ProfileSet = true
-			i = next
-			continue
-		}
-		if overrideValue, next, ok, err := parseValueFlagArg(args, i, "--override"); ok {
-			if err != nil {
-				return installArgs{}, err
-			}
-			out.Overrides = append(out.Overrides, overrideValue)
 			i = next
 			continue
 		}

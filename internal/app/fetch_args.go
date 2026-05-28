@@ -13,19 +13,13 @@ func parseFetchArgs(args []string) (fetchArgs, error) {
 	out := fetchArgs{Format: defaultCommandFormat()}
 	for i := 0; i < len(args); i++ {
 		arg := args[i]
-		if formatValue, next, ok, err := parseFormatArg(args, i); ok {
+		if next, ok, err := parseValueFlagHandlers(args, i,
+			valueFlagHandler{flag: "--format", set: func(value string) { out.Format = value }},
+			valueFlagHandler{flag: "--out", set: func(value string) { out.Out = value }},
+		); ok {
 			if err != nil {
 				return fetchArgs{}, err
 			}
-			out.Format = formatValue
-			i = next
-			continue
-		}
-		if outValue, next, ok, err := parseValueFlagArg(args, i, "--out"); ok {
-			if err != nil {
-				return fetchArgs{}, err
-			}
-			out.Out = outValue
 			i = next
 			continue
 		}

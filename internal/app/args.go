@@ -44,8 +44,24 @@ func defaultCommandFormat() string {
 	return formatpkg.Human.String()
 }
 
-func parseFormatArg(args []string, index int) (value string, nextIndex int, ok bool, err error) {
-	return parseValueFlagArg(args, index, "--format")
+type valueFlagHandler struct {
+	flag string
+	set  func(string)
+}
+
+func parseValueFlagHandlers(args []string, index int, handlers ...valueFlagHandler) (nextIndex int, ok bool, err error) {
+	for _, handler := range handlers {
+		value, next, matched, parseErr := parseValueFlagArg(args, index, handler.flag)
+		if !matched {
+			continue
+		}
+		if parseErr != nil {
+			return index, true, parseErr
+		}
+		handler.set(value)
+		return next, true, nil
+	}
+	return index, false, nil
 }
 
 func parseValueFlagArg(args []string, index int, flag string) (value string, nextIndex int, ok bool, err error) {

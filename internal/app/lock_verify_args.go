@@ -19,11 +19,12 @@ func parseLockVerifyArgs(args []string) (lockVerifyArgs, error) {
 	}
 	for i := 0; i < len(args); i++ {
 		arg := args[i]
-		if formatValue, next, ok, err := parseFormatArg(args, i); ok {
+		if next, ok, err := parseValueFlagHandlers(args, i,
+			valueFlagHandler{flag: "--format", set: func(value string) { out.Format = value }},
+		); ok {
 			if err != nil {
 				return lockVerifyArgs{}, err
 			}
-			out.Format = formatValue
 			i = next
 			continue
 		}

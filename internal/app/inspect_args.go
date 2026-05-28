@@ -13,11 +13,12 @@ func parseInspectArgs(args []string) (input string, format string, err error) {
 	format = defaultCommandFormat()
 	for i := 0; i < len(args); i++ {
 		arg := args[i]
-		if formatValue, next, ok, formatErr := parseFormatArg(args, i); ok {
-			if formatErr != nil {
-				return "", "", formatErr
+		if next, ok, err := parseValueFlagHandlers(args, i,
+			valueFlagHandler{flag: "--format", set: func(value string) { format = value }},
+		); ok {
+			if err != nil {
+				return "", "", err
 			}
-			format = formatValue
 			i = next
 			continue
 		}
