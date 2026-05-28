@@ -228,9 +228,11 @@ Current inventory notes:
   app/source rule constants are fully catalog-backed. The audit found the
   catalog and scan registry tests present, but command error-code constants and
   GitHub fetch guard errors still need an explicit catalog boundary decision.
-- #10 is partially represented by shared SARIF document/types in
-  `internal/report`; keep open until remaining command-specific SARIF property
-  and structured-error builders are reduced to a common builder/config shape.
+- #10 is partially represented by shared SARIF document/types, pre-release
+  property helpers, findings/lock-verify builders, and structured-error input
+  builders in `internal/report`. Keep open until the remaining successful
+  command-specific SARIF input adapters are audited against the #9 wire/domain
+  boundary.
 - #12 is represented by `source.GitHubFetcher`, option-based configuration, and
   option-based tests; candidate to close after repository write access is
   available.
@@ -503,9 +505,9 @@ slice:
 2. Continue #4/#5 only where common CLI parsing or structured-error helpers can
    remove duplication without changing error strings, fallback source/target
    fields, `review-json` handling, SARIF properties, or stream contracts.
-3. Continue #10 by moving only generic SARIF document/property assembly into
-   `internal/report`; keep command-specific note text and wire structs at the
-   app boundary until #9.
+3. Continue #10 by auditing successful command SARIF adapters after the generic
+   document/property/error assembly moves; keep command-specific note text and
+   wire structs at the app boundary until #9.
 4. Continue #19 by splitting the largest app contract tests along existing
    command/doc-sync boundaries before moving command packages.
 5. Defer #2/#3/#9 broad package and wire/domain separation until the remaining
