@@ -260,11 +260,12 @@ Current inventory notes:
   app/source rule constants are fully catalog-backed. The audit found the
   catalog and scan registry tests present, but command error-code constants and
   GitHub fetch guard errors still need an explicit catalog boundary decision.
-- #10 is partially represented by shared SARIF document/types, pre-release
-  property helpers, findings/lock-verify builders, and structured-error input
-  builders in `internal/report`. Keep open until the remaining successful
-  command-specific SARIF input adapters are audited against the #9 wire/domain
-  boundary.
+- #10 is represented by shared SARIF document/types, pre-release property
+  helpers, findings/update/lock-verify builders, and structured-error input
+  builders in `internal/report`. The remaining fetch/inspect/install
+  successful-command SARIF code is now an app-boundary adapter from command wire
+  structs into report input shapes, so this is a candidate to close after
+  repository write access is available.
 - #12 is represented by `source.GitHubFetcher`, option-based configuration, and
   option-based tests; candidate to close after repository write access is
   available.
@@ -531,18 +532,15 @@ The next work should stay behavior-preserving and commit after each validation
 slice:
 
 1. When GitHub issue write access is available, close or comment on the
-   candidate-complete issues now represented locally: #6, #8, #11, #12, #13,
-   #14, #15, #16, #17, and #18. Keep #7 and #10 open until their boundary
-   decisions below are resolved.
+   candidate-complete issues now represented locally: #6, #8, #10, #11, #12,
+   #13, #14, #15, #16, #17, and #18. Keep #7 open until its catalog boundary
+   decision is resolved.
 2. Continue #4/#5 only where common CLI parsing or structured-error helpers can
    remove duplication without changing error strings, fallback source/target
    fields, `review-json` handling, SARIF properties, or stream contracts.
-3. Continue #10 by auditing successful command SARIF adapters after the generic
-   document/property/error assembly moves; keep command-specific note text and
-   wire structs at the app boundary until #9.
-4. Continue #19 by splitting the largest app contract tests along existing
+3. Continue #19 by splitting the largest app contract tests along existing
    command/doc-sync boundaries before moving command packages.
-5. Defer #2/#3/#9 broad package and wire/domain separation until the remaining
+4. Defer #2/#3/#9 broad package and wire/domain separation until the remaining
    CLI/report boundaries are explicit and covered by `make check`.
 
 ## Commit Hygiene

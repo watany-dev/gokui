@@ -148,6 +148,113 @@ func TestSARIFDocumentForFindingsInput(t *testing.T) {
 	}
 }
 
+func TestSARIFDocumentForUpdate(t *testing.T) {
+	input := UpdateSARIFInput{
+		SchemaVersion:            "1",
+		Target:                   "/tmp/skills",
+		Note:                     "update note",
+		Summary:                  UpdateSARIFSummary{Changed: 1, Rejected: 1, Errors: 1},
+		StatusError:              "ERROR",
+		StatusRejected:           "REJECTED",
+		ErrorDecision:            "ERROR",
+		RejectedDecision:         "REJECTED",
+		ChangedDecision:          "CHANGED",
+		PassDecision:             "PASS",
+		SourceKind:               "update-target",
+		StatusFallbackRuleID:     "UPDATE_SKILL_STATUS",
+		StatusFallbackSeverity:   "high",
+		ExecutionFailureOnReject: true,
+		Skills: []UpdateSARIFSkill{
+			{
+				Name: "alpha",
+				Findings: []SARIFFinding{
+					{ID: "RULE_A", Severity: "high", File: "SKILL.md", Line: 12, Summary: "rule a"},
+					{ID: "RULE_B", Severity: "medium", File: "", Summary: ""},
+				},
+			},
+			{
+				Name:    "beta",
+				Status:  "ERROR",
+				RuleID:  "UPDATE_URL_SCAN_SPECIAL_FILE",
+				Message: "special file",
+			},
+			{
+				Name:      "gamma",
+				Status:    "REJECTED",
+				ErrorCode: "POLICY_REJECTED",
+				Message:   "",
+			},
+			{
+				Name:   "delta",
+				Status: "UP_TO_DATE",
+			},
+		},
+	}
+
+	doc := SARIFDocumentForUpdate(input)
+	run := doc.Runs[0]
+	if run.Properties.Decision != "ERROR" || run.Properties.SourceKind != "update-target" || run.Properties.SourceInput != "/tmp/skills" {
+		t.Fatalf("unexpected properties: %+v", run.Properties)
+	}
+	if run.Invocations[0].ExecutionSuccessful {
+		t.Fatal("update SARIF should mark execution unsuccessful when errors/rejections exist")
+	}
+
+	assertUpdateResult := func(ruleID string, wantLocation string, wantMessage string) {
+		t.Helper()
+		for _, result := range run.Results {
+			if result.RuleID != ruleID {
+				continue
+			}
+			if wantMessage != "" && result.Message.Text != wantMessage {
+				t.Fatalf("%s message = %q, want %q", ruleID, result.Message.Text, wantMessage)
+			}
+			if wantLocation == "" {
+				return
+			}
+			if len(result.Locations) != 1 || result.Locations[0].PhysicalLocation.ArtifactLocation.URI != wantLocation {
+				t.Fatalf("%s locations = %+v, want %q", ruleID, result.Locations, wantLocation)
+			}
+			return
+		}
+		t.Fatalf("result %q not found in %+v", ruleID, run.Results)
+	}
+
+	assertUpdateResult("RULE_A", "alpha/SKILL.md", "rule a")
+	assertUpdateResult("RULE_B", "", "RULE_B finding in alpha")
+	assertUpdateResult("UPDATE_URL_SCAN_SPECIAL_FILE", "beta", "special file")
+	assertUpdateResult("POLICY_REJECTED", "gamma", "REJECTED: gamma")
+
+	fallback := SARIFDocumentForUpdate(UpdateSARIFInput{
+		SchemaVersion:            "1",
+		Target:                   "/tmp/skills",
+		Summary:                  UpdateSARIFSummary{Changed: 1},
+		ChangedDecision:          "CHANGED",
+		PassDecision:             "PASS",
+		SourceKind:               "update-target",
+		ExecutionFailureOnReject: true,
+	})
+	if fallback.Runs[0].Properties.Decision != "CHANGED" {
+		t.Fatalf("decision = %q, want CHANGED", fallback.Runs[0].Properties.Decision)
+	}
+	if !fallback.Runs[0].Invocations[0].ExecutionSuccessful {
+		t.Fatal("changed-only update should remain execution successful")
+	}
+
+	rejected := SARIFDocumentForUpdate(UpdateSARIFInput{
+		SchemaVersion:            "1",
+		Target:                   "/tmp/skills",
+		Summary:                  UpdateSARIFSummary{Rejected: 1},
+		RejectedDecision:         "REJECTED",
+		PassDecision:             "PASS",
+		SourceKind:               "update-target",
+		ExecutionFailureOnReject: true,
+	})
+	if rejected.Runs[0].Properties.Decision != "REJECTED" || rejected.Runs[0].Invocations[0].ExecutionSuccessful {
+		t.Fatalf("unexpected rejected-only update SARIF: %+v", rejected.Runs[0])
+	}
+}
+
 func TestPreReleaseSARIFProperties(t *testing.T) {
 	got := PreReleaseSARIFProperties("1", "./skill", "local-dir", "PASS", "note")
 	want := SARIFProperties{
