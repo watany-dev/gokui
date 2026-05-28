@@ -53,6 +53,11 @@ func TestCatalogIncludesScanRules(t *testing.T) {
 		{GitHubArchiveRedirectUserinfoDisallowed, "GITHUB_ARCHIVE_REDIRECT_USERINFO_DISALLOWED", SeverityHigh},
 		{GitHubArchiveContentTypeInvalid, "GITHUB_ARCHIVE_CONTENT_TYPE_INVALID", SeverityHigh},
 		{GitHubArchiveContentEncodingInvalid, "GITHUB_ARCHIVE_CONTENT_ENCODING_INVALID", SeverityHigh},
+		{SourceMetadataFileTooLarge, "SOURCE_METADATA_FILE_TOO_LARGE", SeverityHigh},
+		{SourceMetadataSymlink, "SOURCE_METADATA_SYMLINK_DETECTED", SeverityHigh},
+		{SourceMetadataSpecialFile, "SOURCE_METADATA_SPECIAL_FILE", SeverityHigh},
+		{SourceMetadataSourceChangedDuringRead, "SOURCE_METADATA_SOURCE_CHANGED_DURING_READ", SeverityHigh},
+		{SourceMetadataInvalidUTF8, "SOURCE_METADATA_INVALID_UTF8", SeverityHigh},
 	}
 
 	for _, tc := range cases {

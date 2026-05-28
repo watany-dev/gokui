@@ -7,6 +7,8 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+
+	rulepkg "github.com/watany-dev/gokui/internal/rule"
 )
 
 func TestInstallUsesAndValidatesSourceMetadata(t *testing.T) {
@@ -204,7 +206,7 @@ func TestWriteInstallMetadataGitHubSource(t *testing.T) {
 			Installed:     true,
 			InstalledPath: skillRoot,
 		}
-		if err := writeInstallMetadata(skillRoot, report); err == nil || !strings.Contains(err.Error(), ruleSourceMetadataSpecialFile) {
+		if err := writeInstallMetadata(skillRoot, report); err == nil || !strings.Contains(err.Error(), rulepkg.SourceMetadataSpecialFile.ID) {
 			t.Fatalf("expected source metadata write error, got %v", err)
 		}
 	})

@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	rulepkg "github.com/watany-dev/gokui/internal/rule"
 	srcpkg "github.com/watany-dev/gokui/internal/source"
 )
 
@@ -292,14 +293,14 @@ func TestRunFetchJSONErrorCodes(t *testing.T) {
 					return sourceDir, nil, nil
 				},
 				WriteSourceMetadata: func(skillRoot string, meta sourceMetadata) error {
-					return errors.New(ruleSourceMetadataSymlink + ": source metadata file must not be a symlink")
+					return errors.New(rulepkg.SourceMetadataSymlink.ID + ": source metadata file must not be a symlink")
 				},
 			},
 		)
 		if code != 1 || !strings.Contains(stdout.String(), fetchErrorCodeMetadataWriteFailed) {
 			t.Fatalf("expected metadata-write-failed code for rule-prefixed error, got code=%d stdout=%q stderr=%q", code, stdout.String(), stderr.String())
 		}
-		if !strings.Contains(stdout.String(), "\"rule_id\": \""+ruleSourceMetadataSymlink+"\"") {
+		if !strings.Contains(stdout.String(), "\"rule_id\": \""+rulepkg.SourceMetadataSymlink.ID+"\"") {
 			t.Fatalf("stdout should include metadata-write rule_id, got %q", stdout.String())
 		}
 	})

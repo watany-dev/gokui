@@ -6,6 +6,8 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+
+	rulepkg "github.com/watany-dev/gokui/internal/rule"
 )
 
 func TestSourceMetadataHelpers(t *testing.T) {
@@ -106,10 +108,10 @@ func TestSourceMetadataHelpers(t *testing.T) {
 		if err := os.Mkdir(filepath.Join(dirAsMeta, sourceMetadataFile), 0o755); err != nil {
 			t.Fatalf("mkdir metadata directory: %v", err)
 		}
-		if _, _, err := readSourceMetadata(dirAsMeta); err == nil || !strings.Contains(err.Error(), ruleSourceMetadataSpecialFile) {
+		if _, _, err := readSourceMetadata(dirAsMeta); err == nil || !strings.Contains(err.Error(), rulepkg.SourceMetadataSpecialFile.ID) {
 			t.Fatalf("expected read error, got %v", err)
 		}
-		if err := writeSourceMetadata(dirAsMeta, sourceMetadata{Schema: sourceMetadataSchemaVersion}); err == nil || !strings.Contains(err.Error(), ruleSourceMetadataSpecialFile) {
+		if err := writeSourceMetadata(dirAsMeta, sourceMetadata{Schema: sourceMetadataSchemaVersion}); err == nil || !strings.Contains(err.Error(), rulepkg.SourceMetadataSpecialFile.ID) {
 			t.Fatalf("expected metadata write special-file rejection, got %v", err)
 		}
 
@@ -122,7 +124,7 @@ func TestSourceMetadataHelpers(t *testing.T) {
 			if err := os.Symlink("real-source.json", filepath.Join(dirWithSymlink, sourceMetadataFile)); err != nil {
 				t.Fatalf("create metadata symlink: %v", err)
 			}
-			if _, _, err := readSourceMetadata(dirWithSymlink); err == nil || !strings.Contains(err.Error(), ruleSourceMetadataSymlink) {
+			if _, _, err := readSourceMetadata(dirWithSymlink); err == nil || !strings.Contains(err.Error(), rulepkg.SourceMetadataSymlink.ID) {
 				t.Fatalf("expected source metadata symlink rejection, got %v", err)
 			}
 
@@ -150,7 +152,7 @@ func TestSourceMetadataHelpers(t *testing.T) {
 			if err := os.Symlink("real-parent", linkParent); err != nil {
 				t.Fatalf("create parent symlink: %v", err)
 			}
-			if _, _, err := readSourceMetadata(filepath.Join(linkParent, "skill")); err == nil || !strings.Contains(err.Error(), ruleSourceMetadataSymlink) {
+			if _, _, err := readSourceMetadata(filepath.Join(linkParent, "skill")); err == nil || !strings.Contains(err.Error(), rulepkg.SourceMetadataSymlink.ID) {
 				t.Fatalf("expected ancestor source metadata symlink rejection, got %v", err)
 			}
 
@@ -162,7 +164,7 @@ func TestSourceMetadataHelpers(t *testing.T) {
 			if err := os.Symlink("real-target.json", filepath.Join(writeSymlinkDir, sourceMetadataFile)); err != nil {
 				t.Fatalf("create write-path metadata symlink: %v", err)
 			}
-			if err := writeSourceMetadata(writeSymlinkDir, sourceMetadata{Schema: sourceMetadataSchemaVersion}); err == nil || !strings.Contains(err.Error(), ruleSourceMetadataSymlink) {
+			if err := writeSourceMetadata(writeSymlinkDir, sourceMetadata{Schema: sourceMetadataSchemaVersion}); err == nil || !strings.Contains(err.Error(), rulepkg.SourceMetadataSymlink.ID) {
 				t.Fatalf("expected metadata write symlink rejection, got %v", err)
 			}
 			targetAfterWrite, err := os.ReadFile(writeTarget)
@@ -186,7 +188,7 @@ func TestSourceMetadataHelpers(t *testing.T) {
 			if err := os.Symlink("real-parent", writeLinkParent); err != nil {
 				t.Fatalf("create write parent symlink: %v", err)
 			}
-			if err := writeSourceMetadata(filepath.Join(writeLinkParent, "skill"), sourceMetadata{Schema: sourceMetadataSchemaVersion}); err == nil || !strings.Contains(err.Error(), ruleSourceMetadataSymlink) {
+			if err := writeSourceMetadata(filepath.Join(writeLinkParent, "skill"), sourceMetadata{Schema: sourceMetadataSchemaVersion}); err == nil || !strings.Contains(err.Error(), rulepkg.SourceMetadataSymlink.ID) {
 				t.Fatalf("expected ancestor metadata write symlink rejection, got %v", err)
 			}
 		}
@@ -206,7 +208,7 @@ func TestSourceMetadataHelpers(t *testing.T) {
 		if err := os.WriteFile(filepath.Join(dirWithInvalidUTF8, sourceMetadataFile), invalidUTF8Metadata, 0o644); err != nil {
 			t.Fatalf("write invalid-utf8 metadata: %v", err)
 		}
-		if _, _, err := readSourceMetadata(dirWithInvalidUTF8); err == nil || !strings.Contains(err.Error(), ruleSourceMetadataInvalidUTF8) {
+		if _, _, err := readSourceMetadata(dirWithInvalidUTF8); err == nil || !strings.Contains(err.Error(), rulepkg.SourceMetadataInvalidUTF8.ID) {
 			t.Fatalf("expected invalid utf-8 metadata error, got %v", err)
 		}
 
@@ -225,7 +227,7 @@ func TestSourceMetadataHelpers(t *testing.T) {
 		if err := os.WriteFile(filepath.Join(oversizedDir, sourceMetadataFile), []byte(`{"schema":"gokui.source/v1"}`), 0o644); err != nil {
 			t.Fatalf("write oversized metadata: %v", err)
 		}
-		if _, _, err := readSourceMetadata(oversizedDir); err == nil || !strings.Contains(err.Error(), ruleSourceMetadataFileTooLarge) {
+		if _, _, err := readSourceMetadata(oversizedDir); err == nil || !strings.Contains(err.Error(), rulepkg.SourceMetadataFileTooLarge.ID) {
 			t.Fatalf("expected oversized metadata error, got %v", err)
 		}
 
@@ -279,7 +281,7 @@ func TestSourceMetadataHelpers(t *testing.T) {
 			t.Fatalf("same file should pass, got %v", err)
 		}
 		err = ensureSourceMetadataStableFile(firstInfo, secondInfo, secondPath)
-		if err == nil || !strings.Contains(err.Error(), ruleSourceMetadataSourceChanged) {
+		if err == nil || !strings.Contains(err.Error(), rulepkg.SourceMetadataSourceChangedDuringRead.ID) {
 			t.Fatalf("expected changed-source error, got %v", err)
 		}
 	})

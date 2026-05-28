@@ -244,6 +244,31 @@ var (
 		Severity:    SeverityHigh,
 		Description: "GitHub archive response content encoding is invalid",
 	}
+	SourceMetadataFileTooLarge = Rule{
+		ID:          "SOURCE_METADATA_FILE_TOO_LARGE",
+		Severity:    SeverityHigh,
+		Description: "source metadata file exceeds the size limit",
+	}
+	SourceMetadataSymlink = Rule{
+		ID:          "SOURCE_METADATA_SYMLINK_DETECTED",
+		Severity:    SeverityHigh,
+		Description: "source metadata path contains a symlink",
+	}
+	SourceMetadataSpecialFile = Rule{
+		ID:          "SOURCE_METADATA_SPECIAL_FILE",
+		Severity:    SeverityHigh,
+		Description: "source metadata path is not a regular file",
+	}
+	SourceMetadataSourceChangedDuringRead = Rule{
+		ID:          "SOURCE_METADATA_SOURCE_CHANGED_DURING_READ",
+		Severity:    SeverityHigh,
+		Description: "source metadata changed while being read",
+	}
+	SourceMetadataInvalidUTF8 = Rule{
+		ID:          "SOURCE_METADATA_INVALID_UTF8",
+		Severity:    SeverityHigh,
+		Description: "source metadata must be valid UTF-8",
+	}
 )
 
 var catalog = []Rule{
@@ -292,6 +317,11 @@ var catalog = []Rule{
 	GitHubArchiveRedirectUserinfoDisallowed,
 	GitHubArchiveContentTypeInvalid,
 	GitHubArchiveContentEncodingInvalid,
+	SourceMetadataFileTooLarge,
+	SourceMetadataSymlink,
+	SourceMetadataSpecialFile,
+	SourceMetadataSourceChangedDuringRead,
+	SourceMetadataInvalidUTF8,
 }
 
 var catalogByID = buildCatalogByID(catalog)
