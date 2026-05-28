@@ -377,24 +377,12 @@ func lockVerifyDriftSARIFResult(ruleID string, path string, reason string) repor
 
 func writeLockVerifyJSONError(stdout io.Writer, stderr io.Writer, report lockVerifyErrorReport) int {
 	report.Status, report.ErrorCode, report.RuleID = normalizeStructuredErrorFields(report.ErrorCode, report.RuleID, report.Message, lockVerifyErrorCodeUnknown)
-	out, err := json.MarshalIndent(report, "", "  ")
-	if err != nil {
-		_, _ = fmt.Fprintln(stderr, "failed to render lock verify error report")
-		return exitcode.Error.Int()
-	}
-	_, _ = fmt.Fprintf(stdout, "%s\n", out)
-	return exitcode.Error.Int()
+	return writeIndentedJSONLine(stdout, stderr, report, "failed to render lock verify error report")
 }
 
 func writeLockVerifySARIFError(stdout io.Writer, stderr io.Writer, report lockVerifyErrorReport) int {
 	report.Status, report.ErrorCode, report.RuleID = normalizeStructuredErrorFields(report.ErrorCode, report.RuleID, report.Message, lockVerifyErrorCodeUnknown)
-	out, err := json.MarshalIndent(buildLockVerifySARIFErrorReport(report), "", "  ")
-	if err != nil {
-		_, _ = fmt.Fprintln(stderr, "failed to render lock verify sarif error report")
-		return exitcode.Error.Int()
-	}
-	_, _ = fmt.Fprintf(stdout, "%s\n", out)
-	return exitcode.Error.Int()
+	return writeIndentedJSONLine(stdout, stderr, buildLockVerifySARIFErrorReport(report), "failed to render lock verify sarif error report")
 }
 
 func buildLockVerifySARIFErrorReport(report lockVerifyErrorReport) reportpkg.SARIFDocument {

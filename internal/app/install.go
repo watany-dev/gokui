@@ -773,24 +773,12 @@ func extractInstallProfileArg(args []string) string {
 
 func writeInstallJSONError(stdout io.Writer, stderr io.Writer, report installErrorReport) int {
 	report.Status, report.ErrorCode, report.RuleID = normalizeStructuredErrorFields(report.ErrorCode, report.RuleID, report.Message, installErrorCodeUnknown)
-	out, err := json.MarshalIndent(report, "", "  ")
-	if err != nil {
-		_, _ = fmt.Fprintln(stderr, "failed to render install error report")
-		return exitcode.Error.Int()
-	}
-	_, _ = fmt.Fprintf(stdout, "%s\n", out)
-	return exitcode.Error.Int()
+	return writeIndentedJSONLine(stdout, stderr, report, "failed to render install error report")
 }
 
 func writeInstallSARIFError(stdout io.Writer, stderr io.Writer, report installErrorReport) int {
 	report.Status, report.ErrorCode, report.RuleID = normalizeStructuredErrorFields(report.ErrorCode, report.RuleID, report.Message, installErrorCodeUnknown)
-	out, err := json.MarshalIndent(buildInstallSARIFErrorReport(report), "", "  ")
-	if err != nil {
-		_, _ = fmt.Fprintln(stderr, "failed to render install sarif error report")
-		return exitcode.Error.Int()
-	}
-	_, _ = fmt.Fprintf(stdout, "%s\n", out)
-	return exitcode.Error.Int()
+	return writeIndentedJSONLine(stdout, stderr, buildInstallSARIFErrorReport(report), "failed to render install sarif error report")
 }
 
 func buildInstallSARIFErrorReport(report installErrorReport) reportpkg.SARIFDocument {

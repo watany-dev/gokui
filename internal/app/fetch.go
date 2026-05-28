@@ -389,24 +389,12 @@ func extractFetchSourceArg(args []string) string {
 
 func writeFetchJSONError(stdout io.Writer, stderr io.Writer, report fetchErrorReport) int {
 	report.Status, report.ErrorCode, report.RuleID = normalizeStructuredErrorFields(report.ErrorCode, report.RuleID, report.Message, fetchErrorCodeUnknown)
-	out, err := json.MarshalIndent(report, "", "  ")
-	if err != nil {
-		_, _ = fmt.Fprintln(stderr, "failed to render fetch error report")
-		return exitcode.Error.Int()
-	}
-	_, _ = fmt.Fprintf(stdout, "%s\n", out)
-	return exitcode.Error.Int()
+	return writeIndentedJSONLine(stdout, stderr, report, "failed to render fetch error report")
 }
 
 func writeFetchSARIFError(stdout io.Writer, stderr io.Writer, report fetchErrorReport) int {
 	report.Status, report.ErrorCode, report.RuleID = normalizeStructuredErrorFields(report.ErrorCode, report.RuleID, report.Message, fetchErrorCodeUnknown)
-	out, err := json.MarshalIndent(buildFetchSARIFErrorReport(report), "", "  ")
-	if err != nil {
-		_, _ = fmt.Fprintln(stderr, "failed to render fetch SARIF error report")
-		return exitcode.Error.Int()
-	}
-	_, _ = fmt.Fprintf(stdout, "%s\n", out)
-	return exitcode.Error.Int()
+	return writeIndentedJSONLine(stdout, stderr, buildFetchSARIFErrorReport(report), "failed to render fetch SARIF error report")
 }
 
 func emitFetchStructuredError(format string, stdout io.Writer, stderr io.Writer, report fetchErrorReport) bool {

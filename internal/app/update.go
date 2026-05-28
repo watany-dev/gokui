@@ -357,24 +357,12 @@ func extractUpdateTargetArg(args []string) string {
 
 func writeUpdateJSONError(stdout io.Writer, stderr io.Writer, report updateErrorReport) int {
 	report.Status, report.ErrorCode, report.RuleID = normalizeStructuredErrorFields(report.ErrorCode, report.RuleID, report.Message, updateFatalCodeUnknown)
-	out, err := json.MarshalIndent(report, "", "  ")
-	if err != nil {
-		_, _ = fmt.Fprintln(stderr, "failed to render update error report")
-		return exitcode.Error.Int()
-	}
-	_, _ = fmt.Fprintf(stdout, "%s\n", out)
-	return exitcode.Error.Int()
+	return writeIndentedJSONLine(stdout, stderr, report, "failed to render update error report")
 }
 
 func writeUpdateSARIFError(stdout io.Writer, stderr io.Writer, report updateErrorReport) int {
 	report.Status, report.ErrorCode, report.RuleID = normalizeStructuredErrorFields(report.ErrorCode, report.RuleID, report.Message, updateFatalCodeUnknown)
-	out, err := json.MarshalIndent(buildUpdateSARIFErrorReport(report), "", "  ")
-	if err != nil {
-		_, _ = fmt.Fprintln(stderr, "failed to render update sarif error report")
-		return exitcode.Error.Int()
-	}
-	_, _ = fmt.Fprintf(stdout, "%s\n", out)
-	return exitcode.Error.Int()
+	return writeIndentedJSONLine(stdout, stderr, buildUpdateSARIFErrorReport(report), "failed to render update sarif error report")
 }
 
 func buildUpdateSARIFErrorReport(report updateErrorReport) reportpkg.SARIFDocument {
