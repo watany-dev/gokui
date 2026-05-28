@@ -51,6 +51,9 @@ Recent completed increments:
 - boolean flag dispatch now uses the same parser-helper pattern; `update
   --dry-run` no longer has command-specific flag matching inline in the
   positional/unknown-option branch.
+- parse-error output fallback is centralized; command runners now share the
+  structured-output dispatch and human usage fallback for argument parsing
+  failures while keeping command-specific report construction.
 
 Validation already run after the latest parser/format increments:
 
@@ -76,6 +79,7 @@ go test ./internal/app -run 'Args|Install|Vet|Error|JSON|SARIF|Review'
 go test ./internal/app
 go test ./internal/app -run 'Args|Error|JSON|SARIF|Review|Fetch|Inspect|Vet|Install|Update|LockVerify'
 go test ./internal/app -run 'Update|Args|Error|JSON|SARIF'
+go test ./internal/app -run 'Args|Error|JSON|SARIF|Review|Fetch|Inspect|Vet|Install|Update|LockVerify'
 make test
 ```
 
@@ -339,9 +343,9 @@ slice:
    current error strings and pre-parse structured-output detection stable while
    doing this.
 3. Continue #4 by extracting any remaining command-specific structured-error
-   branching where it can be done without changing current error strings,
-   fallback source/target fields, or structured output contracts; defer changing
-   report wire structs until #9.
+   branching outside parse-error handling where it can be done without changing
+   current error strings, fallback source/target fields, or structured output
+   contracts; defer changing report wire structs until #9.
 4. Continue #8 only after #4 has a stable command error path and inspect report
    rendering remains covered by contract tests.
 
