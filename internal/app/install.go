@@ -106,11 +106,11 @@ func runInstallWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps 
 	parsed, err := parseInstallArgs(args)
 	if err != nil {
 		report := installArgsErrorReport(args, err)
-		if requestedFormat == formatpkg.JSON {
-			return writeInstallJSONError(stdout, stderr, report)
-		}
-		if requestedFormat == formatpkg.SARIF {
-			return writeInstallSARIFError(stdout, stderr, report)
+		if code, ok := writeRequestedStructuredError(requestedFormat,
+			func() int { return writeInstallJSONError(stdout, stderr, report) },
+			func() int { return writeInstallSARIFError(stdout, stderr, report) },
+		); ok {
+			return code
 		}
 		_, _ = fmt.Fprintf(stderr, "%s\n\n%s\n", err.Error(), usage())
 		return exitcode.Error.Int()

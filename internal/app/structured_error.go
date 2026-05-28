@@ -27,6 +27,17 @@ func emitStructuredError(format formatpkg.Format, writeJSON func(), writeSARIF f
 	}
 }
 
+func writeRequestedStructuredError(format formatpkg.Format, writeJSON func() int, writeSARIF func() int) (int, bool) {
+	switch format {
+	case formatpkg.JSON, formatpkg.ReviewJSON:
+		return writeJSON(), true
+	case formatpkg.SARIF:
+		return writeSARIF(), true
+	default:
+		return 0, false
+	}
+}
+
 func normalizeStructuredErrorFields(errorCode string, ruleID string, message string, fallbackCode string) (string, string, string) {
 	errorCode = normalizeJSONErrorCode(errorCode, fallbackCode)
 	if ruleID == "" {

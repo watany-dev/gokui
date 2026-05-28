@@ -89,11 +89,11 @@ func runLockVerify(args []string, stdout io.Writer, stderr io.Writer) int {
 	parsed, err := parseLockVerifyArgs(args)
 	if err != nil {
 		report := lockVerifyArgsErrorReport(args, err)
-		if requestedFormat == formatpkg.JSON {
-			return writeLockVerifyJSONError(stdout, stderr, report)
-		}
-		if requestedFormat == formatpkg.SARIF {
-			return writeLockVerifySARIFError(stdout, stderr, report)
+		if code, ok := writeRequestedStructuredError(requestedFormat,
+			func() int { return writeLockVerifyJSONError(stdout, stderr, report) },
+			func() int { return writeLockVerifySARIFError(stdout, stderr, report) },
+		); ok {
+			return code
 		}
 		_, _ = fmt.Fprintf(stderr, "%s\n\n%s\n", err.Error(), usage())
 		return exitcode.Error.Int()

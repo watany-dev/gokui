@@ -6,7 +6,6 @@ import (
 	"io"
 
 	"github.com/watany-dev/gokui/internal/cli/exitcode"
-	formatpkg "github.com/watany-dev/gokui/internal/cli/format"
 	policypkg "github.com/watany-dev/gokui/internal/policy"
 	rulepkg "github.com/watany-dev/gokui/internal/rule"
 )
@@ -165,11 +164,11 @@ func runUpdateWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps u
 	parsed, err := parseUpdateArgs(args)
 	if err != nil {
 		report := updateArgsErrorReport(args, err)
-		if requestedFormat == formatpkg.JSON {
-			return writeUpdateJSONError(stdout, stderr, report)
-		}
-		if requestedFormat == formatpkg.SARIF {
-			return writeUpdateSARIFError(stdout, stderr, report)
+		if code, ok := writeRequestedStructuredError(requestedFormat,
+			func() int { return writeUpdateJSONError(stdout, stderr, report) },
+			func() int { return writeUpdateSARIFError(stdout, stderr, report) },
+		); ok {
+			return code
 		}
 		_, _ = fmt.Fprintf(stderr, "%s\n\n%s\n", err.Error(), usage())
 		return exitcode.Error.Int()

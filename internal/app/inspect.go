@@ -34,14 +34,11 @@ func runInspectWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps 
 	input, format, err := parseInspectArgs(args)
 	if err != nil {
 		report := inspectArgsErrorReport("inspect", args, err)
-		if requestedFormat == formatpkg.JSON {
-			return writeInspectJSONError(stdout, stderr, report)
-		}
-		if requestedFormat == formatpkg.SARIF {
-			return writeInspectSARIFError(stdout, stderr, report)
-		}
-		if requestedFormat == formatpkg.ReviewJSON {
-			return writeInspectJSONError(stdout, stderr, report)
+		if code, ok := writeRequestedStructuredError(requestedFormat,
+			func() int { return writeInspectJSONError(stdout, stderr, report) },
+			func() int { return writeInspectSARIFError(stdout, stderr, report) },
+		); ok {
+			return code
 		}
 		_, _ = fmt.Fprintf(stderr, "%s\n\n%s\n", err.Error(), usage())
 		return exitcode.Error.Int()
