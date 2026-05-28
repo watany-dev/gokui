@@ -14,10 +14,9 @@ import (
 
 var errGitHubRefNotPinned = errors.New("github source requires a commit-pinned ref")
 
-var (
-	maxSkillFrontmatterBytes int64 = 1_000_000
-	errInspectSourceNotFound       = skillpkg.ErrInspectSourceNotFound
-)
+const maxSkillFrontmatterBytes int64 = 1_000_000
+
+var errInspectSourceNotFound = skillpkg.ErrInspectSourceNotFound
 
 type policyEvaluationSourceDeps struct {
 	FetchGitHubSkill func(srcpkg.GitHubSpec) (string, func(), error)

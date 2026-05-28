@@ -734,17 +734,20 @@ func TestRunInspectVetCommands(t *testing.T) {
 		var stdout bytes.Buffer
 		var stderr bytes.Buffer
 
-		origLimit := maxSkillFrontmatterBytes
-		maxSkillFrontmatterBytes = 16
-		t.Cleanup(func() { maxSkillFrontmatterBytes = origLimit })
-
 		root := t.TempDir()
 		skillBody := "---\nname: huge-skill\ndescription: Use when validating oversized frontmatter behavior.\n---\n"
 		if err := os.WriteFile(filepath.Join(root, "SKILL.md"), []byte(skillBody), 0o644); err != nil {
 			t.Fatalf("write SKILL.md: %v", err)
 		}
 
-		code := Run([]string{"inspect", root, "--format", "json"}, &stdout, &stderr, cfg)
+		code := runInspectWithDeps([]string{root, "--format", "json"}, &stdout, &stderr, inspectDeps{
+			PrepareInspectSource: func(input string, sourceKind string) (string, func(), error) {
+				if err := skillpkg.ValidateLocalDirInspectSource(input, 16); err != nil {
+					return "", nil, err
+				}
+				return input, nil, nil
+			},
+		})
 		if code != 1 {
 			t.Fatalf("Run() code = %d, want 1", code)
 		}

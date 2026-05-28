@@ -109,6 +109,9 @@ Recent completed increments:
   unit tests now use explicit read-limit helpers instead of mutating package
   globals, and lock verify command-run tests inject the verifier dependency for
   oversized lockfile coverage.
+- inspect oversized-frontmatter JSON error coverage now injects the inspect
+  source preparation dependency instead of mutating the app-level frontmatter
+  size limit.
 - SARIF error document construction now uses a shared helper for structured
   error rule ID resolution while keeping command-specific SARIF properties at
   the output boundary.
