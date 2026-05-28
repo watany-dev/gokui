@@ -12,11 +12,7 @@ import (
 
 func TestRunFetchJSONErrorCodes(t *testing.T) {
 	origFetch := fetchGitHubSkill
-	origAtomic := fetchSkillAtomicFunc
-	origWriteMeta := writeSourceMetaFunc
 	t.Cleanup(func() { fetchGitHubSkill = origFetch })
-	t.Cleanup(func() { fetchSkillAtomicFunc = origAtomic })
-	t.Cleanup(func() { writeSourceMetaFunc = origWriteMeta })
 
 	t.Run("json mode failure codes cover major branches", func(t *testing.T) {
 		sourceDir := createSkillSourceForInstallTest(t, "json-error-skill")
@@ -200,53 +196,73 @@ func TestRunFetchJSONErrorCodes(t *testing.T) {
 		stderr.Reset()
 
 		// copy failure
-		fetchSkillAtomicFunc = func(skillRoot string, outRoot string, skillName string) (string, error) {
-			return "", errors.New("copy failed")
-		}
-		code = runFetch([]string{"github:org/repo//skills/json-error-skill@8f3c2d1a4b5c6d7e8f901234567890abcdef1234", "--out", t.TempDir(), "--format", "json"}, &stdout, &stderr)
+		code = runFetchWithDeps(
+			[]string{"github:org/repo//skills/json-error-skill@8f3c2d1a4b5c6d7e8f901234567890abcdef1234", "--out", t.TempDir(), "--format", "json"},
+			&stdout,
+			&stderr,
+			fetchDeps{
+				FetchSkillAtomic: func(skillRoot string, outRoot string, skillName string) (string, error) {
+					return "", errors.New("copy failed")
+				},
+			},
+		)
 		if code != 1 || !strings.Contains(stdout.String(), fetchErrorCodeCopyFailed) {
 			t.Fatalf("expected copy-failed code, got code=%d stdout=%q stderr=%q", code, stdout.String(), stderr.String())
 		}
-		fetchSkillAtomicFunc = fetchSkillAtomic
 		stdout.Reset()
 		stderr.Reset()
 
 		// digest failure
-		fetchSkillAtomicFunc = func(skillRoot string, outRoot string, skillName string) (string, error) {
-			return filepath.Join(outRoot, "missing-after-copy"), nil
-		}
-		code = runFetch([]string{"github:org/repo//skills/json-error-skill@8f3c2d1a4b5c6d7e8f901234567890abcdef1234", "--out", t.TempDir(), "--format", "json"}, &stdout, &stderr)
+		code = runFetchWithDeps(
+			[]string{"github:org/repo//skills/json-error-skill@8f3c2d1a4b5c6d7e8f901234567890abcdef1234", "--out", t.TempDir(), "--format", "json"},
+			&stdout,
+			&stderr,
+			fetchDeps{
+				FetchSkillAtomic: func(skillRoot string, outRoot string, skillName string) (string, error) {
+					return filepath.Join(outRoot, "missing-after-copy"), nil
+				},
+			},
+		)
 		if code != 1 || !strings.Contains(stdout.String(), fetchErrorCodeDigestFailed) {
 			t.Fatalf("expected digest-failed code, got code=%d stdout=%q stderr=%q", code, stdout.String(), stderr.String())
 		}
-		fetchSkillAtomicFunc = fetchSkillAtomic
 		stdout.Reset()
 		stderr.Reset()
 
 		// source metadata write failure
-		writeSourceMetaFunc = func(skillRoot string, meta sourceMetadata) error {
-			return errors.New("meta write failed")
-		}
-		code = runFetch([]string{"github:org/repo//skills/json-error-skill@8f3c2d1a4b5c6d7e8f901234567890abcdef1234", "--out", t.TempDir(), "--format", "json"}, &stdout, &stderr)
+		code = runFetchWithDeps(
+			[]string{"github:org/repo//skills/json-error-skill@8f3c2d1a4b5c6d7e8f901234567890abcdef1234", "--out", t.TempDir(), "--format", "json"},
+			&stdout,
+			&stderr,
+			fetchDeps{
+				WriteSourceMetadata: func(skillRoot string, meta sourceMetadata) error {
+					return errors.New("meta write failed")
+				},
+			},
+		)
 		if code != 1 || !strings.Contains(stdout.String(), fetchErrorCodeMetadataWriteFailed) {
 			t.Fatalf("expected metadata-write-failed code, got code=%d stdout=%q stderr=%q", code, stdout.String(), stderr.String())
 		}
-		writeSourceMetaFunc = writeSourceMetadata
 		stdout.Reset()
 		stderr.Reset()
 
 		// source metadata write failure with rule-prefixed error
-		writeSourceMetaFunc = func(skillRoot string, meta sourceMetadata) error {
-			return errors.New(ruleSourceMetadataSymlink + ": source metadata file must not be a symlink")
-		}
-		code = runFetch([]string{"github:org/repo//skills/json-error-skill@8f3c2d1a4b5c6d7e8f901234567890abcdef1234", "--out", t.TempDir(), "--format", "json"}, &stdout, &stderr)
+		code = runFetchWithDeps(
+			[]string{"github:org/repo//skills/json-error-skill@8f3c2d1a4b5c6d7e8f901234567890abcdef1234", "--out", t.TempDir(), "--format", "json"},
+			&stdout,
+			&stderr,
+			fetchDeps{
+				WriteSourceMetadata: func(skillRoot string, meta sourceMetadata) error {
+					return errors.New(ruleSourceMetadataSymlink + ": source metadata file must not be a symlink")
+				},
+			},
+		)
 		if code != 1 || !strings.Contains(stdout.String(), fetchErrorCodeMetadataWriteFailed) {
 			t.Fatalf("expected metadata-write-failed code for rule-prefixed error, got code=%d stdout=%q stderr=%q", code, stdout.String(), stderr.String())
 		}
 		if !strings.Contains(stdout.String(), "\"rule_id\": \""+ruleSourceMetadataSymlink+"\"") {
 			t.Fatalf("stdout should include metadata-write rule_id, got %q", stdout.String())
 		}
-		writeSourceMetaFunc = writeSourceMetadata
 	})
 
 }

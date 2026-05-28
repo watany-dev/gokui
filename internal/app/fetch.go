@@ -57,14 +57,30 @@ const (
 const ruleFetchOutputSymlink = "FETCH_OUTPUT_SYMLINK_DETECTED"
 const ruleFetchOutputEntrySymlink = "FETCH_OUTPUT_ENTRY_SYMLINK_DETECTED"
 
-var (
-	fetchSkillAtomicFunc = fetchSkillAtomic
-	writeSourceMetaFunc  = writeSourceMetadata
-)
+type fetchDeps struct {
+	FetchGitHubSkill    func(srcpkg.GitHubSpec) (string, func(), error)
+	FetchSkillAtomic    func(skillRoot string, outRoot string, skillName string) (string, error)
+	WriteSourceMetadata func(skillRoot string, meta sourceMetadata) error
+	Now                 func() time.Time
+}
+
+func defaultFetchDeps() fetchDeps {
+	return fetchDeps{
+		FetchGitHubSkill:    fetchGitHubSkill,
+		FetchSkillAtomic:    fetchSkillAtomic,
+		WriteSourceMetadata: writeSourceMetadata,
+		Now:                 time.Now,
+	}
+}
 
 func runFetch(args []string, stdout io.Writer, stderr io.Writer) int {
+	return runFetchWithDeps(args, stdout, stderr, defaultFetchDeps())
+}
+
+func runFetchWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps fetchDeps) int {
 	requestedJSON := fetchArgsRequestJSON(args)
 	requestedSARIF := fetchArgsRequestSARIF(args)
+	deps = normalizeFetchDeps(deps)
 
 	parsed, err := parseFetchArgs(args)
 	if err != nil {
@@ -149,7 +165,7 @@ func runFetch(args []string, stdout io.Writer, stderr io.Writer) int {
 		return exitcode.Error.Int()
 	}
 
-	skillRoot, cleanup, err := fetchGitHubSkill(spec)
+	skillRoot, cleanup, err := deps.FetchGitHubSkill(spec)
 	if cleanup != nil {
 		defer cleanup()
 	}
@@ -230,7 +246,7 @@ func runFetch(args []string, stdout io.Writer, stderr io.Writer) int {
 		return exitcode.Error.Int()
 	}
 
-	dest, err := fetchSkillAtomicFunc(skillRoot, outRoot, meta.Name)
+	dest, err := deps.FetchSkillAtomic(skillRoot, outRoot, meta.Name)
 	if err != nil {
 		if emitFetchStructuredError(parsed.Format, stdout, stderr, fetchErrorReport{
 			SchemaVersion: reportSchemaVersion,
@@ -270,12 +286,12 @@ func runFetch(args []string, stdout io.Writer, stderr io.Writer) int {
 		_, _ = fmt.Fprintln(stderr, err.Error())
 		return exitcode.Error.Int()
 	}
-	if err := writeSourceMetaFunc(dest, sourceMetadata{
+	if err := deps.WriteSourceMetadata(dest, sourceMetadata{
 		Schema:          sourceMetadataSchemaVersion,
 		SourceInput:     parsed.Source,
 		SourceKind:      "github-source",
 		ResolvedRef:     spec.Ref,
-		FetchedAt:       time.Now().UTC().Format(time.RFC3339),
+		FetchedAt:       deps.Now().UTC().Format(time.RFC3339),
 		SkillRootSHA256: rootHash,
 	}); err != nil {
 		if emitFetchStructuredError(parsed.Format, stdout, stderr, fetchErrorReport{
@@ -327,6 +343,22 @@ func runFetch(args []string, stdout io.Writer, stderr io.Writer) int {
 	_, _ = fmt.Fprintf(stdout, "decision: %s\n", report.Decision)
 	_, _ = fmt.Fprintf(stdout, "output: %s\n", report.Output)
 	return exitcode.OK.Int()
+}
+
+func normalizeFetchDeps(deps fetchDeps) fetchDeps {
+	if deps.FetchGitHubSkill == nil {
+		deps.FetchGitHubSkill = fetchGitHubSkill
+	}
+	if deps.FetchSkillAtomic == nil {
+		deps.FetchSkillAtomic = fetchSkillAtomic
+	}
+	if deps.WriteSourceMetadata == nil {
+		deps.WriteSourceMetadata = writeSourceMetadata
+	}
+	if deps.Now == nil {
+		deps.Now = time.Now
+	}
+	return deps
 }
 
 func fetchArgsRequestJSON(args []string) bool {
