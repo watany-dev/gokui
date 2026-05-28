@@ -159,28 +159,17 @@ func emitInspectStructuredErrorCode(format string, stdout io.Writer, stderr io.W
 }
 
 func buildInspectReviewReport(report inspectReport) inspectReviewReport {
-	reviewFindings := make([]inspectReviewFinding, 0, len(report.Findings))
-	summary := inspectReviewSummary{}
+	inputs := make([]reportpkg.ReviewFindingInput, 0, len(report.Findings))
 	for _, finding := range report.Findings {
-		reviewFindings = append(reviewFindings, inspectReviewFinding{
-			ID:                 finding.ID,
-			Severity:           finding.Severity.String(),
-			FileNeutralized:    neutralizeReviewText(finding.File),
-			Line:               finding.Line,
-			SummaryNeutralized: neutralizeReviewText(finding.Summary),
+		inputs = append(inputs, reportpkg.ReviewFindingInput{
+			ID:       finding.ID,
+			Severity: finding.Severity.String(),
+			File:     finding.File,
+			Line:     finding.Line,
+			Summary:  finding.Summary,
 		})
-		summary.Total++
-		switch finding.Severity {
-		case policypkg.SeverityCritical:
-			summary.Critical++
-		case policypkg.SeverityHigh:
-			summary.High++
-		case policypkg.SeverityMedium:
-			summary.Medium++
-		case policypkg.SeverityLow:
-			summary.Low++
-		}
 	}
+	reviewFindings, summary := reportpkg.ReviewFindings(inputs)
 	return inspectReviewReport{
 		SchemaVersion: report.SchemaVersion,
 		PreRelease:    report.PreRelease,
@@ -190,9 +179,33 @@ func buildInspectReviewReport(report inspectReport) inspectReviewReport {
 		},
 		Decision:    report.Decision,
 		Neutralized: true,
-		Findings:    reviewFindings,
-		Summary:     summary,
+		Findings:    inspectReviewFindingsFromReport(reviewFindings),
+		Summary:     inspectReviewSummaryFromReport(summary),
 		Note:        report.Note,
+	}
+}
+
+func inspectReviewFindingsFromReport(findings []reportpkg.ReviewFinding) []inspectReviewFinding {
+	out := make([]inspectReviewFinding, 0, len(findings))
+	for _, finding := range findings {
+		out = append(out, inspectReviewFinding{
+			ID:                 finding.ID,
+			Severity:           finding.Severity,
+			FileNeutralized:    finding.FileNeutralized,
+			Line:               finding.Line,
+			SummaryNeutralized: finding.SummaryNeutralized,
+		})
+	}
+	return out
+}
+
+func inspectReviewSummaryFromReport(summary reportpkg.ReviewSummary) inspectReviewSummary {
+	return inspectReviewSummary{
+		Total:    summary.Total,
+		Critical: summary.Critical,
+		High:     summary.High,
+		Medium:   summary.Medium,
+		Low:      summary.Low,
 	}
 }
 

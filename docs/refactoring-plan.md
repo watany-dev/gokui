@@ -83,6 +83,9 @@ Recent completed increments:
 - structured SARIF error properties now use a shared helper for the common
   schema/source/status/error-code fields; command builders keep only their
   command-specific source kind and note text.
+- review finding neutralization and summary counting now live in
+  `internal/report`; app-level inspect/vet review output only adapts those
+  primitives into the existing JSON wire structs.
 - SARIF error document construction now uses a shared helper for structured
   error rule ID resolution while keeping command-specific SARIF properties at
   the output boundary.
@@ -138,6 +141,7 @@ go test ./internal/app -run 'SeverityOverride|Install|Update|Lock'
 go test ./internal/app -run 'StructuredError|SARIF|Inspect|Update|LockVerify|Error'
 go test ./internal/app -run 'Install|StructuredError|SARIF|Error'
 go test ./internal/app -run 'Fetch|StructuredError|SARIF|Error'
+go test ./internal/report ./internal/app -run 'Review|Inspect|Vet'
 make test
 ```
 
