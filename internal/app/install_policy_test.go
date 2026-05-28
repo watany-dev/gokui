@@ -10,11 +10,11 @@ import (
 
 func TestEvaluateSkillDecision(t *testing.T) {
 	passRoot := createSkillSourceForInstallTest(t, "eval-pass-skill")
-	rejectSet, err := effectiveRejectSeveritySetForProfile(policyProfileStrict, false, policypkg.Config{})
+	rejectSet, err := effectiveRejectSeverityStrings(policypkg.ProfileStrict, false, policypkg.Config{})
 	if err != nil {
-		t.Fatalf("effectiveRejectSeveritySetForProfile(strict) error = %v", err)
+		t.Fatalf("effectiveRejectSeverityStrings(strict) error = %v", err)
 	}
-	findings, decision, _, err := evaluateSkillWithOverrides(passRoot, policyProfileStrict, nil, rejectSet)
+	findings, decision, _, err := evaluateSkillWithOverrides(passRoot, policypkg.ProfileStrict.String(), nil, rejectSet)
 	if err != nil {
 		t.Fatalf("evaluateSkillWithOverrides(pass) error = %v", err)
 	}
@@ -23,7 +23,7 @@ func TestEvaluateSkillDecision(t *testing.T) {
 	}
 
 	rejectRoot := filepath.FromSlash("../../fixtures/fake-prereq-skill")
-	findings, decision, _, err = evaluateSkillWithOverrides(rejectRoot, policyProfileStrict, nil, rejectSet)
+	findings, decision, _, err = evaluateSkillWithOverrides(rejectRoot, policypkg.ProfileStrict.String(), nil, rejectSet)
 	if err != nil {
 		t.Fatalf("evaluateSkillWithOverrides(reject) error = %v", err)
 	}
@@ -44,11 +44,11 @@ func TestEvaluateSkillDecisionByProfile(t *testing.T) {
 		t.Fatalf("write SKILL.md: %v", err)
 	}
 
-	strictSet, err := effectiveRejectSeveritySetForProfile(policyProfileStrict, false, policypkg.Config{})
+	strictSet, err := effectiveRejectSeverityStrings(policypkg.ProfileStrict, false, policypkg.Config{})
 	if err != nil {
-		t.Fatalf("effectiveRejectSeveritySetForProfile(strict) error = %v", err)
+		t.Fatalf("effectiveRejectSeverityStrings(strict) error = %v", err)
 	}
-	findings, strictDecision, _, err := evaluateSkillWithOverrides(source, policyProfileStrict, nil, strictSet)
+	findings, strictDecision, _, err := evaluateSkillWithOverrides(source, policypkg.ProfileStrict.String(), nil, strictSet)
 	if err != nil {
 		t.Fatalf("evaluateSkillWithOverrides(strict) error = %v", err)
 	}
@@ -59,11 +59,11 @@ func TestEvaluateSkillDecisionByProfile(t *testing.T) {
 		t.Fatal("strict findings should not be empty")
 	}
 
-	teamSet, err := effectiveRejectSeveritySetForProfile(policyProfileTeam, false, policypkg.Config{})
+	teamSet, err := effectiveRejectSeverityStrings(policypkg.ProfileTeam, false, policypkg.Config{})
 	if err != nil {
-		t.Fatalf("effectiveRejectSeveritySetForProfile(team) error = %v", err)
+		t.Fatalf("effectiveRejectSeverityStrings(team) error = %v", err)
 	}
-	_, teamDecision, _, err := evaluateSkillWithOverrides(source, policyProfileTeam, nil, teamSet)
+	_, teamDecision, _, err := evaluateSkillWithOverrides(source, policypkg.ProfileTeam.String(), nil, teamSet)
 	if err != nil {
 		t.Fatalf("evaluateSkillWithOverrides(team) error = %v", err)
 	}
@@ -71,11 +71,11 @@ func TestEvaluateSkillDecisionByProfile(t *testing.T) {
 		t.Fatalf("team decision = %q, want REJECTED", teamDecision)
 	}
 
-	researchSet, err := effectiveRejectSeveritySetForProfile(policyProfileResearch, false, policypkg.Config{})
+	researchSet, err := effectiveRejectSeverityStrings(policypkg.ProfileResearch, false, policypkg.Config{})
 	if err != nil {
-		t.Fatalf("effectiveRejectSeveritySetForProfile(research) error = %v", err)
+		t.Fatalf("effectiveRejectSeverityStrings(research) error = %v", err)
 	}
-	_, researchDecision, _, err := evaluateSkillWithOverrides(source, policyProfileResearch, nil, researchSet)
+	_, researchDecision, _, err := evaluateSkillWithOverrides(source, policypkg.ProfileResearch.String(), nil, researchSet)
 	if err != nil {
 		t.Fatalf("evaluateSkillWithOverrides(research) error = %v", err)
 	}

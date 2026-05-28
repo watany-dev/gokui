@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"encoding/json"
+	policypkg "github.com/watany-dev/gokui/internal/policy"
 	reportpkg "github.com/watany-dev/gokui/internal/report"
 	"os"
 	"path/filepath"
@@ -95,8 +96,8 @@ func TestParseVetArgs(t *testing.T) {
 		if format != "human" {
 			t.Fatalf("format = %q, want %q", format, "human")
 		}
-		if profile != policyProfileStrict || profileSet {
-			t.Fatalf("profile/profileSet = %q/%t, want %q/false", profile, profileSet, policyProfileStrict)
+		if profile != policypkg.ProfileStrict.String() || profileSet {
+			t.Fatalf("profile/profileSet = %q/%t, want %q/false", profile, profileSet, policypkg.ProfileStrict.String())
 		}
 	})
 

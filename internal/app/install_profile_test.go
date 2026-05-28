@@ -2,6 +2,7 @@ package app
 
 import (
 	"encoding/json"
+	policypkg "github.com/watany-dev/gokui/internal/policy"
 	"os"
 	"path/filepath"
 	"strings"
@@ -35,8 +36,8 @@ func TestRunInstallProfiles(t *testing.T) {
 		if err := json.Unmarshal(lockRaw, &lock); err != nil {
 			t.Fatalf("unmarshal lock: %v", err)
 		}
-		if lock.Policy.Profile != policyProfileTeam {
-			t.Fatalf("lock policy profile = %q, want %q", lock.Policy.Profile, policyProfileTeam)
+		if lock.Policy.Profile != policypkg.ProfileTeam.String() {
+			t.Fatalf("lock policy profile = %q, want %q", lock.Policy.Profile, policypkg.ProfileTeam.String())
 		}
 	})
 
@@ -85,8 +86,8 @@ func TestRunInstallProfiles(t *testing.T) {
 		if report.Decision != "PASS" {
 			t.Fatalf("research decision = %q, want PASS", report.Decision)
 		}
-		if report.PolicyProfile != policyProfileResearch {
-			t.Fatalf("research profile = %q, want %q", report.PolicyProfile, policyProfileResearch)
+		if report.PolicyProfile != policypkg.ProfileResearch.String() {
+			t.Fatalf("research profile = %q, want %q", report.PolicyProfile, policypkg.ProfileResearch.String())
 		}
 	})
 
@@ -126,8 +127,8 @@ func TestRunInstallProfiles(t *testing.T) {
 		if err := json.Unmarshal([]byte(stdout.String()), &report); err != nil {
 			t.Fatalf("json parse failed: %v", err)
 		}
-		if report.PolicyProfile != policyProfileResearch {
-			t.Fatalf("policy profile = %q, want %q", report.PolicyProfile, policyProfileResearch)
+		if report.PolicyProfile != policypkg.ProfileResearch.String() {
+			t.Fatalf("policy profile = %q, want %q", report.PolicyProfile, policypkg.ProfileResearch.String())
 		}
 	})
 
@@ -201,8 +202,8 @@ func TestRunInstallProfiles(t *testing.T) {
 		if err := json.Unmarshal([]byte(stdout.String()), &report); err != nil {
 			t.Fatalf("json parse failed: %v", err)
 		}
-		if report.PolicyProfile != policyProfileResearch {
-			t.Fatalf("policy profile = %q, want %q", report.PolicyProfile, policyProfileResearch)
+		if report.PolicyProfile != policypkg.ProfileResearch.String() {
+			t.Fatalf("policy profile = %q, want %q", report.PolicyProfile, policypkg.ProfileResearch.String())
 		}
 		if report.Decision != "PASS" {
 			t.Fatalf("decision = %q, want PASS", report.Decision)
@@ -240,8 +241,8 @@ func TestRunInstallProfiles(t *testing.T) {
 		if err := json.Unmarshal([]byte(stdout.String()), &report); err != nil {
 			t.Fatalf("json parse failed: %v", err)
 		}
-		if report.PolicyProfile != policyProfileStrict {
-			t.Fatalf("policy profile = %q, want %q", report.PolicyProfile, policyProfileStrict)
+		if report.PolicyProfile != policypkg.ProfileStrict.String() {
+			t.Fatalf("policy profile = %q, want %q", report.PolicyProfile, policypkg.ProfileStrict.String())
 		}
 		if report.Decision != "REJECTED" {
 			t.Fatalf("decision = %q, want REJECTED", report.Decision)

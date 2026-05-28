@@ -2,6 +2,7 @@ package app
 
 import (
 	"errors"
+	policypkg "github.com/watany-dev/gokui/internal/policy"
 	"strings"
 	"testing"
 )
@@ -84,7 +85,7 @@ func TestStructuredErrorWritersHandleStdoutWriteFailure(t *testing.T) {
 			Message:       "write failed",
 			Source:        source{Input: "/tmp/skill", Kind: "local-dir"},
 			Target:        "custom:/tmp/skills",
-			PolicyProfile: policyProfileStrict,
+			PolicyProfile: policypkg.ProfileStrict.String(),
 			Note:          "test",
 		})
 		if code != 1 {
@@ -101,7 +102,7 @@ func TestStructuredErrorWritersHandleStdoutWriteFailure(t *testing.T) {
 			Message:       "write failed",
 			Source:        source{Input: "/tmp/skill", Kind: "local-dir"},
 			Target:        "custom:/tmp/skills",
-			PolicyProfile: policyProfileStrict,
+			PolicyProfile: policypkg.ProfileStrict.String(),
 			Note:          "test",
 		})
 		if code != 1 {
@@ -240,7 +241,7 @@ func TestStructuredErrorWritersPreserveExplicitRuleID(t *testing.T) {
 			Message:       "install failed",
 			Source:        source{Input: "/tmp/skill", Kind: "local-dir"},
 			Target:        "custom:/tmp/skills",
-			PolicyProfile: policyProfileStrict,
+			PolicyProfile: policypkg.ProfileStrict.String(),
 			Note:          "test",
 		}
 

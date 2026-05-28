@@ -6,21 +6,21 @@ import (
 	policypkg "github.com/watany-dev/gokui/internal/policy"
 )
 
-func TestPolicyProfileHelpers(t *testing.T) {
-	if got := normalizePolicyProfile(" Team "); got != policyProfileTeam {
-		t.Fatalf("normalizePolicyProfile() = %q, want %q", got, policyProfileTeam)
+func TestPolicyProfileAPI(t *testing.T) {
+	if got := policypkg.NormalizeProfile(" Team ").String(); got != policypkg.ProfileTeam.String() {
+		t.Fatalf("NormalizeProfile() = %q, want %q", got, policypkg.ProfileTeam.String())
 	}
 
-	if !isSupportedPolicyProfile(policyProfileStrict) {
+	if _, err := policypkg.ParseProfile(policypkg.ProfileStrict.String()); err != nil {
 		t.Fatal("strict should be supported")
 	}
-	if !isSupportedPolicyProfile(policyProfileTeam) {
+	if _, err := policypkg.ParseProfile(policypkg.ProfileTeam.String()); err != nil {
 		t.Fatal("team should be supported")
 	}
-	if !isSupportedPolicyProfile(policyProfileResearch) {
+	if _, err := policypkg.ParseProfile(policypkg.ProfileResearch.String()); err != nil {
 		t.Fatal("research should be supported")
 	}
-	if isSupportedPolicyProfile("enterprise") {
+	if _, err := policypkg.ParseProfile("enterprise"); err == nil {
 		t.Fatal("enterprise should not be supported")
 	}
 }
@@ -44,9 +44,9 @@ func TestDefaultRejectSeveritySetForProfile(t *testing.T) {
 
 func TestEffectiveRejectSeveritySetForProfile(t *testing.T) {
 	t.Run("uses defaults without policy", func(t *testing.T) {
-		set, err := effectiveRejectSeveritySetForProfile(policyProfileStrict, false, policypkg.Config{})
+		set, err := effectiveRejectSeverityStrings(policypkg.ProfileStrict, false, policypkg.Config{})
 		if err != nil {
-			t.Fatalf("effectiveRejectSeveritySetForProfile() error = %v", err)
+			t.Fatalf("effectiveRejectSeverityStrings() error = %v", err)
 		}
 		if _, ok := set["critical"]; !ok {
 			t.Fatal("default strict set must include critical")
@@ -57,13 +57,13 @@ func TestEffectiveRejectSeveritySetForProfile(t *testing.T) {
 	})
 
 	t.Run("allows policy override including medium", func(t *testing.T) {
-		set, err := effectiveRejectSeveritySetForProfile(policyProfileTeam, true, policypkg.Config{
+		set, err := effectiveRejectSeverityStrings(policypkg.ProfileTeam, true, policypkg.Config{
 			Profiles: map[string]policypkg.ProfileConfig{
 				"team": {RejectSeverities: []string{"critical", "medium"}},
 			},
 		})
 		if err != nil {
-			t.Fatalf("effectiveRejectSeveritySetForProfile() error = %v", err)
+			t.Fatalf("effectiveRejectSeverityStrings() error = %v", err)
 		}
 		if _, ok := set["medium"]; !ok {
 			t.Fatal("policy override set must include medium")
@@ -74,7 +74,7 @@ func TestEffectiveRejectSeveritySetForProfile(t *testing.T) {
 	})
 
 	t.Run("rejects profile override missing critical", func(t *testing.T) {
-		_, err := effectiveRejectSeveritySetForProfile(policyProfileResearch, true, policypkg.Config{
+		_, err := effectiveRejectSeverityStrings(policypkg.ProfileResearch, true, policypkg.Config{
 			Profiles: map[string]policypkg.ProfileConfig{
 				"research": {RejectSeverities: []string{"high"}},
 			},

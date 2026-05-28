@@ -65,7 +65,7 @@ func TestEvaluateUpdateSkillAdditionalBranches(t *testing.T) {
 				},
 			},
 			Policy: lockPolicy{
-				Profile:  policyProfileStrict,
+				Profile:  policypkg.ProfileStrict.String(),
 				Decision: "pass",
 			},
 		}
@@ -105,7 +105,7 @@ func TestEvaluateUpdateSkillAdditionalBranches(t *testing.T) {
 				Kind:  "local-dir",
 			},
 			Policy: lockPolicy{
-				Profile:  policyProfileStrict,
+				Profile:  policypkg.ProfileStrict.String(),
 				Decision: "pass",
 			},
 			Skill: lockSkill{
