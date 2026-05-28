@@ -12,7 +12,21 @@ var fetchGitHubSkill = srcpkg.FetchGitHubSkill
 
 var errGitHubRefNotPinned = errors.New("github source requires a commit-pinned ref")
 
+type policyEvaluationSourceDeps struct {
+	FetchGitHubSkill func(srcpkg.GitHubSpec) (string, func(), error)
+}
+
+func defaultPolicyEvaluationSourceDeps() policyEvaluationSourceDeps {
+	return policyEvaluationSourceDeps{
+		FetchGitHubSkill: fetchGitHubSkill,
+	}
+}
+
 func preparePolicyEvaluationSource(input string, sourceKind string) (skillRoot string, cleanup func(), err error) {
+	return preparePolicyEvaluationSourceWithDeps(input, sourceKind, defaultPolicyEvaluationSourceDeps())
+}
+
+func preparePolicyEvaluationSourceWithDeps(input string, sourceKind string, deps policyEvaluationSourceDeps) (skillRoot string, cleanup func(), err error) {
 	switch sourceKind {
 	case "github-source":
 		spec, parseErr := srcpkg.ParseGitHubSource(input)
@@ -23,7 +37,11 @@ func preparePolicyEvaluationSource(input string, sourceKind string) (skillRoot s
 			return "", nil, fmt.Errorf("%w (e.g. @8f3c2d1a4b5c6d7e8f901234567890abcdef1234)", errGitHubRefNotPinned)
 		}
 
-		root, release, fetchErr := fetchGitHubSkill(spec)
+		fetch := deps.FetchGitHubSkill
+		if fetch == nil {
+			fetch = srcpkg.FetchGitHubSkill
+		}
+		root, release, fetchErr := fetch(spec)
 		if fetchErr != nil {
 			if release != nil {
 				release()

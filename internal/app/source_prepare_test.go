@@ -59,6 +59,33 @@ func TestPreparePolicyEvaluationSource(t *testing.T) {
 		}
 	})
 
+	t.Run("github source accepts explicit fetch dependency", func(t *testing.T) {
+		sourceDir := createSkillSourceForInstallTest(t, "github-prepare-deps-skill")
+		called := false
+		root, cleanup, err := preparePolicyEvaluationSourceWithDeps(
+			"github:org/repo//skills/demo@8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
+			"github-source",
+			policyEvaluationSourceDeps{
+				FetchGitHubSkill: func(spec srcpkg.GitHubSpec) (string, func(), error) {
+					called = true
+					return sourceDir, nil, nil
+				},
+			},
+		)
+		if err != nil {
+			t.Fatalf("preparePolicyEvaluationSourceWithDeps(github) error = %v", err)
+		}
+		if cleanup != nil {
+			cleanup()
+		}
+		if !called {
+			t.Fatal("explicit fetch dependency was not called")
+		}
+		if filepath.Base(root) != "github-prepare-deps-skill" {
+			t.Fatalf("unexpected root: %q", root)
+		}
+	})
+
 	t.Run("github fetch error and cleanup on validation failure", func(t *testing.T) {
 		origFetch := fetchGitHubSkill
 		t.Cleanup(func() { fetchGitHubSkill = origFetch })
