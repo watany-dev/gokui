@@ -298,13 +298,3 @@ func runInspectWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps 
 	}
 	return exitcode.OK.Int()
 }
-
-func normalizeInspectDeps(deps inspectDeps) inspectDeps {
-	if deps.PrepareEvaluationSource == nil {
-		deps.PrepareEvaluationSource = preparePolicyEvaluationSource
-	}
-	if deps.PrepareInspectSource == nil {
-		deps.PrepareInspectSource = prepareInspectSource
-	}
-	return deps
-}

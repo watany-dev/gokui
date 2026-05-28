@@ -227,16 +227,3 @@ func runVetWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps vetD
 	}
 	return exitcode.OK.Int()
 }
-
-func normalizeVetDeps(deps vetDeps) vetDeps {
-	if deps.LoadUserPolicy == nil {
-		deps.LoadUserPolicy = policypkg.LoadUserPolicy
-	}
-	if deps.LoadRepositoryPolicy == nil {
-		deps.LoadRepositoryPolicy = policypkg.LoadRepositoryPolicy
-	}
-	if deps.RunInspect == nil {
-		deps.RunInspect = runInspect
-	}
-	return deps
-}
