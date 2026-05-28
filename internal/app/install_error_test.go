@@ -6,8 +6,6 @@ import (
 	"runtime"
 	"strings"
 	"testing"
-
-	srcpkg "github.com/watany-dev/gokui/internal/source"
 )
 
 func TestRunInstallErrorPaths(t *testing.T) {
@@ -325,13 +323,17 @@ func TestRunInstallErrorPaths(t *testing.T) {
 
 	stdout.Reset()
 	stderr.Reset()
-	origFetch := fetchGitHubSkill
-	t.Cleanup(func() { fetchGitHubSkill = origFetch })
 	fakeSource := createSkillSourceForInstallTest(t, "mocked-github-skill")
-	fetchGitHubSkill = func(spec srcpkg.GitHubSpec) (string, func(), error) {
-		return fakeSource, nil, nil
-	}
-	code = runInstall([]string{"github:org/repo//skill@8f3c2d1a4b5c6d7e8f901234567890abcdef1234", "--target", "custom:" + filepath.Join(t.TempDir(), "skills"), "--profile", "strict"}, &stdout, &stderr)
+	code = runInstallWithDeps(
+		[]string{"github:org/repo//skill@8f3c2d1a4b5c6d7e8f901234567890abcdef1234", "--target", "custom:" + filepath.Join(t.TempDir(), "skills"), "--profile", "strict"},
+		&stdout,
+		&stderr,
+		installDeps{
+			PrepareEvaluationSource: func(input string, sourceKind string) (string, func(), error) {
+				return fakeSource, nil, nil
+			},
+		},
+	)
 	if code != 0 {
 		t.Fatalf("runInstall(mock github) code = %d, want 0\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
 	}

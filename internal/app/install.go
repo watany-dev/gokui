@@ -153,9 +153,28 @@ const (
 	installErrorCodeUnknown              = "INSTALL_FAILED"
 )
 
+type installDeps struct {
+	LoadUserPolicy          func() (policypkg.Config, bool, error)
+	LoadRepositoryPolicy    func(string) (policypkg.Config, bool, error)
+	PrepareEvaluationSource func(input string, sourceKind string) (string, func(), error)
+}
+
+func defaultInstallDeps() installDeps {
+	return installDeps{
+		LoadUserPolicy:          loadUserPolicyConfig,
+		LoadRepositoryPolicy:    loadRepositoryPolicyConfig,
+		PrepareEvaluationSource: preparePolicyEvaluationSource,
+	}
+}
+
 func runInstall(args []string, stdout io.Writer, stderr io.Writer) int {
+	return runInstallWithDeps(args, stdout, stderr, defaultInstallDeps())
+}
+
+func runInstallWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps installDeps) int {
 	requestedJSON := installArgsRequestJSON(args)
 	requestedSARIF := installArgsRequestSARIF(args)
+	deps = normalizeInstallDeps(deps)
 
 	parsed, err := parseInstallArgs(args)
 	if err != nil {
@@ -196,7 +215,7 @@ func runInstall(args []string, stdout io.Writer, stderr io.Writer) int {
 		_, _ = fmt.Fprintf(stderr, "%s\n\n%s\n", err.Error(), usage())
 		return exitcode.Error.Int()
 	}
-	loadedPolicy, foundPolicy, policyErr := loadUserPolicyConfig()
+	loadedPolicy, foundPolicy, policyErr := deps.LoadUserPolicy()
 	if policyErr != nil {
 		if emitInstallStructuredError(parsed.Format, stdout, stderr, installErrorReport{
 			SchemaVersion: reportSchemaVersion,
@@ -260,7 +279,7 @@ func runInstall(args []string, stdout io.Writer, stderr io.Writer) int {
 		}
 	}
 
-	skillRoot, cleanup, err := preparePolicyEvaluationSource(parsed.Source, sourceKind)
+	skillRoot, cleanup, err := deps.PrepareEvaluationSource(parsed.Source, sourceKind)
 	if cleanup != nil {
 		defer cleanup()
 	}
@@ -287,7 +306,7 @@ func runInstall(args []string, stdout io.Writer, stderr io.Writer) int {
 	effectivePolicy := loadedPolicy
 	effectivePolicyLoaded := foundPolicy
 	if shouldApplyRepositoryPolicy(sourceKind) {
-		repoPolicy, repoPolicyFound, repoPolicyErr := loadRepositoryPolicyConfig(skillRoot)
+		repoPolicy, repoPolicyFound, repoPolicyErr := deps.LoadRepositoryPolicy(skillRoot)
 		if repoPolicyErr != nil {
 			if emitInstallStructuredError(parsed.Format, stdout, stderr, installErrorReport{
 				SchemaVersion: reportSchemaVersion,
@@ -565,6 +584,19 @@ func runInstall(args []string, stdout io.Writer, stderr io.Writer) int {
 		_, _ = fmt.Fprintf(stdout, "installed: %s\n", installedPath)
 	}
 	return exitcode.OK.Int()
+}
+
+func normalizeInstallDeps(deps installDeps) installDeps {
+	if deps.LoadUserPolicy == nil {
+		deps.LoadUserPolicy = loadUserPolicyConfig
+	}
+	if deps.LoadRepositoryPolicy == nil {
+		deps.LoadRepositoryPolicy = loadRepositoryPolicyConfig
+	}
+	if deps.PrepareEvaluationSource == nil {
+		deps.PrepareEvaluationSource = preparePolicyEvaluationSource
+	}
+	return deps
 }
 
 func parseInstallArgs(args []string) (installArgs, error) {
