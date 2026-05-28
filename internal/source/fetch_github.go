@@ -26,16 +26,73 @@ const (
 	ruleGitHubArchiveCoding  = "GITHUB_ARCHIVE_CONTENT_ENCODING_INVALID"
 )
 
-var (
-	githubCodeloadBaseURL       = "https://codeload.github.com"
-	githubHTTPClient            = &http.Client{Timeout: 30 * time.Second}
-	maxGitHubArchiveBytes int64 = 100 * 1024 * 1024
-	maxGitHubRedirects          = 10
+const (
+	defaultGitHubCodeloadBaseURL       = "https://codeload.github.com"
+	defaultMaxGitHubArchiveBytes int64 = 100 * 1024 * 1024
+	defaultMaxGitHubRedirects          = 10
 )
+
+// GitHubFetcher downloads and materializes commit-pinned GitHub skill sources.
+type GitHubFetcher struct {
+	BaseURL      string
+	HTTPClient   *http.Client
+	MaxBytes     int64
+	MaxRedirects int
+}
+
+// GitHubFetcherOption customizes a GitHubFetcher.
+type GitHubFetcherOption func(*GitHubFetcher)
+
+func WithBaseURL(baseURL string) GitHubFetcherOption {
+	return func(f *GitHubFetcher) {
+		f.BaseURL = baseURL
+	}
+}
+
+func WithHTTPClient(client *http.Client) GitHubFetcherOption {
+	return func(f *GitHubFetcher) {
+		f.HTTPClient = client
+	}
+}
+
+func WithMaxBytes(maxBytes int64) GitHubFetcherOption {
+	return func(f *GitHubFetcher) {
+		f.MaxBytes = maxBytes
+	}
+}
+
+func WithMaxRedirects(maxRedirects int) GitHubFetcherOption {
+	return func(f *GitHubFetcher) {
+		f.MaxRedirects = maxRedirects
+	}
+}
+
+func NewGitHubFetcher(opts ...GitHubFetcherOption) *GitHubFetcher {
+	f := &GitHubFetcher{}
+	defaults := []GitHubFetcherOption{
+		WithBaseURL(defaultGitHubCodeloadBaseURL),
+		WithHTTPClient(&http.Client{Timeout: 30 * time.Second}),
+		WithMaxBytes(defaultMaxGitHubArchiveBytes),
+		WithMaxRedirects(defaultMaxGitHubRedirects),
+	}
+	for _, opt := range defaults {
+		opt(f)
+	}
+	for _, opt := range opts {
+		opt(f)
+	}
+	return f
+}
 
 // FetchGitHubSkill downloads and materializes a commit-pinned GitHub skill source
 // into a temporary local directory and returns that directory plus a cleanup func.
 func FetchGitHubSkill(spec GitHubSpec) (string, func(), error) {
+	return NewGitHubFetcher().Fetch(spec)
+}
+
+// Fetch downloads and materializes a commit-pinned GitHub skill source into a
+// temporary local directory and returns that directory plus a cleanup func.
+func (f *GitHubFetcher) Fetch(spec GitHubSpec) (string, func(), error) {
 	if !IsCommitPinnedRef(spec.Ref) {
 		return "", nil, fmt.Errorf("github source fetch requires commit-pinned ref")
 	}
@@ -49,7 +106,7 @@ func FetchGitHubSkill(spec GitHubSpec) (string, func(), error) {
 	}
 
 	archivePath := filepath.Join(tempRoot, "repo.tar.gz")
-	if err := downloadGitHubArchive(spec, archivePath); err != nil {
+	if err := f.downloadGitHubArchive(spec, archivePath); err != nil {
 		cleanup()
 		return "", nil, err
 	}
@@ -90,9 +147,28 @@ func FetchGitHubSkill(spec GitHubSpec) (string, func(), error) {
 	return skillRoot, cleanup, nil
 }
 
-func downloadGitHubArchive(spec GitHubSpec, archivePath string) error {
+func (f *GitHubFetcher) downloadGitHubArchive(spec GitHubSpec, archivePath string) error {
+	if f == nil {
+		f = NewGitHubFetcher()
+	}
+	client := f.HTTPClient
+	if client == nil {
+		client = NewGitHubFetcher().HTTPClient
+	}
+	baseURL := f.BaseURL
+	if strings.TrimSpace(baseURL) == "" {
+		baseURL = defaultGitHubCodeloadBaseURL
+	}
+	maxBytes := f.MaxBytes
+	if maxBytes <= 0 {
+		maxBytes = defaultMaxGitHubArchiveBytes
+	}
+	maxRedirects := f.MaxRedirects
+	if maxRedirects <= 0 {
+		maxRedirects = defaultMaxGitHubRedirects
+	}
 	url := fmt.Sprintf("%s/%s/%s/tar.gz/%s",
-		strings.TrimRight(githubCodeloadBaseURL, "/"),
+		strings.TrimRight(baseURL, "/"),
 		spec.Owner,
 		spec.Repo,
 		spec.Ref,
@@ -110,11 +186,11 @@ func downloadGitHubArchive(spec GitHubSpec, archivePath string) error {
 	expectedScheme := req.URL.Scheme
 	expectedPort := normalizePortForScheme(expectedScheme, req.URL.Port())
 
-	client := *githubHTTPClient
-	previousCheckRedirect := client.CheckRedirect
-	client.CheckRedirect = func(next *http.Request, via []*http.Request) error {
-		if len(via) >= maxGitHubRedirects {
-			return fmt.Errorf("stopped after %d redirects", maxGitHubRedirects)
+	clientCopy := *client
+	previousCheckRedirect := clientCopy.CheckRedirect
+	clientCopy.CheckRedirect = func(next *http.Request, via []*http.Request) error {
+		if len(via) >= maxRedirects {
+			return fmt.Errorf("stopped after %d redirects", maxRedirects)
 		}
 		if !strings.EqualFold(next.URL.Scheme, expectedScheme) {
 			return fmt.Errorf("%s: github archive redirected to unexpected scheme: %s", ruleGitHubRedirectScheme, next.URL.Scheme)
@@ -135,7 +211,7 @@ func downloadGitHubArchive(spec GitHubSpec, archivePath string) error {
 		return nil
 	}
 
-	resp, err := client.Do(req)
+	resp, err := clientCopy.Do(req)
 	if err != nil {
 		return fmt.Errorf("failed to download github archive: %w", err)
 	}
@@ -147,7 +223,7 @@ func downloadGitHubArchive(spec GitHubSpec, archivePath string) error {
 	if err := validateGitHubArchiveResponseHeaders(resp); err != nil {
 		return err
 	}
-	if resp.ContentLength > maxGitHubArchiveBytes {
+	if resp.ContentLength > maxBytes {
 		return fmt.Errorf("github archive exceeds max size")
 	}
 
@@ -155,17 +231,19 @@ func downloadGitHubArchive(spec GitHubSpec, archivePath string) error {
 	if err != nil {
 		return fmt.Errorf("failed to create github archive file: %w", err)
 	}
-	defer func() {
-		_ = out.Close()
-	}()
 
-	_, err = copyWithStrictLimit(out, resp.Body, maxGitHubArchiveBytes)
+	_, err = limitio.CopyWithStrictLimit(out, resp.Body, maxBytes)
 	if err != nil {
+		_ = out.Close()
 		_ = os.Remove(archivePath)
 		if limitio.IsSizeExceeded(err) {
 			return fmt.Errorf("github archive exceeds max size")
 		}
 		return fmt.Errorf("failed to write github archive: %w", err)
+	}
+	if err := out.Close(); err != nil {
+		_ = os.Remove(archivePath)
+		return fmt.Errorf("failed to close github archive file: %w", err)
 	}
 	if err := validateGzipArchiveFile(archivePath); err != nil {
 		_ = os.Remove(archivePath)
@@ -220,10 +298,6 @@ func validateGitHubArchiveResponseHeaders(resp *http.Response) error {
 	default:
 		return fmt.Errorf("%s: github archive response has unsupported content type: %s", ruleGitHubArchiveType, mediaType)
 	}
-}
-
-func copyWithStrictLimit(dst io.Writer, src io.Reader, maxBytes int64) (int64, error) {
-	return limitio.CopyWithStrictLimit(dst, src, maxBytes)
 }
 
 func validateGzipArchiveFile(path string) error {

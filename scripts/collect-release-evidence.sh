@@ -11,6 +11,8 @@ EVIDENCE_GOCACHE="${GOCACHE:-$ROOT_DIR/.cache/go-build}"
 EVIDENCE_GOMODCACHE="${GOMODCACHE:-$ROOT_DIR/.cache/gomod}"
 EVIDENCE_GOPATH="${GOPATH:-$ROOT_DIR/.cache/gopath}"
 EVIDENCE_XDG_CACHE_HOME="${XDG_CACHE_HOME:-$ROOT_DIR/.cache/xdg}"
+EVIDENCE_FD=9
+LOG_FD=8
 WITH_VULN=0
 AUDIT_KIND="offline-audit"
 EVIDENCE_MODE="offline"
@@ -49,13 +51,9 @@ create_temp_file_for_write() {
   local dir="$1"
   local base="$2"
   local path_var="$3"
-  local fd_var="$4"
   local tmp_path
   tmp_path="$(mktemp "$dir/.${base}.tmp.XXXXXX")"
-  local fd
-  exec {fd}>>"$tmp_path"
   printf -v "$path_var" '%s' "$tmp_path"
-  printf -v "$fd_var" '%s' "$fd"
 }
 
 assert_output_path_available() {
@@ -126,7 +124,8 @@ BASENAME="${TS}-${COMMIT_SHA}-${AUDIT_KIND}"
 OUT_PATH="$OUT_DIR/${BASENAME}.md"
 assert_output_path_available "$OUT_PATH" "evidence path"
 OUT_BASENAME="$(basename "$OUT_PATH")"
-create_temp_file_for_write "$OUT_DIR" "$OUT_BASENAME" TMP_EVIDENCE_PATH EVIDENCE_FD
+create_temp_file_for_write "$OUT_DIR" "$OUT_BASENAME" TMP_EVIDENCE_PATH
+eval "exec ${EVIDENCE_FD}>>\"$TMP_EVIDENCE_PATH\""
 cleanup() {
   if [ -n "${TMP_EVIDENCE_PATH:-}" ]; then
     rm -f -- "$TMP_EVIDENCE_PATH"
@@ -164,14 +163,14 @@ run_step() {
   local log_basename
   log_basename="$(basename "$log_path")"
   local tmp_log_path
-  local log_fd
-  create_temp_file_for_write "$LOG_DIR" "$log_basename" tmp_log_path log_fd
+  create_temp_file_for_write "$LOG_DIR" "$log_basename" tmp_log_path
+  eval "exec ${LOG_FD}>>\"$tmp_log_path\""
 
   set +e
-  bash -lc "cd \"$ROOT_DIR\" && ${command_text}" >&"$log_fd" 2>&1
+  bash -lc "cd \"$ROOT_DIR\" && ${command_text}" >&"${LOG_FD}" 2>&1
   local rc=$?
   set -e
-  exec {log_fd}>&-
+  eval "exec ${LOG_FD}>&-"
   if ! mv -n "$tmp_log_path" "$log_path"; then
     rm -f -- "$tmp_log_path"
     echo "log path already exists: $log_path" >&2
@@ -190,11 +189,11 @@ run_git_clean_check() {
   local log_basename
   log_basename="$(basename "$log_path")"
   local tmp_log_path
-  local log_fd
-  create_temp_file_for_write "$LOG_DIR" "$log_basename" tmp_log_path log_fd
+  create_temp_file_for_write "$LOG_DIR" "$log_basename" tmp_log_path
+  eval "exec ${LOG_FD}>>\"$tmp_log_path\""
 
   set +e
-  bash -lc "cd \"$ROOT_DIR\" && git status --short" >&"$log_fd" 2>&1
+  bash -lc "cd \"$ROOT_DIR\" && git status --short" >&"${LOG_FD}" 2>&1
   local rc=$?
   set -e
 
@@ -203,9 +202,9 @@ run_git_clean_check() {
     {
       echo
       echo "expected clean tracked working tree, but git status returned output"
-    } >&"$log_fd"
+    } >&"${LOG_FD}"
   fi
-  exec {log_fd}>&-
+  eval "exec ${LOG_FD}>&-"
   if ! mv -n "$tmp_log_path" "$log_path"; then
     rm -f -- "$tmp_log_path"
     echo "log path already exists: $log_path" >&2
@@ -283,7 +282,7 @@ fi
   echo "- Logs directory: \`${LOG_DIR#"$ROOT_DIR"/}\`"
 } >&${EVIDENCE_FD}
 
-exec {EVIDENCE_FD}>&-
+eval "exec ${EVIDENCE_FD}>&-"
 if ! mv -n "$TMP_EVIDENCE_PATH" "$OUT_PATH"; then
   rm -f -- "$TMP_EVIDENCE_PATH"
   echo "evidence path already exists: $OUT_PATH" >&2

@@ -9,14 +9,17 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"regexp"
 	"sort"
 	"strings"
 	"time"
 	"unicode"
 	"unicode/utf8"
 
+	"github.com/watany-dev/gokui/internal/cli/exitcode"
 	"github.com/watany-dev/gokui/internal/limitio"
+	policypkg "github.com/watany-dev/gokui/internal/policy"
+	reportpkg "github.com/watany-dev/gokui/internal/report"
+	"github.com/watany-dev/gokui/internal/safefs"
 	srcpkg "github.com/watany-dev/gokui/internal/source"
 )
 
@@ -58,8 +61,6 @@ var (
 	errLockfileInvalidJSON           = errors.New("invalid lockfile JSON")
 )
 
-var severityOverrideRuleIDPattern = regexp.MustCompile(`^[A-Z][A-Z0-9_]+$`)
-
 const ruleInstallReportTooLarge = "INSTALL_REPORT_TOO_LARGE"
 const ruleInstallReportInvalidUTF8 = "INSTALL_REPORT_INVALID_UTF8"
 const ruleInstallReportSymlink = "INSTALL_REPORT_SYMLINK_DETECTED"
@@ -93,9 +94,7 @@ type lockVerifyDriftInfo struct {
 	UnexpectedFiles []string `json:"unexpected_files"`
 }
 
-type fileInfoStatter interface {
-	Stat() (os.FileInfo, error)
-}
+type fileInfoStatter = limitio.FileInfoStatter
 
 func runLockVerify(args []string, stdout io.Writer, stderr io.Writer) int {
 	requestedJSON := lockVerifyArgsRequestJSON(args)
@@ -123,7 +122,7 @@ func runLockVerify(args []string, stdout io.Writer, stderr io.Writer) int {
 			})
 		}
 		_, _ = fmt.Fprintf(stderr, "%s\n\n%s\n", err.Error(), usage())
-		return 1
+		return exitcode.Error.Int()
 	}
 
 	report, verifyErr := verifyLock(parsed.Path)
@@ -143,21 +142,21 @@ func runLockVerify(args []string, stdout io.Writer, stderr io.Writer) int {
 			return writeLockVerifySARIFError(stdout, stderr, errorReport)
 		}
 		_, _ = fmt.Fprintln(stderr, verifyErr.Error())
-		return 1
+		return exitcode.Error.Int()
 	}
 
 	if parsed.Format == "json" {
 		out, err := json.MarshalIndent(report, "", "  ")
 		if err != nil {
 			_, _ = fmt.Fprintln(stderr, "failed to render lock verify report")
-			return 1
+			return exitcode.Error.Int()
 		}
 		_, _ = fmt.Fprintf(stdout, "%s\n", out)
 	} else if parsed.Format == "sarif" {
 		out, err := json.MarshalIndent(buildLockVerifySARIFReport(report), "", "  ")
 		if err != nil {
 			_, _ = fmt.Fprintln(stderr, "failed to render lock verify sarif report")
-			return 1
+			return exitcode.Error.Int()
 		}
 		_, _ = fmt.Fprintf(stdout, "%s\n", out)
 	} else if parsed.Format == "compact" {
@@ -185,9 +184,9 @@ func runLockVerify(args []string, stdout io.Writer, stderr io.Writer) int {
 	}
 
 	if report.Status == "VERIFIED" {
-		return 0
+		return exitcode.OK.Int()
 	}
-	return 2
+	return exitcode.Rejected.Int()
 }
 
 func lockVerifyArgsRequestJSON(args []string) bool {
@@ -343,14 +342,14 @@ func buildLockVerifySARIFReport(report lockVerifyReport) inspectSARIFReport {
 	})
 
 	return inspectSARIFReport{
-		Version: "2.1.0",
-		Schema:  "https://json.schemastore.org/sarif-2.1.0.json",
+		Version: reportpkg.SARIFVersion,
+		Schema:  reportpkg.SARIFSchema,
 		Runs: []inspectSARIFRun{
 			{
 				Tool: inspectSARIFTool{
 					Driver: inspectSARIFDriver{
-						Name:    "gokui",
-						Version: "pre-release",
+						Name:    reportpkg.SARIFDriverName,
+						Version: reportpkg.SARIFDriverVersion,
 						Rules:   rules,
 					},
 				},
@@ -401,10 +400,10 @@ func writeLockVerifyJSONError(stdout io.Writer, stderr io.Writer, report lockVer
 	out, err := json.MarshalIndent(report, "", "  ")
 	if err != nil {
 		_, _ = fmt.Fprintln(stderr, "failed to render lock verify error report")
-		return 1
+		return exitcode.Error.Int()
 	}
 	_, _ = fmt.Fprintf(stdout, "%s\n", out)
-	return 1
+	return exitcode.Error.Int()
 }
 
 func writeLockVerifySARIFError(stdout io.Writer, stderr io.Writer, report lockVerifyErrorReport) int {
@@ -416,10 +415,10 @@ func writeLockVerifySARIFError(stdout io.Writer, stderr io.Writer, report lockVe
 	out, err := json.MarshalIndent(buildLockVerifySARIFErrorReport(report), "", "  ")
 	if err != nil {
 		_, _ = fmt.Fprintln(stderr, "failed to render lock verify sarif error report")
-		return 1
+		return exitcode.Error.Int()
 	}
 	_, _ = fmt.Fprintf(stdout, "%s\n", out)
-	return 1
+	return exitcode.Error.Int()
 }
 
 func buildLockVerifySARIFErrorReport(report lockVerifyErrorReport) inspectSARIFReport {
@@ -427,46 +426,14 @@ func buildLockVerifySARIFErrorReport(report lockVerifyErrorReport) inspectSARIFR
 	if report.RuleID != "" {
 		ruleID = report.RuleID
 	}
-	return inspectSARIFReport{
-		Version: "2.1.0",
-		Schema:  "https://json.schemastore.org/sarif-2.1.0.json",
-		Runs: []inspectSARIFRun{
-			{
-				Tool: inspectSARIFTool{
-					Driver: inspectSARIFDriver{
-						Name:    "gokui",
-						Version: "pre-release",
-						Rules: []inspectSARIFRule{
-							{
-								ID: ruleID,
-								ShortDescription: inspectSARIFMessageContainer{
-									Text: report.ErrorCode,
-								},
-							},
-						},
-					},
-				},
-				Results: []inspectSARIFResult{
-					{
-						RuleID:  ruleID,
-						Level:   "error",
-						Message: inspectSARIFMessageContainer{Text: report.Message},
-					},
-				},
-				Invocations: []inspectSARIFInvocation{
-					{ExecutionSuccessful: false},
-				},
-				Properties: inspectSARIFProperties{
-					SchemaVersion: report.SchemaVersion,
-					PreRelease:    true,
-					SourceInput:   report.SkillPath,
-					SourceKind:    "installed-skill",
-					Decision:      report.Status,
-					Note:          fmt.Sprintf("%s; error_code=%s", report.Note, report.ErrorCode),
-				},
-			},
-		},
-	}
+	return reportpkg.SARIFErrorDocument(ruleID, report.ErrorCode, report.Message, inspectSARIFProperties{
+		SchemaVersion: report.SchemaVersion,
+		PreRelease:    true,
+		SourceInput:   report.SkillPath,
+		SourceKind:    "installed-skill",
+		Decision:      report.Status,
+		Note:          fmt.Sprintf("%s; error_code=%s", report.Note, report.ErrorCode),
+	})
 }
 
 func verifyLock(skillPath string) (lockVerifyReport, error) {
@@ -811,7 +778,7 @@ func verifyLockStructure(lock installLock) (bool, string) {
 	if lock.Policy.Decision != "pass" {
 		return false, fmt.Sprintf("lock policy decision must be canonical lowercase pass for installed skill, got %s", lock.Policy.Decision)
 	}
-	if err := validateSeverityOverrideAudit(lock.Policy.SeverityOverrides); err != nil {
+	if err := policypkg.SeverityOverrideAuditSet(lock.Policy.SeverityOverrides).Validate(); err != nil {
 		return false, fmt.Sprintf("lock policy severity_overrides is invalid: %v", err)
 	}
 	if err := validateLockFindingSummary(lock.Findings); err != nil {
@@ -972,10 +939,10 @@ func verifyInstallReport(skillPath string, lock installLock) (bool, string) {
 	if !strings.EqualFold(report.Decision, lock.Policy.Decision) {
 		return false, "install report decision does not match lock policy decision"
 	}
-	if err := validateSeverityOverrideAudit(report.SeverityOverrides); err != nil {
+	if err := policypkg.SeverityOverrideAuditSet(report.SeverityOverrides).Validate(); err != nil {
 		return false, fmt.Sprintf("install report severity_overrides is invalid: %v", err)
 	}
-	if !severityOverridesEqual(report.SeverityOverrides, lock.Policy.SeverityOverrides) {
+	if !policypkg.SeverityOverrideAuditSet(report.SeverityOverrides).Equal(policypkg.SeverityOverrideAuditSet(lock.Policy.SeverityOverrides)) {
 		return false, "install report severity_overrides does not match lock policy severity_overrides"
 	}
 	if !strings.EqualFold(report.Decision, "pass") {
@@ -1009,34 +976,30 @@ func verifyInstallReport(skillPath string, lock installLock) (bool, string) {
 	return true, fmt.Sprintf("schema=%s decision=%s", report.SchemaVersion, report.Decision)
 }
 
-func ensureLockfileStableFile(previous os.FileInfo, current os.FileInfo, lockPath string) error {
-	if os.SameFile(previous, current) {
-		return nil
-	}
-	return fmt.Errorf("%s: %w (file changed during read): %s", ruleLockfileSourceChanged, errLockfileReadFailed, lockPath)
-}
-
 func ensureLockfileStableFromOpen(previous os.FileInfo, opened fileInfoStatter, lockPath string) error {
-	current, err := opened.Stat()
-	if err != nil {
-		return fmt.Errorf("%w: %s", errLockfileReadFailed, lockPath)
-	}
-	return ensureLockfileStableFile(previous, current, lockPath)
-}
-
-func ensureInstallReportStableFile(previous os.FileInfo, current os.FileInfo, reportPath string) error {
-	if os.SameFile(previous, current) {
-		return nil
-	}
-	return fmt.Errorf("%s: install report file changed during read: %s", ruleInstallReportSourceChanged, reportPath)
+	return safefs.Sentinel{
+		Previous: previous,
+		Path:     lockPath,
+		StatError: func(path string) error {
+			return fmt.Errorf("%w: %s", errLockfileReadFailed, path)
+		},
+		ChangedError: func(path string) error {
+			return fmt.Errorf("%s: %w (file changed during read): %s", ruleLockfileSourceChanged, errLockfileReadFailed, path)
+		},
+	}.CheckOpened(opened)
 }
 
 func ensureInstallReportStableFromOpen(previous os.FileInfo, opened fileInfoStatter, reportPath string) error {
-	current, err := opened.Stat()
-	if err != nil {
-		return fmt.Errorf("failed to read install report: %s", reportPath)
-	}
-	return ensureInstallReportStableFile(previous, current, reportPath)
+	return safefs.Sentinel{
+		Previous: previous,
+		Path:     reportPath,
+		StatError: func(path string) error {
+			return fmt.Errorf("failed to read install report: %s", path)
+		},
+		ChangedError: func(path string) error {
+			return fmt.Errorf("%s: install report file changed during read: %s", ruleInstallReportSourceChanged, path)
+		},
+	}.CheckOpened(opened)
 }
 
 func isCanonicalSHA256Hex(in string) bool {
@@ -1125,143 +1088,6 @@ func containsSeverityOverrideDisallowedUnicode(s string) bool {
 	return false
 }
 
-func validateSeverityOverrideAudit(overrides []severityOverrideAudit) error {
-	seenRuleIDs := make(map[string]struct{}, len(overrides))
-	for idx, override := range overrides {
-		if strings.IndexFunc(override.RuleID, isC0OrC1ControlRune) >= 0 {
-			return fmt.Errorf("entry %d: rule_id must not contain C0/C1 control characters", idx)
-		}
-		if containsSeverityOverrideDisallowedUnicode(override.RuleID) {
-			return fmt.Errorf("entry %d: rule_id must not contain Unicode bidi, zero-width, tag, or variation-selector characters", idx)
-		}
-		ruleID := strings.TrimSpace(override.RuleID)
-		if ruleID == "" {
-			return fmt.Errorf("entry %d: rule_id is empty", idx)
-		}
-		if ruleID != override.RuleID {
-			return fmt.Errorf("entry %d: rule_id must not contain leading or trailing whitespace", idx)
-		}
-		if !severityOverrideRuleIDPattern.MatchString(ruleID) {
-			return fmt.Errorf("entry %d: rule_id must be canonical uppercase snake case", idx)
-		}
-		if _, exists := seenRuleIDs[ruleID]; exists {
-			return fmt.Errorf("entry %d: duplicate rule_id is not allowed: %s", idx, ruleID)
-		}
-		seenRuleIDs[ruleID] = struct{}{}
-		if strings.IndexFunc(override.PreviousSeverity, isC0OrC1ControlRune) >= 0 {
-			return fmt.Errorf("entry %d: previous_severity must not contain C0/C1 control characters", idx)
-		}
-		if containsSeverityOverrideDisallowedUnicode(override.PreviousSeverity) {
-			return fmt.Errorf("entry %d: previous_severity must not contain Unicode bidi, zero-width, tag, or variation-selector characters", idx)
-		}
-		previousSeverity := strings.TrimSpace(override.PreviousSeverity)
-		if previousSeverity == "" {
-			return fmt.Errorf("entry %d: previous_severity is empty", idx)
-		}
-		if previousSeverity != override.PreviousSeverity {
-			return fmt.Errorf("entry %d: previous_severity must not contain leading or trailing whitespace", idx)
-		}
-		if !isCanonicalSeverity(previousSeverity) {
-			return fmt.Errorf("entry %d: previous_severity must be canonical severity (critical|high|medium|low)", idx)
-		}
-		if strings.IndexFunc(override.EffectiveSeverity, isC0OrC1ControlRune) >= 0 {
-			return fmt.Errorf("entry %d: effective_severity must not contain C0/C1 control characters", idx)
-		}
-		if containsSeverityOverrideDisallowedUnicode(override.EffectiveSeverity) {
-			return fmt.Errorf("entry %d: effective_severity must not contain Unicode bidi, zero-width, tag, or variation-selector characters", idx)
-		}
-		effectiveSeverity := strings.TrimSpace(override.EffectiveSeverity)
-		if effectiveSeverity == "" {
-			return fmt.Errorf("entry %d: effective_severity is empty", idx)
-		}
-		if effectiveSeverity != override.EffectiveSeverity {
-			return fmt.Errorf("entry %d: effective_severity must not contain leading or trailing whitespace", idx)
-		}
-		if !isCanonicalSeverity(effectiveSeverity) {
-			return fmt.Errorf("entry %d: effective_severity must be canonical severity (critical|high|medium|low)", idx)
-		}
-		if strings.IndexFunc(override.Justification, isC0OrC1ControlRune) >= 0 {
-			return fmt.Errorf("entry %d: justification must not contain C0/C1 control characters", idx)
-		}
-		if containsSeverityOverrideDisallowedUnicode(override.Justification) {
-			return fmt.Errorf("entry %d: justification must not contain Unicode bidi, zero-width, tag, or variation-selector characters", idx)
-		}
-		justification := strings.TrimSpace(override.Justification)
-		if justification == "" {
-			return fmt.Errorf("entry %d: justification is empty", idx)
-		}
-		if justification != override.Justification {
-			return fmt.Errorf("entry %d: justification must not contain leading or trailing whitespace", idx)
-		}
-		if strings.IndexFunc(override.ApprovedBy, isC0OrC1ControlRune) >= 0 {
-			return fmt.Errorf("entry %d: approved_by must not contain C0/C1 control characters", idx)
-		}
-		if containsSeverityOverrideDisallowedUnicode(override.ApprovedBy) {
-			return fmt.Errorf("entry %d: approved_by must not contain Unicode bidi, zero-width, tag, or variation-selector characters", idx)
-		}
-		approvedBy := strings.TrimSpace(override.ApprovedBy)
-		if approvedBy == "" {
-			return fmt.Errorf("entry %d: approved_by is empty", idx)
-		}
-		if approvedBy != override.ApprovedBy {
-			return fmt.Errorf("entry %d: approved_by must not contain leading or trailing whitespace", idx)
-		}
-		if strings.IndexFunc(override.Source, isC0OrC1ControlRune) >= 0 {
-			return fmt.Errorf("entry %d: source must not contain C0/C1 control characters", idx)
-		}
-		if containsSeverityOverrideDisallowedUnicode(override.Source) {
-			return fmt.Errorf("entry %d: source must not contain Unicode bidi, zero-width, tag, or variation-selector characters", idx)
-		}
-		source := strings.TrimSpace(override.Source)
-		if source == "" {
-			return fmt.Errorf("entry %d: source is empty", idx)
-		}
-		if source != override.Source {
-			return fmt.Errorf("entry %d: source must not contain leading or trailing whitespace", idx)
-		}
-		if source != strings.ToLower(source) {
-			return fmt.Errorf("entry %d: source must be canonical lowercase", idx)
-		}
-		if !isAllowedSeverityOverrideSource(source) {
-			return fmt.Errorf("entry %d: source must be an allowed origin (cli-override|policy-file)", idx)
-		}
-		if strings.IndexFunc(override.AppliedAt, isC0OrC1ControlRune) >= 0 {
-			return fmt.Errorf("entry %d: applied_at must not contain C0/C1 control characters", idx)
-		}
-		if containsSeverityOverrideDisallowedUnicode(override.AppliedAt) {
-			return fmt.Errorf("entry %d: applied_at must not contain Unicode bidi, zero-width, tag, or variation-selector characters", idx)
-		}
-		if strings.TrimSpace(override.AppliedAt) == "" {
-			return fmt.Errorf("entry %d: applied_at is empty", idx)
-		}
-		if strings.TrimSpace(override.AppliedAt) != override.AppliedAt {
-			return fmt.Errorf("entry %d: applied_at must not contain leading or trailing whitespace", idx)
-		}
-		if _, err := time.Parse(time.RFC3339, override.AppliedAt); err != nil {
-			return fmt.Errorf("entry %d: applied_at must be RFC3339", idx)
-		}
-	}
-	return nil
-}
-
-func isCanonicalSeverity(in string) bool {
-	switch in {
-	case "critical", "high", "medium", "low":
-		return true
-	default:
-		return false
-	}
-}
-
-func isAllowedSeverityOverrideSource(in string) bool {
-	switch in {
-	case "cli-override", "policy-file":
-		return true
-	default:
-		return false
-	}
-}
-
 func validateLockFindingSummary(summary lockFindingSummary) error {
 	if summary.Critical < 0 {
 		return fmt.Errorf("critical count must be >= 0")
@@ -1276,16 +1102,4 @@ func validateLockFindingSummary(summary lockFindingSummary) error {
 		return fmt.Errorf("low count must be >= 0")
 	}
 	return nil
-}
-
-func severityOverridesEqual(a []severityOverrideAudit, b []severityOverrideAudit) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	for i := range a {
-		if a[i] != b[i] {
-			return false
-		}
-	}
-	return true
 }

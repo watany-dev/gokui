@@ -14,8 +14,11 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/watany-dev/gokui/internal/cli/exitcode"
 	"github.com/watany-dev/gokui/internal/limitio"
 	policypkg "github.com/watany-dev/gokui/internal/policy"
+	reportpkg "github.com/watany-dev/gokui/internal/report"
+	"github.com/watany-dev/gokui/internal/safefs"
 	srcpkg "github.com/watany-dev/gokui/internal/source"
 )
 
@@ -188,7 +191,7 @@ func runUpdate(args []string, stdout io.Writer, stderr io.Writer) int {
 			})
 		}
 		_, _ = fmt.Fprintf(stderr, "%s\n\n%s\n", err.Error(), usage())
-		return 1
+		return exitcode.Error.Int()
 	}
 
 	targetRoot, err := resolveInstallTarget(parsed.Target)
@@ -201,10 +204,10 @@ func runUpdate(args []string, stdout io.Writer, stderr io.Writer) int {
 			Target:        parsed.Target,
 			Note:          "update target validation failed",
 		}) {
-			return 1
+			return exitcode.Error.Int()
 		}
 		_, _ = fmt.Fprintln(stderr, err.Error())
-		return 1
+		return exitcode.Error.Int()
 	}
 	if err := rejectSymlinkPath(targetRoot, "update target root", ruleUpdateTargetSymlink); err != nil {
 		if emitUpdateStructuredError(parsed.Format, stdout, stderr, updateErrorReport{
@@ -215,10 +218,10 @@ func runUpdate(args []string, stdout io.Writer, stderr io.Writer) int {
 			Target:        parsed.Target,
 			Note:          "update target validation failed",
 		}) {
-			return 1
+			return exitcode.Error.Int()
 		}
 		_, _ = fmt.Fprintln(stderr, err.Error())
-		return 1
+		return exitcode.Error.Int()
 	}
 
 	userPolicy, policyLoaded, policyErr := loadUserPolicyConfig()
@@ -231,10 +234,10 @@ func runUpdate(args []string, stdout io.Writer, stderr io.Writer) int {
 			Target:        targetRoot,
 			Note:          "update failed while loading policy configuration",
 		}) {
-			return 1
+			return exitcode.Error.Int()
 		}
 		_, _ = fmt.Fprintln(stderr, policyErr.Error())
-		return 1
+		return exitcode.Error.Int()
 	}
 
 	report, err := buildUpdateReport(targetRoot, policyLoaded, userPolicy)
@@ -251,10 +254,10 @@ func runUpdate(args []string, stdout io.Writer, stderr io.Writer) int {
 			Target:        targetRoot,
 			Note:          "update report generation failed",
 		}) {
-			return 1
+			return exitcode.Error.Int()
 		}
 		_, _ = fmt.Fprintln(stderr, err.Error())
-		return 1
+		return exitcode.Error.Int()
 	}
 
 	if parsed.Format == "json" {
@@ -291,12 +294,12 @@ func runUpdate(args []string, stdout io.Writer, stderr io.Writer) int {
 	}
 
 	if report.Summary.Errors > 0 {
-		return 1
+		return exitcode.Error.Int()
 	}
 	if report.Summary.Rejected > 0 {
-		return 2
+		return exitcode.Rejected.Int()
 	}
-	return 0
+	return exitcode.OK.Int()
 }
 
 func updateArgsRequestJSON(args []string) bool {
@@ -344,10 +347,10 @@ func writeUpdateJSONError(stdout io.Writer, stderr io.Writer, report updateError
 	out, err := json.MarshalIndent(report, "", "  ")
 	if err != nil {
 		_, _ = fmt.Fprintln(stderr, "failed to render update error report")
-		return 1
+		return exitcode.Error.Int()
 	}
 	_, _ = fmt.Fprintf(stdout, "%s\n", out)
-	return 1
+	return exitcode.Error.Int()
 }
 
 func writeUpdateSARIFError(stdout io.Writer, stderr io.Writer, report updateErrorReport) int {
@@ -359,10 +362,10 @@ func writeUpdateSARIFError(stdout io.Writer, stderr io.Writer, report updateErro
 	out, err := json.MarshalIndent(buildUpdateSARIFErrorReport(report), "", "  ")
 	if err != nil {
 		_, _ = fmt.Fprintln(stderr, "failed to render update sarif error report")
-		return 1
+		return exitcode.Error.Int()
 	}
 	_, _ = fmt.Fprintf(stdout, "%s\n", out)
-	return 1
+	return exitcode.Error.Int()
 }
 
 func buildUpdateSARIFErrorReport(report updateErrorReport) inspectSARIFReport {
@@ -370,46 +373,14 @@ func buildUpdateSARIFErrorReport(report updateErrorReport) inspectSARIFReport {
 	if report.RuleID != "" {
 		ruleID = report.RuleID
 	}
-	return inspectSARIFReport{
-		Version: "2.1.0",
-		Schema:  "https://json.schemastore.org/sarif-2.1.0.json",
-		Runs: []inspectSARIFRun{
-			{
-				Tool: inspectSARIFTool{
-					Driver: inspectSARIFDriver{
-						Name:    "gokui",
-						Version: "pre-release",
-						Rules: []inspectSARIFRule{
-							{
-								ID: ruleID,
-								ShortDescription: inspectSARIFMessageContainer{
-									Text: report.ErrorCode,
-								},
-							},
-						},
-					},
-				},
-				Results: []inspectSARIFResult{
-					{
-						RuleID:  ruleID,
-						Level:   "error",
-						Message: inspectSARIFMessageContainer{Text: report.Message},
-					},
-				},
-				Invocations: []inspectSARIFInvocation{
-					{ExecutionSuccessful: false},
-				},
-				Properties: inspectSARIFProperties{
-					SchemaVersion: report.SchemaVersion,
-					PreRelease:    true,
-					SourceInput:   report.Target,
-					SourceKind:    "update-target",
-					Decision:      report.Status,
-					Note:          fmt.Sprintf("%s; error_code=%s", report.Note, report.ErrorCode),
-				},
-			},
-		},
-	}
+	return reportpkg.SARIFErrorDocument(ruleID, report.ErrorCode, report.Message, inspectSARIFProperties{
+		SchemaVersion: report.SchemaVersion,
+		PreRelease:    true,
+		SourceInput:   report.Target,
+		SourceKind:    "update-target",
+		Decision:      report.Status,
+		Note:          fmt.Sprintf("%s; error_code=%s", report.Note, report.ErrorCode),
+	})
 }
 
 func emitUpdateStructuredError(format string, stdout io.Writer, stderr io.Writer, report updateErrorReport) bool {
@@ -605,7 +576,7 @@ func buildUpdateReport(targetRoot string, policyLoaded bool, cfg policypkg.Confi
 			Input: lock.Source.Input,
 			Kind:  lock.Source.Kind,
 		}
-		item.SeverityOverrides = cloneSeverityOverrides(lock.Policy.SeverityOverrides)
+		item.SeverityOverrides = []severityOverrideAudit(policypkg.SeverityOverrideAuditSet(lock.Policy.SeverityOverrides).Clone())
 
 		enriched, err := evaluateUpdateSkill(item, lock, policyLoaded, cfg)
 		if err != nil {
@@ -640,456 +611,252 @@ func isUpdateTargetReadError(err error) bool {
 
 func evaluateUpdateSkill(item updateSkillItem, lock installLock, policyLoaded bool, cfg policypkg.Config) (updateSkillItem, error) {
 	item.RiskScore = computeUpdateRiskScore(lock.Findings, lock.Findings, updateRiskSignalInputs{})
-	if err := validateUpdateLockEnvelope(lock, item.Name); err != nil {
-		item.Status = "ERROR"
-		item.ErrorCode = updateCodeLockfileInvalid
-		item.Message = err.Error()
-		item.RuleID = inferRuleIDForJSONError(item.Message)
-		item.Risk = updateRisk{
-			Previous: lock.Findings,
-			Current:  lock.Findings,
-		}
-		return item, nil
-	}
-	policyProfileRaw := lock.Policy.Profile
-	if strings.IndexFunc(policyProfileRaw, isC0OrC1ControlRune) >= 0 {
-		item.Status = "ERROR"
-		item.ErrorCode = updateCodeLockfileInvalid
-		item.Message = "lock policy profile must not contain C0/C1 control characters"
-		item.RuleID = inferRuleIDForJSONError(item.Message)
-		item.Risk = updateRisk{
-			Previous: lock.Findings,
-			Current:  lock.Findings,
-		}
-		return item, nil
-	}
-	if containsSeverityOverrideDisallowedUnicode(policyProfileRaw) {
-		item.Status = "ERROR"
-		item.ErrorCode = updateCodeLockfileInvalid
-		item.Message = "lock policy profile must not contain Unicode bidi, zero-width, tag, or variation-selector characters"
-		item.RuleID = inferRuleIDForJSONError(item.Message)
-		item.Risk = updateRisk{
-			Previous: lock.Findings,
-			Current:  lock.Findings,
-		}
-		return item, nil
-	}
-	policyProfile := normalizePolicyProfile(policyProfileRaw)
-	if policyProfileRaw != policyProfile {
-		item.Status = "ERROR"
-		item.ErrorCode = updateCodeLockfileInvalid
-		item.Message = "lock policy profile must be canonical lowercase without surrounding whitespace"
-		item.RuleID = inferRuleIDForJSONError(item.Message)
-		item.Risk = updateRisk{
-			Previous: lock.Findings,
-			Current:  lock.Findings,
-		}
-		return item, nil
-	}
-	if !isSupportedPolicyProfile(policyProfile) {
-		item.Status = "ERROR"
-		item.ErrorCode = updateCodeLockfileInvalid
-		item.Message = fmt.Sprintf("unsupported policy profile in lockfile: %s", policyProfileRaw)
-		item.RuleID = inferRuleIDForJSONError(item.Message)
-		item.Risk = updateRisk{
-			Previous: lock.Findings,
-			Current:  lock.Findings,
-		}
-		return item, nil
-	}
-	policyDecisionRaw := lock.Policy.Decision
-	trimmedPolicyDecision := strings.TrimSpace(policyDecisionRaw)
-	if strings.IndexFunc(policyDecisionRaw, isC0OrC1ControlRune) >= 0 {
-		item.Status = "ERROR"
-		item.ErrorCode = updateCodeLockfileInvalid
-		item.Message = "lock policy decision must not contain C0/C1 control characters"
-		item.RuleID = inferRuleIDForJSONError(item.Message)
-		item.Risk = updateRisk{
-			Previous: lock.Findings,
-			Current:  lock.Findings,
-		}
-		return item, nil
-	}
-	if containsSeverityOverrideDisallowedUnicode(policyDecisionRaw) {
-		item.Status = "ERROR"
-		item.ErrorCode = updateCodeLockfileInvalid
-		item.Message = "lock policy decision must not contain Unicode bidi, zero-width, tag, or variation-selector characters"
-		item.RuleID = inferRuleIDForJSONError(item.Message)
-		item.Risk = updateRisk{
-			Previous: lock.Findings,
-			Current:  lock.Findings,
-		}
-		return item, nil
-	}
-	if trimmedPolicyDecision != policyDecisionRaw {
-		item.Status = "ERROR"
-		item.ErrorCode = updateCodeLockfileInvalid
-		item.Message = "lock policy decision must not contain leading or trailing whitespace"
-		item.RuleID = inferRuleIDForJSONError(item.Message)
-		item.Risk = updateRisk{
-			Previous: lock.Findings,
-			Current:  lock.Findings,
-		}
-		return item, nil
-	}
-	if policyDecisionRaw != "pass" {
-		item.Status = "ERROR"
-		item.ErrorCode = updateCodeLockfileInvalid
-		item.Message = "lock policy decision must be canonical lowercase pass"
-		item.RuleID = inferRuleIDForJSONError(item.Message)
-		item.Risk = updateRisk{
-			Previous: lock.Findings,
-			Current:  lock.Findings,
-		}
-		return item, nil
-	}
-	sourceInputRaw := lock.Source.Input
-	sourceInput := strings.TrimSpace(sourceInputRaw)
-	if strings.IndexFunc(sourceInputRaw, isC0OrC1ControlRune) >= 0 {
-		item.Status = "ERROR"
-		item.ErrorCode = updateCodeLockfileInvalid
-		item.Message = "lock source input must not contain C0/C1 control characters"
-		item.RuleID = inferRuleIDForJSONError(item.Message)
-		item.Risk = updateRisk{
-			Previous: lock.Findings,
-			Current:  lock.Findings,
-		}
-		return item, nil
-	}
-	if containsSeverityOverrideDisallowedUnicode(sourceInputRaw) && detectSourceKind(sourceInput) != "github-source" {
-		item.Status = "ERROR"
-		item.ErrorCode = updateCodeLockfileInvalid
-		item.Message = "lock source input must not contain Unicode bidi, zero-width, tag, or variation-selector characters"
-		item.RuleID = inferRuleIDForJSONError(item.Message)
-		item.Risk = updateRisk{
-			Previous: lock.Findings,
-			Current:  lock.Findings,
-		}
-		return item, nil
-	}
-	if sourceInput == "" {
-		item.Status = "ERROR"
-		item.ErrorCode = updateCodeLockfileInvalid
-		item.Message = "lock source input is empty"
-		item.RuleID = inferRuleIDForJSONError(item.Message)
-		item.Risk = updateRisk{
-			Previous: lock.Findings,
-			Current:  lock.Findings,
-		}
-		return item, nil
-	}
-	if sourceInputRaw != sourceInput {
-		item.Status = "ERROR"
-		item.ErrorCode = updateCodeLockfileInvalid
-		item.Message = "lock source input must not contain leading or trailing whitespace"
-		item.RuleID = inferRuleIDForJSONError(item.Message)
-		item.Risk = updateRisk{
-			Previous: lock.Findings,
-			Current:  lock.Findings,
-		}
-		return item, nil
-	}
-	kindRaw := lock.Source.Kind
-	kind := strings.TrimSpace(kindRaw)
-	detectedKind := detectSourceKind(sourceInput)
-	if strings.IndexFunc(kindRaw, isC0OrC1ControlRune) >= 0 {
-		item.Status = "ERROR"
-		item.ErrorCode = updateCodeLockfileInvalid
-		item.Message = "lock source kind must not contain C0/C1 control characters"
-		item.RuleID = inferRuleIDForJSONError(item.Message)
-		item.Risk = updateRisk{
-			Previous: lock.Findings,
-			Current:  lock.Findings,
-		}
-		return item, nil
-	}
-	if containsSeverityOverrideDisallowedUnicode(kindRaw) {
-		item.Status = "ERROR"
-		item.ErrorCode = updateCodeLockfileInvalid
-		item.Message = "lock source kind must not contain Unicode bidi, zero-width, tag, or variation-selector characters"
-		item.RuleID = inferRuleIDForJSONError(item.Message)
-		item.Risk = updateRisk{
-			Previous: lock.Findings,
-			Current:  lock.Findings,
-		}
-		return item, nil
-	}
-	if kind == "" {
-		item.Status = "ERROR"
-		item.ErrorCode = updateCodeLockfileInvalid
-		item.Message = "lock source kind is empty"
-		item.RuleID = inferRuleIDForJSONError(item.Message)
-		item.Risk = updateRisk{
-			Previous: lock.Findings,
-			Current:  lock.Findings,
-		}
-		return item, nil
-	}
-	if kindRaw != kind {
-		item.Status = "ERROR"
-		item.ErrorCode = updateCodeLockfileInvalid
-		item.Message = "lock source kind must not contain leading or trailing whitespace"
-		item.RuleID = inferRuleIDForJSONError(item.Message)
-		item.Risk = updateRisk{
-			Previous: lock.Findings,
-			Current:  lock.Findings,
-		}
-		return item, nil
-	}
-	if kind != strings.ToLower(kind) {
-		item.Status = "ERROR"
-		item.ErrorCode = updateCodeLockfileInvalid
-		item.Message = "lock source kind must be canonical lowercase"
-		item.RuleID = inferRuleIDForJSONError(item.Message)
-		item.Risk = updateRisk{
-			Previous: lock.Findings,
-			Current:  lock.Findings,
-		}
-		return item, nil
-	}
-	expectedType := sourceTypeFromKind(kind)
-	if expectedType == "unknown" {
-		item.Status = "ERROR"
-		item.ErrorCode = updateCodeLockfileInvalid
-		item.Message = fmt.Sprintf("unsupported source kind in lockfile: %s", kind)
-		item.RuleID = inferRuleIDForJSONError(item.Message)
-		item.Risk = updateRisk{
-			Previous: lock.Findings,
-			Current:  lock.Findings,
-		}
-		return item, nil
-	}
-	if expectedType != "github" {
-		cleanedInput := filepath.Clean(sourceInput)
-		if sourceInput != cleanedInput {
-			item.Status = "ERROR"
-			item.ErrorCode = updateCodeLockfileInvalid
-			item.Message = "lock source input must be a canonical cleaned path for local/archive sources"
-			item.RuleID = inferRuleIDForJSONError(item.Message)
-			item.Risk = updateRisk{
-				Previous: lock.Findings,
-				Current:  lock.Findings,
-			}
-			return item, nil
-		}
-	}
-	if kind != detectedKind {
-		item.Status = "ERROR"
-		item.ErrorCode = updateCodeSourceMetadataBad
-		item.Message = fmt.Sprintf("lock source kind does not match source input: kind=%s detected=%s", kind, detectedKind)
-		item.RuleID = inferRuleIDForJSONError(item.Message)
-		item.Risk = updateRisk{
-			Previous: lock.Findings,
-			Current:  lock.Findings,
-		}
-		return item, nil
-	}
-	sourceTypeRaw := lock.Source.Type
-	sourceType := strings.TrimSpace(sourceTypeRaw)
-	if strings.IndexFunc(sourceTypeRaw, isC0OrC1ControlRune) >= 0 {
-		item.Status = "ERROR"
-		item.ErrorCode = updateCodeLockfileInvalid
-		item.Message = "lock source type must not contain C0/C1 control characters"
-		item.RuleID = inferRuleIDForJSONError(item.Message)
-		item.Risk = updateRisk{
-			Previous: lock.Findings,
-			Current:  lock.Findings,
-		}
-		return item, nil
-	}
-	if containsSeverityOverrideDisallowedUnicode(sourceTypeRaw) {
-		item.Status = "ERROR"
-		item.ErrorCode = updateCodeLockfileInvalid
-		item.Message = "lock source type must not contain Unicode bidi, zero-width, tag, or variation-selector characters"
-		item.RuleID = inferRuleIDForJSONError(item.Message)
-		item.Risk = updateRisk{
-			Previous: lock.Findings,
-			Current:  lock.Findings,
-		}
-		return item, nil
-	}
-	if sourceType == "" {
-		item.Status = "ERROR"
-		item.ErrorCode = updateCodeLockfileInvalid
-		item.Message = "lock source type is empty"
-		item.RuleID = inferRuleIDForJSONError(item.Message)
-		item.Risk = updateRisk{
-			Previous: lock.Findings,
-			Current:  lock.Findings,
-		}
-		return item, nil
-	}
-	if sourceTypeRaw != sourceType {
-		item.Status = "ERROR"
-		item.ErrorCode = updateCodeLockfileInvalid
-		item.Message = "lock source type must not contain leading or trailing whitespace"
-		item.RuleID = inferRuleIDForJSONError(item.Message)
-		item.Risk = updateRisk{
-			Previous: lock.Findings,
-			Current:  lock.Findings,
-		}
-		return item, nil
-	}
-	if sourceType != strings.ToLower(sourceType) {
-		item.Status = "ERROR"
-		item.ErrorCode = updateCodeLockfileInvalid
-		item.Message = "lock source type must be canonical lowercase"
-		item.RuleID = inferRuleIDForJSONError(item.Message)
-		item.Risk = updateRisk{
-			Previous: lock.Findings,
-			Current:  lock.Findings,
-		}
-		return item, nil
-	}
-	if sourceType != expectedType {
-		item.Status = "ERROR"
-		item.ErrorCode = updateCodeLockfileInvalid
-		item.Message = fmt.Sprintf("source type mismatch for kind %s: expected %s, got %s", kind, expectedType, sourceType)
-		item.RuleID = inferRuleIDForJSONError(item.Message)
-		item.Risk = updateRisk{
-			Previous: lock.Findings,
-			Current:  lock.Findings,
-		}
-		return item, nil
-	}
-	if kind == "github-source" {
-		spec, parseErr := srcpkg.ParseGitHubSource(sourceInput)
-		if parseErr != nil {
-			item.Status = "ERROR"
-			item.ErrorCode = updateCodeGitHubSourceBad
-			item.Message = fmt.Sprintf("invalid github source in lockfile: %v", parseErr)
-			item.RuleID = inferRuleIDForJSONError(item.Message)
-			item.Risk = updateRisk{
-				Previous: lock.Findings,
-				Current:  lock.Findings,
-			}
-			return item, nil
-		}
-		if sourceInput != canonicalGitHubSourceInput(spec) {
-			item.Status = "ERROR"
-			item.ErrorCode = updateCodeLockfileInvalid
-			item.Message = "github lock source input must be canonical"
-			item.RuleID = inferRuleIDForJSONError(item.Message)
-			item.Risk = updateRisk{
-				Previous: lock.Findings,
-				Current:  lock.Findings,
-			}
-			return item, nil
-		}
-		if !srcpkg.IsCommitPinnedRef(spec.Ref) {
-			item.Status = "REJECTED"
-			item.ErrorCode = updateCodeGitHubRefFloating
-			item.Message = "floating github refs are not eligible for update; commit-pinned ref required"
-			item.RuleID = inferRuleIDForJSONError(item.Message)
-			item.Risk = updateRisk{
-				Previous: lock.Findings,
-				Current:  lock.Findings,
-			}
-			return item, nil
-		}
-		if err := verifyInstalledSourceMetadata(item.Path, source{
-			Input: sourceInput,
-			Kind:  kind,
-		}); err != nil {
-			item.Status = "ERROR"
-			item.ErrorCode = updateCodeSourceMetadataBad
-			item.Message = err.Error()
-			item.RuleID = inferRuleIDForJSONError(item.Message)
-			item.Risk = updateRisk{
-				Previous: lock.Findings,
-				Current:  lock.Findings,
-			}
-			return item, nil
-		}
-	}
-	if err := validateUpdateLockSkillSnapshot(lock); err != nil {
-		item.Status = "ERROR"
-		item.ErrorCode = updateCodeLockfileInvalid
-		item.Message = err.Error()
-		item.RuleID = inferRuleIDForJSONError(item.Message)
-		item.Risk = updateRisk{
-			Previous: lock.Findings,
-			Current:  lock.Findings,
-		}
-		return item, nil
-	}
-	if err := validateUpdateLockAgainstInstallReport(item.Path, lock); err != nil {
-		item.Status = "ERROR"
-		item.ErrorCode = updateCodeLockfileInvalid
-		item.Message = err.Error()
-		item.RuleID = inferRuleIDForJSONError(item.Message)
-		item.Risk = updateRisk{
-			Previous: lock.Findings,
-			Current:  lock.Findings,
-		}
-		return item, nil
+	inputs, validationErr := validateUpdateLockForEvaluation(item, lock)
+	if validationErr != nil {
+		return failUpdateSkillItem(item, lock, validationErr.status, validationErr.code, validationErr.message), nil
 	}
 
-	skillRoot, cleanup, err := preparePolicyEvaluationSource(sourceInput, kind)
+	skillRoot, cleanup, err := preparePolicyEvaluationSource(inputs.sourceInput, inputs.kind)
 	if cleanup != nil {
 		defer cleanup()
 	}
 	if err != nil {
 		message := err.Error()
-		status, code := classifyUpdateSourcePrepareFailure(kind, err)
-		item.Status = status
-		item.ErrorCode = code
-		item.Message = message
-		item.RuleID = inferRuleIDForJSONError(item.Message)
-		item.Risk = updateRisk{
-			Previous: lock.Findings,
-			Current:  lock.Findings,
-		}
-		return item, nil
+		status, code := classifyUpdateSourcePrepareFailure(inputs.kind, err)
+		return failUpdateSkillItem(item, lock, status, code, message), nil
 	}
 
-	effectivePolicy := cfg
-	effectivePolicyLoaded := policyLoaded
-	if shouldApplyRepositoryPolicy(kind) {
-		repoPolicy, repoPolicyFound, repoPolicyErr := loadRepositoryPolicyConfig(skillRoot)
-		if repoPolicyErr != nil {
-			item.Status = "ERROR"
-			item.ErrorCode = updateCodeEvaluationError
-			item.Message = repoPolicyErr.Error()
-			item.RuleID = inferRuleIDForJSONError(item.Message)
-			item.Risk = updateRisk{
-				Previous: lock.Findings,
-				Current:  lock.Findings,
-			}
-			return item, nil
-		}
-		if repoPolicyFound {
-			effectivePolicy = repoPolicy
-			effectivePolicyLoaded = true
-		}
+	effectivePolicy, effectivePolicyLoaded, repoPolicyErr := resolveUpdateEvaluationPolicy(inputs.kind, skillRoot, policyLoaded, cfg)
+	if repoPolicyErr != nil {
+		return failUpdateSkillItem(item, lock, "ERROR", updateCodeEvaluationError, repoPolicyErr.Error()), nil
 	}
 
-	rejectSet, err := effectiveRejectSeveritySetForProfile(policyProfile, effectivePolicyLoaded, effectivePolicy)
+	findingsEvaluation, err := evaluateUpdateSourceFindings(skillRoot, inputs.policyProfile, effectivePolicyLoaded, effectivePolicy, lock.Policy.SeverityOverrides)
 	if err != nil {
-		item.Status = "ERROR"
-		item.ErrorCode = updateCodeEvaluationError
-		item.Message = err.Error()
-		item.RuleID = inferRuleIDForJSONError(item.Message)
-		item.Risk = updateRisk{
-			Previous: lock.Findings,
-			Current:  lock.Findings,
-		}
-		return item, nil
+		return updateSkillItem{}, err
+	}
+	if findingsEvaluation.failure != nil {
+		return failUpdateSkillItem(item, lock, findingsEvaluation.failure.status, findingsEvaluation.failure.code, findingsEvaluation.failure.message), nil
+	}
+	item.Findings = findingsEvaluation.findings
+	item.Decision = findingsEvaluation.decision
+	item.SeverityOverrides = findingsEvaluation.severityOverrides
+	item.SeverityOverrideDiff = findingsEvaluation.severityOverrideDiff
+
+	item, err = evaluateUpdateSourceChanges(item, lock, skillRoot)
+	if err != nil {
+		return updateSkillItem{}, err
+	}
+
+	return finalizeUpdateSkillStatus(item), nil
+}
+
+func evaluateUpdateSourceChanges(item updateSkillItem, lock installLock, skillRoot string) (updateSkillItem, error) {
+	excludeMeta := map[string]struct{}{
+		installReportFile: {},
+		installLockFile:   {},
+	}
+	currentFiles, _, err := buildFileDigestsFiltered(skillRoot, excludeMeta)
+	if err != nil {
+		return updateSkillItem{}, err
+	}
+	item.Diff = evaluateUpdateFileDiff(lock.Skill.Files, currentFiles, excludeMeta)
+
+	signals, err := collectUpdateSignals(item.Path, skillRoot)
+	if err != nil {
+		return updateSkillItem{}, err
+	}
+	item.NewURLs = signals.newURLs
+	item.NewExecutableFiles = signals.newExecutableFiles
+
+	riskEvaluation := evaluateUpdateRisk(lock.Findings, item.Findings, item)
+	item.Risk = riskEvaluation.risk
+	item.RiskScore = riskEvaluation.score
+	return item, nil
+}
+
+type updateSourceFindingsEvaluation struct {
+	findings             []inspectFinding
+	decision             string
+	severityOverrides    []severityOverrideAudit
+	severityOverrideDiff updateSeverityOverrideDiff
+	failure              *updateSkillFailure
+}
+
+func evaluateUpdateSourceFindings(skillRoot string, policyProfile string, policyLoaded bool, cfg policypkg.Config, configuredOverrides []severityOverrideAudit) (updateSourceFindingsEvaluation, error) {
+	rejectSet, err := effectiveRejectSeveritySetForProfile(policyProfile, policyLoaded, cfg)
+	if err != nil {
+		return updateSourceFindingsEvaluation{
+			failure: &updateSkillFailure{"ERROR", updateCodeEvaluationError, err.Error()},
+		}, nil
 	}
 
 	findings, _, _, err := evaluateSkillWithOverrides(skillRoot, policyProfile, nil, rejectSet)
 	if err != nil {
-		return updateSkillItem{}, err
+		return updateSourceFindingsEvaluation{}, err
 	}
-	item.Findings = findings
+	evaluation := evaluateUpdateFindings(findings, configuredOverrides, rejectSet)
+	return updateSourceFindingsEvaluation{
+		findings:             findings,
+		decision:             evaluation.decision,
+		severityOverrides:    evaluation.severityOverrides,
+		severityOverrideDiff: evaluation.severityOverrideDiff,
+	}, nil
+}
 
-	configuredByRule := make(map[string]severityOverrideAudit, len(lock.Policy.SeverityOverrides))
-	for _, override := range lock.Policy.SeverityOverrides {
+type updateEvaluationInputs struct {
+	policyProfile string
+	sourceInput   string
+	kind          string
+}
+
+func validateUpdateLockForEvaluation(item updateSkillItem, lock installLock) (updateEvaluationInputs, *updateSkillFailure) {
+	if err := validateUpdateLockEnvelope(lock, item.Name); err != nil {
+		return updateEvaluationInputs{}, &updateSkillFailure{"ERROR", updateCodeLockfileInvalid, err.Error()}
+	}
+	policyProfile, policyErr := validateUpdateLockPolicy(lock.Policy)
+	if policyErr != nil {
+		return updateEvaluationInputs{}, &updateSkillFailure{"ERROR", updateCodeLockfileInvalid, policyErr.Error()}
+	}
+	sourceInput, kind, sourceErr := validateUpdateLockSource(lock.Source)
+	if sourceErr != nil {
+		return updateEvaluationInputs{}, sourceErr
+	}
+	if githubErr := validateUpdateGitHubSource(item.Path, sourceInput, kind); githubErr != nil {
+		return updateEvaluationInputs{}, githubErr
+	}
+	if err := validateUpdateLockSkillSnapshot(lock); err != nil {
+		return updateEvaluationInputs{}, &updateSkillFailure{"ERROR", updateCodeLockfileInvalid, err.Error()}
+	}
+	if err := validateUpdateLockAgainstInstallReport(item.Path, lock); err != nil {
+		return updateEvaluationInputs{}, &updateSkillFailure{"ERROR", updateCodeLockfileInvalid, err.Error()}
+	}
+	return updateEvaluationInputs{
+		policyProfile: policyProfile,
+		sourceInput:   sourceInput,
+		kind:          kind,
+	}, nil
+}
+
+func resolveUpdateEvaluationPolicy(kind string, skillRoot string, policyLoaded bool, cfg policypkg.Config) (policypkg.Config, bool, error) {
+	if !shouldApplyRepositoryPolicy(kind) {
+		return cfg, policyLoaded, nil
+	}
+	repoPolicy, repoPolicyFound, repoPolicyErr := loadRepositoryPolicyConfig(skillRoot)
+	if repoPolicyErr != nil {
+		return policypkg.Config{}, false, repoPolicyErr
+	}
+	if repoPolicyFound {
+		return repoPolicy, true, nil
+	}
+	return cfg, policyLoaded, nil
+}
+
+func validateUpdateGitHubSource(installedPath string, sourceInput string, kind string) *updateSkillFailure {
+	if kind != "github-source" {
+		return nil
+	}
+	spec, parseErr := srcpkg.ParseGitHubSource(sourceInput)
+	if parseErr != nil {
+		return &updateSkillFailure{"ERROR", updateCodeGitHubSourceBad, fmt.Sprintf("invalid github source in lockfile: %v", parseErr)}
+	}
+	if sourceInput != canonicalGitHubSourceInput(spec) {
+		return &updateSkillFailure{"ERROR", updateCodeLockfileInvalid, "github lock source input must be canonical"}
+	}
+	if !srcpkg.IsCommitPinnedRef(spec.Ref) {
+		return &updateSkillFailure{"REJECTED", updateCodeGitHubRefFloating, "floating github refs are not eligible for update; commit-pinned ref required"}
+	}
+	if err := verifyInstalledSourceMetadata(installedPath, source{
+		Input: sourceInput,
+		Kind:  kind,
+	}); err != nil {
+		return &updateSkillFailure{"ERROR", updateCodeSourceMetadataBad, err.Error()}
+	}
+	return nil
+}
+
+type updateSignalDiffs struct {
+	newURLs            []string
+	newExecutableFiles []string
+}
+
+func collectUpdateSignals(installedRoot string, currentRoot string) (updateSignalDiffs, error) {
+	previousURLs, err := collectURLs(installedRoot)
+	if err != nil {
+		return updateSignalDiffs{}, err
+	}
+	currentURLs, err := collectURLs(currentRoot)
+	if err != nil {
+		return updateSignalDiffs{}, err
+	}
+	previousExec, err := collectExecutableFiles(installedRoot)
+	if err != nil {
+		return updateSignalDiffs{}, err
+	}
+	currentExec, err := collectExecutableFiles(currentRoot)
+	if err != nil {
+		return updateSignalDiffs{}, err
+	}
+	return updateSignalDiffs{
+		newURLs:            setDiff(currentURLs, previousURLs),
+		newExecutableFiles: setDiff(currentExec, previousExec),
+	}, nil
+}
+
+func evaluateUpdateFileDiff(previousFiles []lockFileHash, currentFiles []lockFileHash, exclude map[string]struct{}) updateDiff {
+	filteredPrevious := filterLockFiles(previousFiles, exclude)
+	missing, changed, unexpected := diffLockFiles(filteredPrevious, currentFiles)
+	return updateDiff{
+		Added:   unexpected,
+		Removed: missing,
+		Changed: changed,
+	}
+}
+
+type updateRiskEvaluation struct {
+	risk  updateRisk
+	score updateRiskScore
+}
+
+func evaluateUpdateRisk(previous lockFindingSummary, findings []inspectFinding, item updateSkillItem) updateRiskEvaluation {
+	currentRisk := summarizeFindingSeverities(findings)
+	signals := updateRiskSignalInputs{
+		NewURLs:         len(item.NewURLs),
+		NewExecutables:  len(item.NewExecutableFiles),
+		FileDelta:       len(item.Diff.Added) + len(item.Diff.Removed) + len(item.Diff.Changed),
+		OverrideAdded:   len(item.SeverityOverrideDiff.Added),
+		OverrideRemoved: len(item.SeverityOverrideDiff.Removed),
+	}
+	return updateRiskEvaluation{
+		risk: updateRisk{
+			Previous: previous,
+			Current:  currentRisk,
+			Delta: lockFindingSummary{
+				Critical: currentRisk.Critical - previous.Critical,
+				High:     currentRisk.High - previous.High,
+				Medium:   currentRisk.Medium - previous.Medium,
+				Low:      currentRisk.Low - previous.Low,
+			},
+		},
+		score: computeUpdateRiskScore(previous, currentRisk, signals),
+	}
+}
+
+type updateFindingEvaluation struct {
+	decision             string
+	severityOverrides    []severityOverrideAudit
+	severityOverrideDiff updateSeverityOverrideDiff
+}
+
+func evaluateUpdateFindings(findings []inspectFinding, configuredOverrides []severityOverrideAudit, rejectSet map[string]struct{}) updateFindingEvaluation {
+	configuredByRule := make(map[string]severityOverrideAudit, len(configuredOverrides))
+	for _, override := range configuredOverrides {
 		if _, exists := configuredByRule[override.RuleID]; exists {
 			continue
 		}
 		configuredByRule[override.RuleID] = override
 	}
+
 	activeByRule := make(map[string]severityOverrideAudit, len(configuredByRule))
 	decision := "PASS"
 	for _, finding := range findings {
@@ -1104,96 +871,160 @@ func evaluateUpdateSkill(item updateSkillItem, lock installLock, policyLoaded bo
 			decision = "REJECTED"
 		}
 	}
-	item.Decision = decision
-	item.SeverityOverrides = sortSeverityOverrides(mapValuesSeverityOverrides(activeByRule))
-	previousOverrideIDs := mapKeysSortedSeverityOverrideAudit(configuredByRule)
-	currentOverrideIDs := mapKeysSortedSeverityOverrideAudit(activeByRule)
-	item.SeverityOverrideDiff = updateSeverityOverrideDiff{
-		Added:   setDiff(currentOverrideIDs, previousOverrideIDs),
-		Removed: setDiff(previousOverrideIDs, currentOverrideIDs),
-	}
 
-	excludeMeta := map[string]struct{}{
-		installReportFile: {},
-		installLockFile:   {},
-	}
-	currentFiles, _, err := buildFileDigestsFiltered(skillRoot, excludeMeta)
-	if err != nil {
-		return updateSkillItem{}, err
-	}
-	previousFiles := filterLockFiles(lock.Skill.Files, excludeMeta)
-	missing, changed, unexpected := diffLockFiles(previousFiles, currentFiles)
-	item.Diff = updateDiff{
-		Added:   unexpected,
-		Removed: missing,
-		Changed: changed,
-	}
-
-	previousURLs, err := collectURLs(item.Path)
-	if err != nil {
-		return updateSkillItem{}, err
-	}
-	currentURLs, err := collectURLs(skillRoot)
-	if err != nil {
-		return updateSkillItem{}, err
-	}
-	item.NewURLs = setDiff(currentURLs, previousURLs)
-
-	previousExec, err := collectExecutableFiles(item.Path)
-	if err != nil {
-		return updateSkillItem{}, err
-	}
-	currentExec, err := collectExecutableFiles(skillRoot)
-	if err != nil {
-		return updateSkillItem{}, err
-	}
-	item.NewExecutableFiles = setDiff(currentExec, previousExec)
-
-	currentRisk := summarizeFindingSeverities(findings)
-	signals := updateRiskSignalInputs{
-		NewURLs:         len(item.NewURLs),
-		NewExecutables:  len(item.NewExecutableFiles),
-		FileDelta:       len(item.Diff.Added) + len(item.Diff.Removed) + len(item.Diff.Changed),
-		OverrideAdded:   len(item.SeverityOverrideDiff.Added),
-		OverrideRemoved: len(item.SeverityOverrideDiff.Removed),
-	}
-	item.RiskScore = computeUpdateRiskScore(lock.Findings, currentRisk, signals)
-	item.Risk = updateRisk{
-		Previous: lock.Findings,
-		Current:  currentRisk,
-		Delta: lockFindingSummary{
-			Critical: currentRisk.Critical - lock.Findings.Critical,
-			High:     currentRisk.High - lock.Findings.High,
-			Medium:   currentRisk.Medium - lock.Findings.Medium,
-			Low:      currentRisk.Low - lock.Findings.Low,
+	previousOverrideIDs := policypkg.SortedAuditMapKeys(configuredByRule)
+	currentOverrideIDs := policypkg.SortedAuditMapKeys(activeByRule)
+	return updateFindingEvaluation{
+		decision:          decision,
+		severityOverrides: []severityOverrideAudit(policypkg.AuditValues(activeByRule).Sorted()),
+		severityOverrideDiff: updateSeverityOverrideDiff{
+			Added:   setDiff(currentOverrideIDs, previousOverrideIDs),
+			Removed: setDiff(previousOverrideIDs, currentOverrideIDs),
 		},
 	}
+}
 
-	if decision == "REJECTED" {
+func finalizeUpdateSkillStatus(item updateSkillItem) updateSkillItem {
+	switch {
+	case item.Decision == "REJECTED":
 		item.Status = "REJECTED"
 		item.ErrorCode = updateCodePolicyRejected
 		item.Message = "fresh policy evaluation rejected update source"
-		item.RuleID = inferRuleIDForJSONError(item.Message)
-		return item, nil
-	}
-
-	changedContent := len(item.Diff.Added) > 0 || len(item.Diff.Removed) > 0 || len(item.Diff.Changed) > 0
-	changedRisk := item.Risk.Delta.Critical != 0 || item.Risk.Delta.High != 0 || item.Risk.Delta.Medium != 0 || item.Risk.Delta.Low != 0
-	changedSignals := len(item.NewURLs) > 0 || len(item.NewExecutableFiles) > 0
-	changedOverrides := len(item.SeverityOverrideDiff.Added) > 0 || len(item.SeverityOverrideDiff.Removed) > 0
-	if changedContent || changedRisk || changedSignals || changedOverrides {
+	case updateSkillHasChanges(item):
 		item.Status = "CHANGED"
 		item.ErrorCode = updateCodeChanged
 		item.Message = "update source differs from installed lock snapshot"
-		item.RuleID = inferRuleIDForJSONError(item.Message)
-		return item, nil
+	default:
+		item.Status = "UP_TO_DATE"
+		item.ErrorCode = updateCodeUpToDate
+		item.Message = "no change detected against installed lock snapshot"
+	}
+	item.RuleID = inferRuleIDForJSONError(item.Message)
+	return item
+}
+
+func updateSkillHasChanges(item updateSkillItem) bool {
+	return len(item.Diff.Added) > 0 ||
+		len(item.Diff.Removed) > 0 ||
+		len(item.Diff.Changed) > 0 ||
+		item.Risk.Delta.Critical != 0 ||
+		item.Risk.Delta.High != 0 ||
+		item.Risk.Delta.Medium != 0 ||
+		item.Risk.Delta.Low != 0 ||
+		len(item.NewURLs) > 0 ||
+		len(item.NewExecutableFiles) > 0 ||
+		len(item.SeverityOverrideDiff.Added) > 0 ||
+		len(item.SeverityOverrideDiff.Removed) > 0
+}
+
+type updateSkillFailure struct {
+	status  string
+	code    string
+	message string
+}
+
+func validateUpdateLockPolicy(policy lockPolicy) (string, error) {
+	policyProfileRaw := policy.Profile
+	if strings.IndexFunc(policyProfileRaw, isC0OrC1ControlRune) >= 0 {
+		return "", fmt.Errorf("lock policy profile must not contain C0/C1 control characters")
+	}
+	if containsSeverityOverrideDisallowedUnicode(policyProfileRaw) {
+		return "", fmt.Errorf("lock policy profile must not contain Unicode bidi, zero-width, tag, or variation-selector characters")
+	}
+	policyProfile := normalizePolicyProfile(policyProfileRaw)
+	if policyProfileRaw != policyProfile {
+		return "", fmt.Errorf("lock policy profile must be canonical lowercase without surrounding whitespace")
+	}
+	if !isSupportedPolicyProfile(policyProfile) {
+		return "", fmt.Errorf("unsupported policy profile in lockfile: %s", policyProfileRaw)
 	}
 
-	item.Status = "UP_TO_DATE"
-	item.ErrorCode = updateCodeUpToDate
-	item.Message = "no change detected against installed lock snapshot"
-	item.RuleID = inferRuleIDForJSONError(item.Message)
-	return item, nil
+	policyDecisionRaw := policy.Decision
+	trimmedPolicyDecision := strings.TrimSpace(policyDecisionRaw)
+	if strings.IndexFunc(policyDecisionRaw, isC0OrC1ControlRune) >= 0 {
+		return "", fmt.Errorf("lock policy decision must not contain C0/C1 control characters")
+	}
+	if containsSeverityOverrideDisallowedUnicode(policyDecisionRaw) {
+		return "", fmt.Errorf("lock policy decision must not contain Unicode bidi, zero-width, tag, or variation-selector characters")
+	}
+	if trimmedPolicyDecision != policyDecisionRaw {
+		return "", fmt.Errorf("lock policy decision must not contain leading or trailing whitespace")
+	}
+	if policyDecisionRaw != "pass" {
+		return "", fmt.Errorf("lock policy decision must be canonical lowercase pass")
+	}
+	return policyProfile, nil
+}
+
+func validateUpdateLockSource(lockSource lockSource) (string, string, *updateSkillFailure) {
+	sourceInputRaw := lockSource.Input
+	sourceInput := strings.TrimSpace(sourceInputRaw)
+	if strings.IndexFunc(sourceInputRaw, isC0OrC1ControlRune) >= 0 {
+		return "", "", &updateSkillFailure{"ERROR", updateCodeLockfileInvalid, "lock source input must not contain C0/C1 control characters"}
+	}
+	if containsSeverityOverrideDisallowedUnicode(sourceInputRaw) && detectSourceKind(sourceInput) != "github-source" {
+		return "", "", &updateSkillFailure{"ERROR", updateCodeLockfileInvalid, "lock source input must not contain Unicode bidi, zero-width, tag, or variation-selector characters"}
+	}
+	if sourceInput == "" {
+		return "", "", &updateSkillFailure{"ERROR", updateCodeLockfileInvalid, "lock source input is empty"}
+	}
+	if sourceInputRaw != sourceInput {
+		return "", "", &updateSkillFailure{"ERROR", updateCodeLockfileInvalid, "lock source input must not contain leading or trailing whitespace"}
+	}
+
+	kindRaw := lockSource.Kind
+	kind := strings.TrimSpace(kindRaw)
+	detectedKind := detectSourceKind(sourceInput)
+	if strings.IndexFunc(kindRaw, isC0OrC1ControlRune) >= 0 {
+		return "", "", &updateSkillFailure{"ERROR", updateCodeLockfileInvalid, "lock source kind must not contain C0/C1 control characters"}
+	}
+	if containsSeverityOverrideDisallowedUnicode(kindRaw) {
+		return "", "", &updateSkillFailure{"ERROR", updateCodeLockfileInvalid, "lock source kind must not contain Unicode bidi, zero-width, tag, or variation-selector characters"}
+	}
+	if kind == "" {
+		return "", "", &updateSkillFailure{"ERROR", updateCodeLockfileInvalid, "lock source kind is empty"}
+	}
+	if kindRaw != kind {
+		return "", "", &updateSkillFailure{"ERROR", updateCodeLockfileInvalid, "lock source kind must not contain leading or trailing whitespace"}
+	}
+	if kind != strings.ToLower(kind) {
+		return "", "", &updateSkillFailure{"ERROR", updateCodeLockfileInvalid, "lock source kind must be canonical lowercase"}
+	}
+	expectedType := sourceTypeFromKind(kind)
+	if expectedType == "unknown" {
+		return "", "", &updateSkillFailure{"ERROR", updateCodeLockfileInvalid, fmt.Sprintf("unsupported source kind in lockfile: %s", kind)}
+	}
+	if expectedType != "github" {
+		cleanedInput := filepath.Clean(sourceInput)
+		if sourceInput != cleanedInput {
+			return "", "", &updateSkillFailure{"ERROR", updateCodeLockfileInvalid, "lock source input must be a canonical cleaned path for local/archive sources"}
+		}
+	}
+	if kind != detectedKind {
+		return "", "", &updateSkillFailure{"ERROR", updateCodeSourceMetadataBad, fmt.Sprintf("lock source kind does not match source input: kind=%s detected=%s", kind, detectedKind)}
+	}
+
+	sourceTypeRaw := lockSource.Type
+	sourceType := strings.TrimSpace(sourceTypeRaw)
+	if strings.IndexFunc(sourceTypeRaw, isC0OrC1ControlRune) >= 0 {
+		return "", "", &updateSkillFailure{"ERROR", updateCodeLockfileInvalid, "lock source type must not contain C0/C1 control characters"}
+	}
+	if containsSeverityOverrideDisallowedUnicode(sourceTypeRaw) {
+		return "", "", &updateSkillFailure{"ERROR", updateCodeLockfileInvalid, "lock source type must not contain Unicode bidi, zero-width, tag, or variation-selector characters"}
+	}
+	if sourceType == "" {
+		return "", "", &updateSkillFailure{"ERROR", updateCodeLockfileInvalid, "lock source type is empty"}
+	}
+	if sourceTypeRaw != sourceType {
+		return "", "", &updateSkillFailure{"ERROR", updateCodeLockfileInvalid, "lock source type must not contain leading or trailing whitespace"}
+	}
+	if sourceType != strings.ToLower(sourceType) {
+		return "", "", &updateSkillFailure{"ERROR", updateCodeLockfileInvalid, "lock source type must be canonical lowercase"}
+	}
+	if sourceType != expectedType {
+		return "", "", &updateSkillFailure{"ERROR", updateCodeLockfileInvalid, fmt.Sprintf("source type mismatch for kind %s: expected %s, got %s", kind, expectedType, sourceType)}
+	}
+	return sourceInput, kind, nil
 }
 
 func classifyUpdateSourcePrepareFailure(kind string, err error) (status string, code string) {
@@ -1203,6 +1034,18 @@ func classifyUpdateSourcePrepareFailure(kind string, err error) (status string, 
 		return "REJECTED", updateCodeGitHubRefFloating
 	}
 	return status, code
+}
+
+func failUpdateSkillItem(item updateSkillItem, lock installLock, status string, code string, message string) updateSkillItem {
+	item.Status = status
+	item.ErrorCode = code
+	item.Message = message
+	item.RuleID = inferRuleIDForJSONError(item.Message)
+	item.Risk = updateRisk{
+		Previous: lock.Findings,
+		Current:  lock.Findings,
+	}
+	return item
 }
 
 func validateUpdateLockEnvelope(lock installLock, expectedSkillName string) error {
@@ -1254,13 +1097,21 @@ func validateUpdateLockEnvelope(lock installLock, expectedSkillName string) erro
 	if err := validateLockFindingSummary(lock.Findings); err != nil {
 		return fmt.Errorf("lock findings summary is invalid: %v", err)
 	}
-	if err := validateSeverityOverrideAudit(lock.Policy.SeverityOverrides); err != nil {
+	if err := policypkg.SeverityOverrideAuditSet(lock.Policy.SeverityOverrides).Validate(); err != nil {
 		return fmt.Errorf("lock policy severity_overrides is invalid: %v", err)
 	}
 	return nil
 }
 
 func validateUpdateLockAgainstInstallReport(skillPath string, lock installLock) error {
+	skillInfo, skillStatErr := os.Lstat(skillPath)
+	if skillStatErr != nil {
+		return fmt.Errorf("failed to evaluate install report for update baseline: %w", skillStatErr)
+	}
+	if !skillInfo.IsDir() {
+		return fmt.Errorf("failed to evaluate install report for update baseline: %s is not a directory", skillPath)
+	}
+
 	reportPath := filepath.Join(skillPath, installReportFile)
 	_, statErr := os.Lstat(reportPath)
 	if statErr != nil {
@@ -1488,15 +1339,22 @@ func ensureURLScanRegularFile(info os.FileInfo, path string, root string) error 
 	return fmt.Errorf("%s: URL scan input contains non-regular file: %s", ruleUpdateURLScanSpecialFile, path)
 }
 
-func ensureURLScanStableFile(previous os.FileInfo, current os.FileInfo, path string, root string) error {
-	if os.SameFile(previous, current) {
-		return nil
-	}
+func relativePathForMessage(path string, root string) string {
 	rel, relErr := filepath.Rel(root, path)
 	if relErr == nil {
-		path = filepath.ToSlash(rel)
+		return filepath.ToSlash(rel)
 	}
-	return fmt.Errorf("%s: URL scan source changed during read: %s", ruleUpdateURLScanSourceChanged, path)
+	return path
+}
+
+func ensureURLScanStableFile(previous os.FileInfo, current os.FileInfo, path string, root string) error {
+	return safefs.Sentinel{
+		Previous: previous,
+		Path:     relativePathForMessage(path, root),
+		ChangedError: func(path string) error {
+			return fmt.Errorf("%s: URL scan source changed during read: %s", ruleUpdateURLScanSourceChanged, path)
+		},
+	}.CheckCurrent(current)
 }
 
 func collectExecutableFiles(root string) ([]string, error) {
@@ -1573,17 +1431,13 @@ func readURLScanContent(r io.Reader, path string, root string) (string, error) {
 }
 
 func ensureUpdateScanRoot(root string, label string, symlinkRuleID string, specialRuleID string) error {
-	rootInfo, err := os.Lstat(root)
-	if err != nil {
-		return fmt.Errorf("failed to stat %s root: %w", label, err)
-	}
-	if rootInfo.Mode()&os.ModeSymlink != 0 {
-		return fmt.Errorf("%s: %s root must not be a symlink: %s", symlinkRuleID, label, root)
-	}
-	if !rootInfo.IsDir() {
-		return fmt.Errorf("%s: %s root must be a directory: %s", specialRuleID, label, root)
-	}
-	return nil
+	return safefs.RootCheck{
+		Root:            root,
+		Label:           label,
+		SymlinkRuleID:   symlinkRuleID,
+		SpecialRuleID:   specialRuleID,
+		StatErrorPrefix: fmt.Sprintf("failed to stat %s root", label),
+	}.Validate()
 }
 
 func mapKeysSorted(set map[string]struct{}) []string {
@@ -1593,37 +1447,6 @@ func mapKeysSorted(set map[string]struct{}) []string {
 	}
 	sort.Strings(out)
 	return out
-}
-
-func mapValuesSeverityOverrides(in map[string]severityOverrideAudit) []severityOverrideAudit {
-	out := make([]severityOverrideAudit, 0, len(in))
-	for _, override := range in {
-		out = append(out, override)
-	}
-	return out
-}
-
-func sortSeverityOverrides(in []severityOverrideAudit) []severityOverrideAudit {
-	out := cloneSeverityOverrides(in)
-	sort.Slice(out, func(i, j int) bool {
-		if out[i].RuleID != out[j].RuleID {
-			return out[i].RuleID < out[j].RuleID
-		}
-		if out[i].AppliedAt != out[j].AppliedAt {
-			return out[i].AppliedAt < out[j].AppliedAt
-		}
-		return out[i].Source < out[j].Source
-	})
-	return out
-}
-
-func mapKeysSortedSeverityOverrideAudit(in map[string]severityOverrideAudit) []string {
-	keys := make([]string, 0, len(in))
-	for ruleID := range in {
-		keys = append(keys, ruleID)
-	}
-	sort.Strings(keys)
-	return keys
 }
 
 func setDiff(current []string, previous []string) []string {

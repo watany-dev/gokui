@@ -198,18 +198,20 @@ func writeZipFile(file *zip.File, outPath string, maxBytes int64) (int64, error)
 	if err != nil {
 		return 0, fmt.Errorf("failed to create output file %s: %w", outPath, err)
 	}
-	defer func() {
-		_ = out.Close()
-	}()
 
-	written, err := copyWithStrictLimit(out, rc, maxBytes)
+	written, err := limitio.CopyWithStrictLimit(out, rc, maxBytes)
 	if err != nil {
+		_ = out.Close()
 		if limitio.IsSizeExceeded(err) {
 			_ = os.Remove(outPath)
 			return 0, fmt.Errorf("archive file exceeds max file bytes during extraction: %s", file.Name)
 		}
 		_ = os.Remove(outPath)
 		return 0, fmt.Errorf("failed to extract file %s: %w", file.Name, err)
+	}
+	if err := out.Close(); err != nil {
+		_ = os.Remove(outPath)
+		return 0, fmt.Errorf("failed to close extracted file %s: %w", file.Name, err)
 	}
 	return written, nil
 }
@@ -325,6 +327,9 @@ func rejectArchiveSourceSymlinkPath(src string) error {
 			return fmt.Errorf("failed to evaluate archive source path: %w", err)
 		}
 		if info.Mode()&os.ModeSymlink != 0 {
+			if isRootLevelPathComponent(candidate) {
+				continue
+			}
 			return fmt.Errorf("%s: archive source must not be a symlink: %s", ruleArchiveSourceSymlinkDetected, src)
 		}
 	}
@@ -351,6 +356,18 @@ func symlinkCheckCandidates(path string) []string {
 	return candidates
 }
 
+func isRootLevelPathComponent(path string) bool {
+	cleanPath := filepath.Clean(path)
+	if !filepath.IsAbs(cleanPath) {
+		return false
+	}
+	parent := filepath.Dir(cleanPath)
+	if parent == cleanPath {
+		return false
+	}
+	return filepath.Dir(parent) == parent
+}
+
 func ensureArchiveSourceStableFromOpen(previous os.FileInfo, opened fileInfoStatter, src string) error {
 	current, err := opened.Stat()
 	if err != nil {
@@ -371,12 +388,10 @@ func writeTarFile(header *tar.Header, tarReader *tar.Reader, outPath string, max
 	if err != nil {
 		return 0, fmt.Errorf("failed to create output file %s: %w", outPath, err)
 	}
-	defer func() {
-		_ = out.Close()
-	}()
 
-	written, err := copyWithStrictLimit(out, tarReader, maxBytes)
+	written, err := limitio.CopyWithStrictLimit(out, tarReader, maxBytes)
 	if err != nil {
+		_ = out.Close()
 		if limitio.IsSizeExceeded(err) {
 			_ = os.Remove(outPath)
 			return 0, fmt.Errorf("archive file exceeds max file bytes during extraction: %s", header.Name)
@@ -384,11 +399,11 @@ func writeTarFile(header *tar.Header, tarReader *tar.Reader, outPath string, max
 		_ = os.Remove(outPath)
 		return 0, fmt.Errorf("failed to extract file %s: %w", header.Name, err)
 	}
+	if err := out.Close(); err != nil {
+		_ = os.Remove(outPath)
+		return 0, fmt.Errorf("failed to close extracted file %s: %w", header.Name, err)
+	}
 	return written, nil
-}
-
-func copyWithStrictLimit(dst io.Writer, src io.Reader, maxBytes int64) (int64, error) {
-	return limitio.CopyWithStrictLimit(dst, src, maxBytes)
 }
 
 func safeJoin(root, name string) (string, error) {
