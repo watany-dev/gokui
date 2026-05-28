@@ -172,8 +172,8 @@ type updateDeps struct {
 
 func defaultUpdateDeps() updateDeps {
 	return updateDeps{
-		LoadUserPolicy:          loadUserPolicyConfig,
-		LoadRepositoryPolicy:    loadRepositoryPolicyConfig,
+		LoadUserPolicy:          policypkg.LoadUserPolicy,
+		LoadRepositoryPolicy:    policypkg.LoadRepositoryPolicy,
 		PrepareEvaluationSource: preparePolicyEvaluationSource,
 	}
 }
@@ -323,10 +323,10 @@ func runUpdateWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps u
 
 func normalizeUpdateDeps(deps updateDeps) updateDeps {
 	if deps.LoadUserPolicy == nil {
-		deps.LoadUserPolicy = loadUserPolicyConfig
+		deps.LoadUserPolicy = policypkg.LoadUserPolicy
 	}
 	if deps.LoadRepositoryPolicy == nil {
-		deps.LoadRepositoryPolicy = loadRepositoryPolicyConfig
+		deps.LoadRepositoryPolicy = policypkg.LoadRepositoryPolicy
 	}
 	if deps.PrepareEvaluationSource == nil {
 		deps.PrepareEvaluationSource = preparePolicyEvaluationSource

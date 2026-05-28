@@ -38,8 +38,6 @@ var (
 	installMaxDigestTotalBytes int64 = 200 * 1024 * 1024
 	installMaxDigestFileBytes  int64 = 20 * 1024 * 1024
 	errDigestBuildFailed             = errors.New("failed to digest installed files")
-	loadUserPolicyConfig             = policypkg.LoadUserPolicy
-	loadRepositoryPolicyConfig       = policypkg.LoadRepositoryPolicy
 )
 
 const (
@@ -161,8 +159,8 @@ type installDeps struct {
 
 func defaultInstallDeps() installDeps {
 	return installDeps{
-		LoadUserPolicy:          loadUserPolicyConfig,
-		LoadRepositoryPolicy:    loadRepositoryPolicyConfig,
+		LoadUserPolicy:          policypkg.LoadUserPolicy,
+		LoadRepositoryPolicy:    policypkg.LoadRepositoryPolicy,
 		PrepareEvaluationSource: preparePolicyEvaluationSource,
 	}
 }
@@ -588,10 +586,10 @@ func runInstallWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps 
 
 func normalizeInstallDeps(deps installDeps) installDeps {
 	if deps.LoadUserPolicy == nil {
-		deps.LoadUserPolicy = loadUserPolicyConfig
+		deps.LoadUserPolicy = policypkg.LoadUserPolicy
 	}
 	if deps.LoadRepositoryPolicy == nil {
-		deps.LoadRepositoryPolicy = loadRepositoryPolicyConfig
+		deps.LoadRepositoryPolicy = policypkg.LoadRepositoryPolicy
 	}
 	if deps.PrepareEvaluationSource == nil {
 		deps.PrepareEvaluationSource = preparePolicyEvaluationSource

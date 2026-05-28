@@ -206,8 +206,8 @@ type vetDeps struct {
 
 func defaultVetDeps() vetDeps {
 	return vetDeps{
-		LoadUserPolicy:       loadUserPolicyConfig,
-		LoadRepositoryPolicy: loadRepositoryPolicyConfig,
+		LoadUserPolicy:       policypkg.LoadUserPolicy,
+		LoadRepositoryPolicy: policypkg.LoadRepositoryPolicy,
 		RunInspect:           runInspect,
 	}
 }
@@ -416,10 +416,10 @@ func runVetWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps vetD
 
 func normalizeVetDeps(deps vetDeps) vetDeps {
 	if deps.LoadUserPolicy == nil {
-		deps.LoadUserPolicy = loadUserPolicyConfig
+		deps.LoadUserPolicy = policypkg.LoadUserPolicy
 	}
 	if deps.LoadRepositoryPolicy == nil {
-		deps.LoadRepositoryPolicy = loadRepositoryPolicyConfig
+		deps.LoadRepositoryPolicy = policypkg.LoadRepositoryPolicy
 	}
 	if deps.RunInspect == nil {
 		deps.RunInspect = runInspect
