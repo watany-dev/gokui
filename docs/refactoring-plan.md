@@ -42,6 +42,9 @@ Recent completed increments:
   text.
 - value-flag parsing for `--out`, `--target`, `--profile`, and `--override`
   now goes through a shared helper while preserving current missing-value errors.
+- parser handling for repeated source arguments, unknown options, optional
+  `lock verify` paths, and rejected `update` positionals now goes through
+  shared helpers while preserving current error text.
 
 Validation already run after the latest parser/format increments:
 
@@ -64,6 +67,7 @@ go test ./internal/app -run 'Args|Fetch|Inspect|Update|Error|JSON|SARIF'
 go test ./internal/app -run 'Args|Install|Vet|LockVerify|Error|JSON|SARIF|Review'
 go test ./internal/app -run 'Args|Fetch|Install|Update|Error|JSON|SARIF'
 go test ./internal/app -run 'Args|Install|Vet|Error|JSON|SARIF|Review'
+go test ./internal/app
 make test
 ```
 
@@ -306,7 +310,7 @@ slice:
 1. Audit #7, #10, #12, #13, #15, #16, #17, and #18 against the current code and
    close or update any issues whose requested implementation is now present.
 2. Continue #5 by moving command parser shape toward a shared parser/spec model
-   or by extracting repeated positional/unknown-option handling. Keep current
+   or by extracting the remaining per-command flag loop shape. Keep current
    error strings and pre-parse structured-output detection stable while doing
    this.
 3. Continue #4 by extracting any remaining command-specific structured-error
