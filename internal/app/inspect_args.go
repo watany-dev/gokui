@@ -22,12 +22,11 @@ func parseInspectArgs(args []string) (input string, format string, err error) {
 			continue
 		}
 		if strings.HasPrefix(arg, "-") {
-			return "", "", fmt.Errorf("unknown inspect option: %s", arg)
+			return "", "", unknownOptionError("inspect", arg)
 		}
-		if input != "" {
-			return "", "", fmt.Errorf("inspect accepts exactly one source")
+		if err := setSingleSourceArg(&input, "inspect", arg); err != nil {
+			return "", "", err
 		}
-		input = arg
 	}
 
 	if input == "" {

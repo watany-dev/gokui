@@ -45,12 +45,11 @@ func parseInstallArgs(args []string) (installArgs, error) {
 		}
 		switch {
 		case strings.HasPrefix(arg, "-"):
-			return installArgs{}, fmt.Errorf("unknown install option: %s", arg)
+			return installArgs{}, unknownOptionError("install", arg)
 		default:
-			if out.Source != "" {
-				return installArgs{}, fmt.Errorf("install accepts exactly one source")
+			if err := setSingleSourceArg(&out.Source, "install", arg); err != nil {
+				return installArgs{}, err
 			}
-			out.Source = arg
 		}
 	}
 

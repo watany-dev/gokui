@@ -62,6 +62,18 @@ func parseValueFlagArg(args []string, index int, flag string) (value string, nex
 	return "", index, false, nil
 }
 
+func unknownOptionError(command string, arg string) error {
+	return fmt.Errorf("unknown %s option: %s", command, arg)
+}
+
+func setSingleSourceArg(source *string, command string, arg string) error {
+	if *source != "" {
+		return fmt.Errorf("%s accepts exactly one source", command)
+	}
+	*source = arg
+	return nil
+}
+
 func firstPositionalArg(args []string, valueFlags ...string) string {
 	skipValue := make(map[string]struct{}, len(valueFlags))
 	for _, flag := range valueFlags {

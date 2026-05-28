@@ -31,12 +31,11 @@ func parseFetchArgs(args []string) (fetchArgs, error) {
 		}
 		switch {
 		case strings.HasPrefix(arg, "-"):
-			return fetchArgs{}, fmt.Errorf("unknown fetch option: %s", arg)
+			return fetchArgs{}, unknownOptionError("fetch", arg)
 		default:
-			if out.Source != "" {
-				return fetchArgs{}, fmt.Errorf("fetch accepts exactly one source")
+			if err := setSingleSourceArg(&out.Source, "fetch", arg); err != nil {
+				return fetchArgs{}, err
 			}
-			out.Source = arg
 		}
 	}
 

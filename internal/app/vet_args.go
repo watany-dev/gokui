@@ -30,12 +30,11 @@ func parseVetArgs(args []string) (input string, format string, profile string, p
 			continue
 		}
 		if strings.HasPrefix(arg, "-") {
-			return "", "", "", false, fmt.Errorf("unknown vet option: %s", arg)
+			return "", "", "", false, unknownOptionError("vet", arg)
 		}
-		if input != "" {
-			return "", "", "", false, fmt.Errorf("vet accepts exactly one source")
+		if err := setSingleSourceArg(&input, "vet", arg); err != nil {
+			return "", "", "", false, err
 		}
-		input = arg
 	}
 
 	if input == "" {
