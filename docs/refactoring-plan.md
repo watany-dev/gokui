@@ -120,6 +120,9 @@ Recent completed increments:
 - vet policy/profile contract tests are split into `run_vet_policy_test.go`,
   reducing the broad `run_vet_command_test.go` command-output test file while
   preserving existing command behavior.
+- release checklist documentation sync coverage is split into
+  `docs_sync_release_checklist_test.go`, narrowing the broad docs sync test
+  file without changing documentation assertions.
 - SARIF error document construction now uses a shared helper for structured
   error rule ID resolution while keeping command-specific SARIF properties at
   the output boundary.
