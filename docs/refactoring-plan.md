@@ -68,6 +68,9 @@ Recent completed increments:
 - SARIF error document construction now uses a shared helper for structured
   error rule ID resolution while keeping command-specific SARIF properties at
   the output boundary.
+- SARIF findings-to-rules/results construction moved into `internal/report`;
+  app-level inspect/fetch/install/update builders now adapt command findings
+  into report findings before setting command-specific SARIF properties.
 
 Validation already run after the latest parser/format increments:
 
@@ -99,6 +102,7 @@ go test ./internal/app -run 'Args|Fetch|Inspect|Vet|Install|Update|LockVerify|Er
 go test ./internal/app -run 'Args|Fetch|Inspect|Vet|Install|Update|LockVerify|Error|JSON|SARIF|Review'
 go test ./internal/app -run 'Args|Fetch|Inspect|Vet|Install|Update|LockVerify|Error|JSON|SARIF|Review'
 go test ./internal/app -run 'Error|SARIF|JSON|Fetch|Inspect|Install|Update|LockVerify'
+go test ./internal/report ./internal/app -run 'SARIF|Inspect|Fetch|Install|Update'
 make test
 ```
 
@@ -360,7 +364,7 @@ slice:
 2. Continue #5 by extracting any remaining duplicated parser spec declarations
    only where that stays readable. Keep current error strings and pre-parse
    structured-output detection stable while doing this.
-3. Continue #4 by extracting any remaining command-specific structured-error
+3. Continue #4/#10 by extracting any remaining command-specific structured-error
    branching outside parse-error handling where it can be done without changing
    current error strings, fallback source/target fields, `review-json`
    handling, command-specific SARIF properties, or structured output contracts;
