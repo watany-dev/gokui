@@ -27,9 +27,10 @@ func parseUpdateArgs(args []string) (updateArgs, error) {
 			i = next
 			continue
 		}
+		if parseBoolFlagHandlers(arg, boolFlagHandler{flag: "--dry-run", set: func() { out.DryRun = true }}) {
+			continue
+		}
 		switch {
-		case arg == "--dry-run":
-			out.DryRun = true
 		case strings.HasPrefix(arg, "-"):
 			return updateArgs{}, unknownOptionError("update", arg)
 		default:

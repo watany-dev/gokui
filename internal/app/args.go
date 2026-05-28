@@ -49,6 +49,11 @@ type valueFlagHandler struct {
 	set  func(string)
 }
 
+type boolFlagHandler struct {
+	flag string
+	set  func()
+}
+
 func parseValueFlagHandlers(args []string, index int, handlers ...valueFlagHandler) (nextIndex int, ok bool, err error) {
 	for _, handler := range handlers {
 		value, next, matched, parseErr := parseValueFlagArg(args, index, handler.flag)
@@ -62,6 +67,17 @@ func parseValueFlagHandlers(args []string, index int, handlers ...valueFlagHandl
 		return next, true, nil
 	}
 	return index, false, nil
+}
+
+func parseBoolFlagHandlers(arg string, handlers ...boolFlagHandler) bool {
+	for _, handler := range handlers {
+		if arg != handler.flag {
+			continue
+		}
+		handler.set()
+		return true
+	}
+	return false
 }
 
 func parseValueFlagArg(args []string, index int, flag string) (value string, nextIndex int, ok bool, err error) {
