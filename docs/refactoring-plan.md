@@ -256,10 +256,11 @@ make check
 
 Current inventory notes:
 
-- #7 is partially represented by `internal/rule`; keep open until scattered
-  app/source rule constants are fully catalog-backed. The audit found the
-  catalog and scan registry tests present, but command error-code constants and
-  GitHub fetch guard errors still need an explicit catalog boundary decision.
+- #7 is represented by `internal/rule`, catalog lookup tests, scan registry
+  tests, and guard-rule call sites for GitHub archive/source metadata/fetch
+  symlink errors. Command `*_FAILED`, argument, and update status strings remain
+  wire-level error/status codes rather than catalog rules, so this is a
+  candidate to close after repository write access is available.
 - #10 is represented by shared SARIF document/types, pre-release property
   helpers, findings/update/lock-verify builders, and structured-error input
   builders in `internal/report`. The remaining fetch/inspect/install
@@ -532,9 +533,8 @@ The next work should stay behavior-preserving and commit after each validation
 slice:
 
 1. When GitHub issue write access is available, close or comment on the
-   candidate-complete issues now represented locally: #6, #8, #10, #11, #12,
-   #13, #14, #15, #16, #17, and #18. Keep #7 open until its catalog boundary
-   decision is resolved.
+   candidate-complete issues now represented locally: #6, #7, #8, #10, #11,
+   #12, #13, #14, #15, #16, #17, and #18.
 2. Continue #4/#5 only where common CLI parsing or structured-error helpers can
    remove duplication without changing error strings, fallback source/target
    fields, `review-json` handling, SARIF properties, or stream contracts.
