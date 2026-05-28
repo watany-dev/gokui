@@ -12,7 +12,7 @@ import (
 	"testing"
 )
 
-func TestRunInspectVetCommands(t *testing.T) {
+func TestRunInspectCommand(t *testing.T) {
 	cfg := Config{
 		Version: "v0.1.0",
 		Commit:  "abc123",

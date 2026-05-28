@@ -155,6 +155,9 @@ Recent completed increments:
 - the remaining vet compact command-output contract moved from the broad
   inspect/vet command test into `run_vet_command_test.go`, leaving
   `run_inspect_vet_test.go` focused on inspect command behavior.
+- the inspect command contract test file is renamed to
+  `run_inspect_command_test.go` with an inspect-specific test name after the
+  vet command contract was moved out.
 - SARIF error document construction now uses a shared helper for structured
   error rule ID resolution while keeping command-specific SARIF properties at
   the output boundary.
@@ -226,6 +229,7 @@ go test ./internal/report ./internal/app -run 'PreReleaseSARIF|StructuredErrorSA
 go test ./internal/report ./internal/app -run 'SARIFError|StructuredError|Error|Fetch|Inspect|Install|Update|LockVerify'
 go test ./internal/app -run 'ParseInspectArgs|ParseVetArgs|InspectArgJSONHelpers|BuildInspect|DetectSourceKind|PrepareInspect'
 go test ./internal/app -run 'TestRunInspectVetCommands|TestRunVetCommands'
+go test ./internal/app -run 'TestRunInspectCommand|TestRunVetCommands'
 make test
 make check
 ```
