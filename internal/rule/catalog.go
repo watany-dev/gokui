@@ -199,6 +199,16 @@ var (
 		Severity:    SeverityHigh,
 		Description: "scan source changed while being read",
 	}
+	FetchOutputSymlink = Rule{
+		ID:          "FETCH_OUTPUT_SYMLINK_DETECTED",
+		Severity:    SeverityHigh,
+		Description: "fetch output root is a symlink",
+	}
+	FetchOutputEntrySymlink = Rule{
+		ID:          "FETCH_OUTPUT_ENTRY_SYMLINK_DETECTED",
+		Severity:    SeverityHigh,
+		Description: "fetch output entry is a symlink",
+	}
 )
 
 var catalog = []Rule{
@@ -238,6 +248,8 @@ var catalog = []Rule{
 	ScanFileCountExceeded,
 	SpecialFileInScanSource,
 	ScanSourceChangedDuringRead,
+	FetchOutputSymlink,
+	FetchOutputEntrySymlink,
 }
 
 var catalogByID = buildCatalogByID(catalog)

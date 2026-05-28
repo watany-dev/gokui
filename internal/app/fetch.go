@@ -11,6 +11,7 @@ import (
 
 	"github.com/watany-dev/gokui/internal/cli/exitcode"
 	reportpkg "github.com/watany-dev/gokui/internal/report"
+	rulepkg "github.com/watany-dev/gokui/internal/rule"
 	skillpkg "github.com/watany-dev/gokui/internal/skill"
 	srcpkg "github.com/watany-dev/gokui/internal/source"
 )
@@ -53,9 +54,6 @@ const (
 	fetchErrorCodeMetadataWriteFailed  = "FETCH_SOURCE_METADATA_WRITE_FAILED"
 	fetchErrorCodeUnknown              = "FETCH_FAILED"
 )
-
-const ruleFetchOutputSymlink = "FETCH_OUTPUT_SYMLINK_DETECTED"
-const ruleFetchOutputEntrySymlink = "FETCH_OUTPUT_ENTRY_SYMLINK_DETECTED"
 
 type fetchDeps struct {
 	FetchGitHubSkill    func(srcpkg.GitHubSpec) (string, func(), error)
@@ -209,7 +207,7 @@ func runFetchWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps fe
 	}
 
 	outRoot := filepath.Clean(parsed.Out)
-	if err := rejectSymlinkPath(outRoot, "fetch output root", ruleFetchOutputSymlink); err != nil {
+	if err := rejectSymlinkPath(outRoot, "fetch output root", rulepkg.FetchOutputSymlink.ID); err != nil {
 		if emitFetchStructuredError(parsed.Format, stdout, stderr, fetchErrorReport{
 			SchemaVersion: reportSchemaVersion,
 			Status:        reportStatusError,
@@ -470,7 +468,7 @@ func fetchSkillAtomic(skillRoot string, outRoot string, skillName string) (strin
 	}
 
 	finalPath := filepath.Join(outRoot, skillName)
-	if err := rejectSymlinkPath(finalPath, "fetch output entry", ruleFetchOutputEntrySymlink); err != nil {
+	if err := rejectSymlinkPath(finalPath, "fetch output entry", rulepkg.FetchOutputEntrySymlink.ID); err != nil {
 		return "", err
 	}
 	if _, err := os.Stat(finalPath); err == nil {

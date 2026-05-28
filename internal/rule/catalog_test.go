@@ -44,6 +44,8 @@ func TestCatalogIncludesScanRules(t *testing.T) {
 		{ScanFileCountExceeded, "SCAN_FILE_COUNT_EXCEEDED", SeverityHigh},
 		{SpecialFileInScanSource, "SPECIAL_FILE_IN_SCAN_SOURCE", SeverityHigh},
 		{ScanSourceChangedDuringRead, "SCAN_SOURCE_CHANGED_DURING_READ", SeverityHigh},
+		{FetchOutputSymlink, "FETCH_OUTPUT_SYMLINK_DETECTED", SeverityHigh},
+		{FetchOutputEntrySymlink, "FETCH_OUTPUT_ENTRY_SYMLINK_DETECTED", SeverityHigh},
 	}
 
 	for _, tc := range cases {
