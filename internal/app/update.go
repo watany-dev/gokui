@@ -164,9 +164,28 @@ type updateSummary struct {
 	Skipped  int `json:"skipped"`
 }
 
+type updateDeps struct {
+	LoadUserPolicy          func() (policypkg.Config, bool, error)
+	LoadRepositoryPolicy    func(string) (policypkg.Config, bool, error)
+	PrepareEvaluationSource func(input string, sourceKind string) (string, func(), error)
+}
+
+func defaultUpdateDeps() updateDeps {
+	return updateDeps{
+		LoadUserPolicy:          loadUserPolicyConfig,
+		LoadRepositoryPolicy:    loadRepositoryPolicyConfig,
+		PrepareEvaluationSource: preparePolicyEvaluationSource,
+	}
+}
+
 func runUpdate(args []string, stdout io.Writer, stderr io.Writer) int {
+	return runUpdateWithDeps(args, stdout, stderr, defaultUpdateDeps())
+}
+
+func runUpdateWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps updateDeps) int {
 	requestedJSON := updateArgsRequestJSON(args)
 	requestedSARIF := updateArgsRequestSARIF(args)
+	deps = normalizeUpdateDeps(deps)
 
 	parsed, err := parseUpdateArgs(args)
 	if err != nil {
@@ -224,7 +243,7 @@ func runUpdate(args []string, stdout io.Writer, stderr io.Writer) int {
 		return exitcode.Error.Int()
 	}
 
-	userPolicy, policyLoaded, policyErr := loadUserPolicyConfig()
+	userPolicy, policyLoaded, policyErr := deps.LoadUserPolicy()
 	if policyErr != nil {
 		if emitUpdateStructuredError(parsed.Format, stdout, stderr, updateErrorReport{
 			SchemaVersion: reportSchemaVersion,
@@ -240,7 +259,7 @@ func runUpdate(args []string, stdout io.Writer, stderr io.Writer) int {
 		return exitcode.Error.Int()
 	}
 
-	report, err := buildUpdateReport(targetRoot, policyLoaded, userPolicy)
+	report, err := buildUpdateReportWithDeps(targetRoot, policyLoaded, userPolicy, deps)
 	if err != nil {
 		errorCode := updateFatalCodeReportBuild
 		if isUpdateTargetReadError(err) {
@@ -300,6 +319,19 @@ func runUpdate(args []string, stdout io.Writer, stderr io.Writer) int {
 		return exitcode.Rejected.Int()
 	}
 	return exitcode.OK.Int()
+}
+
+func normalizeUpdateDeps(deps updateDeps) updateDeps {
+	if deps.LoadUserPolicy == nil {
+		deps.LoadUserPolicy = loadUserPolicyConfig
+	}
+	if deps.LoadRepositoryPolicy == nil {
+		deps.LoadRepositoryPolicy = loadRepositoryPolicyConfig
+	}
+	if deps.PrepareEvaluationSource == nil {
+		deps.PrepareEvaluationSource = preparePolicyEvaluationSource
+	}
+	return deps
 }
 
 func updateArgsRequestJSON(args []string) bool {
@@ -528,6 +560,11 @@ func buildUpdateCompactSummary(report updateReport) string {
 }
 
 func buildUpdateReport(targetRoot string, policyLoaded bool, cfg policypkg.Config) (updateReport, error) {
+	return buildUpdateReportWithDeps(targetRoot, policyLoaded, cfg, defaultUpdateDeps())
+}
+
+func buildUpdateReportWithDeps(targetRoot string, policyLoaded bool, cfg policypkg.Config, deps updateDeps) (updateReport, error) {
+	deps = normalizeUpdateDeps(deps)
 	cleanTarget := filepath.Clean(targetRoot)
 	entries, err := os.ReadDir(cleanTarget)
 	if err != nil {
@@ -578,7 +615,7 @@ func buildUpdateReport(targetRoot string, policyLoaded bool, cfg policypkg.Confi
 		}
 		item.SeverityOverrides = []severityOverrideAudit(policypkg.SeverityOverrideAuditSet(lock.Policy.SeverityOverrides).Clone())
 
-		enriched, err := evaluateUpdateSkill(item, lock, policyLoaded, cfg)
+		enriched, err := evaluateUpdateSkillWithDeps(item, lock, policyLoaded, cfg, deps)
 		if err != nil {
 			item.Status = "ERROR"
 			item.ErrorCode = updateCodeEvaluationError
@@ -610,13 +647,18 @@ func isUpdateTargetReadError(err error) bool {
 }
 
 func evaluateUpdateSkill(item updateSkillItem, lock installLock, policyLoaded bool, cfg policypkg.Config) (updateSkillItem, error) {
+	return evaluateUpdateSkillWithDeps(item, lock, policyLoaded, cfg, defaultUpdateDeps())
+}
+
+func evaluateUpdateSkillWithDeps(item updateSkillItem, lock installLock, policyLoaded bool, cfg policypkg.Config, deps updateDeps) (updateSkillItem, error) {
+	deps = normalizeUpdateDeps(deps)
 	item.RiskScore = computeUpdateRiskScore(lock.Findings, lock.Findings, updateRiskSignalInputs{})
 	inputs, validationErr := validateUpdateLockForEvaluation(item, lock)
 	if validationErr != nil {
 		return failUpdateSkillItem(item, lock, validationErr.status, validationErr.code, validationErr.message), nil
 	}
 
-	skillRoot, cleanup, err := preparePolicyEvaluationSource(inputs.sourceInput, inputs.kind)
+	skillRoot, cleanup, err := deps.PrepareEvaluationSource(inputs.sourceInput, inputs.kind)
 	if cleanup != nil {
 		defer cleanup()
 	}
@@ -626,7 +668,7 @@ func evaluateUpdateSkill(item updateSkillItem, lock installLock, policyLoaded bo
 		return failUpdateSkillItem(item, lock, status, code, message), nil
 	}
 
-	effectivePolicy, effectivePolicyLoaded, repoPolicyErr := resolveUpdateEvaluationPolicy(inputs.kind, skillRoot, policyLoaded, cfg)
+	effectivePolicy, effectivePolicyLoaded, repoPolicyErr := resolveUpdateEvaluationPolicyWithDeps(inputs.kind, skillRoot, policyLoaded, cfg, deps)
 	if repoPolicyErr != nil {
 		return failUpdateSkillItem(item, lock, "ERROR", updateCodeEvaluationError, repoPolicyErr.Error()), nil
 	}
@@ -785,10 +827,15 @@ func checkUpdateLockInstallReport(ctx *updateLockEvaluationContext) *updateSkill
 }
 
 func resolveUpdateEvaluationPolicy(kind string, skillRoot string, policyLoaded bool, cfg policypkg.Config) (policypkg.Config, bool, error) {
+	return resolveUpdateEvaluationPolicyWithDeps(kind, skillRoot, policyLoaded, cfg, defaultUpdateDeps())
+}
+
+func resolveUpdateEvaluationPolicyWithDeps(kind string, skillRoot string, policyLoaded bool, cfg policypkg.Config, deps updateDeps) (policypkg.Config, bool, error) {
+	deps = normalizeUpdateDeps(deps)
 	if !shouldApplyRepositoryPolicy(kind) {
 		return cfg, policyLoaded, nil
 	}
-	repoPolicy, repoPolicyFound, repoPolicyErr := loadRepositoryPolicyConfig(skillRoot)
+	repoPolicy, repoPolicyFound, repoPolicyErr := deps.LoadRepositoryPolicy(skillRoot)
 	if repoPolicyErr != nil {
 		return policypkg.Config{}, false, repoPolicyErr
 	}

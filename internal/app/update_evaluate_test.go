@@ -12,7 +12,6 @@ import (
 	"testing/quick"
 
 	policypkg "github.com/watany-dev/gokui/internal/policy"
-	srcpkg "github.com/watany-dev/gokui/internal/source"
 )
 
 func TestSetDiffProperties(t *testing.T) {
@@ -207,12 +206,7 @@ func TestEvaluateUpdateSkillAdditionalBranches(t *testing.T) {
 			t.Fatalf("write updated install report: %v", err)
 		}
 
-		origFetch := fetchGitHubSkill
-		t.Cleanup(func() { fetchGitHubSkill = origFetch })
 		cleanupCalled := false
-		fetchGitHubSkill = func(spec srcpkg.GitHubSpec) (string, func(), error) {
-			return "", func() { cleanupCalled = true }, errors.New("fetch failed")
-		}
 
 		item := updateSkillItem{
 			Name: "github-prepare-error-skill",
@@ -227,7 +221,11 @@ func TestEvaluateUpdateSkillAdditionalBranches(t *testing.T) {
 				Changed: []string{},
 			},
 		}
-		got, err := evaluateUpdateSkill(item, lock, false, policypkg.Config{})
+		got, err := evaluateUpdateSkillWithDeps(item, lock, false, policypkg.Config{}, updateDeps{
+			PrepareEvaluationSource: func(input string, sourceKind string) (string, func(), error) {
+				return "", func() { cleanupCalled = true }, errors.New("fetch failed")
+			},
+		})
 		if err != nil {
 			t.Fatalf("evaluateUpdateSkill() unexpected error = %v", err)
 		}
