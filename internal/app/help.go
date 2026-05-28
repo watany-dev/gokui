@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"io"
 	"strings"
+
+	"github.com/watany-dev/gokui/internal/cli/exitcode"
 )
 
 type commandHelp struct {
@@ -43,7 +45,7 @@ func hasHelpFlag(args []string) bool {
 func runHelp(args []string, stdout io.Writer, stderr io.Writer) int {
 	if len(args) == 0 || args[0] == "--help" || args[0] == "-h" {
 		_, _ = fmt.Fprintln(stdout, topLevelHelp())
-		return 0
+		return exitcode.OK.Int()
 	}
 
 	key := args[0]
@@ -57,11 +59,11 @@ func runHelp(args []string, stdout io.Writer, stderr io.Writer) int {
 	h, ok := findCommandHelp(key)
 	if !ok {
 		_, _ = fmt.Fprintf(stderr, "unknown command: %s\n\n%s\n", strings.Join(args, " "), topLevelHelp())
-		return 1
+		return exitcode.Error.Int()
 	}
 
 	_, _ = fmt.Fprintln(stdout, h.full)
-	return 0
+	return exitcode.OK.Int()
 }
 
 func topLevelHelp() string {
