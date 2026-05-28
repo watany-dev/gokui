@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"sort"
 	"strings"
 	"unicode/utf8"
 
@@ -86,50 +85,18 @@ func buildInspectSARIFReport(report inspectReport) reportpkg.SARIFDocument {
 }
 
 func buildFindingsSARIFReport(schemaVersion string, preRelease bool, src source, decision string, findings []inspectFinding, note string) reportpkg.SARIFDocument {
-	rules := make([]reportpkg.SARIFRule, 0)
-	seen := make(map[string]struct{}, len(findings))
+	sarifFindings := make([]reportpkg.SARIFFinding, 0, len(findings))
 	for _, finding := range findings {
-		if _, ok := seen[finding.ID]; ok {
-			continue
-		}
-		seen[finding.ID] = struct{}{}
-		rules = append(rules, reportpkg.SARIFRule{
-			ID: finding.ID,
-			ShortDescription: reportpkg.SARIFMessageContainer{
-				Text: finding.Summary,
-			},
+		sarifFindings = append(sarifFindings, reportpkg.SARIFFinding{
+			ID:       finding.ID,
+			Severity: finding.Severity,
+			File:     finding.File,
+			Line:     finding.Line,
+			Summary:  finding.Summary,
 		})
 	}
-	sort.Slice(rules, func(i, j int) bool {
-		return rules[i].ID < rules[j].ID
-	})
-
-	results := make([]reportpkg.SARIFResult, 0, len(findings))
-	for _, finding := range findings {
-		result := reportpkg.SARIFResult{
-			RuleID:  finding.ID,
-			Level:   reportpkg.SARIFLevelForSeverity(finding.Severity),
-			Message: reportpkg.SARIFMessageContainer{Text: finding.Summary},
-		}
-		location := reportpkg.SARIFLocation{
-			PhysicalLocation: reportpkg.SARIFPhysicalLocation{
-				ArtifactLocation: reportpkg.SARIFArtifactLocation{
-					URI: finding.File,
-				},
-			},
-		}
-		if finding.Line > 0 {
-			location.PhysicalLocation.Region = &reportpkg.SARIFRegion{StartLine: finding.Line}
-		}
-		if finding.File != "" {
-			result.Locations = []reportpkg.SARIFLocation{location}
-		}
-		results = append(results, result)
-	}
-
-	return reportpkg.SARIFDocumentForRun(
-		rules,
-		results,
+	return reportpkg.SARIFDocumentForFindings(
+		sarifFindings,
 		decision != reportDecisionRejected,
 		reportpkg.SARIFProperties{
 			SchemaVersion: schemaVersion,

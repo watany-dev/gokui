@@ -1,5 +1,7 @@
 package report
 
+import "sort"
+
 const (
 	SARIFVersion       = "2.1.0"
 	SARIFSchema        = "https://json.schemastore.org/sarif-2.1.0.json"
@@ -35,6 +37,59 @@ func SARIFResultForError(ruleID string, message string) SARIFResult {
 		Level:   "error",
 		Message: SARIFMessageContainer{Text: message},
 	}
+}
+
+type SARIFFinding struct {
+	ID       string
+	Severity string
+	File     string
+	Line     int
+	Summary  string
+}
+
+func SARIFDocumentForFindings(findings []SARIFFinding, executionSuccessful bool, properties SARIFProperties) SARIFDocument {
+	rules := make([]SARIFRule, 0)
+	seen := make(map[string]struct{}, len(findings))
+	for _, finding := range findings {
+		if _, ok := seen[finding.ID]; ok {
+			continue
+		}
+		seen[finding.ID] = struct{}{}
+		rules = append(rules, SARIFRule{
+			ID: finding.ID,
+			ShortDescription: SARIFMessageContainer{
+				Text: finding.Summary,
+			},
+		})
+	}
+	sort.Slice(rules, func(i, j int) bool {
+		return rules[i].ID < rules[j].ID
+	})
+
+	results := make([]SARIFResult, 0, len(findings))
+	for _, finding := range findings {
+		result := SARIFResult{
+			RuleID:  finding.ID,
+			Level:   SARIFLevelForSeverity(finding.Severity),
+			Message: SARIFMessageContainer{Text: finding.Summary},
+		}
+		location := SARIFLocation{
+			PhysicalLocation: SARIFPhysicalLocation{
+				ArtifactLocation: SARIFArtifactLocation{
+					URI: finding.File,
+				},
+			},
+		}
+		if finding.Line > 0 {
+			location.PhysicalLocation.Region = &SARIFRegion{StartLine: finding.Line}
+		}
+		if finding.File != "" {
+			result.Locations = []SARIFLocation{location}
+		}
+		results = append(results, result)
+	}
+
+	return SARIFDocumentForRun(rules, results, executionSuccessful, properties)
 }
 
 func SARIFDocumentForRun(rules []SARIFRule, results []SARIFResult, executionSuccessful bool, properties SARIFProperties) SARIFDocument {

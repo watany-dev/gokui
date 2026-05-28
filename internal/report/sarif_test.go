@@ -76,6 +76,39 @@ func TestSARIFDocumentForRun(t *testing.T) {
 	}
 }
 
+func TestSARIFDocumentForFindings(t *testing.T) {
+	properties := SARIFProperties{SchemaVersion: "1", Decision: "PASS"}
+	findings := []SARIFFinding{
+		{ID: "RULE_B", Severity: "low", File: "b.txt", Line: 12, Summary: "second"},
+		{ID: "RULE_A", Severity: "high", Summary: "first"},
+		{ID: "RULE_B", Severity: "medium", File: "other.txt", Summary: "duplicate rule"},
+	}
+
+	doc := SARIFDocumentForFindings(findings, true, properties)
+	run := doc.Runs[0]
+	if len(run.Tool.Driver.Rules) != 2 {
+		t.Fatalf("rules len = %d, want 2", len(run.Tool.Driver.Rules))
+	}
+	if run.Tool.Driver.Rules[0].ID != "RULE_A" || run.Tool.Driver.Rules[1].ID != "RULE_B" {
+		t.Fatalf("rules not sorted/deduplicated: %+v", run.Tool.Driver.Rules)
+	}
+	if len(run.Results) != 3 {
+		t.Fatalf("results len = %d, want 3", len(run.Results))
+	}
+	if run.Results[0].Level != "note" || len(run.Results[0].Locations) != 1 {
+		t.Fatalf("unexpected first result: %+v", run.Results[0])
+	}
+	if got := run.Results[0].Locations[0].PhysicalLocation.Region.StartLine; got != 12 {
+		t.Fatalf("startLine = %d, want 12", got)
+	}
+	if run.Results[1].Level != "error" || len(run.Results[1].Locations) != 0 {
+		t.Fatalf("unexpected second result: %+v", run.Results[1])
+	}
+	if run.Properties != properties {
+		t.Fatalf("properties = %+v, want %+v", run.Properties, properties)
+	}
+}
+
 func TestSARIFErrorDocument(t *testing.T) {
 	properties := SARIFProperties{
 		SchemaVersion: "1",
