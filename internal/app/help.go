@@ -41,7 +41,7 @@ func hasHelpFlag(args []string) bool {
 }
 
 func runHelp(args []string, stdout io.Writer, stderr io.Writer) int {
-	if len(args) == 0 {
+	if len(args) == 0 || args[0] == "--help" || args[0] == "-h" {
 		_, _ = fmt.Fprintln(stdout, topLevelHelp())
 		return 0
 	}

@@ -244,16 +244,17 @@ func Run(args []string, stdout io.Writer, stderr io.Writer, cfg Config) int {
 		return runHelp(args[1:], stdout, stderr)
 	}
 
-	if len(args) == 1 && args[0] == "version" {
-		_, _ = fmt.Fprintln(stdout, BuildVersionString(cfg))
-		return 0
-	}
-
-	switch args[0] {
-	case "version":
+	if args[0] == "version" {
 		if hasHelpFlag(args[1:]) {
 			return runHelp([]string{"version"}, stdout, stderr)
 		}
+		if len(args) == 1 {
+			_, _ = fmt.Fprintln(stdout, BuildVersionString(cfg))
+			return 0
+		}
+	}
+
+	switch args[0] {
 	case "fetch":
 		if hasHelpFlag(args[1:]) {
 			return runHelp([]string{"fetch"}, stdout, stderr)

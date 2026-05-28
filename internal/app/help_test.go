@@ -18,6 +18,8 @@ func TestHelpTopLevel(t *testing.T) {
 		{"help"},
 		{"--help"},
 		{"-h"},
+		{"help", "--help"},
+		{"help", "-h"},
 	}
 	for _, args := range cases {
 		t.Run(strings.Join(args, "_"), func(t *testing.T) {
@@ -94,6 +96,7 @@ func TestPerCommandHelpFlag(t *testing.T) {
 		{"fetch_h", []string{"fetch", "-h"}, "gokui fetch"},
 		{"inspect_help", []string{"inspect", "--help"}, "gokui inspect"},
 		{"vet_help", []string{"vet", "--help"}, "gokui vet"},
+		{"version_help", []string{"version", "--help"}, "gokui version"},
 		{"install_help_no_required_flags", []string{"install", "--help"}, "gokui install"},
 		{"install_help_with_other_args", []string{"install", "/some/path", "--help"}, "gokui install"},
 		{"update_help", []string{"update", "--help"}, "gokui update"},
@@ -123,6 +126,19 @@ func TestInstallHelpDoesNotTriggerArgsInvalid(t *testing.T) {
 	}
 	if strings.Contains(stdout, "INSTALL_ARGS_INVALID") || strings.Contains(stderr, "INSTALL_ARGS_INVALID") {
 		t.Fatalf("help flag must not run install parser; got stdout=%q stderr=%q", stdout, stderr)
+	}
+}
+
+func TestVersionRejectsExtraArgs(t *testing.T) {
+	stdout, stderr, code := runForTest(t, "version", "foo")
+	if code != 1 {
+		t.Fatalf("exit code = %d, want 1", code)
+	}
+	if stdout != "" {
+		t.Fatalf("stdout should be empty, got %q", stdout)
+	}
+	if !strings.Contains(stderr, "unknown command: version foo") {
+		t.Fatalf("stderr missing unknown-command message, got %q", stderr)
 	}
 }
 
