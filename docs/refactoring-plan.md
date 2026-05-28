@@ -215,6 +215,7 @@ go test ./internal/report ./internal/app -run 'SARIF|LockVerify|StructuredError|
 go test ./internal/report ./internal/app -run 'SARIFError|StructuredError|Error|Fetch|Inspect|Install|Update|LockVerify'
 go test ./internal/report ./internal/app -run 'PreReleaseSARIF|StructuredErrorSARIFProperties|SARIFError|StructuredError|Error'
 make test
+make check
 ```
 
 Current inventory notes:
