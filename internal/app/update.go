@@ -401,16 +401,10 @@ func buildUpdateSARIFErrorReport(report updateErrorReport) reportpkg.SARIFDocume
 }
 
 func emitUpdateStructuredError(format string, stdout io.Writer, stderr io.Writer, report updateErrorReport) bool {
-	switch format {
-	case "json":
-		_ = writeUpdateJSONError(stdout, stderr, report)
-		return true
-	case "sarif":
-		_ = writeUpdateSARIFError(stdout, stderr, report)
-		return true
-	default:
-		return false
-	}
+	return emitStructuredError(format,
+		func() { _ = writeUpdateJSONError(stdout, stderr, report) },
+		func() { _ = writeUpdateSARIFError(stdout, stderr, report) },
+	)
 }
 
 func parseUpdateArgs(args []string) (updateArgs, error) {

@@ -419,16 +419,10 @@ func writeFetchSARIFError(stdout io.Writer, stderr io.Writer, report fetchErrorR
 }
 
 func emitFetchStructuredError(format string, stdout io.Writer, stderr io.Writer, report fetchErrorReport) bool {
-	switch format {
-	case "json":
-		_ = writeFetchJSONError(stdout, stderr, report)
-		return true
-	case "sarif":
-		_ = writeFetchSARIFError(stdout, stderr, report)
-		return true
-	default:
-		return false
-	}
+	return emitStructuredError(format,
+		func() { _ = writeFetchJSONError(stdout, stderr, report) },
+		func() { _ = writeFetchSARIFError(stdout, stderr, report) },
+	)
 }
 
 func parseFetchArgs(args []string) (fetchArgs, error) {

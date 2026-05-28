@@ -824,16 +824,10 @@ func buildInstallSARIFErrorReport(report installErrorReport) reportpkg.SARIFDocu
 }
 
 func emitInstallStructuredError(format string, stdout io.Writer, stderr io.Writer, report installErrorReport) bool {
-	switch format {
-	case "json":
-		_ = writeInstallJSONError(stdout, stderr, report)
-		return true
-	case "sarif":
-		_ = writeInstallSARIFError(stdout, stderr, report)
-		return true
-	default:
-		return false
-	}
+	return emitStructuredError(format,
+		func() { _ = writeInstallJSONError(stdout, stderr, report) },
+		func() { _ = writeInstallSARIFError(stdout, stderr, report) },
+	)
 }
 
 func validateInstallOverridesPolicy(profile string, overrides []string, policyLoaded bool, cfg policypkg.Config) error {

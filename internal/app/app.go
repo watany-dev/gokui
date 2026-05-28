@@ -1103,24 +1103,32 @@ func buildInspectSARIFErrorReport(report inspectErrorReport) reportpkg.SARIFDocu
 }
 
 func emitInspectStructuredError(format string, stdout io.Writer, stderr io.Writer, report inspectErrorReport) bool {
-	switch format {
-	case "json":
+	if format == "review-json" {
 		_ = writeInspectJSONError(stdout, stderr, report)
 		return true
-	case "sarif":
-		_ = writeInspectSARIFError(stdout, stderr, report)
-		return true
-	case "review-json":
-		_ = writeInspectJSONError(stdout, stderr, report)
-		return true
-	default:
-		return false
 	}
+	return emitStructuredError(format,
+		func() { _ = writeInspectJSONError(stdout, stderr, report) },
+		func() { _ = writeInspectSARIFError(stdout, stderr, report) },
+	)
 }
 
 func emitInspectStructuredErrorCode(format string, stdout io.Writer, stderr io.Writer, report inspectErrorReport) int {
 	_ = emitInspectStructuredError(format, stdout, stderr, report)
 	return exitcode.Error.Int()
+}
+
+func emitStructuredError(format string, writeJSON func(), writeSARIF func()) bool {
+	switch format {
+	case "json":
+		writeJSON()
+		return true
+	case "sarif":
+		writeSARIF()
+		return true
+	default:
+		return false
+	}
 }
 
 func normalizeJSONErrorCode(code string, fallback string) string {
