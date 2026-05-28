@@ -24,6 +24,9 @@ func normalizeInstallDeps(deps installDeps) installDeps {
 	if deps.PrepareEvaluationSource == nil {
 		deps.PrepareEvaluationSource = preparePolicyEvaluationSource
 	}
+	if deps.InstallSkillAtomic == nil {
+		deps.InstallSkillAtomic = installSkillAtomic
+	}
 	return deps
 }
 

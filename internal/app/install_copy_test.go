@@ -88,10 +88,6 @@ func TestCopyTreeNormalizedRejectsSpecialFile(t *testing.T) {
 
 func TestCopyTreeNormalizedLimitGuards(t *testing.T) {
 	t.Run("enforces max file count", func(t *testing.T) {
-		origLimit := installMaxCopyFiles
-		installMaxCopyFiles = 1
-		t.Cleanup(func() { installMaxCopyFiles = origLimit })
-
 		src := t.TempDir()
 		if err := os.WriteFile(filepath.Join(src, "a.txt"), []byte("a"), 0o644); err != nil {
 			t.Fatalf("write a.txt: %v", err)
@@ -99,52 +95,40 @@ func TestCopyTreeNormalizedLimitGuards(t *testing.T) {
 		if err := os.WriteFile(filepath.Join(src, "b.txt"), []byte("b"), 0o644); err != nil {
 			t.Fatalf("write b.txt: %v", err)
 		}
-		err := copyTreeNormalized(src, filepath.Join(t.TempDir(), "dst"))
+		err := copyTreeNormalizedWithLimits(src, filepath.Join(t.TempDir(), "dst"), installCopyLimits{MaxFiles: 1, MaxTotalBytes: installMaxCopyTotalBytes, MaxFileBytes: installMaxCopyFileBytes})
 		if err == nil || !strings.Contains(err.Error(), rulepkg.InstallSourceFileCountExceeded.ID) {
 			t.Fatalf("expected max-file-count copy error, got %v", err)
 		}
 	})
 
 	t.Run("enforces max total bytes", func(t *testing.T) {
-		origLimit := installMaxCopyTotalBytes
-		installMaxCopyTotalBytes = 1
-		t.Cleanup(func() { installMaxCopyTotalBytes = origLimit })
-
 		src := t.TempDir()
 		if err := os.WriteFile(filepath.Join(src, "a.txt"), []byte("ab"), 0o644); err != nil {
 			t.Fatalf("write a.txt: %v", err)
 		}
-		err := copyTreeNormalized(src, filepath.Join(t.TempDir(), "dst"))
+		err := copyTreeNormalizedWithLimits(src, filepath.Join(t.TempDir(), "dst"), installCopyLimits{MaxFiles: installMaxCopyFiles, MaxTotalBytes: 1, MaxFileBytes: installMaxCopyFileBytes})
 		if err == nil || !strings.Contains(err.Error(), rulepkg.InstallSourceTotalBytesExceeded.ID) {
 			t.Fatalf("expected max-total-bytes copy error, got %v", err)
 		}
 	})
 
 	t.Run("enforces zero total bytes budget", func(t *testing.T) {
-		origLimit := installMaxCopyTotalBytes
-		installMaxCopyTotalBytes = 0
-		t.Cleanup(func() { installMaxCopyTotalBytes = origLimit })
-
 		src := t.TempDir()
 		if err := os.WriteFile(filepath.Join(src, "a.txt"), []byte("a"), 0o644); err != nil {
 			t.Fatalf("write a.txt: %v", err)
 		}
-		err := copyTreeNormalized(src, filepath.Join(t.TempDir(), "dst"))
+		err := copyTreeNormalizedWithLimits(src, filepath.Join(t.TempDir(), "dst"), installCopyLimits{MaxFiles: installMaxCopyFiles, MaxTotalBytes: 0, MaxFileBytes: installMaxCopyFileBytes})
 		if err == nil || !strings.Contains(err.Error(), rulepkg.InstallSourceTotalBytesExceeded.ID) {
 			t.Fatalf("expected zero-budget copy error, got %v", err)
 		}
 	})
 
 	t.Run("enforces max file bytes", func(t *testing.T) {
-		origLimit := installMaxCopyFileBytes
-		installMaxCopyFileBytes = 1
-		t.Cleanup(func() { installMaxCopyFileBytes = origLimit })
-
 		src := t.TempDir()
 		if err := os.WriteFile(filepath.Join(src, "a.txt"), []byte("ab"), 0o644); err != nil {
 			t.Fatalf("write a.txt: %v", err)
 		}
-		err := copyTreeNormalized(src, filepath.Join(t.TempDir(), "dst"))
+		err := copyTreeNormalizedWithLimits(src, filepath.Join(t.TempDir(), "dst"), installCopyLimits{MaxFiles: installMaxCopyFiles, MaxTotalBytes: installMaxCopyTotalBytes, MaxFileBytes: 1})
 		if err == nil || !strings.Contains(err.Error(), rulepkg.InstallSourceFileTooLarge.ID) {
 			t.Fatalf("expected max-file-bytes copy error, got %v", err)
 		}

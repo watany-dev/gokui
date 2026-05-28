@@ -102,6 +102,9 @@ Recent completed increments:
   behavior.
 - update URL/executable scan limits now use explicit helper inputs in focused
   tests instead of mutating package globals for max-file scenarios.
+- install copy/digest size and file-count limits now use explicit helper inputs
+  in focused tests, and install command tests inject the atomic install
+  dependency instead of mutating copy limit globals.
 - SARIF error document construction now uses a shared helper for structured
   error rule ID resolution while keeping command-specific SARIF properties at
   the output boundary.

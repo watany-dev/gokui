@@ -82,6 +82,24 @@ func installSkillAtomic(skillRoot string, targetRoot string, skillName string, r
 }
 
 func copyTreeNormalized(srcRoot string, dstRoot string) error {
+	return copyTreeNormalizedWithLimits(srcRoot, dstRoot, defaultInstallCopyLimits())
+}
+
+type installCopyLimits struct {
+	MaxFiles      int
+	MaxTotalBytes int64
+	MaxFileBytes  int64
+}
+
+func defaultInstallCopyLimits() installCopyLimits {
+	return installCopyLimits{
+		MaxFiles:      installMaxCopyFiles,
+		MaxTotalBytes: installMaxCopyTotalBytes,
+		MaxFileBytes:  installMaxCopyFileBytes,
+	}
+}
+
+func copyTreeNormalizedWithLimits(srcRoot string, dstRoot string, limits installCopyLimits) error {
 	if err := ensureInstallTreeRoot(srcRoot, "install source", rulepkg.InstallSourceSymlink.ID, rulepkg.InstallSourceSpecialFile.ID); err != nil {
 		return err
 	}
@@ -117,21 +135,21 @@ func copyTreeNormalized(srcRoot string, dstRoot string) error {
 		if !srcInfo.Mode().IsRegular() {
 			return fmt.Errorf("%s: install source contains non-regular file: %s", rulepkg.InstallSourceSpecialFile.ID, rel)
 		}
-		if srcInfo.Size() > installMaxCopyFileBytes {
+		if srcInfo.Size() > limits.MaxFileBytes {
 			return fmt.Errorf("%s: install source file exceeds size limit: %s", rulepkg.InstallSourceFileTooLarge.ID, rel)
 		}
 		files++
-		if files > installMaxCopyFiles {
-			return fmt.Errorf("%s: install source exceeds max file count: %d", rulepkg.InstallSourceFileCountExceeded.ID, installMaxCopyFiles)
+		if files > limits.MaxFiles {
+			return fmt.Errorf("%s: install source exceeds max file count: %d", rulepkg.InstallSourceFileCountExceeded.ID, limits.MaxFiles)
 		}
-		remainingTotal := installMaxCopyTotalBytes - totalBytes
+		remainingTotal := limits.MaxTotalBytes - totalBytes
 		if remainingTotal <= 0 {
-			return fmt.Errorf("%s: install source exceeds max total bytes: %d", rulepkg.InstallSourceTotalBytesExceeded.ID, installMaxCopyTotalBytes)
+			return fmt.Errorf("%s: install source exceeds max total bytes: %d", rulepkg.InstallSourceTotalBytesExceeded.ID, limits.MaxTotalBytes)
 		}
 		if srcInfo.Size() > remainingTotal {
-			return fmt.Errorf("%s: install source exceeds max total bytes: %d", rulepkg.InstallSourceTotalBytesExceeded.ID, installMaxCopyTotalBytes)
+			return fmt.Errorf("%s: install source exceeds max total bytes: %d", rulepkg.InstallSourceTotalBytesExceeded.ID, limits.MaxTotalBytes)
 		}
-		maxCopyBytes := installMaxCopyFileBytes
+		maxCopyBytes := limits.MaxFileBytes
 		if remainingTotal < maxCopyBytes {
 			maxCopyBytes = remainingTotal
 		}

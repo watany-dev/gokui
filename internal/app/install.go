@@ -20,15 +20,18 @@ const (
 	installLockFile   = "gokui.lock"
 )
 
-var (
-	maxInstallLockFileBytes    int64 = 1_000_000
+const (
 	installMaxCopyFiles              = 10_000
 	installMaxCopyTotalBytes   int64 = 200 * 1024 * 1024
 	installMaxCopyFileBytes    int64 = 20 * 1024 * 1024
 	installMaxDigestFiles            = 10_000
 	installMaxDigestTotalBytes int64 = 200 * 1024 * 1024
 	installMaxDigestFileBytes  int64 = 20 * 1024 * 1024
-	errDigestBuildFailed             = errors.New("failed to digest installed files")
+)
+
+var (
+	maxInstallLockFileBytes int64 = 1_000_000
+	errDigestBuildFailed          = errors.New("failed to digest installed files")
 )
 
 type installArgs struct {
@@ -85,6 +88,7 @@ type installDeps struct {
 	LoadUserPolicy          func() (policypkg.Config, bool, error)
 	LoadRepositoryPolicy    func(string) (policypkg.Config, bool, error)
 	PrepareEvaluationSource func(input string, sourceKind string) (string, func(), error)
+	InstallSkillAtomic      func(skillRoot string, targetRoot string, skillName string, report installReport) (string, installResult, error)
 }
 
 func defaultInstallDeps() installDeps {
@@ -92,6 +96,7 @@ func defaultInstallDeps() installDeps {
 		LoadUserPolicy:          policypkg.LoadUserPolicy,
 		LoadRepositoryPolicy:    policypkg.LoadRepositoryPolicy,
 		PrepareEvaluationSource: preparePolicyEvaluationSource,
+		InstallSkillAtomic:      installSkillAtomic,
 	}
 }
 
@@ -429,7 +434,7 @@ func runInstallWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps 
 	}
 
 	skillName := filepath.Base(filepath.Clean(skillRoot))
-	installedPath, installResult, err := installSkillAtomic(skillRoot, targetRoot, skillName, report)
+	installedPath, installResult, err := deps.InstallSkillAtomic(skillRoot, targetRoot, skillName, report)
 	if err != nil {
 		if emitInstallStructuredError(parsed.Format, stdout, stderr, installErrorReport{
 			SchemaVersion: reportSchemaVersion,

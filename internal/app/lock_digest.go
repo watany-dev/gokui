@@ -23,6 +23,24 @@ func buildFileDigestsForLock(root string) ([]lockFileHash, string, error) {
 }
 
 func buildFileDigestsFiltered(root string, exclude map[string]struct{}) ([]lockFileHash, string, error) {
+	return buildFileDigestsFilteredWithLimits(root, exclude, defaultInstallDigestLimits())
+}
+
+type installDigestLimits struct {
+	MaxFiles      int
+	MaxTotalBytes int64
+	MaxFileBytes  int64
+}
+
+func defaultInstallDigestLimits() installDigestLimits {
+	return installDigestLimits{
+		MaxFiles:      installMaxDigestFiles,
+		MaxTotalBytes: installMaxDigestTotalBytes,
+		MaxFileBytes:  installMaxDigestFileBytes,
+	}
+}
+
+func buildFileDigestsFilteredWithLimits(root string, exclude map[string]struct{}, limits installDigestLimits) ([]lockFileHash, string, error) {
 	if err := ensureInstallTreeRoot(root, "digest input", rulepkg.InstallDigestSymlink.ID, rulepkg.InstallDigestSpecialFile.ID); err != nil {
 		return nil, "", fmt.Errorf("%w: %w", errDigestBuildFailed, err)
 	}
@@ -55,18 +73,18 @@ func buildFileDigestsFiltered(root string, exclude map[string]struct{}) ([]lockF
 		if _, skip := exclude[rel]; skip {
 			return nil
 		}
-		if info.Size() > installMaxDigestFileBytes {
+		if info.Size() > limits.MaxFileBytes {
 			return fmt.Errorf("%s: digest input file exceeds size limit: %s", rulepkg.InstallDigestFileTooLarge.ID, rel)
 		}
 		digestedFiles++
-		if digestedFiles > installMaxDigestFiles {
-			return fmt.Errorf("%s: digest input exceeds max file count: %d", rulepkg.InstallDigestFileCountExceeded.ID, installMaxDigestFiles)
+		if digestedFiles > limits.MaxFiles {
+			return fmt.Errorf("%s: digest input exceeds max file count: %d", rulepkg.InstallDigestFileCountExceeded.ID, limits.MaxFiles)
 		}
 		totalBytes += info.Size()
-		if totalBytes > installMaxDigestTotalBytes {
-			return fmt.Errorf("%s: digest input exceeds max total bytes: %d", rulepkg.InstallDigestTotalBytesExceeded.ID, installMaxDigestTotalBytes)
+		if totalBytes > limits.MaxTotalBytes {
+			return fmt.Errorf("%s: digest input exceeds max total bytes: %d", rulepkg.InstallDigestTotalBytesExceeded.ID, limits.MaxTotalBytes)
 		}
-		sum, size, err := limitio.HashSHA256FileWithLimitChecked(path, installMaxDigestFileBytes, info, ensureInstallDigestStableFromOpen)
+		sum, size, err := limitio.HashSHA256FileWithLimitChecked(path, limits.MaxFileBytes, info, ensureInstallDigestStableFromOpen)
 		if err != nil {
 			if errors.Is(err, limitio.ErrSizeExceeded) {
 				return fmt.Errorf("%s: digest input file exceeds size limit: %s", rulepkg.InstallDigestFileTooLarge.ID, rel)

@@ -2,6 +2,7 @@ package app
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -398,20 +399,20 @@ func TestRunInstallJSONOutput(t *testing.T) {
 		})
 
 		t.Run("install write failure includes copy limit rule_id", func(t *testing.T) {
-			origLimit := installMaxCopyFiles
-			installMaxCopyFiles = 1
-			t.Cleanup(func() { installMaxCopyFiles = origLimit })
-
 			limitedSource := createSkillSourceForInstallTest(t, "json-copy-limit")
 
 			var stdout strings.Builder
 			var stderr strings.Builder
-			code := runInstall([]string{
+			code := runInstallWithDeps([]string{
 				limitedSource,
 				"--target", "custom:" + filepath.Join(t.TempDir(), "skills"),
 				"--profile", "strict",
 				"--format", "json",
-			}, &stdout, &stderr)
+			}, &stdout, &stderr, installDeps{
+				InstallSkillAtomic: func(skillRoot string, targetRoot string, skillName string, report installReport) (string, installResult, error) {
+					return "", "", fmt.Errorf("%s: install source exceeds max file count: 1", rulepkg.InstallSourceFileCountExceeded.ID)
+				},
+			})
 			if code != 1 {
 				t.Fatalf("runInstall(json copy-limit) code = %d, want 1\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
 			}
