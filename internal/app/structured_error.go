@@ -38,6 +38,14 @@ func writeRequestedStructuredError(format formatpkg.Format, writeJSON func() int
 	}
 }
 
+func writeArgsParseError(format formatpkg.Format, stderr io.Writer, err error, writeJSON func() int, writeSARIF func() int) int {
+	if code, ok := writeRequestedStructuredError(format, writeJSON, writeSARIF); ok {
+		return code
+	}
+	_, _ = fmt.Fprintf(stderr, "%s\n\n%s\n", err.Error(), usage())
+	return exitcode.Error.Int()
+}
+
 func normalizeStructuredErrorFields(errorCode string, ruleID string, message string, fallbackCode string) (string, string, string) {
 	errorCode = normalizeJSONErrorCode(errorCode, fallbackCode)
 	if ruleID == "" {

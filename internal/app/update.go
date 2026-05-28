@@ -164,14 +164,10 @@ func runUpdateWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps u
 	parsed, err := parseUpdateArgs(args)
 	if err != nil {
 		report := updateArgsErrorReport(args, err)
-		if code, ok := writeRequestedStructuredError(requestedFormat,
+		return writeArgsParseError(requestedFormat, stderr, err,
 			func() int { return writeUpdateJSONError(stdout, stderr, report) },
 			func() int { return writeUpdateSARIFError(stdout, stderr, report) },
-		); ok {
-			return code
-		}
-		_, _ = fmt.Fprintf(stderr, "%s\n\n%s\n", err.Error(), usage())
-		return exitcode.Error.Int()
+		)
 	}
 
 	targetRoot, err := resolveInstallTarget(parsed.Target)

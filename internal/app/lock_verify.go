@@ -89,14 +89,10 @@ func runLockVerify(args []string, stdout io.Writer, stderr io.Writer) int {
 	parsed, err := parseLockVerifyArgs(args)
 	if err != nil {
 		report := lockVerifyArgsErrorReport(args, err)
-		if code, ok := writeRequestedStructuredError(requestedFormat,
+		return writeArgsParseError(requestedFormat, stderr, err,
 			func() int { return writeLockVerifyJSONError(stdout, stderr, report) },
 			func() int { return writeLockVerifySARIFError(stdout, stderr, report) },
-		); ok {
-			return code
-		}
-		_, _ = fmt.Fprintf(stderr, "%s\n\n%s\n", err.Error(), usage())
-		return exitcode.Error.Int()
+		)
 	}
 
 	report, verifyErr := verifyLock(parsed.Path)

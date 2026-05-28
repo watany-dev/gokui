@@ -82,14 +82,10 @@ func runFetchWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps fe
 	parsed, err := parseFetchArgs(args)
 	if err != nil {
 		report := fetchArgsErrorReport(args, err)
-		if code, ok := writeRequestedStructuredError(requestedFormat,
+		return writeArgsParseError(requestedFormat, stderr, err,
 			func() int { return writeFetchJSONError(stdout, stderr, report) },
 			func() int { return writeFetchSARIFError(stdout, stderr, report) },
-		); ok {
-			return code
-		}
-		_, _ = fmt.Fprintf(stderr, "%s\n\n%s\n", err.Error(), usage())
-		return exitcode.Error.Int()
+		)
 	}
 
 	sourceKind := detectSourceKind(parsed.Source)

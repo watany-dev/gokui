@@ -106,14 +106,10 @@ func runInstallWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps 
 	parsed, err := parseInstallArgs(args)
 	if err != nil {
 		report := installArgsErrorReport(args, err)
-		if code, ok := writeRequestedStructuredError(requestedFormat,
+		return writeArgsParseError(requestedFormat, stderr, err,
 			func() int { return writeInstallJSONError(stdout, stderr, report) },
 			func() int { return writeInstallSARIFError(stdout, stderr, report) },
-		); ok {
-			return code
-		}
-		_, _ = fmt.Fprintf(stderr, "%s\n\n%s\n", err.Error(), usage())
-		return exitcode.Error.Int()
+		)
 	}
 	loadedPolicy, foundPolicy, policyErr := deps.LoadUserPolicy()
 	if policyErr != nil {
