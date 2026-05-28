@@ -12,20 +12,18 @@ func extractFetchSourceArg(args []string) string {
 func parseFetchArgs(args []string) (fetchArgs, error) {
 	out := fetchArgs{Format: defaultCommandFormat()}
 	for i := 0; i < len(args); i++ {
-		arg := args[i]
-		if next, ok, err := parseValueFlagHandlers(args, i,
-			valueFlagHandler{flag: "--format", set: func(value string) { out.Format = value }},
-			valueFlagHandler{flag: "--out", set: func(value string) { out.Out = value }},
-		); ok {
-			if err != nil {
-				return fetchArgs{}, err
-			}
-			i = next
-			continue
-		}
-		if err := parseSingleSourcePositionalArg(&out.Source, "fetch", arg); err != nil {
+		next, err := parseCommandArg(args, i,
+			[]valueFlagHandler{
+				{flag: "--format", set: func(value string) { out.Format = value }},
+				{flag: "--out", set: func(value string) { out.Out = value }},
+			},
+			nil,
+			func(arg string) error { return parseSingleSourcePositionalArg(&out.Source, "fetch", arg) },
+		)
+		if err != nil {
 			return fetchArgs{}, err
 		}
+		i = next
 	}
 
 	if out.Source == "" {

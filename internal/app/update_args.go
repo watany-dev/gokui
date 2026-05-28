@@ -13,21 +13,20 @@ func parseUpdateArgs(args []string) (updateArgs, error) {
 	}
 
 	for i := 0; i < len(args); i++ {
-		arg := args[i]
-		if next, ok, err := parseValueFlagHandlers(args, i,
-			valueFlagHandler{flag: "--format", set: func(value string) { out.Format = value }},
-			valueFlagHandler{flag: "--target", set: func(value string) { out.Target = value }},
-		); ok {
-			if err != nil {
-				return updateArgs{}, err
-			}
-			i = next
-			continue
+		next, err := parseCommandArg(args, i,
+			[]valueFlagHandler{
+				{flag: "--format", set: func(value string) { out.Format = value }},
+				{flag: "--target", set: func(value string) { out.Target = value }},
+			},
+			[]boolFlagHandler{
+				{flag: "--dry-run", set: func() { out.DryRun = true }},
+			},
+			func(arg string) error { return parseNoPositionalArg("update", arg) },
+		)
+		if err != nil {
+			return updateArgs{}, err
 		}
-		if parseBoolFlagHandlers(arg, boolFlagHandler{flag: "--dry-run", set: func() { out.DryRun = true }}) {
-			continue
-		}
-		return updateArgs{}, parseNoPositionalArg("update", arg)
+		i = next
 	}
 
 	if !out.DryRun {

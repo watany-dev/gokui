@@ -54,6 +54,25 @@ type boolFlagHandler struct {
 	set  func()
 }
 
+type positionalArgHandler func(string) error
+
+func parseCommandArg(
+	args []string,
+	index int,
+	valueHandlers []valueFlagHandler,
+	boolHandlers []boolFlagHandler,
+	handlePositional positionalArgHandler,
+) (nextIndex int, err error) {
+	arg := args[index]
+	if next, ok, err := parseValueFlagHandlers(args, index, valueHandlers...); ok {
+		return next, err
+	}
+	if parseBoolFlagHandlers(arg, boolHandlers...) {
+		return index, nil
+	}
+	return index, handlePositional(arg)
+}
+
 func parseValueFlagHandlers(args []string, index int, handlers ...valueFlagHandler) (nextIndex int, ok bool, err error) {
 	for _, handler := range handlers {
 		value, next, matched, parseErr := parseValueFlagArg(args, index, handler.flag)

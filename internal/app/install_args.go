@@ -9,27 +9,25 @@ import (
 func parseInstallArgs(args []string) (installArgs, error) {
 	out := installArgs{Profile: "strict", Format: defaultCommandFormat()}
 	for i := 0; i < len(args); i++ {
-		arg := args[i]
-		if next, ok, err := parseValueFlagHandlers(args, i,
-			valueFlagHandler{flag: "--format", set: func(value string) { out.Format = value }},
-			valueFlagHandler{flag: "--target", set: func(value string) { out.Target = value }},
-			valueFlagHandler{flag: "--profile", set: func(value string) {
-				out.Profile = value
-				out.ProfileSet = true
-			}},
-			valueFlagHandler{flag: "--override", set: func(value string) {
-				out.Overrides = append(out.Overrides, value)
-			}},
-		); ok {
-			if err != nil {
-				return installArgs{}, err
-			}
-			i = next
-			continue
-		}
-		if err := parseSingleSourcePositionalArg(&out.Source, "install", arg); err != nil {
+		next, err := parseCommandArg(args, i,
+			[]valueFlagHandler{
+				{flag: "--format", set: func(value string) { out.Format = value }},
+				{flag: "--target", set: func(value string) { out.Target = value }},
+				{flag: "--profile", set: func(value string) {
+					out.Profile = value
+					out.ProfileSet = true
+				}},
+				{flag: "--override", set: func(value string) {
+					out.Overrides = append(out.Overrides, value)
+				}},
+			},
+			nil,
+			func(arg string) error { return parseSingleSourcePositionalArg(&out.Source, "install", arg) },
+		)
+		if err != nil {
 			return installArgs{}, err
 		}
+		i = next
 	}
 
 	if out.Source == "" {
