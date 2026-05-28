@@ -10,17 +10,14 @@ func parseInstallArgs(args []string) (installArgs, error) {
 	out := installArgs{Profile: "strict", Format: defaultCommandFormat()}
 	parser := commandArgParser{
 		valueHandlers: []valueFlagHandler{
-			{flag: "--format", set: func(value string) { out.Format = value }},
-			{flag: "--target", set: func(value string) { out.Target = value }},
-			{flag: "--profile", set: func(value string) {
-				out.Profile = value
-				out.ProfileSet = true
-			}},
+			formatValueFlag(&out.Format),
+			targetValueFlag(&out.Target),
+			profileValueFlag(&out.Profile, &out.ProfileSet),
 			{flag: "--override", set: func(value string) {
 				out.Overrides = append(out.Overrides, value)
 			}},
 		},
-		handlePositional: func(arg string) error { return parseSingleSourcePositionalArg(&out.Source, "install", arg) },
+		handlePositional: singleSourcePositional(&out.Source, "install"),
 	}
 	for i := 0; i < len(args); i++ {
 		next, err := parser.parse(args, i)

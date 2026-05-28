@@ -13,13 +13,13 @@ func parseUpdateArgs(args []string) (updateArgs, error) {
 	}
 	parser := commandArgParser{
 		valueHandlers: []valueFlagHandler{
-			{flag: "--format", set: func(value string) { out.Format = value }},
-			{flag: "--target", set: func(value string) { out.Target = value }},
+			formatValueFlag(&out.Format),
+			targetValueFlag(&out.Target),
 		},
 		boolHandlers: []boolFlagHandler{
 			{flag: "--dry-run", set: func() { out.DryRun = true }},
 		},
-		handlePositional: func(arg string) error { return parseNoPositionalArg("update", arg) },
+		handlePositional: noPositional("update"),
 	}
 
 	for i := 0; i < len(args); i++ {

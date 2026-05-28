@@ -16,11 +16,9 @@ func parseLockVerifyArgs(args []string) (lockVerifyArgs, error) {
 	}
 	parser := commandArgParser{
 		valueHandlers: []valueFlagHandler{
-			{flag: "--format", set: func(value string) { out.Format = value }},
+			formatValueFlag(&out.Format),
 		},
-		handlePositional: func(arg string) error {
-			return parseOptionalPathPositionalArg(&out.Path, ".", "lock verify", arg)
-		},
+		handlePositional: optionalPathPositional(&out.Path, ".", "lock verify"),
 	}
 	for i := 0; i < len(args); i++ {
 		next, err := parser.parse(args, i)

@@ -65,6 +65,9 @@ Recent completed increments:
 - command parser flag sets now use a reusable parser spec wrapper so each
   command declares value flags, boolean flags, and positional policy separately
   from loop execution.
+- repeated parser spec handlers for common `--format`, `--target`, `--profile`,
+  single-source positional, optional-path positional, and no-positional policies
+  now use shared handler constructors.
 - SARIF error document construction now uses a shared helper for structured
   error rule ID resolution while keeping command-specific SARIF properties at
   the output boundary.
@@ -112,6 +115,7 @@ go test ./internal/report ./internal/app -run 'SARIF|Inspect|Fetch|Install|Updat
 go test ./internal/report ./internal/app -run 'SARIF|LockVerify'
 go test ./internal/report ./internal/app -run 'SARIF|LockVerify'
 go test ./internal/report ./internal/app -run 'SARIF|LockVerify'
+go test ./internal/app -run 'Args|Fetch|Inspect|Vet|Install|Update|LockVerify|Error|JSON|SARIF|Review'
 make test
 ```
 

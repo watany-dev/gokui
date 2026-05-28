@@ -62,6 +62,35 @@ type commandArgParser struct {
 	handlePositional positionalArgHandler
 }
 
+func formatValueFlag(format *string) valueFlagHandler {
+	return valueFlagHandler{flag: "--format", set: func(value string) { *format = value }}
+}
+
+func targetValueFlag(target *string) valueFlagHandler {
+	return valueFlagHandler{flag: "--target", set: func(value string) { *target = value }}
+}
+
+func profileValueFlag(profile *string, profileSet *bool) valueFlagHandler {
+	return valueFlagHandler{flag: "--profile", set: func(value string) {
+		*profile = value
+		*profileSet = true
+	}}
+}
+
+func singleSourcePositional(source *string, command string) positionalArgHandler {
+	return func(arg string) error { return parseSingleSourcePositionalArg(source, command, arg) }
+}
+
+func optionalPathPositional(path *string, defaultPath string, command string) positionalArgHandler {
+	return func(arg string) error {
+		return parseOptionalPathPositionalArg(path, defaultPath, command, arg)
+	}
+}
+
+func noPositional(command string) positionalArgHandler {
+	return func(arg string) error { return parseNoPositionalArg(command, arg) }
+}
+
 func (p commandArgParser) parse(args []string, index int) (nextIndex int, err error) {
 	return parseCommandArg(args, index, p.valueHandlers, p.boolHandlers, p.handlePositional)
 }

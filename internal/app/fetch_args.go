@@ -13,10 +13,10 @@ func parseFetchArgs(args []string) (fetchArgs, error) {
 	out := fetchArgs{Format: defaultCommandFormat()}
 	parser := commandArgParser{
 		valueHandlers: []valueFlagHandler{
-			{flag: "--format", set: func(value string) { out.Format = value }},
+			formatValueFlag(&out.Format),
 			{flag: "--out", set: func(value string) { out.Out = value }},
 		},
-		handlePositional: func(arg string) error { return parseSingleSourcePositionalArg(&out.Source, "fetch", arg) },
+		handlePositional: singleSourcePositional(&out.Source, "fetch"),
 	}
 	for i := 0; i < len(args); i++ {
 		next, err := parser.parse(args, i)

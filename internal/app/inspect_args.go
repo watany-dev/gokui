@@ -10,9 +10,9 @@ func parseInspectArgs(args []string) (input string, format string, err error) {
 	format = defaultCommandFormat()
 	parser := commandArgParser{
 		valueHandlers: []valueFlagHandler{
-			{flag: "--format", set: func(value string) { format = value }},
+			formatValueFlag(&format),
 		},
-		handlePositional: func(arg string) error { return parseSingleSourcePositionalArg(&input, "inspect", arg) },
+		handlePositional: singleSourcePositional(&input, "inspect"),
 	}
 	for i := 0; i < len(args); i++ {
 		next, err := parser.parse(args, i)
