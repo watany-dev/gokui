@@ -1,5 +1,7 @@
 package app
 
+import policypkg "github.com/watany-dev/gokui/internal/policy"
+
 type installLock struct {
 	Schema      string             `json:"schema"`
 	Name        string             `json:"name"`
@@ -28,9 +30,9 @@ type lockFileHash struct {
 }
 
 type lockPolicy struct {
-	Profile           string                  `json:"profile"`
-	Decision          string                  `json:"decision"`
-	SeverityOverrides []severityOverrideAudit `json:"severity_overrides"`
+	Profile           string                            `json:"profile"`
+	Decision          string                            `json:"decision"`
+	SeverityOverrides []policypkg.SeverityOverrideAudit `json:"severity_overrides"`
 }
 
 type lockFindingSummary struct {

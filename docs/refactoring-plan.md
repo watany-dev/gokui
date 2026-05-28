@@ -77,6 +77,9 @@ Recent completed increments:
 - stable opened/current file checks now have package-level helpers in
   `internal/safefs`; app-specific `ensure*Stable*` functions are thin
   command/error-policy adapters.
+- production install/update/lock wire structs now use
+  `policy.SeverityOverrideAudit` directly; the old app-local alias is test-only
+  compatibility for existing contract tests.
 - SARIF error document construction now uses a shared helper for structured
   error rule ID resolution while keeping command-specific SARIF properties at
   the output boundary.
@@ -128,6 +131,7 @@ go test ./internal/app -run 'Args|Fetch|Inspect|Vet|Install|Update|LockVerify|Er
 go test ./internal/app -run 'Inspect|Vet|Install|Update|Severity|JSON|SARIF|Compact|Review'
 go test ./internal/scan ./internal/app -run 'Finding|Inspect|Vet|Install|Update|Severity|JSON|SARIF|Compact|Review'
 go test ./internal/safefs ./internal/app -run 'Stable|Install|LockVerify|SourceMetadata|URLScan|Digest|Copy|Hash'
+go test ./internal/app -run 'SeverityOverride|Install|Update|Lock'
 make test
 ```
 
@@ -161,8 +165,9 @@ Current inventory notes:
   JSON keys, so this is a candidate to close after repository write access is
   available.
 - #18 is represented by `internal/policy/override.go` and
-  `SeverityOverrideAuditSet`; app currently uses an alias to the policy type,
-  so this is a candidate to close after repository write access is available.
+  `SeverityOverrideAuditSet`; production app structs/functions use
+  `policy.SeverityOverrideAudit` directly, so this is a candidate to close after
+  repository write access is available.
 - #3, #4, #5, and #19 are partially represented but still need final audit before
   closing because `internal/app` remains the compatibility owner for command
   orchestration and many contract tests.

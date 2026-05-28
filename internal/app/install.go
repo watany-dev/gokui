@@ -41,16 +41,16 @@ type installArgs struct {
 }
 
 type installReport struct {
-	SchemaVersion     string                  `json:"schema_version"`
-	Source            source                  `json:"source"`
-	PolicyProfile     string                  `json:"policy_profile"`
-	Decision          string                  `json:"decision"`
-	ErrorCode         string                  `json:"error_code"`
-	Findings          []inspectFinding        `json:"findings"`
-	SeverityOverrides []severityOverrideAudit `json:"severity_overrides"`
-	InstalledPath     string                  `json:"installed_path,omitempty"`
-	Installed         bool                    `json:"installed"`
-	Note              string                  `json:"note"`
+	SchemaVersion     string                            `json:"schema_version"`
+	Source            source                            `json:"source"`
+	PolicyProfile     string                            `json:"policy_profile"`
+	Decision          string                            `json:"decision"`
+	ErrorCode         string                            `json:"error_code"`
+	Findings          []inspectFinding                  `json:"findings"`
+	SeverityOverrides []policypkg.SeverityOverrideAudit `json:"severity_overrides"`
+	InstalledPath     string                            `json:"installed_path,omitempty"`
+	Installed         bool                              `json:"installed"`
+	Note              string                            `json:"note"`
 }
 
 type installErrorReport struct {

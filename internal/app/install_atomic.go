@@ -247,7 +247,7 @@ func buildInstallLock(stagedSkill string, report installReport) (installLock, er
 		Policy: lockPolicy{
 			Profile:           report.PolicyProfile,
 			Decision:          strings.ToLower(report.Decision),
-			SeverityOverrides: []severityOverrideAudit(policypkg.SeverityOverrideAuditSet(report.SeverityOverrides).Clone()),
+			SeverityOverrides: []policypkg.SeverityOverrideAudit(policypkg.SeverityOverrideAuditSet(report.SeverityOverrides).Clone()),
 		},
 		Findings: summary,
 	}, nil

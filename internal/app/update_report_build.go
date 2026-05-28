@@ -54,7 +54,7 @@ func buildUpdateReportWithDeps(targetRoot string, policyLoaded bool, cfg policyp
 			NewExecutableFiles: []string{},
 			Findings:           []inspectFinding{},
 			RiskScore:          zeroUpdateRiskScore(),
-			SeverityOverrides:  []severityOverrideAudit{},
+			SeverityOverrides:  []policypkg.SeverityOverrideAudit{},
 			SeverityOverrideDiff: updateSeverityOverrideDiff{
 				Added:   []string{},
 				Removed: []string{},
@@ -74,7 +74,7 @@ func buildUpdateReportWithDeps(targetRoot string, policyLoaded bool, cfg policyp
 			Input: lock.Source.Input,
 			Kind:  lock.Source.Kind,
 		}
-		item.SeverityOverrides = []severityOverrideAudit(policypkg.SeverityOverrideAuditSet(lock.Policy.SeverityOverrides).Clone())
+		item.SeverityOverrides = []policypkg.SeverityOverrideAudit(policypkg.SeverityOverrideAuditSet(lock.Policy.SeverityOverrides).Clone())
 
 		enriched, err := evaluateUpdateSkillWithDeps(item, lock, policyLoaded, cfg, deps)
 		if err != nil {

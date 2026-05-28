@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/watany-dev/gokui/internal/cli/exitcode"
-	policypkg "github.com/watany-dev/gokui/internal/policy"
 )
 
 type Config struct {
@@ -20,8 +19,6 @@ const (
 	reportDecisionRejected  = "REJECTED"
 	reportDecisionFetchDone = "FETCHED"
 )
-
-type severityOverrideAudit = policypkg.SeverityOverrideAudit
 
 const (
 	inspectErrorCodeArgsInvalid         = "INSPECT_ARGS_INVALID"

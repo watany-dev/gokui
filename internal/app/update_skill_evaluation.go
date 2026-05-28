@@ -34,12 +34,12 @@ func evaluateUpdateSourceChanges(item updateSkillItem, lock installLock, skillRo
 type updateSourceFindingsEvaluation struct {
 	findings             []inspectFinding
 	decision             string
-	severityOverrides    []severityOverrideAudit
+	severityOverrides    []policypkg.SeverityOverrideAudit
 	severityOverrideDiff updateSeverityOverrideDiff
 	failure              *updateSkillFailure
 }
 
-func evaluateUpdateSourceFindings(skillRoot string, policyProfile string, policyLoaded bool, cfg policypkg.Config, configuredOverrides []severityOverrideAudit) (updateSourceFindingsEvaluation, error) {
+func evaluateUpdateSourceFindings(skillRoot string, policyProfile string, policyLoaded bool, cfg policypkg.Config, configuredOverrides []policypkg.SeverityOverrideAudit) (updateSourceFindingsEvaluation, error) {
 	rejectSeverities, err := policypkg.EffectiveRejectSeverities(policypkg.NormalizeProfile(policyProfile), policyLoaded, cfg)
 	if err != nil {
 		return updateSourceFindingsEvaluation{
@@ -130,12 +130,12 @@ func evaluateUpdateRisk(previous lockFindingSummary, findings []inspectFinding, 
 
 type updateFindingEvaluation struct {
 	decision             string
-	severityOverrides    []severityOverrideAudit
+	severityOverrides    []policypkg.SeverityOverrideAudit
 	severityOverrideDiff updateSeverityOverrideDiff
 }
 
-func evaluateUpdateFindings(findings []inspectFinding, configuredOverrides []severityOverrideAudit, rejectSet map[string]struct{}) updateFindingEvaluation {
-	configuredByRule := make(map[string]severityOverrideAudit, len(configuredOverrides))
+func evaluateUpdateFindings(findings []inspectFinding, configuredOverrides []policypkg.SeverityOverrideAudit, rejectSet map[string]struct{}) updateFindingEvaluation {
+	configuredByRule := make(map[string]policypkg.SeverityOverrideAudit, len(configuredOverrides))
 	for _, override := range configuredOverrides {
 		if _, exists := configuredByRule[override.RuleID]; exists {
 			continue
@@ -143,7 +143,7 @@ func evaluateUpdateFindings(findings []inspectFinding, configuredOverrides []sev
 		configuredByRule[override.RuleID] = override
 	}
 
-	activeByRule := make(map[string]severityOverrideAudit, len(configuredByRule))
+	activeByRule := make(map[string]policypkg.SeverityOverrideAudit, len(configuredByRule))
 	decision := "PASS"
 	for _, finding := range findings {
 		effectiveSeverity := finding.Severity
@@ -162,7 +162,7 @@ func evaluateUpdateFindings(findings []inspectFinding, configuredOverrides []sev
 	currentOverrideIDs := policypkg.SortedAuditMapKeys(activeByRule)
 	return updateFindingEvaluation{
 		decision:          decision,
-		severityOverrides: []severityOverrideAudit(policypkg.AuditValues(activeByRule).Sorted()),
+		severityOverrides: []policypkg.SeverityOverrideAudit(policypkg.AuditValues(activeByRule).Sorted()),
 		severityOverrideDiff: updateSeverityOverrideDiff{
 			Added:   setDiff(currentOverrideIDs, previousOverrideIDs),
 			Removed: setDiff(previousOverrideIDs, currentOverrideIDs),

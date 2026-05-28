@@ -52,7 +52,7 @@ func validateInstallOverridesPolicy(profile string, overrides []string, policyLo
 	return nil
 }
 
-func evaluateSkillWithOverrides(skillRoot string, profile string, overrideRuleIDs []string, rejectSeveritySet map[string]struct{}) ([]inspectFinding, string, []severityOverrideAudit, error) {
+func evaluateSkillWithOverrides(skillRoot string, profile string, overrideRuleIDs []string, rejectSeveritySet map[string]struct{}) ([]inspectFinding, string, []policypkg.SeverityOverrideAudit, error) {
 	normalizedProfile := policypkg.NormalizeProfile(profile)
 	if _, err := policypkg.ParseProfile(normalizedProfile.String()); err != nil {
 		return nil, "", nil, fmt.Errorf("unsupported profile: %s (supported: %s)", normalizedProfile, policypkg.SupportedProfilesCSV())
@@ -64,7 +64,7 @@ func evaluateSkillWithOverrides(skillRoot string, profile string, overrideRuleID
 	}
 
 	findings := make([]inspectFinding, 0, len(scanFindings))
-	overrides := make([]severityOverrideAudit, 0, len(overrideRuleIDs))
+	overrides := make([]policypkg.SeverityOverrideAudit, 0, len(overrideRuleIDs))
 	overrideSet := make(map[string]struct{}, len(overrideRuleIDs))
 	overrideMatched := make(map[string]struct{}, len(overrideRuleIDs))
 	for _, ruleID := range overrideRuleIDs {
@@ -87,7 +87,7 @@ func evaluateSkillWithOverrides(skillRoot string, profile string, overrideRuleID
 			if effectiveSeverity == policypkg.SeverityHigh {
 				effectiveSeverity = policypkg.SeverityMedium
 			}
-			overrides = append(overrides, severityOverrideAudit{
+			overrides = append(overrides, policypkg.SeverityOverrideAudit{
 				RuleID:            finding.ID,
 				PreviousSeverity:  string(finding.Severity),
 				EffectiveSeverity: effectiveSeverity.String(),

@@ -40,22 +40,22 @@ type updateErrorReport struct {
 }
 
 type updateSkillItem struct {
-	Name                 string                     `json:"name"`
-	Path                 string                     `json:"path"`
-	Source               source                     `json:"source"`
-	Status               string                     `json:"status"`
-	ErrorCode            string                     `json:"error_code"`
-	RuleID               string                     `json:"rule_id,omitempty"`
-	Decision             string                     `json:"decision"`
-	Diff                 updateDiff                 `json:"diff"`
-	Risk                 updateRisk                 `json:"risk"`
-	RiskScore            updateRiskScore            `json:"risk_score"`
-	NewURLs              []string                   `json:"new_urls"`
-	NewExecutableFiles   []string                   `json:"new_executable_files"`
-	Findings             []inspectFinding           `json:"findings"`
-	SeverityOverrides    []severityOverrideAudit    `json:"severity_overrides"`
-	SeverityOverrideDiff updateSeverityOverrideDiff `json:"severity_override_diff"`
-	Message              string                     `json:"message"`
+	Name                 string                            `json:"name"`
+	Path                 string                            `json:"path"`
+	Source               source                            `json:"source"`
+	Status               string                            `json:"status"`
+	ErrorCode            string                            `json:"error_code"`
+	RuleID               string                            `json:"rule_id,omitempty"`
+	Decision             string                            `json:"decision"`
+	Diff                 updateDiff                        `json:"diff"`
+	Risk                 updateRisk                        `json:"risk"`
+	RiskScore            updateRiskScore                   `json:"risk_score"`
+	NewURLs              []string                          `json:"new_urls"`
+	NewExecutableFiles   []string                          `json:"new_executable_files"`
+	Findings             []inspectFinding                  `json:"findings"`
+	SeverityOverrides    []policypkg.SeverityOverrideAudit `json:"severity_overrides"`
+	SeverityOverrideDiff updateSeverityOverrideDiff        `json:"severity_override_diff"`
+	Message              string                            `json:"message"`
 }
 
 type updateSeverityOverrideDiff struct {
