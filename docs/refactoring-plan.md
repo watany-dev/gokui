@@ -145,7 +145,7 @@ Recent completed increments:
 - SARIF rule/result sorting now lives behind `internal/report` helpers; lock
   verify no longer owns generic SARIF sort logic.
 
-Validation already run after the latest parser/format increments:
+Validation already run after the latest refactoring increments:
 
 ```sh
 go test ./internal/app -run 'Fetch|Args'
@@ -192,6 +192,10 @@ go test ./internal/report ./internal/app -run 'Compact|Install'
 go test ./internal/report ./internal/app -run 'Compact|Update'
 go test ./internal/report ./internal/app -run 'Compact|LockVerify'
 go test ./internal/report ./internal/app -run 'SARIF|LockVerify'
+go test ./internal/app -run 'DocumentationSync|ReleaseChecklist|LocalBuildArtifact'
+go test ./internal/app -run 'BetaReleaseTrack|LocalBuildArtifact|ReleaseEvidenceModeNaming|GitignoreReleaseEvidence|RoadmapReleaseEvidence|ReleaseChecklist'
+go test ./internal/app -run 'SourceMetadata.*DocumentationSync|HardeningDocumentationSync'
+go test ./internal/app -run 'InstallReport.*HardeningDocumentationSync|Lock.*HardeningDocumentationSync|SeverityOverrides.*HardeningDocumentationSync'
 make test
 ```
 
