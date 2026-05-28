@@ -132,8 +132,15 @@ func writeInspectSARIFError(stdout io.Writer, stderr io.Writer, report inspectEr
 }
 
 func buildInspectSARIFErrorReport(report inspectErrorReport) reportpkg.SARIFDocument {
-	return buildStructuredSARIFErrorReport(report.ErrorCode, report.RuleID, report.Message,
-		structuredErrorSARIFProperties(report.SchemaVersion, report.Source.Input, report.Source.Kind, report.Status, report.Note, report.ErrorCode),
+	return buildStructuredSARIFErrorReport(
+		report.ErrorCode,
+		report.RuleID,
+		report.Message,
+		report.SchemaVersion,
+		report.Source.Input,
+		report.Source.Kind,
+		report.Status,
+		report.Note,
 	)
 }
 

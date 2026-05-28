@@ -299,12 +299,15 @@ func TestSARIFErrorDocument(t *testing.T) {
 }
 
 func TestSARIFErrorDocumentForInput(t *testing.T) {
-	properties := PreReleaseSARIFProperties("1", "src", "local-dir", "ERROR", "note")
 	doc := SARIFErrorDocumentForInput(SARIFErrorInput{
-		RuleID:     "RULE_ONE",
-		ErrorCode:  "ERROR_ONE",
-		Message:    "failed",
-		Properties: properties,
+		RuleID:        "RULE_ONE",
+		ErrorCode:     "ERROR_ONE",
+		Message:       "failed",
+		SchemaVersion: "1",
+		SourceInput:   "src",
+		SourceKind:    "local-dir",
+		Decision:      "ERROR",
+		Note:          "note",
 	})
 	run := doc.Runs[0]
 	if len(run.Tool.Driver.Rules) != 1 || run.Tool.Driver.Rules[0].ID != "RULE_ONE" {
@@ -313,6 +316,7 @@ func TestSARIFErrorDocumentForInput(t *testing.T) {
 	if len(run.Results) != 1 || run.Results[0].RuleID != "RULE_ONE" || run.Results[0].Message.Text != "failed" {
 		t.Fatalf("unexpected results: %+v", run.Results)
 	}
+	properties := PreReleaseSARIFErrorProperties("1", "src", "local-dir", "ERROR", "note", "ERROR_ONE")
 	if run.Properties != properties {
 		t.Fatalf("properties = %+v, want %+v", run.Properties, properties)
 	}

@@ -73,15 +73,15 @@ func installArgsErrorReport(args []string, err error) installErrorReport {
 }
 
 func buildInstallSARIFErrorReport(report installErrorReport) reportpkg.SARIFDocument {
-	return buildStructuredSARIFErrorReport(report.ErrorCode, report.RuleID, report.Message,
-		structuredErrorSARIFProperties(
-			report.SchemaVersion,
-			report.Source.Input,
-			report.Source.Kind,
-			report.Status,
-			fmt.Sprintf("target=%s profile=%s; %s", report.Target, report.PolicyProfile, report.Note),
-			report.ErrorCode,
-		),
+	return buildStructuredSARIFErrorReport(
+		report.ErrorCode,
+		report.RuleID,
+		report.Message,
+		report.SchemaVersion,
+		report.Source.Input,
+		report.Source.Kind,
+		report.Status,
+		fmt.Sprintf("target=%s profile=%s; %s", report.Target, report.PolicyProfile, report.Note),
 	)
 }
 

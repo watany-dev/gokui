@@ -69,12 +69,16 @@ func structuredErrorRuleID(errorCode string, ruleID string) string {
 	return errorCode
 }
 
-func buildStructuredSARIFErrorReport(errorCode string, ruleID string, message string, properties reportpkg.SARIFProperties) reportpkg.SARIFDocument {
+func buildStructuredSARIFErrorReport(errorCode string, ruleID string, message string, schemaVersion string, sourceInput string, sourceKind string, status string, note string) reportpkg.SARIFDocument {
 	return reportpkg.SARIFErrorDocumentForInput(reportpkg.SARIFErrorInput{
-		RuleID:     structuredErrorRuleID(errorCode, ruleID),
-		ErrorCode:  errorCode,
-		Message:    message,
-		Properties: properties,
+		RuleID:        structuredErrorRuleID(errorCode, ruleID),
+		ErrorCode:     errorCode,
+		Message:       message,
+		SchemaVersion: schemaVersion,
+		SourceInput:   sourceInput,
+		SourceKind:    sourceKind,
+		Decision:      status,
+		Note:          note,
 	})
 }
 

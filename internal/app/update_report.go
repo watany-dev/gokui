@@ -33,8 +33,15 @@ func updateArgsErrorReport(args []string, err error) updateErrorReport {
 }
 
 func buildUpdateSARIFErrorReport(report updateErrorReport) reportpkg.SARIFDocument {
-	return buildStructuredSARIFErrorReport(report.ErrorCode, report.RuleID, report.Message,
-		structuredErrorSARIFProperties(report.SchemaVersion, report.Target, "update-target", report.Status, report.Note, report.ErrorCode),
+	return buildStructuredSARIFErrorReport(
+		report.ErrorCode,
+		report.RuleID,
+		report.Message,
+		report.SchemaVersion,
+		report.Target,
+		"update-target",
+		report.Status,
+		report.Note,
 	)
 }
 

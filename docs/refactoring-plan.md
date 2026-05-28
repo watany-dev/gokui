@@ -146,6 +146,9 @@ Recent completed increments:
   calling `internal/report`.
 - structured SARIF error property notes now use a report-level helper for
   appending machine-readable `error_code` metadata.
+- structured SARIF error report builders now pass command fields through a
+  report-level input shape; app-level builders no longer assemble SARIF
+  properties before calling `internal/report`.
 - SARIF error document construction now uses a shared helper for structured
   error rule ID resolution while keeping command-specific SARIF properties at
   the output boundary.
@@ -214,6 +217,7 @@ go test ./internal/app -run 'Lock.*HardeningDocumentationSync|SeverityOverrides.
 go test ./internal/report ./internal/app -run 'SARIF|LockVerify|StructuredError|Error'
 go test ./internal/report ./internal/app -run 'SARIFError|StructuredError|Error|Fetch|Inspect|Install|Update|LockVerify'
 go test ./internal/report ./internal/app -run 'PreReleaseSARIF|StructuredErrorSARIFProperties|SARIFError|StructuredError|Error'
+go test ./internal/report ./internal/app -run 'SARIFError|StructuredError|Error|Fetch|Inspect|Install|Update|LockVerify'
 make test
 make check
 ```

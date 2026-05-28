@@ -189,14 +189,23 @@ type LockVerifySARIFInput struct {
 }
 
 type SARIFErrorInput struct {
-	RuleID     string
-	ErrorCode  string
-	Message    string
-	Properties SARIFProperties
+	RuleID        string
+	ErrorCode     string
+	Message       string
+	SchemaVersion string
+	SourceInput   string
+	SourceKind    string
+	Decision      string
+	Note          string
 }
 
 func SARIFErrorDocumentForInput(input SARIFErrorInput) SARIFDocument {
-	return SARIFErrorDocument(input.RuleID, input.ErrorCode, input.Message, input.Properties)
+	return SARIFErrorDocument(
+		input.RuleID,
+		input.ErrorCode,
+		input.Message,
+		PreReleaseSARIFErrorProperties(input.SchemaVersion, input.SourceInput, input.SourceKind, input.Decision, input.Note, input.ErrorCode),
+	)
 }
 
 func SARIFDocumentForLockVerify(input LockVerifySARIFInput) SARIFDocument {
