@@ -89,7 +89,7 @@ func evaluateSkillWithOverrides(skillRoot string, profile string, overrideRuleID
 			}
 			overrides = append(overrides, severityOverrideAudit{
 				RuleID:            finding.ID,
-				PreviousSeverity:  finding.Severity,
+				PreviousSeverity:  string(finding.Severity),
 				EffectiveSeverity: effectiveSeverity.String(),
 				Justification:     "explicit CLI override for install policy decision",
 				ApprovedBy:        "local-operator",

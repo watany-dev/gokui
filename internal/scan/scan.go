@@ -27,7 +27,7 @@ var scanMaxFiles = 10_000
 // Finding represents one scan result.
 type Finding struct {
 	ID       string
-	Severity string
+	Severity rule.Severity
 	File     string
 	Line     int
 	Summary  string
