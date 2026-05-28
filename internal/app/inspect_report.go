@@ -9,6 +9,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/watany-dev/gokui/internal/cli/exitcode"
+	formatpkg "github.com/watany-dev/gokui/internal/cli/format"
 	reportpkg "github.com/watany-dev/gokui/internal/report"
 	"github.com/watany-dev/gokui/internal/scan"
 )
@@ -163,7 +164,7 @@ func buildInspectSARIFErrorReport(report inspectErrorReport) reportpkg.SARIFDocu
 }
 
 func emitInspectStructuredError(format string, stdout io.Writer, stderr io.Writer, report inspectErrorReport) bool {
-	if format == "review-json" {
+	if formatpkg.Format(format) == formatpkg.ReviewJSON {
 		_ = writeInspectJSONError(stdout, stderr, report)
 		return true
 	}

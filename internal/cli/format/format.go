@@ -27,3 +27,12 @@ func SupportsCommand(format string) bool {
 func SupportsReviewCommand(format string) bool {
 	return SupportsCommand(format) || Format(format) == ReviewJSON
 }
+
+func IsStructured(format string) bool {
+	switch Format(format) {
+	case JSON, SARIF, ReviewJSON:
+		return true
+	default:
+		return false
+	}
+}

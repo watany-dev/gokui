@@ -8,17 +8,18 @@ import (
 	"strings"
 
 	"github.com/watany-dev/gokui/internal/cli/exitcode"
+	formatpkg "github.com/watany-dev/gokui/internal/cli/format"
 	rulepkg "github.com/watany-dev/gokui/internal/rule"
 )
 
 var errorCodePattern = regexp.MustCompile(`^[A-Z0-9_]+$`)
 
 func emitStructuredError(format string, writeJSON func(), writeSARIF func()) bool {
-	switch format {
-	case "json":
+	switch formatpkg.Format(format) {
+	case formatpkg.JSON:
 		writeJSON()
 		return true
-	case "sarif":
+	case formatpkg.SARIF:
 		writeSARIF()
 		return true
 	default:

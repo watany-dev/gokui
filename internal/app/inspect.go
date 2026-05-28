@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/watany-dev/gokui/internal/cli/exitcode"
+	formatpkg "github.com/watany-dev/gokui/internal/cli/format"
 	"github.com/watany-dev/gokui/internal/scan"
 	srcpkg "github.com/watany-dev/gokui/internal/source"
 )
@@ -58,7 +59,7 @@ func runInspectWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps 
 		_, _ = fmt.Fprintf(stderr, "%s\n\n%s\n", err.Error(), usage())
 		return exitcode.Error.Int()
 	}
-	structuredOutput := format == "json" || format == "sarif" || format == "review-json"
+	structuredOutput := formatpkg.IsStructured(format)
 
 	sourceKind := detectSourceKind(input)
 

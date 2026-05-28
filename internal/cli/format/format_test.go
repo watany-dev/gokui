@@ -26,3 +26,16 @@ func TestSupportsReviewCommand(t *testing.T) {
 		t.Fatal("SupportsReviewCommand(xml) = true, want false")
 	}
 }
+
+func TestIsStructured(t *testing.T) {
+	for _, f := range []Format{JSON, SARIF, ReviewJSON} {
+		if !IsStructured(f.String()) {
+			t.Fatalf("IsStructured(%q) = false, want true", f)
+		}
+	}
+	for _, f := range []Format{Human, Compact} {
+		if IsStructured(f.String()) {
+			t.Fatalf("IsStructured(%q) = true, want false", f)
+		}
+	}
+}
