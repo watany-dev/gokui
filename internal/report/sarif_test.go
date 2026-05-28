@@ -163,6 +163,21 @@ func TestPreReleaseSARIFProperties(t *testing.T) {
 	}
 }
 
+func TestPreReleaseSARIFErrorProperties(t *testing.T) {
+	got := PreReleaseSARIFErrorProperties("1", "./skill", "local-dir", "ERROR", "failed", "ERROR_CODE")
+	want := SARIFProperties{
+		SchemaVersion: "1",
+		PreRelease:    true,
+		SourceInput:   "./skill",
+		SourceKind:    "local-dir",
+		Decision:      "ERROR",
+		Note:          "failed; error_code=ERROR_CODE",
+	}
+	if got != want {
+		t.Fatalf("properties = %+v, want %+v", got, want)
+	}
+}
+
 func TestSARIFDocumentForLockVerify(t *testing.T) {
 	doc := SARIFDocumentForLockVerify(LockVerifySARIFInput{
 		Status:         "DRIFTED",

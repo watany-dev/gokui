@@ -122,6 +122,10 @@ func PreReleaseSARIFProperties(schemaVersion string, sourceInput string, sourceK
 	}
 }
 
+func PreReleaseSARIFErrorProperties(schemaVersion string, sourceInput string, sourceKind string, decision string, note string, errorCode string) SARIFProperties {
+	return PreReleaseSARIFProperties(schemaVersion, sourceInput, sourceKind, decision, note+"; error_code="+errorCode)
+}
+
 func SARIFDocumentForFindingsInput(input FindingsSARIFInput) SARIFDocument {
 	properties := PreReleaseSARIFProperties(
 		input.SchemaVersion,

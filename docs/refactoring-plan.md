@@ -144,6 +144,8 @@ Recent completed increments:
 - structured SARIF error document construction now accepts a report-level input
   struct, leaving app-level builders to adapt command error fields before
   calling `internal/report`.
+- structured SARIF error property notes now use a report-level helper for
+  appending machine-readable `error_code` metadata.
 - SARIF error document construction now uses a shared helper for structured
   error rule ID resolution while keeping command-specific SARIF properties at
   the output boundary.
@@ -211,6 +213,7 @@ go test ./internal/app -run 'InstallReport.*HardeningDocumentationSync|Lock.*Har
 go test ./internal/app -run 'Lock.*HardeningDocumentationSync|SeverityOverrides.*HardeningDocumentationSync|VetFailClosedInspectPayloadDocumentationSync|ScanNonUTF8TextHardeningDocumentationSync|UpdateURLScanUTF8HardeningDocumentationSync|PolicyUTF8HardeningDocumentationSync'
 go test ./internal/report ./internal/app -run 'SARIF|LockVerify|StructuredError|Error'
 go test ./internal/report ./internal/app -run 'SARIFError|StructuredError|Error|Fetch|Inspect|Install|Update|LockVerify'
+go test ./internal/report ./internal/app -run 'PreReleaseSARIF|StructuredErrorSARIFProperties|SARIFError|StructuredError|Error'
 make test
 ```
 
