@@ -14,16 +14,7 @@ import (
 
 	"github.com/watany-dev/gokui/internal/limitio"
 	"github.com/watany-dev/gokui/internal/materialize"
-)
-
-const (
-	ruleGitHubArchiveScheme  = "GITHUB_ARCHIVE_SCHEME_INVALID"
-	ruleGitHubRedirectHost   = "GITHUB_ARCHIVE_REDIRECT_HOST_MISMATCH"
-	ruleGitHubRedirectPort   = "GITHUB_ARCHIVE_REDIRECT_PORT_MISMATCH"
-	ruleGitHubRedirectScheme = "GITHUB_ARCHIVE_REDIRECT_SCHEME_INVALID"
-	ruleGitHubRedirectAuth   = "GITHUB_ARCHIVE_REDIRECT_USERINFO_DISALLOWED"
-	ruleGitHubArchiveType    = "GITHUB_ARCHIVE_CONTENT_TYPE_INVALID"
-	ruleGitHubArchiveCoding  = "GITHUB_ARCHIVE_CONTENT_ENCODING_INVALID"
+	"github.com/watany-dev/gokui/internal/rule"
 )
 
 const (
@@ -179,7 +170,7 @@ func (f *GitHubFetcher) downloadGitHubArchive(spec GitHubSpec, archivePath strin
 		return fmt.Errorf("failed to construct github archive request: %w", err)
 	}
 	if !strings.EqualFold(req.URL.Scheme, "https") {
-		return fmt.Errorf("%s: github archive URL must use https: %s", ruleGitHubArchiveScheme, req.URL.String())
+		return fmt.Errorf("%s: github archive URL must use https: %s", rule.GitHubArchiveSchemeInvalid.ID, req.URL.String())
 	}
 	req.Header.Set("Accept-Encoding", "identity")
 	expectedHost := req.URL.Hostname()
@@ -193,17 +184,17 @@ func (f *GitHubFetcher) downloadGitHubArchive(spec GitHubSpec, archivePath strin
 			return fmt.Errorf("stopped after %d redirects", maxRedirects)
 		}
 		if !strings.EqualFold(next.URL.Scheme, expectedScheme) {
-			return fmt.Errorf("%s: github archive redirected to unexpected scheme: %s", ruleGitHubRedirectScheme, next.URL.Scheme)
+			return fmt.Errorf("%s: github archive redirected to unexpected scheme: %s", rule.GitHubArchiveRedirectSchemeInvalid.ID, next.URL.Scheme)
 		}
 		if next.URL.User != nil {
-			return fmt.Errorf("%s: github archive redirected with disallowed userinfo", ruleGitHubRedirectAuth)
+			return fmt.Errorf("%s: github archive redirected with disallowed userinfo", rule.GitHubArchiveRedirectUserinfoDisallowed.ID)
 		}
 		if !strings.EqualFold(next.URL.Hostname(), expectedHost) {
-			return fmt.Errorf("%s: github archive redirected to unexpected host: %s", ruleGitHubRedirectHost, next.URL.Hostname())
+			return fmt.Errorf("%s: github archive redirected to unexpected host: %s", rule.GitHubArchiveRedirectHostMismatch.ID, next.URL.Hostname())
 		}
 		nextPort := normalizePortForScheme(next.URL.Scheme, next.URL.Port())
 		if expectedPort != nextPort {
-			return fmt.Errorf("%s: github archive redirected to unexpected port: %s", ruleGitHubRedirectPort, next.URL.Port())
+			return fmt.Errorf("%s: github archive redirected to unexpected port: %s", rule.GitHubArchiveRedirectPortMismatch.ID, next.URL.Port())
 		}
 		if previousCheckRedirect != nil {
 			return previousCheckRedirect(next, via)
@@ -281,22 +272,22 @@ func normalizePortForScheme(scheme string, rawPort string) string {
 func validateGitHubArchiveResponseHeaders(resp *http.Response) error {
 	contentEncoding := strings.TrimSpace(resp.Header.Get("Content-Encoding"))
 	if contentEncoding != "" && !strings.EqualFold(contentEncoding, "identity") {
-		return fmt.Errorf("%s: github archive response uses unexpected content encoding: %s", ruleGitHubArchiveCoding, contentEncoding)
+		return fmt.Errorf("%s: github archive response uses unexpected content encoding: %s", rule.GitHubArchiveContentEncodingInvalid.ID, contentEncoding)
 	}
 
 	contentType := strings.TrimSpace(resp.Header.Get("Content-Type"))
 	if contentType == "" {
-		return fmt.Errorf("%s: github archive response missing content type", ruleGitHubArchiveType)
+		return fmt.Errorf("%s: github archive response missing content type", rule.GitHubArchiveContentTypeInvalid.ID)
 	}
 	mediaType, _, err := mime.ParseMediaType(contentType)
 	if err != nil {
-		return fmt.Errorf("%s: github archive response has invalid content type: %s", ruleGitHubArchiveType, contentType)
+		return fmt.Errorf("%s: github archive response has invalid content type: %s", rule.GitHubArchiveContentTypeInvalid.ID, contentType)
 	}
 	switch strings.ToLower(mediaType) {
 	case "application/x-gzip", "application/gzip", "application/octet-stream":
 		return nil
 	default:
-		return fmt.Errorf("%s: github archive response has unsupported content type: %s", ruleGitHubArchiveType, mediaType)
+		return fmt.Errorf("%s: github archive response has unsupported content type: %s", rule.GitHubArchiveContentTypeInvalid.ID, mediaType)
 	}
 }
 

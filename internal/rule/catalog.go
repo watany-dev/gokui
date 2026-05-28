@@ -209,6 +209,41 @@ var (
 		Severity:    SeverityHigh,
 		Description: "fetch output entry is a symlink",
 	}
+	GitHubArchiveSchemeInvalid = Rule{
+		ID:          "GITHUB_ARCHIVE_SCHEME_INVALID",
+		Severity:    SeverityHigh,
+		Description: "GitHub archive URL uses an invalid scheme",
+	}
+	GitHubArchiveRedirectHostMismatch = Rule{
+		ID:          "GITHUB_ARCHIVE_REDIRECT_HOST_MISMATCH",
+		Severity:    SeverityHigh,
+		Description: "GitHub archive redirect changed host",
+	}
+	GitHubArchiveRedirectPortMismatch = Rule{
+		ID:          "GITHUB_ARCHIVE_REDIRECT_PORT_MISMATCH",
+		Severity:    SeverityHigh,
+		Description: "GitHub archive redirect changed port",
+	}
+	GitHubArchiveRedirectSchemeInvalid = Rule{
+		ID:          "GITHUB_ARCHIVE_REDIRECT_SCHEME_INVALID",
+		Severity:    SeverityHigh,
+		Description: "GitHub archive redirect changed scheme",
+	}
+	GitHubArchiveRedirectUserinfoDisallowed = Rule{
+		ID:          "GITHUB_ARCHIVE_REDIRECT_USERINFO_DISALLOWED",
+		Severity:    SeverityHigh,
+		Description: "GitHub archive redirect included userinfo",
+	}
+	GitHubArchiveContentTypeInvalid = Rule{
+		ID:          "GITHUB_ARCHIVE_CONTENT_TYPE_INVALID",
+		Severity:    SeverityHigh,
+		Description: "GitHub archive response content type is invalid",
+	}
+	GitHubArchiveContentEncodingInvalid = Rule{
+		ID:          "GITHUB_ARCHIVE_CONTENT_ENCODING_INVALID",
+		Severity:    SeverityHigh,
+		Description: "GitHub archive response content encoding is invalid",
+	}
 )
 
 var catalog = []Rule{
@@ -250,6 +285,13 @@ var catalog = []Rule{
 	ScanSourceChangedDuringRead,
 	FetchOutputSymlink,
 	FetchOutputEntrySymlink,
+	GitHubArchiveSchemeInvalid,
+	GitHubArchiveRedirectHostMismatch,
+	GitHubArchiveRedirectPortMismatch,
+	GitHubArchiveRedirectSchemeInvalid,
+	GitHubArchiveRedirectUserinfoDisallowed,
+	GitHubArchiveContentTypeInvalid,
+	GitHubArchiveContentEncodingInvalid,
 }
 
 var catalogByID = buildCatalogByID(catalog)

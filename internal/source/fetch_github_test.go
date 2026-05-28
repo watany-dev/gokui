@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/watany-dev/gokui/internal/limitio"
+	"github.com/watany-dev/gokui/internal/rule"
 )
 
 func newTestGitHubFetcher(transport http.RoundTripper, opts ...GitHubFetcherOption) *GitHubFetcher {
@@ -235,7 +236,7 @@ func TestValidateGitHubArchiveResponseHeaders(t *testing.T) {
 			resp := httpResponse(http.StatusOK, []byte("x"))
 			resp.Header.Set("Content-Type", ct)
 			err := validateGitHubArchiveResponseHeaders(resp)
-			if err == nil || !strings.Contains(err.Error(), ruleGitHubArchiveType) {
+			if err == nil || !strings.Contains(err.Error(), rule.GitHubArchiveContentTypeInvalid.ID) {
 				t.Fatalf("expected content type %q to be rejected, got %v", ct, err)
 			}
 		}
@@ -244,7 +245,7 @@ func TestValidateGitHubArchiveResponseHeaders(t *testing.T) {
 	t.Run("rejects malformed content type", func(t *testing.T) {
 		resp := httpResponse(http.StatusOK, []byte("x"))
 		resp.Header.Set("Content-Type", "???")
-		if err := validateGitHubArchiveResponseHeaders(resp); err == nil || !strings.Contains(err.Error(), ruleGitHubArchiveType) {
+		if err := validateGitHubArchiveResponseHeaders(resp); err == nil || !strings.Contains(err.Error(), rule.GitHubArchiveContentTypeInvalid.ID) {
 			t.Fatalf("expected malformed content-type error, got %v", err)
 		}
 	})

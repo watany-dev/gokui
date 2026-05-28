@@ -46,6 +46,13 @@ func TestCatalogIncludesScanRules(t *testing.T) {
 		{ScanSourceChangedDuringRead, "SCAN_SOURCE_CHANGED_DURING_READ", SeverityHigh},
 		{FetchOutputSymlink, "FETCH_OUTPUT_SYMLINK_DETECTED", SeverityHigh},
 		{FetchOutputEntrySymlink, "FETCH_OUTPUT_ENTRY_SYMLINK_DETECTED", SeverityHigh},
+		{GitHubArchiveSchemeInvalid, "GITHUB_ARCHIVE_SCHEME_INVALID", SeverityHigh},
+		{GitHubArchiveRedirectHostMismatch, "GITHUB_ARCHIVE_REDIRECT_HOST_MISMATCH", SeverityHigh},
+		{GitHubArchiveRedirectPortMismatch, "GITHUB_ARCHIVE_REDIRECT_PORT_MISMATCH", SeverityHigh},
+		{GitHubArchiveRedirectSchemeInvalid, "GITHUB_ARCHIVE_REDIRECT_SCHEME_INVALID", SeverityHigh},
+		{GitHubArchiveRedirectUserinfoDisallowed, "GITHUB_ARCHIVE_REDIRECT_USERINFO_DISALLOWED", SeverityHigh},
+		{GitHubArchiveContentTypeInvalid, "GITHUB_ARCHIVE_CONTENT_TYPE_INVALID", SeverityHigh},
+		{GitHubArchiveContentEncodingInvalid, "GITHUB_ARCHIVE_CONTENT_ENCODING_INVALID", SeverityHigh},
 	}
 
 	for _, tc := range cases {
