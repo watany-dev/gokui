@@ -28,6 +28,9 @@ Recent completed increments:
   into focused files under `internal/app`.
 - fetch/inspect/vet argument parsing split into focused parser files.
 - supported command format checks centralized in `internal/app/args.go`.
+- typed CLI format helpers added under `internal/cli/format`; command format
+  support checks, parser defaults, pre-parse format detection, structured
+  output checks, and success-output routing now use the typed constants.
 
 Validation already run after the latest parser/format increments:
 
@@ -37,6 +40,8 @@ go test ./internal/app ./internal/cli/exitcode
 go test ./internal/app -run 'Inspect|Vet|Args'
 go test ./internal/app
 go test ./internal/app -run 'Args|Fetch|Inspect|Vet|Install|Update|LockVerify'
+go test ./internal/app -run 'Inspect|Vet|Update|JSON|SARIF|Compact|Review'
+go test ./internal/app -run 'Fetch|Install|LockVerify|JSON|SARIF|Compact'
 make test
 ```
 
@@ -51,7 +56,7 @@ Current inventory notes:
 - #17 is represented by `internal/policy` profile/severity types and
   `internal/cli/exitcode`.
 - #18 is represented by `internal/policy/override.go`.
-- #3, #5, and #19 are partially represented but still need final audit before
+- #3, #4, #5, and #19 are partially represented but still need final audit before
   closing because `internal/app` remains the compatibility owner for command
   orchestration and many contract tests.
 
@@ -278,9 +283,11 @@ slice:
 
 1. Audit #7, #10, #12, #13, #15, #16, #17, and #18 against the current code and
    close or update any issues whose requested implementation is now present.
-2. Continue #5 by moving format parsing toward a typed CLI format value, while
-   preserving current error strings and output routing.
-3. Continue #4 by extracting only the common structured-error routing first;
+2. Continue #5 by moving command argument parsing toward a shared parser/spec
+   shape. Keep current error strings and pre-parse structured-output detection
+   stable while doing this.
+3. Continue #4 by extracting only the remaining common structured-error routing
+   and report write helpers first;
    defer changing report wire structs until #9.
 4. Continue #8 only after #4 has a stable command error path and inspect report
    rendering remains covered by contract tests.
