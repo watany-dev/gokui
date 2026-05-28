@@ -111,18 +111,30 @@ type FindingsSARIFInput struct {
 	Findings      []SARIFFinding
 }
 
+func PreReleaseSARIFProperties(schemaVersion string, sourceInput string, sourceKind string, decision string, note string) SARIFProperties {
+	return SARIFProperties{
+		SchemaVersion: schemaVersion,
+		PreRelease:    true,
+		SourceInput:   sourceInput,
+		SourceKind:    sourceKind,
+		Decision:      decision,
+		Note:          note,
+	}
+}
+
 func SARIFDocumentForFindingsInput(input FindingsSARIFInput) SARIFDocument {
+	properties := PreReleaseSARIFProperties(
+		input.SchemaVersion,
+		input.SourceInput,
+		input.SourceKind,
+		input.Decision,
+		input.Note,
+	)
+	properties.PreRelease = input.PreRelease
 	return SARIFDocumentForFindings(
 		input.Findings,
 		!input.Rejected,
-		SARIFProperties{
-			SchemaVersion: input.SchemaVersion,
-			PreRelease:    input.PreRelease,
-			SourceInput:   input.SourceInput,
-			SourceKind:    input.SourceKind,
-			Decision:      input.Decision,
-			Note:          input.Note,
-		},
+		properties,
 	)
 }
 

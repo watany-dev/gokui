@@ -148,6 +148,21 @@ func TestSARIFDocumentForFindingsInput(t *testing.T) {
 	}
 }
 
+func TestPreReleaseSARIFProperties(t *testing.T) {
+	got := PreReleaseSARIFProperties("1", "./skill", "local-dir", "PASS", "note")
+	want := SARIFProperties{
+		SchemaVersion: "1",
+		PreRelease:    true,
+		SourceInput:   "./skill",
+		SourceKind:    "local-dir",
+		Decision:      "PASS",
+		Note:          "note",
+	}
+	if got != want {
+		t.Fatalf("properties = %+v, want %+v", got, want)
+	}
+}
+
 func TestSARIFDocumentForLockVerify(t *testing.T) {
 	doc := SARIFDocumentForLockVerify(LockVerifySARIFInput{
 		Status:         "DRIFTED",

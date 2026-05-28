@@ -138,6 +138,9 @@ Recent completed increments:
 - lockfile hardening documentation sync coverage is split into
   `docs_sync_lock_hardening_test.go`, leaving the broad hardening sync file for
   cross-cutting scan/update/policy documentation assertions.
+- common pre-release SARIF property assembly now lives in `internal/report`;
+  app-level structured error and lock verify builders use the shared helper
+  instead of assembling the same property block directly.
 - SARIF error document construction now uses a shared helper for structured
   error rule ID resolution while keeping command-specific SARIF properties at
   the output boundary.
@@ -202,6 +205,8 @@ go test ./internal/app -run 'DocumentationSync|ReleaseChecklist|LocalBuildArtifa
 go test ./internal/app -run 'BetaReleaseTrack|LocalBuildArtifact|ReleaseEvidenceModeNaming|GitignoreReleaseEvidence|RoadmapReleaseEvidence|ReleaseChecklist'
 go test ./internal/app -run 'SourceMetadata.*DocumentationSync|HardeningDocumentationSync'
 go test ./internal/app -run 'InstallReport.*HardeningDocumentationSync|Lock.*HardeningDocumentationSync|SeverityOverrides.*HardeningDocumentationSync'
+go test ./internal/app -run 'Lock.*HardeningDocumentationSync|SeverityOverrides.*HardeningDocumentationSync|VetFailClosedInspectPayloadDocumentationSync|ScanNonUTF8TextHardeningDocumentationSync|UpdateURLScanUTF8HardeningDocumentationSync|PolicyUTF8HardeningDocumentationSync'
+go test ./internal/report ./internal/app -run 'SARIF|LockVerify|StructuredError|Error'
 make test
 ```
 

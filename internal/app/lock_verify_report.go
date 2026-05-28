@@ -44,13 +44,7 @@ func buildLockVerifySARIFReport(report lockVerifyReport) reportpkg.SARIFDocument
 			ChangedFiles:    report.Drift.ChangedFiles,
 			UnexpectedFiles: report.Drift.UnexpectedFiles,
 		},
-		Properties: reportpkg.SARIFProperties{
-			SchemaVersion: report.SchemaVersion,
-			PreRelease:    true,
-			SourceInput:   report.SkillPath,
-			SourceKind:    "installed-skill",
-			Note:          report.Note,
-		},
+		Properties: reportpkg.PreReleaseSARIFProperties(report.SchemaVersion, report.SkillPath, "installed-skill", "", report.Note),
 	})
 }
 

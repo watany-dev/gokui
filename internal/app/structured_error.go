@@ -78,14 +78,7 @@ func structuredErrorSARIFProperties(schemaVersion string, sourceInput string, so
 }
 
 func structuredErrorSARIFPropertiesWithNote(schemaVersion string, sourceInput string, sourceKind string, status string, note string) reportpkg.SARIFProperties {
-	return reportpkg.SARIFProperties{
-		SchemaVersion: schemaVersion,
-		PreRelease:    true,
-		SourceInput:   sourceInput,
-		SourceKind:    sourceKind,
-		Decision:      status,
-		Note:          note,
-	}
+	return reportpkg.PreReleaseSARIFProperties(schemaVersion, sourceInput, sourceKind, status, note)
 }
 
 func writeJSONErrorReport(stdout io.Writer, stderr io.Writer, payload any, command string) int {
