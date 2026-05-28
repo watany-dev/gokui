@@ -9,6 +9,7 @@ import (
 
 	"github.com/watany-dev/gokui/internal/cli/exitcode"
 	formatpkg "github.com/watany-dev/gokui/internal/cli/format"
+	policypkg "github.com/watany-dev/gokui/internal/policy"
 	reportpkg "github.com/watany-dev/gokui/internal/report"
 	"github.com/watany-dev/gokui/internal/scan"
 )
@@ -65,17 +66,17 @@ type source struct {
 }
 
 type inspectFinding struct {
-	ID       string `json:"id"`
-	Severity string `json:"severity"`
-	File     string `json:"file"`
-	Line     int    `json:"line"`
-	Summary  string `json:"summary"`
+	ID       string             `json:"id"`
+	Severity policypkg.Severity `json:"severity"`
+	File     string             `json:"file"`
+	Line     int                `json:"line"`
+	Summary  string             `json:"summary"`
 }
 
 func buildInspectCompactSummary(report inspectReport) string {
 	severities := make([]string, 0, len(report.Findings))
 	for _, finding := range report.Findings {
-		severities = append(severities, finding.Severity)
+		severities = append(severities, finding.Severity.String())
 	}
 	return reportpkg.InspectCompactSummary(report.Decision, report.Source.Kind, report.Source.Input, severities)
 }
@@ -89,7 +90,7 @@ func buildFindingsSARIFReport(schemaVersion string, preRelease bool, src source,
 	for _, finding := range findings {
 		sarifFindings = append(sarifFindings, reportpkg.SARIFFinding{
 			ID:       finding.ID,
-			Severity: finding.Severity,
+			Severity: finding.Severity.String(),
 			File:     finding.File,
 			Line:     finding.Line,
 			Summary:  finding.Summary,
@@ -168,20 +169,20 @@ func buildInspectReviewReport(report inspectReport) inspectReviewReport {
 	for _, finding := range report.Findings {
 		reviewFindings = append(reviewFindings, inspectReviewFinding{
 			ID:                 finding.ID,
-			Severity:           finding.Severity,
+			Severity:           finding.Severity.String(),
 			FileNeutralized:    neutralizeReviewText(finding.File),
 			Line:               finding.Line,
 			SummaryNeutralized: neutralizeReviewText(finding.Summary),
 		})
 		summary.Total++
 		switch finding.Severity {
-		case "critical":
+		case policypkg.SeverityCritical:
 			summary.Critical++
-		case "high":
+		case policypkg.SeverityHigh:
 			summary.High++
-		case "medium":
+		case policypkg.SeverityMedium:
 			summary.Medium++
-		case "low":
+		case policypkg.SeverityLow:
 			summary.Low++
 		}
 	}
@@ -210,7 +211,7 @@ func toInspectFindings(scanFindings []scan.Finding) ([]inspectFinding, string) {
 	for _, finding := range scanFindings {
 		findings = append(findings, inspectFinding{
 			ID:       finding.ID,
-			Severity: finding.Severity,
+			Severity: policypkg.Severity(finding.Severity),
 			File:     finding.File,
 			Line:     finding.Line,
 			Summary:  finding.Summary,
@@ -224,7 +225,7 @@ func toInspectFindings(scanFindings []scan.Finding) ([]inspectFinding, string) {
 
 func decisionForInspectFindings(findings []inspectFinding, rejectSet map[string]struct{}) string {
 	for _, finding := range findings {
-		sev := strings.ToLower(strings.TrimSpace(finding.Severity))
+		sev := strings.ToLower(strings.TrimSpace(finding.Severity.String()))
 		if _, reject := rejectSet[sev]; reject {
 			return reportDecisionRejected
 		}

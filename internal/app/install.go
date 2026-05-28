@@ -372,7 +372,7 @@ func runInstallWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps 
 		_, _ = fmt.Fprintf(stdout, "findings: %d\n", len(report.Findings))
 		_, _ = fmt.Fprintln(stdout, "not installed")
 		for _, finding := range report.Findings {
-			_, _ = fmt.Fprintf(stdout, "- [%s] %s %s:%d %s\n", strings.ToUpper(finding.Severity), finding.ID, finding.File, finding.Line, finding.Summary)
+			_, _ = fmt.Fprintf(stdout, "- [%s] %s %s:%d %s\n", strings.ToUpper(finding.Severity.String()), finding.ID, finding.File, finding.Line, finding.Summary)
 		}
 		return exitcode.Rejected.Int()
 	}

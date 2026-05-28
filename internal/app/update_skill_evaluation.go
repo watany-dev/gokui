@@ -148,12 +148,12 @@ func evaluateUpdateFindings(findings []inspectFinding, configuredOverrides []sev
 	for _, finding := range findings {
 		effectiveSeverity := finding.Severity
 		if override, ok := configuredByRule[finding.ID]; ok {
-			if finding.Severity == "high" {
-				effectiveSeverity = "medium"
+			if effectiveSeverity == policypkg.SeverityHigh {
+				effectiveSeverity = policypkg.SeverityMedium
 			}
 			activeByRule[finding.ID] = override
 		}
-		if _, shouldReject := rejectSet[strings.ToLower(strings.TrimSpace(effectiveSeverity))]; shouldReject {
+		if _, shouldReject := rejectSet[strings.ToLower(strings.TrimSpace(effectiveSeverity.String()))]; shouldReject {
 			decision = reportDecisionRejected
 		}
 	}

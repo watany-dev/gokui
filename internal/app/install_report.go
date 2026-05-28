@@ -30,7 +30,7 @@ func buildInstallSARIFReport(report installReport, target string) reportpkg.SARI
 func buildInstallCompactSummary(report installReport, target string) string {
 	severities := make([]string, 0, len(report.Findings))
 	for _, finding := range report.Findings {
-		severities = append(severities, finding.Severity)
+		severities = append(severities, finding.Severity.String())
 	}
 	counts := reportpkg.CountSeverities(severities)
 	return fmt.Sprintf(

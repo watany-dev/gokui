@@ -219,13 +219,13 @@ func buildInstallLock(stagedSkill string, report installReport) (installLock, er
 	summary := lockFindingSummary{}
 	for _, finding := range report.Findings {
 		switch finding.Severity {
-		case "critical":
+		case policypkg.SeverityCritical:
 			summary.Critical++
-		case "high":
+		case policypkg.SeverityHigh:
 			summary.High++
-		case "medium":
+		case policypkg.SeverityMedium:
 			summary.Medium++
-		case "low":
+		case policypkg.SeverityLow:
 			summary.Low++
 		}
 	}

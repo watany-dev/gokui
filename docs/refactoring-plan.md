@@ -68,6 +68,9 @@ Recent completed increments:
 - repeated parser spec handlers for common `--format`, `--target`, `--profile`,
   single-source positional, optional-path positional, and no-positional policies
   now use shared handler constructors.
+- app-level inspect findings now carry `policy.Severity` internally while JSON,
+  SARIF, compact, review, human output, install locks, and update risk scoring
+  keep their existing string wire contracts.
 - SARIF error document construction now uses a shared helper for structured
   error rule ID resolution while keeping command-specific SARIF properties at
   the output boundary.
@@ -116,6 +119,7 @@ go test ./internal/report ./internal/app -run 'SARIF|LockVerify'
 go test ./internal/report ./internal/app -run 'SARIF|LockVerify'
 go test ./internal/report ./internal/app -run 'SARIF|LockVerify'
 go test ./internal/app -run 'Args|Fetch|Inspect|Vet|Install|Update|LockVerify|Error|JSON|SARIF|Review'
+go test ./internal/app -run 'Inspect|Vet|Install|Update|Severity|JSON|SARIF|Compact|Review'
 make test
 ```
 
@@ -143,9 +147,10 @@ Current inventory notes:
   `internal/safefs` path helpers; candidate to close after repository write
   access is available.
 - #17 is partially represented by `internal/policy` profile/severity types and
-  `internal/cli/exitcode`; app command returns now use typed exit codes, but
-  keep open until app-level severity fields and comparisons consistently use the
-  typed values or are explicitly classified as wire-boundary strings.
+  `internal/cli/exitcode`; app command returns now use typed exit codes and
+  inspect findings use typed severities internally, but keep open until the
+  remaining scan/wire-boundary severity strings are explicitly classified or
+  converted.
 - #18 is represented by `internal/policy/override.go` and
   `SeverityOverrideAuditSet`; app currently uses an alias to the policy type,
   so this is a candidate to close after repository write access is available.

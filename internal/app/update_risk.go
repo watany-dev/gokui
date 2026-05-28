@@ -1,16 +1,18 @@
 package app
 
+import policypkg "github.com/watany-dev/gokui/internal/policy"
+
 func summarizeFindingSeverities(findings []inspectFinding) lockFindingSummary {
 	out := lockFindingSummary{}
 	for _, finding := range findings {
 		switch finding.Severity {
-		case "critical":
+		case policypkg.SeverityCritical:
 			out.Critical++
-		case "high":
+		case policypkg.SeverityHigh:
 			out.High++
-		case "medium":
+		case policypkg.SeverityMedium:
 			out.Medium++
-		case "low":
+		case policypkg.SeverityLow:
 			out.Low++
 		}
 	}

@@ -76,28 +76,28 @@ func evaluateSkillWithOverrides(skillRoot string, profile string, overrideRuleID
 	for _, finding := range scanFindings {
 		findings = append(findings, inspectFinding{
 			ID:       finding.ID,
-			Severity: finding.Severity,
+			Severity: policypkg.Severity(finding.Severity),
 			File:     finding.File,
 			Line:     finding.Line,
 			Summary:  finding.Summary,
 		})
-		effectiveSeverity := finding.Severity
+		effectiveSeverity := policypkg.Severity(finding.Severity)
 		if _, ok := overrideSet[finding.ID]; ok {
 			overrideMatched[finding.ID] = struct{}{}
-			if finding.Severity == "high" {
-				effectiveSeverity = "medium"
+			if effectiveSeverity == policypkg.SeverityHigh {
+				effectiveSeverity = policypkg.SeverityMedium
 			}
 			overrides = append(overrides, severityOverrideAudit{
 				RuleID:            finding.ID,
 				PreviousSeverity:  finding.Severity,
-				EffectiveSeverity: effectiveSeverity,
+				EffectiveSeverity: effectiveSeverity.String(),
 				Justification:     "explicit CLI override for install policy decision",
 				ApprovedBy:        "local-operator",
 				Source:            "cli-override",
 				AppliedAt:         appliedAt,
 			})
 		}
-		if _, shouldReject := rejectSeveritySet[strings.ToLower(strings.TrimSpace(effectiveSeverity))]; shouldReject {
+		if _, shouldReject := rejectSeveritySet[strings.ToLower(strings.TrimSpace(effectiveSeverity.String()))]; shouldReject {
 			decision = reportDecisionRejected
 		}
 	}
