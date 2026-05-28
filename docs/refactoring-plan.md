@@ -309,20 +309,36 @@ Current inventory notes:
   (`403 Resource not accessible by integration`), so no issue comments or
   closures were applied remotely.
 
+Local checkpoint:
+
+- Candidate-complete locally, pending remote issue write access: #6, #7, #8,
+  #10, #11, #12, #13, #14, #15, #16, #17, and #18.
+- Continue locally only as deliberate follow-up work: #2, #3, #4, #5, #9, and
+  #19. These remain open because command orchestration, CLI common code, and
+  wire/domain separation still have larger blast radius than the completed
+  behavior-preserving increments.
+- Last full validation in this pass: `make check` passed, including
+  `staticcheck`, `deadcode`, and coverage at 95.2% against the 95.0% threshold.
+
 ## Recommended Order
 
 ### 1. Confirm Inventory
 
-Confirm which open issues are already partially implemented locally, then update
-issue descriptions or close completed follow-up issues before moving code again.
+The inventory pass is complete locally. Update or close candidate-complete
+issues when repository issue write access is available before moving broad
+command packages again.
 
 Primary issues:
 
 - #2: split `internal/app` according to the roadmap packages.
 - #3: move real implementations into `internal/skill`, `internal/install`, and
   `internal/report`.
-- #7, #10, #13, #14, #15, #16, #17, #18, #19: several items appear partially or
-  mostly represented in the current tree and need explicit issue-by-issue audit.
+- #4 and #5: continue CLI common code cleanup only where behavior stays
+  unchanged.
+- #9: defer broad wire/domain separation until command/report boundaries are
+  covered by narrow tests.
+- #19: continue only for natural test-boundary splits; avoid artificial splits
+  of single end-to-end contract matrices.
 
 Validation:
 
@@ -332,11 +348,10 @@ go test ./internal/rule ./internal/safefs ./internal/report ./internal/skill ./i
 make test
 ```
 
-### 2. Finish Foundation Types
+### 2. Foundation Types
 
-Finish or verify the low-level typed foundations before touching CLI command
-orchestration. These changes are easiest to validate in isolation and reduce
-stringly typed behavior in later steps.
+This stage is locally represented. Keep it as the validation baseline for any
+future command or wire/domain movement.
 
 Primary issues:
 
@@ -357,15 +372,16 @@ make test
 
 ### 3. Extract Leaf Domains
 
-Move leaf logic out of `internal/app` where there is little or no dependency on
-command-level IO. Prefer package-local tests while preserving existing contract
-tests in `internal/app`.
+Most low-risk leaf extraction in this pass is complete. Future work should
+prefer package-local tests while preserving existing contract tests in
+`internal/app`.
 
 Primary issues:
 
 - #3: `internal/skill` frontmatter/name/description validation.
 - #3: `internal/report` compact/review/SARIF rendering primitives.
-- #10: shared SARIF document/builder types without `inspect` naming.
+- #10: shared SARIF document/builder types without `inspect` naming; locally
+  represented and candidate-complete.
 - #13: split `internal/scan/scan.go` by topic without behavior changes.
 - #19: split large tests in the same packages after code movement stabilizes.
 
@@ -512,20 +528,20 @@ make build
 | #3 | 3, 7, 9 | Extract leaf domain first, then finish command-level leftovers. |
 | #4 | 6 | Do after DI and rendering primitives are stable. |
 | #5 | 6 | Pair with #4 so parse failures and error envelopes share one path. |
-| #6 | 4 | Isolated update cleanup; avoid mixing with wire/domain conversion. |
-| #7 | 2 | Foundation for scan, report, and rule inference. |
+| #6 | 4 | Locally represented; candidate to close after write access. |
+| #7 | 2 | Locally represented; command error codes intentionally remain wire/status codes. |
 | #8 | 7 | Direct vet evaluation is implemented; candidate to close after audit/write access. |
 | #9 | 8 | High blast-radius; defer until behavior is well covered. |
-| #10 | 3, 8 | Shared SARIF primitives first, wire cleanup later. |
+| #10 | 3, 8 | Locally represented; remaining app code is wire-boundary adaptation. |
 | #11 | 5 | Explicit command deps are implemented; candidate to close after audit/write access. |
-| #12 | 5 | Can be paired with #11 but validated in `internal/source` first. |
-| #13 | 3 | File split only; should remain behavior-preserving. |
-| #14 | 2 | Complete after rule registry shape is fixed. |
-| #15 | 2 | Foundation utility extraction. |
-| #16 | 2 | Foundation utility extraction. |
-| #17 | 2, 6, 8 | Define enums early, thread exit codes through CLI later. |
-| #18 | 2, 4 | Define value type early, adopt in update/lock verification next. |
-| #19 | 3, 9 | Split tests after the related package boundaries settle. |
+| #12 | 5 | Locally represented in `internal/source`; candidate to close after write access. |
+| #13 | 3 | Locally represented by scan file splits; candidate to close after write access. |
+| #14 | 2 | Locally represented by scan findings through the rule catalog. |
+| #15 | 2 | Locally represented by `internal/safefs` helpers. |
+| #16 | 2 | Locally represented by strict copy/hash/limit helpers. |
+| #17 | 2, 6, 8 | Locally represented for current boundaries; wire strings remain at outputs. |
+| #18 | 2, 4 | Locally represented by `SeverityOverrideAuditSet`. |
+| #19 | 3, 9 | Partially represented; continue only for natural test-boundary splits. |
 
 ## Next Concrete Increments
 
@@ -553,9 +569,10 @@ git diff --check
 make test
 ```
 
-When committing this document, stage only:
+When committing future increments, stage only the files touched by that
+increment:
 
 ```sh
-git add docs/refactoring-plan.md
-git commit -m "docs: add refactoring execution plan"
+git add <changed-files>
+git commit -m "<scope>: <summary>"
 ```
