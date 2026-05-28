@@ -710,32 +710,78 @@ type updateEvaluationInputs struct {
 	kind          string
 }
 
+type updateLockEvaluationContext struct {
+	item   updateSkillItem
+	lock   installLock
+	inputs updateEvaluationInputs
+}
+
+type updateLockEvaluationCheck func(*updateLockEvaluationContext) *updateSkillFailure
+
+var updateLockEvaluationChecks = []updateLockEvaluationCheck{
+	checkUpdateLockEnvelope,
+	checkUpdateLockPolicy,
+	checkUpdateLockSource,
+	checkUpdateLockGitHubSource,
+	checkUpdateLockSkillSnapshot,
+	checkUpdateLockInstallReport,
+}
+
 func validateUpdateLockForEvaluation(item updateSkillItem, lock installLock) (updateEvaluationInputs, *updateSkillFailure) {
-	if err := validateUpdateLockEnvelope(lock, item.Name); err != nil {
-		return updateEvaluationInputs{}, &updateSkillFailure{"ERROR", updateCodeLockfileInvalid, err.Error()}
+	ctx := updateLockEvaluationContext{
+		item: item,
+		lock: lock,
 	}
-	policyProfile, policyErr := validateUpdateLockPolicy(lock.Policy)
-	if policyErr != nil {
-		return updateEvaluationInputs{}, &updateSkillFailure{"ERROR", updateCodeLockfileInvalid, policyErr.Error()}
+	for _, check := range updateLockEvaluationChecks {
+		if failure := check(&ctx); failure != nil {
+			return updateEvaluationInputs{}, failure
+		}
 	}
-	sourceInput, kind, sourceErr := validateUpdateLockSource(lock.Source)
-	if sourceErr != nil {
-		return updateEvaluationInputs{}, sourceErr
+	return ctx.inputs, nil
+}
+
+func checkUpdateLockEnvelope(ctx *updateLockEvaluationContext) *updateSkillFailure {
+	if err := validateUpdateLockEnvelope(ctx.lock, ctx.item.Name); err != nil {
+		return &updateSkillFailure{"ERROR", updateCodeLockfileInvalid, err.Error()}
 	}
-	if githubErr := validateUpdateGitHubSource(item.Path, sourceInput, kind); githubErr != nil {
-		return updateEvaluationInputs{}, githubErr
+	return nil
+}
+
+func checkUpdateLockPolicy(ctx *updateLockEvaluationContext) *updateSkillFailure {
+	policyProfile, err := validateUpdateLockPolicy(ctx.lock.Policy)
+	if err != nil {
+		return &updateSkillFailure{"ERROR", updateCodeLockfileInvalid, err.Error()}
 	}
-	if err := validateUpdateLockSkillSnapshot(lock); err != nil {
-		return updateEvaluationInputs{}, &updateSkillFailure{"ERROR", updateCodeLockfileInvalid, err.Error()}
+	ctx.inputs.policyProfile = policyProfile
+	return nil
+}
+
+func checkUpdateLockSource(ctx *updateLockEvaluationContext) *updateSkillFailure {
+	sourceInput, kind, failure := validateUpdateLockSource(ctx.lock.Source)
+	if failure != nil {
+		return failure
 	}
-	if err := validateUpdateLockAgainstInstallReport(item.Path, lock); err != nil {
-		return updateEvaluationInputs{}, &updateSkillFailure{"ERROR", updateCodeLockfileInvalid, err.Error()}
+	ctx.inputs.sourceInput = sourceInput
+	ctx.inputs.kind = kind
+	return nil
+}
+
+func checkUpdateLockGitHubSource(ctx *updateLockEvaluationContext) *updateSkillFailure {
+	return validateUpdateGitHubSource(ctx.item.Path, ctx.inputs.sourceInput, ctx.inputs.kind)
+}
+
+func checkUpdateLockSkillSnapshot(ctx *updateLockEvaluationContext) *updateSkillFailure {
+	if err := validateUpdateLockSkillSnapshot(ctx.lock); err != nil {
+		return &updateSkillFailure{"ERROR", updateCodeLockfileInvalid, err.Error()}
 	}
-	return updateEvaluationInputs{
-		policyProfile: policyProfile,
-		sourceInput:   sourceInput,
-		kind:          kind,
-	}, nil
+	return nil
+}
+
+func checkUpdateLockInstallReport(ctx *updateLockEvaluationContext) *updateSkillFailure {
+	if err := validateUpdateLockAgainstInstallReport(ctx.item.Path, ctx.lock); err != nil {
+		return &updateSkillFailure{"ERROR", updateCodeLockfileInvalid, err.Error()}
+	}
+	return nil
 }
 
 func resolveUpdateEvaluationPolicy(kind string, skillRoot string, policyLoaded bool, cfg policypkg.Config) (policypkg.Config, bool, error) {
