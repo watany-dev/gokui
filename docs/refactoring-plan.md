@@ -86,6 +86,8 @@ Recent completed increments:
 - review finding neutralization and summary counting now live in
   `internal/report`; app-level inspect/vet review output only adapts those
   primitives into the existing JSON wire structs.
+- install compact summary formatting now lives in `internal/report`; app-level
+  install output adapts command fields into the report package input shape.
 - SARIF error document construction now uses a shared helper for structured
   error rule ID resolution while keeping command-specific SARIF properties at
   the output boundary.
@@ -142,6 +144,7 @@ go test ./internal/app -run 'StructuredError|SARIF|Inspect|Update|LockVerify|Err
 go test ./internal/app -run 'Install|StructuredError|SARIF|Error'
 go test ./internal/app -run 'Fetch|StructuredError|SARIF|Error'
 go test ./internal/report ./internal/app -run 'Review|Inspect|Vet'
+go test ./internal/report ./internal/app -run 'Compact|Install'
 make test
 ```
 

@@ -50,3 +50,35 @@ func FetchCompactSummary(decision string, sourceKind string, sourceInput string,
 		output,
 	)
 }
+
+type InstallCompactInput struct {
+	Decision      string
+	Severities    []string
+	Overrides     int
+	Installed     bool
+	PolicyProfile string
+	Target        string
+	SourceKind    string
+	SourceInput   string
+	ErrorCode     string
+}
+
+func InstallCompactSummary(input InstallCompactInput) string {
+	counts := CountSeverities(input.Severities)
+	return fmt.Sprintf(
+		"install decision=%s findings=%d critical=%d high=%d medium=%d low=%d overrides=%d installed=%t profile=%s target=%q source_kind=%s source=%q error_code=%s",
+		input.Decision,
+		len(input.Severities),
+		counts.Critical,
+		counts.High,
+		counts.Medium,
+		counts.Low,
+		input.Overrides,
+		input.Installed,
+		input.PolicyProfile,
+		input.Target,
+		input.SourceKind,
+		input.SourceInput,
+		input.ErrorCode,
+	)
+}

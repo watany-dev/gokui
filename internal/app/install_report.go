@@ -32,23 +32,17 @@ func buildInstallCompactSummary(report installReport, target string) string {
 	for _, finding := range report.Findings {
 		severities = append(severities, finding.Severity.String())
 	}
-	counts := reportpkg.CountSeverities(severities)
-	return fmt.Sprintf(
-		"install decision=%s findings=%d critical=%d high=%d medium=%d low=%d overrides=%d installed=%t profile=%s target=%q source_kind=%s source=%q error_code=%s",
-		report.Decision,
-		len(report.Findings),
-		counts.Critical,
-		counts.High,
-		counts.Medium,
-		counts.Low,
-		len(report.SeverityOverrides),
-		report.Installed,
-		report.PolicyProfile,
-		target,
-		report.Source.Kind,
-		report.Source.Input,
-		report.ErrorCode,
-	)
+	return reportpkg.InstallCompactSummary(reportpkg.InstallCompactInput{
+		Decision:      report.Decision,
+		Severities:    severities,
+		Overrides:     len(report.SeverityOverrides),
+		Installed:     report.Installed,
+		PolicyProfile: report.PolicyProfile,
+		Target:        target,
+		SourceKind:    report.Source.Kind,
+		SourceInput:   report.Source.Input,
+		ErrorCode:     report.ErrorCode,
+	})
 }
 
 func writeInstallJSONError(stdout io.Writer, stderr io.Writer, report installErrorReport) int {

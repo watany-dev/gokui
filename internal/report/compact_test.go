@@ -46,3 +46,37 @@ func TestFetchCompactSummary(t *testing.T) {
 		}
 	}
 }
+
+func TestInstallCompactSummary(t *testing.T) {
+	got := InstallCompactSummary(InstallCompactInput{
+		Decision:      "REJECTED",
+		Severities:    []string{"critical", "high", "medium", "low", "info"},
+		Overrides:     1,
+		Installed:     false,
+		PolicyProfile: "strict",
+		Target:        "custom:/tmp/skills",
+		SourceKind:    "local-dir",
+		SourceInput:   "/tmp/skill",
+		ErrorCode:     "POLICY_REJECTED",
+	})
+	required := []string{
+		"install decision=REJECTED",
+		"findings=5",
+		"critical=1",
+		"high=1",
+		"medium=1",
+		"low=1",
+		"overrides=1",
+		"installed=false",
+		"profile=strict",
+		`target="custom:/tmp/skills"`,
+		"source_kind=local-dir",
+		`source="/tmp/skill"`,
+		"error_code=POLICY_REJECTED",
+	}
+	for _, token := range required {
+		if !strings.Contains(got, token) {
+			t.Fatalf("summary should include %q, got %q", token, got)
+		}
+	}
+}
