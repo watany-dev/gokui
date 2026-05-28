@@ -17,6 +17,23 @@ type Sentinel struct {
 	ChangedError func(path string) error
 }
 
+func CheckOpenedStable(previous os.FileInfo, opened FileInfoStatter, path string, statError func(string) error, changedError func(string) error) error {
+	return Sentinel{
+		Previous:     previous,
+		Path:         path,
+		StatError:    statError,
+		ChangedError: changedError,
+	}.CheckOpened(opened)
+}
+
+func CheckCurrentStable(previous os.FileInfo, current os.FileInfo, path string, changedError func(string) error) error {
+	return Sentinel{
+		Previous:     previous,
+		Path:         path,
+		ChangedError: changedError,
+	}.CheckCurrent(current)
+}
+
 func (s Sentinel) CheckOpened(opened FileInfoStatter) error {
 	current, err := opened.Stat()
 	if err != nil {

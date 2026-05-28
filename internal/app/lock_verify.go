@@ -343,14 +343,12 @@ func diffLockFiles(expected []lockFileHash, actual []lockFileHash) (missing []st
 }
 
 func ensureLockfileStableFromOpen(previous os.FileInfo, opened fileInfoStatter, lockPath string) error {
-	return safefs.Sentinel{
-		Previous: previous,
-		Path:     lockPath,
-		StatError: func(path string) error {
+	return safefs.CheckOpenedStable(previous, opened, lockPath,
+		func(path string) error {
 			return fmt.Errorf("%w: %s", errLockfileReadFailed, path)
 		},
-		ChangedError: func(path string) error {
+		func(path string) error {
 			return fmt.Errorf("%s: %w (file changed during read): %s", rulepkg.LockfileSourceChangedDuringRead.ID, errLockfileReadFailed, path)
 		},
-	}.CheckOpened(opened)
+	)
 }

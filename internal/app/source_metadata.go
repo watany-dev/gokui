@@ -118,13 +118,11 @@ func readSourceMetadata(skillRoot string) (sourceMetadata, bool, error) {
 }
 
 func ensureSourceMetadataStableFile(previous os.FileInfo, current os.FileInfo, path string) error {
-	return safefs.Sentinel{
-		Previous: previous,
-		Path:     path,
-		ChangedError: func(path string) error {
+	return safefs.CheckCurrentStable(previous, current, path,
+		func(path string) error {
 			return fmt.Errorf("%s: source metadata file changed during read: %s", rulepkg.SourceMetadataSourceChangedDuringRead.ID, path)
 		},
-	}.CheckCurrent(current)
+	)
 }
 
 func validateSourceMetadata(meta sourceMetadata) error {

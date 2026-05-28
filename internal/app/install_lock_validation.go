@@ -72,16 +72,14 @@ func readInstallLock(path string) (installLock, error) {
 }
 
 func ensureInstallLockStableFromOpen(previous os.FileInfo, opened fileInfoStatter, path string) error {
-	return safefs.Sentinel{
-		Previous: previous,
-		Path:     path,
-		StatError: func(path string) error {
+	return safefs.CheckOpenedStable(previous, opened, path,
+		func(path string) error {
 			return fmt.Errorf("failed to read install lockfile: %s", path)
 		},
-		ChangedError: func(path string) error {
+		func(path string) error {
 			return fmt.Errorf("%s: install lockfile changed during read: %s", rulepkg.LockfileSourceChangedDuringRead.ID, path)
 		},
-	}.CheckOpened(opened)
+	)
 }
 
 func provenanceMatches(existing installLock, incoming installLock) bool {

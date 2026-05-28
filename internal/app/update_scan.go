@@ -110,13 +110,11 @@ func relativePathForMessage(path string, root string) string {
 }
 
 func ensureURLScanStableFile(previous os.FileInfo, current os.FileInfo, path string, root string) error {
-	return safefs.Sentinel{
-		Previous: previous,
-		Path:     relativePathForMessage(path, root),
-		ChangedError: func(path string) error {
+	return safefs.CheckCurrentStable(previous, current, relativePathForMessage(path, root),
+		func(path string) error {
 			return fmt.Errorf("%s: URL scan source changed during read: %s", rulepkg.UpdateURLScanSourceChangedDuringRead.ID, path)
 		},
-	}.CheckCurrent(current)
+	)
 }
 
 func collectExecutableFiles(root string) ([]string, error) {

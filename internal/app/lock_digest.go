@@ -108,14 +108,12 @@ func ensureInstallTreeRoot(root string, label string, symlinkRuleID string, spec
 }
 
 func ensureInstallDigestStableFromOpen(previous os.FileInfo, opened fileInfoStatter, path string) error {
-	return safefs.Sentinel{
-		Previous: previous,
-		Path:     path,
-		StatError: func(path string) error {
+	return safefs.CheckOpenedStable(previous, opened, path,
+		func(path string) error {
 			return fmt.Errorf("failed to open file for hashing: %s", path)
 		},
-		ChangedError: func(path string) error {
+		func(path string) error {
 			return fmt.Errorf("%s: digest input file changed during hash: %s", rulepkg.InstallDigestSourceChangedDuringHash.ID, path)
 		},
-	}.CheckOpened(opened)
+	)
 }

@@ -174,14 +174,12 @@ func verifyInstallReport(skillPath string, lock installLock) (bool, string) {
 }
 
 func ensureInstallReportStableFromOpen(previous os.FileInfo, opened fileInfoStatter, reportPath string) error {
-	return safefs.Sentinel{
-		Previous: previous,
-		Path:     reportPath,
-		StatError: func(path string) error {
+	return safefs.CheckOpenedStable(previous, opened, reportPath,
+		func(path string) error {
 			return fmt.Errorf("failed to read install report: %s", path)
 		},
-		ChangedError: func(path string) error {
+		func(path string) error {
 			return fmt.Errorf("%s: install report file changed during read: %s", rulepkg.InstallReportSourceChangedDuringRead.ID, path)
 		},
-	}.CheckOpened(opened)
+	)
 }

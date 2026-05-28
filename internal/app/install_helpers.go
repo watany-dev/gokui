@@ -141,14 +141,12 @@ func resolveInstallTarget(target string) (string, error) {
 }
 
 func ensureInstallSourceStableFromOpen(previous os.FileInfo, opened fileInfoStatter, src string) error {
-	return safefs.Sentinel{
-		Previous: previous,
-		Path:     src,
-		StatError: func(path string) error {
+	return safefs.CheckOpenedStable(previous, opened, src,
+		func(path string) error {
 			return fmt.Errorf("failed to open source file: %s", path)
 		},
-		ChangedError: func(path string) error {
+		func(path string) error {
 			return fmt.Errorf("%s: install source file changed during copy: %s", rulepkg.InstallSourceChangedDuringCopy.ID, path)
 		},
-	}.CheckOpened(opened)
+	)
 }

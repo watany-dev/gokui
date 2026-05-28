@@ -74,6 +74,9 @@ Recent completed increments:
 - scan findings now carry the catalog `rule.Severity` type instead of raw
   strings, and app conversion to policy/wire severities happens at explicit
   boundaries.
+- stable opened/current file checks now have package-level helpers in
+  `internal/safefs`; app-specific `ensure*Stable*` functions are thin
+  command/error-policy adapters.
 - SARIF error document construction now uses a shared helper for structured
   error rule ID resolution while keeping command-specific SARIF properties at
   the output boundary.
@@ -124,6 +127,7 @@ go test ./internal/report ./internal/app -run 'SARIF|LockVerify'
 go test ./internal/app -run 'Args|Fetch|Inspect|Vet|Install|Update|LockVerify|Error|JSON|SARIF|Review'
 go test ./internal/app -run 'Inspect|Vet|Install|Update|Severity|JSON|SARIF|Compact|Review'
 go test ./internal/scan ./internal/app -run 'Finding|Inspect|Vet|Install|Update|Severity|JSON|SARIF|Compact|Review'
+go test ./internal/safefs ./internal/app -run 'Stable|Install|LockVerify|SourceMetadata|URLScan|Digest|Copy|Hash'
 make test
 ```
 
@@ -145,8 +149,9 @@ Current inventory notes:
   and registry sync tests; candidate to close after repository write access is
   available.
 - #15 is partially represented by `internal/safefs` stable/root/path helpers;
-  keep open until remaining app-specific `ensure*Stable*` wrappers are reduced
-  to thin policy/error adapters or removed.
+  the remaining app-specific `ensure*Stable*` wrappers are now thin policy/error
+  adapters over shared `safefs` helpers, so this is a candidate to close after
+  repository write access is available.
 - #16 is represented by `internal/limitio` strict copy/hash helpers and related
   `internal/safefs` path helpers; candidate to close after repository write
   access is available.
