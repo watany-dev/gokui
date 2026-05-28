@@ -1073,7 +1073,7 @@ func writeInspectJSONError(stdout io.Writer, stderr io.Writer, report inspectErr
 	report.Status = "ERROR"
 	report.ErrorCode = normalizeJSONErrorCode(report.ErrorCode, inspectErrorCodeUnknown)
 	if report.RuleID == "" {
-		report.RuleID = inferRuleIDForJSONError(report.Message)
+		report.RuleID = rulepkg.InferIDForJSONError(report.Message)
 	}
 	out, err := json.MarshalIndent(report, "", "  ")
 	if err != nil {
@@ -1088,7 +1088,7 @@ func writeInspectSARIFError(stdout io.Writer, stderr io.Writer, report inspectEr
 	report.Status = "ERROR"
 	report.ErrorCode = normalizeJSONErrorCode(report.ErrorCode, inspectErrorCodeUnknown)
 	if report.RuleID == "" {
-		report.RuleID = inferRuleIDForJSONError(report.Message)
+		report.RuleID = rulepkg.InferIDForJSONError(report.Message)
 	}
 	out, err := json.MarshalIndent(buildInspectSARIFErrorReport(report), "", "  ")
 	if err != nil {
@@ -1133,10 +1133,6 @@ func emitInspectStructuredError(format string, stdout io.Writer, stderr io.Write
 func emitInspectStructuredErrorCode(format string, stdout io.Writer, stderr io.Writer, report inspectErrorReport) int {
 	_ = emitInspectStructuredError(format, stdout, stderr, report)
 	return exitcode.Error.Int()
-}
-
-func inferRuleIDForJSONError(message string) string {
-	return rulepkg.InferIDForJSONError(message)
 }
 
 func normalizeJSONErrorCode(code string, fallback string) string {

@@ -18,6 +18,7 @@ import (
 	"github.com/watany-dev/gokui/internal/limitio"
 	policypkg "github.com/watany-dev/gokui/internal/policy"
 	reportpkg "github.com/watany-dev/gokui/internal/report"
+	rulepkg "github.com/watany-dev/gokui/internal/rule"
 	"github.com/watany-dev/gokui/internal/safefs"
 	srcpkg "github.com/watany-dev/gokui/internal/source"
 )
@@ -374,7 +375,7 @@ func writeUpdateJSONError(stdout io.Writer, stderr io.Writer, report updateError
 	report.Status = "ERROR"
 	report.ErrorCode = normalizeJSONErrorCode(report.ErrorCode, updateFatalCodeUnknown)
 	if report.RuleID == "" {
-		report.RuleID = inferRuleIDForJSONError(report.Message)
+		report.RuleID = rulepkg.InferIDForJSONError(report.Message)
 	}
 	out, err := json.MarshalIndent(report, "", "  ")
 	if err != nil {
@@ -389,7 +390,7 @@ func writeUpdateSARIFError(stdout io.Writer, stderr io.Writer, report updateErro
 	report.Status = "ERROR"
 	report.ErrorCode = normalizeJSONErrorCode(report.ErrorCode, updateFatalCodeUnknown)
 	if report.RuleID == "" {
-		report.RuleID = inferRuleIDForJSONError(report.Message)
+		report.RuleID = rulepkg.InferIDForJSONError(report.Message)
 	}
 	out, err := json.MarshalIndent(buildUpdateSARIFErrorReport(report), "", "  ")
 	if err != nil {
@@ -601,7 +602,7 @@ func buildUpdateReportWithDeps(targetRoot string, policyLoaded bool, cfg policyp
 			item.Status = "ERROR"
 			item.ErrorCode = updateCodeLockfileInvalid
 			item.Message = "missing or invalid lockfile"
-			item.RuleID = inferRuleIDForJSONError(item.Message)
+			item.RuleID = rulepkg.InferIDForJSONError(item.Message)
 			skills = append(skills, item)
 			continue
 		}
@@ -616,7 +617,7 @@ func buildUpdateReportWithDeps(targetRoot string, policyLoaded bool, cfg policyp
 			item.Status = "ERROR"
 			item.ErrorCode = updateCodeEvaluationError
 			item.Message = err.Error()
-			item.RuleID = inferRuleIDForJSONError(item.Message)
+			item.RuleID = rulepkg.InferIDForJSONError(item.Message)
 			skills = append(skills, item)
 			continue
 		}
@@ -981,7 +982,7 @@ func finalizeUpdateSkillStatus(item updateSkillItem) updateSkillItem {
 		item.ErrorCode = updateCodeUpToDate
 		item.Message = "no change detected against installed lock snapshot"
 	}
-	item.RuleID = inferRuleIDForJSONError(item.Message)
+	item.RuleID = rulepkg.InferIDForJSONError(item.Message)
 	return item
 }
 
@@ -1122,7 +1123,7 @@ func failUpdateSkillItem(item updateSkillItem, lock installLock, status string, 
 	item.Status = status
 	item.ErrorCode = code
 	item.Message = message
-	item.RuleID = inferRuleIDForJSONError(item.Message)
+	item.RuleID = rulepkg.InferIDForJSONError(item.Message)
 	item.Risk = updateRisk{
 		Previous: lock.Findings,
 		Current:  lock.Findings,

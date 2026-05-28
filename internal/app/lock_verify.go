@@ -19,6 +19,7 @@ import (
 	"github.com/watany-dev/gokui/internal/limitio"
 	policypkg "github.com/watany-dev/gokui/internal/policy"
 	reportpkg "github.com/watany-dev/gokui/internal/report"
+	rulepkg "github.com/watany-dev/gokui/internal/rule"
 	"github.com/watany-dev/gokui/internal/safefs"
 	srcpkg "github.com/watany-dev/gokui/internal/source"
 )
@@ -395,7 +396,7 @@ func writeLockVerifyJSONError(stdout io.Writer, stderr io.Writer, report lockVer
 	report.Status = "ERROR"
 	report.ErrorCode = normalizeJSONErrorCode(report.ErrorCode, lockVerifyErrorCodeUnknown)
 	if report.RuleID == "" {
-		report.RuleID = inferRuleIDForJSONError(report.Message)
+		report.RuleID = rulepkg.InferIDForJSONError(report.Message)
 	}
 	out, err := json.MarshalIndent(report, "", "  ")
 	if err != nil {
@@ -410,7 +411,7 @@ func writeLockVerifySARIFError(stdout io.Writer, stderr io.Writer, report lockVe
 	report.Status = "ERROR"
 	report.ErrorCode = normalizeJSONErrorCode(report.ErrorCode, lockVerifyErrorCodeUnknown)
 	if report.RuleID == "" {
-		report.RuleID = inferRuleIDForJSONError(report.Message)
+		report.RuleID = rulepkg.InferIDForJSONError(report.Message)
 	}
 	out, err := json.MarshalIndent(buildLockVerifySARIFErrorReport(report), "", "  ")
 	if err != nil {

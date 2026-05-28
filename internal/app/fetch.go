@@ -11,6 +11,7 @@ import (
 
 	"github.com/watany-dev/gokui/internal/cli/exitcode"
 	reportpkg "github.com/watany-dev/gokui/internal/report"
+	rulepkg "github.com/watany-dev/gokui/internal/rule"
 	skillpkg "github.com/watany-dev/gokui/internal/skill"
 	srcpkg "github.com/watany-dev/gokui/internal/source"
 )
@@ -407,7 +408,7 @@ func writeFetchJSONError(stdout io.Writer, stderr io.Writer, report fetchErrorRe
 	report.Status = "ERROR"
 	report.ErrorCode = normalizeJSONErrorCode(report.ErrorCode, fetchErrorCodeUnknown)
 	if report.RuleID == "" {
-		report.RuleID = inferRuleIDForJSONError(report.Message)
+		report.RuleID = rulepkg.InferIDForJSONError(report.Message)
 	}
 	out, err := json.MarshalIndent(report, "", "  ")
 	if err != nil {
@@ -422,7 +423,7 @@ func writeFetchSARIFError(stdout io.Writer, stderr io.Writer, report fetchErrorR
 	report.Status = "ERROR"
 	report.ErrorCode = normalizeJSONErrorCode(report.ErrorCode, fetchErrorCodeUnknown)
 	if report.RuleID == "" {
-		report.RuleID = inferRuleIDForJSONError(report.Message)
+		report.RuleID = rulepkg.InferIDForJSONError(report.Message)
 	}
 	out, err := json.MarshalIndent(buildFetchSARIFErrorReport(report), "", "  ")
 	if err != nil {

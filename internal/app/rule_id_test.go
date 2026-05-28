@@ -2,6 +2,7 @@ package app
 
 import (
 	"encoding/json"
+	rulepkg "github.com/watany-dev/gokui/internal/rule"
 	"regexp"
 	"strings"
 	"testing"
@@ -38,9 +39,9 @@ func TestInferRuleIDForJSONError(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			got := inferRuleIDForJSONError(tc.message)
+			got := rulepkg.InferIDForJSONError(tc.message)
 			if got != tc.want {
-				t.Fatalf("inferRuleIDForJSONError(%q) = %q, want %q", tc.message, got, tc.want)
+				t.Fatalf("rulepkg.InferIDForJSONError(%q) = %q, want %q", tc.message, got, tc.want)
 			}
 		})
 	}
@@ -54,7 +55,7 @@ func TestInferRuleIDForJSONErrorProperty(t *testing.T) {
 				ok = false
 			}
 		}()
-		got := inferRuleIDForJSONError(message)
+		got := rulepkg.InferIDForJSONError(message)
 		if got == "" {
 			return true
 		}
@@ -62,7 +63,7 @@ func TestInferRuleIDForJSONErrorProperty(t *testing.T) {
 	}
 
 	if err := quick.Check(prop, &quick.Config{MaxCount: 500}); err != nil {
-		t.Fatalf("inferRuleIDForJSONError property failed: %v", err)
+		t.Fatalf("rulepkg.InferIDForJSONError property failed: %v", err)
 	}
 }
 

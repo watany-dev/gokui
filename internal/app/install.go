@@ -19,6 +19,7 @@ import (
 	"github.com/watany-dev/gokui/internal/limitio"
 	policypkg "github.com/watany-dev/gokui/internal/policy"
 	reportpkg "github.com/watany-dev/gokui/internal/report"
+	rulepkg "github.com/watany-dev/gokui/internal/rule"
 	"github.com/watany-dev/gokui/internal/safefs"
 	"github.com/watany-dev/gokui/internal/scan"
 	srcpkg "github.com/watany-dev/gokui/internal/source"
@@ -791,7 +792,7 @@ func writeInstallJSONError(stdout io.Writer, stderr io.Writer, report installErr
 	report.Status = "ERROR"
 	report.ErrorCode = normalizeJSONErrorCode(report.ErrorCode, installErrorCodeUnknown)
 	if report.RuleID == "" {
-		report.RuleID = inferRuleIDForJSONError(report.Message)
+		report.RuleID = rulepkg.InferIDForJSONError(report.Message)
 	}
 	out, err := json.MarshalIndent(report, "", "  ")
 	if err != nil {
@@ -806,7 +807,7 @@ func writeInstallSARIFError(stdout io.Writer, stderr io.Writer, report installEr
 	report.Status = "ERROR"
 	report.ErrorCode = normalizeJSONErrorCode(report.ErrorCode, installErrorCodeUnknown)
 	if report.RuleID == "" {
-		report.RuleID = inferRuleIDForJSONError(report.Message)
+		report.RuleID = rulepkg.InferIDForJSONError(report.Message)
 	}
 	out, err := json.MarshalIndent(buildInstallSARIFErrorReport(report), "", "  ")
 	if err != nil {
