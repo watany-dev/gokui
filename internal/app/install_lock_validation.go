@@ -19,6 +19,10 @@ import (
 )
 
 func readInstallLock(path string) (installLock, error) {
+	return readInstallLockWithLimit(path, maxInstallLockFileBytes)
+}
+
+func readInstallLockWithLimit(path string, maxBytes int64) (installLock, error) {
 	if err := rejectSymlinkPath(path, "install lockfile", rulepkg.LockfileSymlink.ID); err != nil {
 		return installLock{}, err
 	}
@@ -42,7 +46,7 @@ func readInstallLock(path string) (installLock, error) {
 		return installLock{}, err
 	}
 	var raw bytes.Buffer
-	if _, err := limitio.CopyWithStrictLimit(&raw, f, maxInstallLockFileBytes); err != nil {
+	if _, err := limitio.CopyWithStrictLimit(&raw, f, maxBytes); err != nil {
 		if errors.Is(err, limitio.ErrSizeExceeded) {
 			return installLock{}, fmt.Errorf("%s: install lockfile exceeds size limit: %s", rulepkg.LockfileTooLarge.ID, path)
 		}

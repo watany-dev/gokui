@@ -155,14 +155,11 @@ func TestReadInstallLockAndProvenanceMatches(t *testing.T) {
 			}
 		}
 
-		origLimit := maxInstallLockFileBytes
-		maxInstallLockFileBytes = 8
-		t.Cleanup(func() { maxInstallLockFileBytes = origLimit })
 		oversizedPath := filepath.Join(dir, "oversized.lock")
 		if err := os.WriteFile(oversizedPath, []byte(`{"schema":"gokui.lock/v1"}`), 0o644); err != nil {
 			t.Fatalf("write oversized lock: %v", err)
 		}
-		if _, err := readInstallLock(oversizedPath); err == nil || !strings.Contains(err.Error(), rulepkg.LockfileTooLarge.ID) {
+		if _, err := readInstallLockWithLimit(oversizedPath, 8); err == nil || !strings.Contains(err.Error(), rulepkg.LockfileTooLarge.ID) {
 			t.Fatalf("expected oversized lockfile error, got %v", err)
 		}
 

@@ -27,12 +27,10 @@ const (
 	installMaxDigestFiles            = 10_000
 	installMaxDigestTotalBytes int64 = 200 * 1024 * 1024
 	installMaxDigestFileBytes  int64 = 20 * 1024 * 1024
+	maxInstallLockFileBytes    int64 = 1_000_000
 )
 
-var (
-	maxInstallLockFileBytes int64 = 1_000_000
-	errDigestBuildFailed          = errors.New("failed to digest installed files")
-)
+var errDigestBuildFailed = errors.New("failed to digest installed files")
 
 type installArgs struct {
 	Source     string

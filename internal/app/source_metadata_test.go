@@ -220,14 +220,11 @@ func TestSourceMetadataHelpers(t *testing.T) {
 			t.Fatalf("expected stat/read metadata error for non-directory root, got %v", err)
 		}
 
-		origLimit := maxSourceMetadataFileBytes
-		maxSourceMetadataFileBytes = 8
-		t.Cleanup(func() { maxSourceMetadataFileBytes = origLimit })
 		oversizedDir := t.TempDir()
 		if err := os.WriteFile(filepath.Join(oversizedDir, sourceMetadataFile), []byte(`{"schema":"gokui.source/v1"}`), 0o644); err != nil {
 			t.Fatalf("write oversized metadata: %v", err)
 		}
-		if _, _, err := readSourceMetadata(oversizedDir); err == nil || !strings.Contains(err.Error(), rulepkg.SourceMetadataFileTooLarge.ID) {
+		if _, _, err := readSourceMetadataWithLimit(oversizedDir, 8); err == nil || !strings.Contains(err.Error(), rulepkg.SourceMetadataFileTooLarge.ID) {
 			t.Fatalf("expected oversized metadata error, got %v", err)
 		}
 

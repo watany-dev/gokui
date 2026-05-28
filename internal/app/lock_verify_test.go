@@ -249,15 +249,11 @@ func TestVerifyLockErrorsAndDiff(t *testing.T) {
 	}
 
 	t.Run("oversized lockfile", func(t *testing.T) {
-		origLimit := maxLockVerifyLockFileBytes
-		maxLockVerifyLockFileBytes = 8
-		t.Cleanup(func() { maxLockVerifyLockFileBytes = origLimit })
-
 		oversizedDir := t.TempDir()
 		if err := os.WriteFile(filepath.Join(oversizedDir, installLockFile), []byte(`{"schema":"gokui.lock/v1"}`), 0o644); err != nil {
 			t.Fatalf("write oversized lockfile: %v", err)
 		}
-		_, err := verifyLock(oversizedDir)
+		_, err := verifyLockWithLimit(oversizedDir, 8)
 		if err == nil || !strings.Contains(err.Error(), rulepkg.LockfileTooLarge.ID) || !strings.Contains(err.Error(), "failed to read lockfile") {
 			t.Fatalf("expected oversized lockfile read failure, got %v", err)
 		}

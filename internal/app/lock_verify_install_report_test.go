@@ -119,11 +119,8 @@ func TestVerifyInstallReportValidationBranches(t *testing.T) {
 	})
 
 	t.Run("oversized report", func(t *testing.T) {
-		origLimit := maxInstallReportFileBytes
-		maxInstallReportFileBytes = 8
-		t.Cleanup(func() { maxInstallReportFileBytes = origLimit })
 		writeReport(t, `{"schema_version":"0.1.0-draft"}`)
-		ok, detail := verifyInstallReport(skillPath, lock)
+		ok, detail := verifyInstallReportWithLimit(skillPath, lock, 8)
 		if ok || !strings.Contains(detail, rulepkg.InstallReportTooLarge.ID) {
 			t.Fatalf("expected oversized report failure, got ok=%v detail=%q", ok, detail)
 		}

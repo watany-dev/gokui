@@ -50,9 +50,10 @@ type lockVerifyCheck struct {
 	Detail string `json:"detail"`
 }
 
+const maxInstallReportFileBytes int64 = 1_000_000
+
 var (
 	maxLockVerifyLockFileBytes int64 = 1_000_000
-	maxInstallReportFileBytes  int64 = 1_000_000
 	errLockfileReadFailed            = errors.New("failed to read lockfile")
 	errLockfileInvalidJSON           = errors.New("invalid lockfile JSON")
 )
@@ -158,6 +159,10 @@ func runLockVerify(args []string, stdout io.Writer, stderr io.Writer) int {
 }
 
 func verifyLock(skillPath string) (lockVerifyReport, error) {
+	return verifyLockWithLimit(skillPath, maxLockVerifyLockFileBytes)
+}
+
+func verifyLockWithLimit(skillPath string, maxBytes int64) (lockVerifyReport, error) {
 	cleanPath := filepath.Clean(skillPath)
 	if err := rejectSymlinkPath(cleanPath, "lock verify path", rulepkg.LockVerifyPathSymlink.ID); err != nil {
 		return lockVerifyReport{}, err
@@ -183,7 +188,7 @@ func verifyLock(skillPath string) (lockVerifyReport, error) {
 		return lockVerifyReport{}, err
 	}
 	var lockRaw bytes.Buffer
-	if _, err := limitio.CopyWithStrictLimit(&lockRaw, f, maxLockVerifyLockFileBytes); err != nil {
+	if _, err := limitio.CopyWithStrictLimit(&lockRaw, f, maxBytes); err != nil {
 		if errors.Is(err, limitio.ErrSizeExceeded) {
 			return lockVerifyReport{}, fmt.Errorf("%s: %w (size exceeds limit): %s", rulepkg.LockfileTooLarge.ID, errLockfileReadFailed, lockPath)
 		}

@@ -105,6 +105,10 @@ Recent completed increments:
 - install copy/digest size and file-count limits now use explicit helper inputs
   in focused tests, and install command tests inject the atomic install
   dependency instead of mutating copy limit globals.
+- install lock, source metadata, lock verify, and install-report oversized-file
+  unit tests now use explicit read-limit helpers instead of mutating package
+  globals; the remaining command-run oversized lockfile coverage still uses the
+  lock-verify command's package-level limit.
 - SARIF error document construction now uses a shared helper for structured
   error rule ID resolution while keeping command-specific SARIF properties at
   the output boundary.

@@ -17,6 +17,10 @@ import (
 )
 
 func verifyInstallReport(skillPath string, lock installLock) (bool, string) {
+	return verifyInstallReportWithLimit(skillPath, lock, maxInstallReportFileBytes)
+}
+
+func verifyInstallReportWithLimit(skillPath string, lock installLock, maxBytes int64) (bool, string) {
 	reportPath := filepath.Join(skillPath, installReportFile)
 	if err := rejectSymlinkPath(reportPath, "install report file", rulepkg.InstallReportSymlink.ID); err != nil {
 		return false, err.Error()
@@ -42,7 +46,7 @@ func verifyInstallReport(skillPath string, lock installLock) (bool, string) {
 	}
 
 	var raw bytes.Buffer
-	if _, err := limitio.CopyWithStrictLimit(&raw, f, maxInstallReportFileBytes); err != nil {
+	if _, err := limitio.CopyWithStrictLimit(&raw, f, maxBytes); err != nil {
 		if errors.Is(err, limitio.ErrSizeExceeded) {
 			return false, fmt.Sprintf("%s: install report exceeds size limit: %s", rulepkg.InstallReportTooLarge.ID, reportPath)
 		}
