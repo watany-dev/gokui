@@ -1,9 +1,6 @@
 package app
 
-import (
-	"fmt"
-	"strings"
-)
+import "fmt"
 
 func extractLockVerifyPathArg(args []string) string {
 	if path := firstPositionalArg(args, "--format"); path != "" {
@@ -28,13 +25,8 @@ func parseLockVerifyArgs(args []string) (lockVerifyArgs, error) {
 			i = next
 			continue
 		}
-		switch {
-		case strings.HasPrefix(arg, "-"):
-			return lockVerifyArgs{}, unknownOptionError("lock verify", arg)
-		default:
-			if err := setOptionalPathArg(&out.Path, ".", "lock verify", arg); err != nil {
-				return lockVerifyArgs{}, err
-			}
+		if err := parseOptionalPathPositionalArg(&out.Path, ".", "lock verify", arg); err != nil {
+			return lockVerifyArgs{}, err
 		}
 	}
 	if !supportsCommandFormat(out.Format) {

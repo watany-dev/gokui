@@ -2,7 +2,6 @@ package app
 
 import (
 	"fmt"
-	"strings"
 
 	policypkg "github.com/watany-dev/gokui/internal/policy"
 )
@@ -25,10 +24,7 @@ func parseVetArgs(args []string) (input string, format string, profile string, p
 			i = next
 			continue
 		}
-		if strings.HasPrefix(arg, "-") {
-			return "", "", "", false, unknownOptionError("vet", arg)
-		}
-		if err := setSingleSourceArg(&input, "vet", arg); err != nil {
+		if err := parseSingleSourcePositionalArg(&input, "vet", arg); err != nil {
 			return "", "", "", false, err
 		}
 	}

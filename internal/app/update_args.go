@@ -1,9 +1,6 @@
 package app
 
-import (
-	"fmt"
-	"strings"
-)
+import "fmt"
 
 func extractUpdateTargetArg(args []string) string {
 	return flagValueArg(args, "--target", "codex")
@@ -30,12 +27,7 @@ func parseUpdateArgs(args []string) (updateArgs, error) {
 		if parseBoolFlagHandlers(arg, boolFlagHandler{flag: "--dry-run", set: func() { out.DryRun = true }}) {
 			continue
 		}
-		switch {
-		case strings.HasPrefix(arg, "-"):
-			return updateArgs{}, unknownOptionError("update", arg)
-		default:
-			return updateArgs{}, positionalArgNotAcceptedError("update", arg)
-		}
+		return updateArgs{}, parseNoPositionalArg("update", arg)
 	}
 
 	if !out.DryRun {

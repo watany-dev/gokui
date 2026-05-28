@@ -1,9 +1,6 @@
 package app
 
-import (
-	"fmt"
-	"strings"
-)
+import "fmt"
 
 func extractInspectSourceArg(args []string) string {
 	return firstPositionalArg(args, "--format")
@@ -22,10 +19,7 @@ func parseInspectArgs(args []string) (input string, format string, err error) {
 			i = next
 			continue
 		}
-		if strings.HasPrefix(arg, "-") {
-			return "", "", unknownOptionError("inspect", arg)
-		}
-		if err := setSingleSourceArg(&input, "inspect", arg); err != nil {
+		if err := parseSingleSourcePositionalArg(&input, "inspect", arg); err != nil {
 			return "", "", err
 		}
 	}

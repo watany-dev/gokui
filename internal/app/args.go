@@ -98,6 +98,13 @@ func unknownOptionError(command string, arg string) error {
 	return fmt.Errorf("unknown %s option: %s", command, arg)
 }
 
+func parseSingleSourcePositionalArg(source *string, command string, arg string) error {
+	if strings.HasPrefix(arg, "-") {
+		return unknownOptionError(command, arg)
+	}
+	return setSingleSourceArg(source, command, arg)
+}
+
 func setSingleSourceArg(source *string, command string, arg string) error {
 	if *source != "" {
 		return fmt.Errorf("%s accepts exactly one source", command)
@@ -106,12 +113,26 @@ func setSingleSourceArg(source *string, command string, arg string) error {
 	return nil
 }
 
+func parseOptionalPathPositionalArg(path *string, defaultPath string, command string, arg string) error {
+	if strings.HasPrefix(arg, "-") {
+		return unknownOptionError(command, arg)
+	}
+	return setOptionalPathArg(path, defaultPath, command, arg)
+}
+
 func setOptionalPathArg(path *string, defaultPath string, command string, arg string) error {
 	if *path != defaultPath {
 		return fmt.Errorf("%s accepts at most one path", command)
 	}
 	*path = arg
 	return nil
+}
+
+func parseNoPositionalArg(command string, arg string) error {
+	if strings.HasPrefix(arg, "-") {
+		return unknownOptionError(command, arg)
+	}
+	return positionalArgNotAcceptedError(command, arg)
 }
 
 func positionalArgNotAcceptedError(command string, arg string) error {

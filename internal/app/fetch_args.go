@@ -23,13 +23,8 @@ func parseFetchArgs(args []string) (fetchArgs, error) {
 			i = next
 			continue
 		}
-		switch {
-		case strings.HasPrefix(arg, "-"):
-			return fetchArgs{}, unknownOptionError("fetch", arg)
-		default:
-			if err := setSingleSourceArg(&out.Source, "fetch", arg); err != nil {
-				return fetchArgs{}, err
-			}
+		if err := parseSingleSourcePositionalArg(&out.Source, "fetch", arg); err != nil {
+			return fetchArgs{}, err
 		}
 	}
 

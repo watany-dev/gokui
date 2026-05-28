@@ -27,13 +27,8 @@ func parseInstallArgs(args []string) (installArgs, error) {
 			i = next
 			continue
 		}
-		switch {
-		case strings.HasPrefix(arg, "-"):
-			return installArgs{}, unknownOptionError("install", arg)
-		default:
-			if err := setSingleSourceArg(&out.Source, "install", arg); err != nil {
-				return installArgs{}, err
-			}
+		if err := parseSingleSourcePositionalArg(&out.Source, "install", arg); err != nil {
+			return installArgs{}, err
 		}
 	}
 
