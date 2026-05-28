@@ -20,18 +20,13 @@ func parseVetArgs(args []string) (input string, format string, profile string, p
 			i = next
 			continue
 		}
-		if arg == "--profile" {
-			if i+1 >= len(args) {
-				return "", "", "", false, fmt.Errorf("missing value for --profile")
+		if profileValue, next, ok, profileErr := parseValueFlagArg(args, i, "--profile"); ok {
+			if profileErr != nil {
+				return "", "", "", false, profileErr
 			}
-			profile = args[i+1]
+			profile = profileValue
 			profileSet = true
-			i++
-			continue
-		}
-		if strings.HasPrefix(arg, "--profile=") {
-			profile = strings.TrimPrefix(arg, "--profile=")
-			profileSet = true
+			i = next
 			continue
 		}
 		if strings.HasPrefix(arg, "-") {

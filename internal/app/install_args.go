@@ -26,25 +26,24 @@ func parseInstallArgs(args []string) (installArgs, error) {
 			i = next
 			continue
 		}
+		if profileValue, next, ok, err := parseValueFlagArg(args, i, "--profile"); ok {
+			if err != nil {
+				return installArgs{}, err
+			}
+			out.Profile = profileValue
+			out.ProfileSet = true
+			i = next
+			continue
+		}
+		if overrideValue, next, ok, err := parseValueFlagArg(args, i, "--override"); ok {
+			if err != nil {
+				return installArgs{}, err
+			}
+			out.Overrides = append(out.Overrides, overrideValue)
+			i = next
+			continue
+		}
 		switch {
-		case arg == "--profile":
-			if i+1 >= len(args) {
-				return installArgs{}, fmt.Errorf("missing value for --profile")
-			}
-			out.Profile = args[i+1]
-			out.ProfileSet = true
-			i++
-		case strings.HasPrefix(arg, "--profile="):
-			out.Profile = strings.TrimPrefix(arg, "--profile=")
-			out.ProfileSet = true
-		case arg == "--override":
-			if i+1 >= len(args) {
-				return installArgs{}, fmt.Errorf("missing value for --override")
-			}
-			out.Overrides = append(out.Overrides, args[i+1])
-			i++
-		case strings.HasPrefix(arg, "--override="):
-			out.Overrides = append(out.Overrides, strings.TrimPrefix(arg, "--override="))
 		case strings.HasPrefix(arg, "-"):
 			return installArgs{}, fmt.Errorf("unknown install option: %s", arg)
 		default:
