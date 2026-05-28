@@ -489,7 +489,7 @@ func parseFetchArgs(args []string) (fetchArgs, error) {
 	return out, nil
 }
 
-func buildFetchSARIFReport(report fetchReport) inspectSARIFReport {
+func buildFetchSARIFReport(report fetchReport) reportpkg.SARIFDocument {
 	inspectEquivalent := inspectReport{
 		SchemaVersion: report.SchemaVersion,
 		PreRelease:    true,
@@ -501,12 +501,12 @@ func buildFetchSARIFReport(report fetchReport) inspectSARIFReport {
 	return buildInspectSARIFReport(inspectEquivalent)
 }
 
-func buildFetchSARIFErrorReport(report fetchErrorReport) inspectSARIFReport {
+func buildFetchSARIFErrorReport(report fetchErrorReport) reportpkg.SARIFDocument {
 	ruleID := report.ErrorCode
 	if report.RuleID != "" {
 		ruleID = report.RuleID
 	}
-	return reportpkg.SARIFErrorDocument(ruleID, report.ErrorCode, report.Message, inspectSARIFProperties{
+	return reportpkg.SARIFErrorDocument(ruleID, report.ErrorCode, report.Message, reportpkg.SARIFProperties{
 		SchemaVersion: report.SchemaVersion,
 		PreRelease:    true,
 		SourceInput:   report.Source.Input,

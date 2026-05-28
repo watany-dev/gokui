@@ -676,7 +676,7 @@ func parseInstallArgs(args []string) (installArgs, error) {
 	return out, nil
 }
 
-func buildInstallSARIFReport(report installReport, target string) inspectSARIFReport {
+func buildInstallSARIFReport(report installReport, target string) reportpkg.SARIFDocument {
 	inspectEquivalent := inspectReport{
 		SchemaVersion: report.SchemaVersion,
 		PreRelease:    true,
@@ -817,12 +817,12 @@ func writeInstallSARIFError(stdout io.Writer, stderr io.Writer, report installEr
 	return exitcode.Error.Int()
 }
 
-func buildInstallSARIFErrorReport(report installErrorReport) inspectSARIFReport {
+func buildInstallSARIFErrorReport(report installErrorReport) reportpkg.SARIFDocument {
 	ruleID := report.ErrorCode
 	if report.RuleID != "" {
 		ruleID = report.RuleID
 	}
-	return reportpkg.SARIFErrorDocument(ruleID, report.ErrorCode, report.Message, inspectSARIFProperties{
+	return reportpkg.SARIFErrorDocument(ruleID, report.ErrorCode, report.Message, reportpkg.SARIFProperties{
 		SchemaVersion: report.SchemaVersion,
 		PreRelease:    true,
 		SourceInput:   report.Source.Input,

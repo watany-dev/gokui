@@ -65,20 +65,6 @@ type inspectReviewSummary struct {
 	Low      int `json:"low"`
 }
 
-type inspectSARIFReport = reportpkg.SARIFDocument
-type inspectSARIFRun = reportpkg.SARIFRun
-type inspectSARIFTool = reportpkg.SARIFTool
-type inspectSARIFDriver = reportpkg.SARIFDriver
-type inspectSARIFRule = reportpkg.SARIFRule
-type inspectSARIFMessageContainer = reportpkg.SARIFMessageContainer
-type inspectSARIFResult = reportpkg.SARIFResult
-type inspectSARIFLocation = reportpkg.SARIFLocation
-type inspectSARIFPhysicalLocation = reportpkg.SARIFPhysicalLocation
-type inspectSARIFArtifactLocation = reportpkg.SARIFArtifactLocation
-type inspectSARIFRegion = reportpkg.SARIFRegion
-type inspectSARIFInvocation = reportpkg.SARIFInvocation
-type inspectSARIFProperties = reportpkg.SARIFProperties
-
 type inspectErrorReport struct {
 	SchemaVersion string `json:"schema_version"`
 	Status        string `json:"status"`
@@ -954,17 +940,17 @@ func buildInspectCompactSummary(report inspectReport) string {
 	return reportpkg.InspectCompactSummary(report.Decision, report.Source.Kind, report.Source.Input, severities)
 }
 
-func buildInspectSARIFReport(report inspectReport) inspectSARIFReport {
-	rules := make([]inspectSARIFRule, 0)
+func buildInspectSARIFReport(report inspectReport) reportpkg.SARIFDocument {
+	rules := make([]reportpkg.SARIFRule, 0)
 	seen := make(map[string]struct{}, len(report.Findings))
 	for _, finding := range report.Findings {
 		if _, ok := seen[finding.ID]; ok {
 			continue
 		}
 		seen[finding.ID] = struct{}{}
-		rules = append(rules, inspectSARIFRule{
+		rules = append(rules, reportpkg.SARIFRule{
 			ID: finding.ID,
-			ShortDescription: inspectSARIFMessageContainer{
+			ShortDescription: reportpkg.SARIFMessageContainer{
 				Text: finding.Summary,
 			},
 		})
@@ -973,46 +959,46 @@ func buildInspectSARIFReport(report inspectReport) inspectSARIFReport {
 		return rules[i].ID < rules[j].ID
 	})
 
-	results := make([]inspectSARIFResult, 0, len(report.Findings))
+	results := make([]reportpkg.SARIFResult, 0, len(report.Findings))
 	for _, finding := range report.Findings {
-		result := inspectSARIFResult{
+		result := reportpkg.SARIFResult{
 			RuleID:  finding.ID,
 			Level:   inspectSeverityToSARIFLevel(finding.Severity),
-			Message: inspectSARIFMessageContainer{Text: finding.Summary},
+			Message: reportpkg.SARIFMessageContainer{Text: finding.Summary},
 		}
-		location := inspectSARIFLocation{
-			PhysicalLocation: inspectSARIFPhysicalLocation{
-				ArtifactLocation: inspectSARIFArtifactLocation{
+		location := reportpkg.SARIFLocation{
+			PhysicalLocation: reportpkg.SARIFPhysicalLocation{
+				ArtifactLocation: reportpkg.SARIFArtifactLocation{
 					URI: finding.File,
 				},
 			},
 		}
 		if finding.Line > 0 {
-			location.PhysicalLocation.Region = &inspectSARIFRegion{StartLine: finding.Line}
+			location.PhysicalLocation.Region = &reportpkg.SARIFRegion{StartLine: finding.Line}
 		}
 		if finding.File != "" {
-			result.Locations = []inspectSARIFLocation{location}
+			result.Locations = []reportpkg.SARIFLocation{location}
 		}
 		results = append(results, result)
 	}
 
-	return inspectSARIFReport{
+	return reportpkg.SARIFDocument{
 		Version: reportpkg.SARIFVersion,
 		Schema:  reportpkg.SARIFSchema,
-		Runs: []inspectSARIFRun{
+		Runs: []reportpkg.SARIFRun{
 			{
-				Tool: inspectSARIFTool{
-					Driver: inspectSARIFDriver{
+				Tool: reportpkg.SARIFTool{
+					Driver: reportpkg.SARIFDriver{
 						Name:    reportpkg.SARIFDriverName,
 						Version: reportpkg.SARIFDriverVersion,
 						Rules:   rules,
 					},
 				},
-				Results: []inspectSARIFResult(results),
-				Invocations: []inspectSARIFInvocation{
+				Results: []reportpkg.SARIFResult(results),
+				Invocations: []reportpkg.SARIFInvocation{
 					{ExecutionSuccessful: report.Decision != "REJECTED"},
 				},
-				Properties: inspectSARIFProperties{
+				Properties: reportpkg.SARIFProperties{
 					SchemaVersion: report.SchemaVersion,
 					PreRelease:    report.PreRelease,
 					SourceInput:   report.Source.Input,
@@ -1113,12 +1099,12 @@ func writeInspectSARIFError(stdout io.Writer, stderr io.Writer, report inspectEr
 	return exitcode.Error.Int()
 }
 
-func buildInspectSARIFErrorReport(report inspectErrorReport) inspectSARIFReport {
+func buildInspectSARIFErrorReport(report inspectErrorReport) reportpkg.SARIFDocument {
 	ruleID := report.ErrorCode
 	if report.RuleID != "" {
 		ruleID = report.RuleID
 	}
-	return reportpkg.SARIFErrorDocument(ruleID, report.ErrorCode, report.Message, inspectSARIFProperties{
+	return reportpkg.SARIFErrorDocument(ruleID, report.ErrorCode, report.Message, reportpkg.SARIFProperties{
 		SchemaVersion: report.SchemaVersion,
 		PreRelease:    true,
 		SourceInput:   report.Source.Input,

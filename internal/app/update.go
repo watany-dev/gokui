@@ -400,12 +400,12 @@ func writeUpdateSARIFError(stdout io.Writer, stderr io.Writer, report updateErro
 	return exitcode.Error.Int()
 }
 
-func buildUpdateSARIFErrorReport(report updateErrorReport) inspectSARIFReport {
+func buildUpdateSARIFErrorReport(report updateErrorReport) reportpkg.SARIFDocument {
 	ruleID := report.ErrorCode
 	if report.RuleID != "" {
 		ruleID = report.RuleID
 	}
-	return reportpkg.SARIFErrorDocument(ruleID, report.ErrorCode, report.Message, inspectSARIFProperties{
+	return reportpkg.SARIFErrorDocument(ruleID, report.ErrorCode, report.Message, reportpkg.SARIFProperties{
 		SchemaVersion: report.SchemaVersion,
 		PreRelease:    true,
 		SourceInput:   report.Target,
@@ -471,7 +471,7 @@ func parseUpdateArgs(args []string) (updateArgs, error) {
 	return out, nil
 }
 
-func buildUpdateSARIFReport(report updateReport) inspectSARIFReport {
+func buildUpdateSARIFReport(report updateReport) reportpkg.SARIFDocument {
 	decision := "PASS"
 	if report.Summary.Errors > 0 {
 		decision = "ERROR"
@@ -539,7 +539,7 @@ func buildUpdateSARIFReport(report updateReport) inspectSARIFReport {
 	}
 	sarif := buildInspectSARIFReport(inspectEquivalent)
 	if len(sarif.Runs) > 0 {
-		sarif.Runs[0].Invocations = []inspectSARIFInvocation{
+		sarif.Runs[0].Invocations = []reportpkg.SARIFInvocation{
 			{ExecutionSuccessful: report.Summary.Errors == 0 && report.Summary.Rejected == 0},
 		}
 	}

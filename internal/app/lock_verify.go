@@ -281,17 +281,17 @@ func buildLockVerifyCompactSummary(report lockVerifyReport) string {
 	)
 }
 
-func buildLockVerifySARIFReport(report lockVerifyReport) inspectSARIFReport {
+func buildLockVerifySARIFReport(report lockVerifyReport) reportpkg.SARIFDocument {
 	decision := "PASS"
 	if report.Status != "VERIFIED" {
 		decision = "DRIFTED"
 	}
 
-	rules := make([]inspectSARIFRule, 0, len(report.Checks))
+	rules := make([]reportpkg.SARIFRule, 0, len(report.Checks))
 	for _, check := range report.Checks {
-		rules = append(rules, inspectSARIFRule{
+		rules = append(rules, reportpkg.SARIFRule{
 			ID: check.Code,
-			ShortDescription: inspectSARIFMessageContainer{
+			ShortDescription: reportpkg.SARIFMessageContainer{
 				Text: fmt.Sprintf("lock verify check: %s", check.Name),
 			},
 		})
@@ -300,15 +300,15 @@ func buildLockVerifySARIFReport(report lockVerifyReport) inspectSARIFReport {
 		return rules[i].ID < rules[j].ID
 	})
 
-	results := make([]inspectSARIFResult, 0, 32)
+	results := make([]reportpkg.SARIFResult, 0, 32)
 	for _, check := range report.Checks {
 		if check.OK {
 			continue
 		}
-		results = append(results, inspectSARIFResult{
+		results = append(results, reportpkg.SARIFResult{
 			RuleID:  check.Code,
 			Level:   "error",
-			Message: inspectSARIFMessageContainer{Text: check.Detail},
+			Message: reportpkg.SARIFMessageContainer{Text: check.Detail},
 		})
 		if check.Code != lockVerifyCodeFileDigests {
 			continue
@@ -341,23 +341,23 @@ func buildLockVerifySARIFReport(report lockVerifyReport) inspectSARIFReport {
 		return results[i].Message.Text < results[j].Message.Text
 	})
 
-	return inspectSARIFReport{
+	return reportpkg.SARIFDocument{
 		Version: reportpkg.SARIFVersion,
 		Schema:  reportpkg.SARIFSchema,
-		Runs: []inspectSARIFRun{
+		Runs: []reportpkg.SARIFRun{
 			{
-				Tool: inspectSARIFTool{
-					Driver: inspectSARIFDriver{
+				Tool: reportpkg.SARIFTool{
+					Driver: reportpkg.SARIFDriver{
 						Name:    reportpkg.SARIFDriverName,
 						Version: reportpkg.SARIFDriverVersion,
 						Rules:   rules,
 					},
 				},
 				Results: results,
-				Invocations: []inspectSARIFInvocation{
+				Invocations: []reportpkg.SARIFInvocation{
 					{ExecutionSuccessful: report.Status == "VERIFIED"},
 				},
-				Properties: inspectSARIFProperties{
+				Properties: reportpkg.SARIFProperties{
 					SchemaVersion: report.SchemaVersion,
 					PreRelease:    true,
 					SourceInput:   report.SkillPath,
@@ -370,19 +370,19 @@ func buildLockVerifySARIFReport(report lockVerifyReport) inspectSARIFReport {
 	}
 }
 
-func lockVerifyDriftSARIFResult(ruleID string, path string, reason string) inspectSARIFResult {
-	result := inspectSARIFResult{
+func lockVerifyDriftSARIFResult(ruleID string, path string, reason string) reportpkg.SARIFResult {
+	result := reportpkg.SARIFResult{
 		RuleID:  ruleID,
 		Level:   "error",
-		Message: inspectSARIFMessageContainer{Text: fmt.Sprintf("%s: %s", reason, path)},
+		Message: reportpkg.SARIFMessageContainer{Text: fmt.Sprintf("%s: %s", reason, path)},
 	}
 	if strings.TrimSpace(path) == "" {
 		return result
 	}
-	result.Locations = []inspectSARIFLocation{
+	result.Locations = []reportpkg.SARIFLocation{
 		{
-			PhysicalLocation: inspectSARIFPhysicalLocation{
-				ArtifactLocation: inspectSARIFArtifactLocation{
+			PhysicalLocation: reportpkg.SARIFPhysicalLocation{
+				ArtifactLocation: reportpkg.SARIFArtifactLocation{
 					URI: path,
 				},
 			},
@@ -421,12 +421,12 @@ func writeLockVerifySARIFError(stdout io.Writer, stderr io.Writer, report lockVe
 	return exitcode.Error.Int()
 }
 
-func buildLockVerifySARIFErrorReport(report lockVerifyErrorReport) inspectSARIFReport {
+func buildLockVerifySARIFErrorReport(report lockVerifyErrorReport) reportpkg.SARIFDocument {
 	ruleID := report.ErrorCode
 	if report.RuleID != "" {
 		ruleID = report.RuleID
 	}
-	return reportpkg.SARIFErrorDocument(ruleID, report.ErrorCode, report.Message, inspectSARIFProperties{
+	return reportpkg.SARIFErrorDocument(ruleID, report.ErrorCode, report.Message, reportpkg.SARIFProperties{
 		SchemaVersion: report.SchemaVersion,
 		PreRelease:    true,
 		SourceInput:   report.SkillPath,
