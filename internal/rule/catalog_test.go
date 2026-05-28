@@ -77,6 +77,12 @@ func TestCatalogIncludesScanRules(t *testing.T) {
 		{InstallDigestFileTooLarge, "INSTALL_DIGEST_FILE_TOO_LARGE", SeverityHigh},
 		{InstallDigestSpecialFile, "INSTALL_DIGEST_SPECIAL_FILE", SeverityHigh},
 		{InstallDigestSourceChangedDuringHash, "INSTALL_DIGEST_SOURCE_CHANGED_DURING_HASH", SeverityHigh},
+		{InstallReportTooLarge, "INSTALL_REPORT_TOO_LARGE", SeverityHigh},
+		{InstallReportInvalidUTF8, "INSTALL_REPORT_INVALID_UTF8", SeverityHigh},
+		{InstallReportSymlink, "INSTALL_REPORT_SYMLINK_DETECTED", SeverityHigh},
+		{InstallReportSpecialFile, "INSTALL_REPORT_SPECIAL_FILE", SeverityHigh},
+		{InstallReportSourceChangedDuringRead, "INSTALL_REPORT_SOURCE_CHANGED_DURING_READ", SeverityHigh},
+		{LockVerifyPathSymlink, "LOCK_VERIFY_PATH_SYMLINK_DETECTED", SeverityHigh},
 	}
 
 	for _, tc := range cases {

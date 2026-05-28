@@ -62,12 +62,6 @@ var (
 	errLockfileInvalidJSON           = errors.New("invalid lockfile JSON")
 )
 
-const ruleInstallReportTooLarge = "INSTALL_REPORT_TOO_LARGE"
-const ruleInstallReportInvalidUTF8 = "INSTALL_REPORT_INVALID_UTF8"
-const ruleInstallReportSymlink = "INSTALL_REPORT_SYMLINK_DETECTED"
-const ruleInstallReportSpecialFile = "INSTALL_REPORT_SPECIAL_FILE"
-const ruleInstallReportSourceChanged = "INSTALL_REPORT_SOURCE_CHANGED_DURING_READ"
-const ruleLockVerifyPathSymlink = "LOCK_VERIFY_PATH_SYMLINK_DETECTED"
 const (
 	lockVerifyCodeSchema         = "LOCK_SCHEMA"
 	lockVerifyCodeName           = "SKILL_NAME"
@@ -372,7 +366,7 @@ func buildLockVerifySARIFErrorReport(report lockVerifyErrorReport) reportpkg.SAR
 
 func verifyLock(skillPath string) (lockVerifyReport, error) {
 	cleanPath := filepath.Clean(skillPath)
-	if err := rejectSymlinkPath(cleanPath, "lock verify path", ruleLockVerifyPathSymlink); err != nil {
+	if err := rejectSymlinkPath(cleanPath, "lock verify path", rulepkg.LockVerifyPathSymlink.ID); err != nil {
 		return lockVerifyReport{}, err
 	}
 	lockPath := filepath.Join(cleanPath, installLockFile)
@@ -755,7 +749,7 @@ func verifyLockStructure(lock installLock) (bool, string) {
 
 func verifyInstallReport(skillPath string, lock installLock) (bool, string) {
 	reportPath := filepath.Join(skillPath, installReportFile)
-	if err := rejectSymlinkPath(reportPath, "install report file", ruleInstallReportSymlink); err != nil {
+	if err := rejectSymlinkPath(reportPath, "install report file", rulepkg.InstallReportSymlink.ID); err != nil {
 		return false, err.Error()
 	}
 	linkInfo, lstatErr := os.Lstat(reportPath)
@@ -763,10 +757,10 @@ func verifyInstallReport(skillPath string, lock installLock) (bool, string) {
 		return false, fmt.Sprintf("failed to read install report: %s", reportPath)
 	}
 	if linkInfo.Mode()&os.ModeSymlink != 0 {
-		return false, fmt.Sprintf("%s: install report file must not be a symlink: %s", ruleInstallReportSymlink, reportPath)
+		return false, fmt.Sprintf("%s: install report file must not be a symlink: %s", rulepkg.InstallReportSymlink.ID, reportPath)
 	}
 	if !linkInfo.Mode().IsRegular() {
-		return false, fmt.Sprintf("%s: install report file must be a regular file: %s", ruleInstallReportSpecialFile, reportPath)
+		return false, fmt.Sprintf("%s: install report file must be a regular file: %s", rulepkg.InstallReportSpecialFile.ID, reportPath)
 	}
 
 	f, err := os.Open(reportPath)
@@ -781,12 +775,12 @@ func verifyInstallReport(skillPath string, lock installLock) (bool, string) {
 	var raw bytes.Buffer
 	if _, err := limitio.CopyWithStrictLimit(&raw, f, maxInstallReportFileBytes); err != nil {
 		if errors.Is(err, limitio.ErrSizeExceeded) {
-			return false, fmt.Sprintf("%s: install report exceeds size limit: %s", ruleInstallReportTooLarge, reportPath)
+			return false, fmt.Sprintf("%s: install report exceeds size limit: %s", rulepkg.InstallReportTooLarge.ID, reportPath)
 		}
 		return false, fmt.Sprintf("failed to read install report: %s", reportPath)
 	}
 	if !utf8.Valid(raw.Bytes()) {
-		return false, fmt.Sprintf("%s: install report must be valid UTF-8: %s", ruleInstallReportInvalidUTF8, reportPath)
+		return false, fmt.Sprintf("%s: install report must be valid UTF-8: %s", rulepkg.InstallReportInvalidUTF8.ID, reportPath)
 	}
 
 	var report installReport
@@ -931,7 +925,7 @@ func ensureInstallReportStableFromOpen(previous os.FileInfo, opened fileInfoStat
 			return fmt.Errorf("failed to read install report: %s", path)
 		},
 		ChangedError: func(path string) error {
-			return fmt.Errorf("%s: install report file changed during read: %s", ruleInstallReportSourceChanged, path)
+			return fmt.Errorf("%s: install report file changed during read: %s", rulepkg.InstallReportSourceChangedDuringRead.ID, path)
 		},
 	}.CheckOpened(opened)
 }

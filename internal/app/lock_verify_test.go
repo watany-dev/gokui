@@ -222,7 +222,7 @@ func TestVerifyLockErrorsAndDiff(t *testing.T) {
 			}
 
 			_, err := verifyLock(link)
-			if err == nil || !strings.Contains(err.Error(), ruleLockVerifyPathSymlink) {
+			if err == nil || !strings.Contains(err.Error(), rulepkg.LockVerifyPathSymlink.ID) {
 				t.Fatalf("expected symlinked verify path rejection, got %v", err)
 			}
 		})
@@ -360,7 +360,7 @@ func TestLockVerifyStableFileHelpers(t *testing.T) {
 		t.Fatalf("expected lockfile source-changed read error, got %v", err)
 	}
 	err = ensureInstallReportStableFromOpen(firstInfo, changed, secondPath)
-	if err == nil || !strings.Contains(err.Error(), ruleInstallReportSourceChanged) {
+	if err == nil || !strings.Contains(err.Error(), rulepkg.InstallReportSourceChangedDuringRead.ID) {
 		t.Fatalf("expected install-report source-changed error, got %v", err)
 	}
 }

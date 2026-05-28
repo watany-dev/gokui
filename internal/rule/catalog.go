@@ -364,6 +364,36 @@ var (
 		Severity:    SeverityHigh,
 		Description: "digest input changed while being hashed",
 	}
+	InstallReportTooLarge = Rule{
+		ID:          "INSTALL_REPORT_TOO_LARGE",
+		Severity:    SeverityHigh,
+		Description: "install report exceeds the size limit",
+	}
+	InstallReportInvalidUTF8 = Rule{
+		ID:          "INSTALL_REPORT_INVALID_UTF8",
+		Severity:    SeverityHigh,
+		Description: "install report must be valid UTF-8",
+	}
+	InstallReportSymlink = Rule{
+		ID:          "INSTALL_REPORT_SYMLINK_DETECTED",
+		Severity:    SeverityHigh,
+		Description: "install report path contains a symlink",
+	}
+	InstallReportSpecialFile = Rule{
+		ID:          "INSTALL_REPORT_SPECIAL_FILE",
+		Severity:    SeverityHigh,
+		Description: "install report path is not a regular file",
+	}
+	InstallReportSourceChangedDuringRead = Rule{
+		ID:          "INSTALL_REPORT_SOURCE_CHANGED_DURING_READ",
+		Severity:    SeverityHigh,
+		Description: "install report changed while being read",
+	}
+	LockVerifyPathSymlink = Rule{
+		ID:          "LOCK_VERIFY_PATH_SYMLINK_DETECTED",
+		Severity:    SeverityHigh,
+		Description: "lock verify path contains a symlink",
+	}
 )
 
 var catalog = []Rule{
@@ -436,6 +466,12 @@ var catalog = []Rule{
 	InstallDigestFileTooLarge,
 	InstallDigestSpecialFile,
 	InstallDigestSourceChangedDuringHash,
+	InstallReportTooLarge,
+	InstallReportInvalidUTF8,
+	InstallReportSymlink,
+	InstallReportSpecialFile,
+	InstallReportSourceChangedDuringRead,
+	LockVerifyPathSymlink,
 }
 
 var catalogByID = buildCatalogByID(catalog)

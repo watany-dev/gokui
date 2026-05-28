@@ -156,7 +156,7 @@ func TestRunLockVerifyErrorPathsAndDriftKinds(t *testing.T) {
 		if stdout.Len() != 0 {
 			t.Fatalf("stdout should be empty for human error output, got %q", stdout.String())
 		}
-		if !strings.Contains(stderr.String(), ruleLockVerifyPathSymlink) {
+		if !strings.Contains(stderr.String(), rulepkg.LockVerifyPathSymlink.ID) {
 			t.Fatalf("stderr should include lock-verify path symlink rule, got %q", stderr.String())
 		}
 
@@ -172,7 +172,7 @@ func TestRunLockVerifyErrorPathsAndDriftKinds(t *testing.T) {
 		if !strings.Contains(stdout.String(), "\"status\": \"ERROR\"") {
 			t.Fatalf("stdout should include error status, got %q", stdout.String())
 		}
-		if !strings.Contains(stdout.String(), "\"rule_id\": \""+ruleLockVerifyPathSymlink+"\"") {
+		if !strings.Contains(stdout.String(), "\"rule_id\": \""+rulepkg.LockVerifyPathSymlink.ID+"\"") {
 			t.Fatalf("stdout should include lock-verify path symlink rule_id, got %q", stdout.String())
 		}
 
