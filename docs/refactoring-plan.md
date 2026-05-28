@@ -48,6 +48,9 @@ Recent completed increments:
 - command parser value-flag dispatch is centralized; fetch, inspect, vet,
   install, update, and lock verify now share the same `--flag value` /
   `--flag=value` matching path and missing-value errors.
+- boolean flag dispatch now uses the same parser-helper pattern; `update
+  --dry-run` no longer has command-specific flag matching inline in the
+  positional/unknown-option branch.
 
 Validation already run after the latest parser/format increments:
 
@@ -72,6 +75,7 @@ go test ./internal/app -run 'Args|Fetch|Install|Update|Error|JSON|SARIF'
 go test ./internal/app -run 'Args|Install|Vet|Error|JSON|SARIF|Review'
 go test ./internal/app
 go test ./internal/app -run 'Args|Error|JSON|SARIF|Review|Fetch|Inspect|Vet|Install|Update|LockVerify'
+go test ./internal/app -run 'Update|Args|Error|JSON|SARIF'
 make test
 ```
 
@@ -331,9 +335,9 @@ slice:
 1. Audit #7, #10, #12, #13, #15, #16, #17, and #18 against the current code and
    close or update any issues whose requested implementation is now present.
 2. Continue #5 by moving command parser shape toward a shared parser/spec model
-   or by extracting the remaining command-specific loop shape for boolean flags
-   and positional policy. Keep current error strings and pre-parse
-   structured-output detection stable while doing this.
+   or by extracting the remaining command-specific positional policy. Keep
+   current error strings and pre-parse structured-output detection stable while
+   doing this.
 3. Continue #4 by extracting any remaining command-specific structured-error
    branching where it can be done without changing current error strings,
    fallback source/target fields, or structured output contracts; defer changing
