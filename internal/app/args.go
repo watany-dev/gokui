@@ -1,6 +1,10 @@
 package app
 
-import "strings"
+import (
+	"strings"
+
+	formatpkg "github.com/watany-dev/gokui/internal/cli/format"
+)
 
 func argsRequestFormat(args []string, format string) bool {
 	for i := 0; i < len(args); i++ {
@@ -15,11 +19,11 @@ func argsRequestFormat(args []string, format string) bool {
 }
 
 func supportsCommandFormat(format string) bool {
-	return format == "human" || format == "json" || format == "sarif" || format == "compact"
+	return formatpkg.SupportsCommand(format)
 }
 
 func supportsReviewCommandFormat(format string) bool {
-	return supportsCommandFormat(format) || format == "review-json"
+	return formatpkg.SupportsReviewCommand(format)
 }
 
 func firstPositionalArg(args []string, valueFlags ...string) string {
