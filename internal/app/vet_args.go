@@ -12,12 +12,12 @@ func parseVetArgs(args []string) (input string, format string, profile string, p
 	profile = policypkg.ProfileStrict.String()
 	for i := 0; i < len(args); i++ {
 		arg := args[i]
-		if arg == "--format" {
-			if i+1 >= len(args) {
-				return "", "", "", false, fmt.Errorf("missing value for --format")
+		if formatValue, next, ok, formatErr := parseFormatArg(args, i); ok {
+			if formatErr != nil {
+				return "", "", "", false, formatErr
 			}
-			format = args[i+1]
-			i++
+			format = formatValue
+			i = next
 			continue
 		}
 		if arg == "--profile" {
@@ -27,10 +27,6 @@ func parseVetArgs(args []string) (input string, format string, profile string, p
 			profile = args[i+1]
 			profileSet = true
 			i++
-			continue
-		}
-		if strings.HasPrefix(arg, "--format=") {
-			format = strings.TrimPrefix(arg, "--format=")
 			continue
 		}
 		if strings.HasPrefix(arg, "--profile=") {

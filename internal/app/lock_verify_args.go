@@ -19,15 +19,15 @@ func parseLockVerifyArgs(args []string) (lockVerifyArgs, error) {
 	}
 	for i := 0; i < len(args); i++ {
 		arg := args[i]
-		switch {
-		case arg == "--format":
-			if i+1 >= len(args) {
-				return lockVerifyArgs{}, fmt.Errorf("missing value for --format")
+		if formatValue, next, ok, err := parseFormatArg(args, i); ok {
+			if err != nil {
+				return lockVerifyArgs{}, err
 			}
-			out.Format = args[i+1]
-			i++
-		case strings.HasPrefix(arg, "--format="):
-			out.Format = strings.TrimPrefix(arg, "--format=")
+			out.Format = formatValue
+			i = next
+			continue
+		}
+		switch {
 		case strings.HasPrefix(arg, "-"):
 			return lockVerifyArgs{}, fmt.Errorf("unknown lock verify option: %s", arg)
 		default:

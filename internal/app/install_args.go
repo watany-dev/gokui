@@ -10,6 +10,14 @@ func parseInstallArgs(args []string) (installArgs, error) {
 	out := installArgs{Profile: "strict", Format: defaultCommandFormat()}
 	for i := 0; i < len(args); i++ {
 		arg := args[i]
+		if formatValue, next, ok, err := parseFormatArg(args, i); ok {
+			if err != nil {
+				return installArgs{}, err
+			}
+			out.Format = formatValue
+			i = next
+			continue
+		}
 		switch {
 		case arg == "--target":
 			if i+1 >= len(args) {
@@ -29,14 +37,6 @@ func parseInstallArgs(args []string) (installArgs, error) {
 		case strings.HasPrefix(arg, "--profile="):
 			out.Profile = strings.TrimPrefix(arg, "--profile=")
 			out.ProfileSet = true
-		case arg == "--format":
-			if i+1 >= len(args) {
-				return installArgs{}, fmt.Errorf("missing value for --format")
-			}
-			out.Format = args[i+1]
-			i++
-		case strings.HasPrefix(arg, "--format="):
-			out.Format = strings.TrimPrefix(arg, "--format=")
 		case arg == "--override":
 			if i+1 >= len(args) {
 				return installArgs{}, fmt.Errorf("missing value for --override")
