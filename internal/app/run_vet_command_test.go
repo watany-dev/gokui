@@ -3,6 +3,7 @@ package app
 import (
 	"bytes"
 	"encoding/json"
+	reportpkg "github.com/watany-dev/gokui/internal/report"
 	"io"
 	"os"
 	"path/filepath"
@@ -470,7 +471,7 @@ func TestRunVetCommands(t *testing.T) {
 		if stderr.Len() != 0 {
 			t.Fatalf("stderr should be empty for sarif output, got %q", stderr.String())
 		}
-		var got inspectSARIFReport
+		var got reportpkg.SARIFDocument
 		if err := json.Unmarshal(stdout.Bytes(), &got); err != nil {
 			t.Fatalf("vet sarif should be valid: %v\nstdout=%q", err, stdout.String())
 		}
@@ -499,7 +500,7 @@ func TestRunVetCommands(t *testing.T) {
 		if stderr.Len() != 0 {
 			t.Fatalf("stderr should be empty for sarif output, got %q", stderr.String())
 		}
-		var got inspectSARIFReport
+		var got reportpkg.SARIFDocument
 		if err := json.Unmarshal(stdout.Bytes(), &got); err != nil {
 			t.Fatalf("vet sarif should be valid: %v\nstdout=%q", err, stdout.String())
 		}
@@ -835,7 +836,7 @@ func TestRunVetCommands(t *testing.T) {
 		if stderr.Len() != 0 {
 			t.Fatalf("stderr should be empty, got %q", stderr.String())
 		}
-		var sarif inspectSARIFReport
+		var sarif reportpkg.SARIFDocument
 		if err := json.Unmarshal(stdout.Bytes(), &sarif); err != nil {
 			t.Fatalf("sarif parse failed: %v", err)
 		}
@@ -859,7 +860,7 @@ func TestRunVetCommands(t *testing.T) {
 		if stderr.Len() != 0 {
 			t.Fatalf("stderr should be empty, got %q", stderr.String())
 		}
-		var sarif inspectSARIFReport
+		var sarif reportpkg.SARIFDocument
 		if err := json.Unmarshal(stdout.Bytes(), &sarif); err != nil {
 			t.Fatalf("sarif parse failed: %v", err)
 		}
@@ -921,7 +922,7 @@ func TestRunVetCommands(t *testing.T) {
 			t.Fatalf("stderr should be empty, got %q", stderr.String())
 		}
 
-		var sarif inspectSARIFReport
+		var sarif reportpkg.SARIFDocument
 		if err := json.Unmarshal(stdout.Bytes(), &sarif); err != nil {
 			t.Fatalf("sarif parse failed: %v", err)
 		}
@@ -950,7 +951,7 @@ func TestRunVetCommands(t *testing.T) {
 			t.Fatalf("stderr should be empty, got %q", stderr.String())
 		}
 
-		var sarif inspectSARIFReport
+		var sarif reportpkg.SARIFDocument
 		if err := json.Unmarshal(stdout.Bytes(), &sarif); err != nil {
 			t.Fatalf("sarif parse failed: %v", err)
 		}
@@ -1025,7 +1026,7 @@ func TestRunVetCommands(t *testing.T) {
 		if stderr.Len() != 0 {
 			t.Fatalf("stderr should be empty, got %q", stderr.String())
 		}
-		var sarif inspectSARIFReport
+		var sarif reportpkg.SARIFDocument
 		if err := json.Unmarshal(stdout.Bytes(), &sarif); err != nil {
 			t.Fatalf("sarif parse failed: %v", err)
 		}

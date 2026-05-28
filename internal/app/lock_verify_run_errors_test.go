@@ -2,6 +2,7 @@ package app
 
 import (
 	"encoding/json"
+	reportpkg "github.com/watany-dev/gokui/internal/report"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -49,7 +50,7 @@ func TestRunLockVerifyErrorPathsAndDriftKinds(t *testing.T) {
 	if stderr.Len() != 0 {
 		t.Fatalf("stderr should be empty for sarif parse error output, got %q", stderr.String())
 	}
-	var parseSARIF inspectSARIFReport
+	var parseSARIF reportpkg.SARIFDocument
 	if err := json.Unmarshal([]byte(stdout.String()), &parseSARIF); err != nil {
 		t.Fatalf("sarif parse (parse error): %v", err)
 	}
@@ -114,7 +115,7 @@ func TestRunLockVerifyErrorPathsAndDriftKinds(t *testing.T) {
 	if stderr.Len() != 0 {
 		t.Fatalf("stderr should be empty for sarif error output, got %q", stderr.String())
 	}
-	var readSARIF inspectSARIFReport
+	var readSARIF reportpkg.SARIFDocument
 	if err := json.Unmarshal([]byte(stdout.String()), &readSARIF); err != nil {
 		t.Fatalf("sarif parse (read error): %v", err)
 	}

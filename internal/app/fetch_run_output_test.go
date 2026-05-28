@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	reportpkg "github.com/watany-dev/gokui/internal/report"
 	srcpkg "github.com/watany-dev/gokui/internal/source"
 )
 
@@ -70,7 +71,7 @@ func TestRunFetchOutputFormats(t *testing.T) {
 			t.Fatalf("stderr should be empty for sarif output, got %q", stderr.String())
 		}
 
-		var sarif inspectSARIFReport
+		var sarif reportpkg.SARIFDocument
 		if err := json.Unmarshal([]byte(stdout.String()), &sarif); err != nil {
 			t.Fatalf("sarif parse failed: %v", err)
 		}
@@ -174,7 +175,7 @@ func TestRunFetchOutputFormats(t *testing.T) {
 			t.Fatalf("stderr should be empty for sarif parse error, got %q", stderr.String())
 		}
 
-		var sarif inspectSARIFReport
+		var sarif reportpkg.SARIFDocument
 		if err := json.Unmarshal([]byte(stdout.String()), &sarif); err != nil {
 			t.Fatalf("sarif parse failed: %v", err)
 		}

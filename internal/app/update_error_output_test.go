@@ -2,6 +2,7 @@ package app
 
 import (
 	"encoding/json"
+	reportpkg "github.com/watany-dev/gokui/internal/report"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -189,7 +190,7 @@ func TestRunUpdateSARIFFatalErrors(t *testing.T) {
 		if stderr.Len() != 0 {
 			t.Fatalf("stderr should be empty for sarif parse errors, got %q", stderr.String())
 		}
-		var sarif inspectSARIFReport
+		var sarif reportpkg.SARIFDocument
 		if err := json.Unmarshal([]byte(stdout.String()), &sarif); err != nil {
 			t.Fatalf("sarif parse failed: %v", err)
 		}
@@ -214,7 +215,7 @@ func TestRunUpdateSARIFFatalErrors(t *testing.T) {
 		if stderr.Len() != 0 {
 			t.Fatalf("stderr should be empty for sarif build errors, got %q", stderr.String())
 		}
-		var sarif inspectSARIFReport
+		var sarif reportpkg.SARIFDocument
 		if err := json.Unmarshal([]byte(stdout.String()), &sarif); err != nil {
 			t.Fatalf("sarif parse failed: %v", err)
 		}
@@ -245,7 +246,7 @@ func TestRunUpdateSARIFFatalErrors(t *testing.T) {
 		if stderr.Len() != 0 {
 			t.Fatalf("stderr should be empty for sarif policy load errors, got %q", stderr.String())
 		}
-		var sarif inspectSARIFReport
+		var sarif reportpkg.SARIFDocument
 		if err := json.Unmarshal([]byte(stdout.String()), &sarif); err != nil {
 			t.Fatalf("sarif parse failed: %v", err)
 		}
@@ -325,7 +326,7 @@ func TestWriteUpdateSARIFErrorRuleID(t *testing.T) {
 		if stderr.Len() != 0 {
 			t.Fatalf("stderr should be empty, got %q", stderr.String())
 		}
-		var sarif inspectSARIFReport
+		var sarif reportpkg.SARIFDocument
 		if err := json.Unmarshal([]byte(stdout.String()), &sarif); err != nil {
 			t.Fatalf("sarif parse failed: %v", err)
 		}
@@ -356,7 +357,7 @@ func TestWriteUpdateSARIFErrorRuleID(t *testing.T) {
 		if stderr.Len() != 0 {
 			t.Fatalf("stderr should be empty, got %q", stderr.String())
 		}
-		var sarif inspectSARIFReport
+		var sarif reportpkg.SARIFDocument
 		if err := json.Unmarshal([]byte(stdout.String()), &sarif); err != nil {
 			t.Fatalf("sarif parse failed: %v", err)
 		}

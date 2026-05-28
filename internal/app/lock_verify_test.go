@@ -3,6 +3,7 @@ package app
 import (
 	"encoding/json"
 	"errors"
+	reportpkg "github.com/watany-dev/gokui/internal/report"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -96,7 +97,7 @@ func TestVerifyLockAndRunLockVerify(t *testing.T) {
 	if stderr.Len() != 0 {
 		t.Fatalf("stderr should be empty for sarif verified output, got %q", stderr.String())
 	}
-	var verifiedSARIF inspectSARIFReport
+	var verifiedSARIF reportpkg.SARIFDocument
 	if err := json.Unmarshal([]byte(stdout.String()), &verifiedSARIF); err != nil {
 		t.Fatalf("sarif unmarshal (verified): %v", err)
 	}
@@ -156,7 +157,7 @@ func TestVerifyLockAndRunLockVerify(t *testing.T) {
 	if stderr.Len() != 0 {
 		t.Fatalf("stderr should be empty for sarif drifted output, got %q", stderr.String())
 	}
-	var driftSARIF inspectSARIFReport
+	var driftSARIF reportpkg.SARIFDocument
 	if err := json.Unmarshal([]byte(stdout.String()), &driftSARIF); err != nil {
 		t.Fatalf("sarif unmarshal (drifted): %v", err)
 	}

@@ -2,6 +2,7 @@ package app
 
 import (
 	"encoding/json"
+	reportpkg "github.com/watany-dev/gokui/internal/report"
 	"strings"
 	"testing"
 )
@@ -143,7 +144,7 @@ func TestWriteFetchSARIFErrorPreservesExplicitRuleID(t *testing.T) {
 	if code != 1 {
 		t.Fatalf("writeFetchSARIFError() code = %d, want 1", code)
 	}
-	var sarif inspectSARIFReport
+	var sarif reportpkg.SARIFDocument
 	if err := json.Unmarshal([]byte(stdout.String()), &sarif); err != nil {
 		t.Fatalf("sarif parse failed: %v", err)
 	}

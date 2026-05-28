@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"encoding/json"
+	reportpkg "github.com/watany-dev/gokui/internal/report"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -502,7 +503,7 @@ func TestWriteInspectSARIFErrorPreservesExplicitRuleID(t *testing.T) {
 	if stderr.Len() != 0 {
 		t.Fatalf("stderr should be empty, got %q", stderr.String())
 	}
-	var sarif inspectSARIFReport
+	var sarif reportpkg.SARIFDocument
 	if err := json.Unmarshal(stdout.Bytes(), &sarif); err != nil {
 		t.Fatalf("sarif parse failed: %v", err)
 	}
