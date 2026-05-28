@@ -3,8 +3,10 @@ package app
 import (
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 
+	"github.com/watany-dev/gokui/internal/materialize"
 	srcpkg "github.com/watany-dev/gokui/internal/source"
 )
 
@@ -60,6 +62,59 @@ func preparePolicyEvaluationSourceWithDeps(input string, sourceKind string, deps
 		}
 		return filepath.Clean(root), release, nil
 	}
+}
+
+func prepareInspectSource(input string, sourceKind string) (skillRoot string, cleanup func(), err error) {
+	switch sourceKind {
+	case "local-dir":
+		if validateErr := validateLocalDirInspectSource(input); validateErr != nil {
+			return "", nil, validateErr
+		}
+		return input, nil, nil
+	case "zip", "tar":
+		return prepareArchiveInspectSource(input, sourceKind)
+	default:
+		return "", nil, fmt.Errorf("unsupported inspect source kind: %s", sourceKind)
+	}
+}
+
+func prepareArchiveInspectSource(input string, sourceKind string) (string, func(), error) {
+	tempRoot, err := os.MkdirTemp("", "gokui-inspect-archive-*")
+	if err != nil {
+		return "", nil, fmt.Errorf("failed to create inspect quarantine: %w", err)
+	}
+	cleanup := func() {
+		_ = os.RemoveAll(tempRoot)
+	}
+
+	extractDir := filepath.Join(tempRoot, "extract")
+	if err := os.Mkdir(extractDir, 0o755); err != nil {
+		cleanup()
+		return "", nil, fmt.Errorf("failed to prepare inspect extraction directory: %w", err)
+	}
+
+	limits := materialize.Limits{
+		MaxFiles:      1000,
+		MaxTotalBytes: 50 * 1024 * 1024,
+		MaxFileBytes:  10 * 1024 * 1024,
+	}
+	if err := materialize.ExtractArchive(input, sourceKind, extractDir, limits); err != nil {
+		cleanup()
+		return "", nil, err
+	}
+
+	skillRoot, err := materialize.DetectSkillRoot(extractDir)
+	if err != nil {
+		cleanup()
+		return "", nil, err
+	}
+
+	if err := validateLocalDirInspectSource(skillRoot); err != nil {
+		cleanup()
+		return "", nil, err
+	}
+
+	return skillRoot, cleanup, nil
 }
 
 func isGitHubRefNotPinnedError(err error) bool {
