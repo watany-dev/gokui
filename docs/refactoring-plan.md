@@ -75,6 +75,8 @@ Recent completed increments:
   lock-verify drift results use the shared helper.
 - SARIF rule/result construction now lives behind `internal/report` helpers,
   and lock verify uses the shared rule/result builders.
+- SARIF rule/result sorting now lives behind `internal/report` helpers; lock
+  verify no longer owns generic SARIF sort logic.
 
 Validation already run after the latest parser/format increments:
 
@@ -107,6 +109,7 @@ go test ./internal/app -run 'Args|Fetch|Inspect|Vet|Install|Update|LockVerify|Er
 go test ./internal/app -run 'Args|Fetch|Inspect|Vet|Install|Update|LockVerify|Error|JSON|SARIF|Review'
 go test ./internal/app -run 'Error|SARIF|JSON|Fetch|Inspect|Install|Update|LockVerify'
 go test ./internal/report ./internal/app -run 'SARIF|Inspect|Fetch|Install|Update'
+go test ./internal/report ./internal/app -run 'SARIF|LockVerify'
 go test ./internal/report ./internal/app -run 'SARIF|LockVerify'
 go test ./internal/report ./internal/app -run 'SARIF|LockVerify'
 make test
