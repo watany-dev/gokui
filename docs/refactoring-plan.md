@@ -163,6 +163,10 @@ Recent completed increments:
 - ROADMAP rule ID implementation sync coverage is split into
   `docs_sync_rule_catalog_test.go`, separating catalog completeness checks from
   the broad docs sync file.
+- CLI command-set, usage, structured-error stream, exit-code, and update status
+  matrix documentation sync coverage is split into
+  `docs_sync_cli_contract_test.go`, separating command contract assertions from
+  the broader docs sync file.
 - obsolete app-level SARIF property helper tests were removed after the
   property composition moved into `internal/report`, keeping `make check`
   deadcode-clean.
@@ -240,6 +244,7 @@ go test ./internal/app -run 'TestRunInspectVetCommands|TestRunVetCommands'
 go test ./internal/app -run 'TestRunInspectCommand|TestRunVetCommands'
 go test ./internal/rule ./internal/source ./internal/app -run 'Catalog|GitHubArchive|FetchJSONErrorCodes'
 go test ./internal/app -run 'RoadmapRuleIDsAreImplemented|CommandSetDocumentationSync|ReadmePolicyExampleSchemaSync'
+go test ./internal/app -run 'CommandSetDocumentationSync|CLIUsageSyntaxDocumentationSync|StructuredErrorStreamContractDocumentationSync|ExitCodeContractDocumentationSync|UpdateStatusErrorCodeMatrixDocumentationSync'
 make test
 make check
 ```
