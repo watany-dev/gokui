@@ -552,15 +552,13 @@ func TestRunVetCommands(t *testing.T) {
 		var stdout bytes.Buffer
 		var stderr bytes.Buffer
 
-		origRunInspectForVet := runInspectForVet
-		t.Cleanup(func() { runInspectForVet = origRunInspectForVet })
-		runInspectForVet = func(args []string, stdout io.Writer, stderr io.Writer) int {
-			_, _ = stdout.Write([]byte{0xff})
-			return 1
-		}
-
 		fixturePath := filepath.FromSlash("../../fixtures/clean-skill")
-		code := Run([]string{"vet", fixturePath, "--format", "json"}, &stdout, &stderr, cfg)
+		code := runVetWithDeps([]string{fixturePath, "--format", "json"}, &stdout, &stderr, vetDeps{
+			RunInspect: func(args []string, stdout io.Writer, stderr io.Writer) int {
+				_, _ = stdout.Write([]byte{0xff})
+				return 1
+			},
+		})
 		if code != 1 {
 			t.Fatalf("Run() code = %d, want 1\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
 		}
@@ -594,15 +592,13 @@ func TestRunVetCommands(t *testing.T) {
 		var stdout bytes.Buffer
 		var stderr bytes.Buffer
 
-		origRunInspectForVet := runInspectForVet
-		t.Cleanup(func() { runInspectForVet = origRunInspectForVet })
-		runInspectForVet = func(args []string, stdout io.Writer, stderr io.Writer) int {
-			_, _ = stdout.Write([]byte("{"))
-			return 0
-		}
-
 		fixturePath := filepath.FromSlash("../../fixtures/clean-skill")
-		code := Run([]string{"vet", fixturePath, "--format", "json"}, &stdout, &stderr, cfg)
+		code := runVetWithDeps([]string{fixturePath, "--format", "json"}, &stdout, &stderr, vetDeps{
+			RunInspect: func(args []string, stdout io.Writer, stderr io.Writer) int {
+				_, _ = stdout.Write([]byte("{"))
+				return 0
+			},
+		})
 		if code != 2 {
 			t.Fatalf("Run() code = %d, want 2\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
 		}
@@ -625,15 +621,13 @@ func TestRunVetCommands(t *testing.T) {
 		var stdout bytes.Buffer
 		var stderr bytes.Buffer
 
-		origRunInspectForVet := runInspectForVet
-		t.Cleanup(func() { runInspectForVet = origRunInspectForVet })
-		runInspectForVet = func(args []string, stdout io.Writer, stderr io.Writer) int {
-			_, _ = stdout.Write([]byte{0xff})
-			return 0
-		}
-
 		fixturePath := filepath.FromSlash("../../fixtures/clean-skill")
-		code := Run([]string{"vet", fixturePath, "--format", "json"}, &stdout, &stderr, cfg)
+		code := runVetWithDeps([]string{fixturePath, "--format", "json"}, &stdout, &stderr, vetDeps{
+			RunInspect: func(args []string, stdout io.Writer, stderr io.Writer) int {
+				_, _ = stdout.Write([]byte{0xff})
+				return 0
+			},
+		})
 		if code != 2 {
 			t.Fatalf("Run() code = %d, want 2\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
 		}

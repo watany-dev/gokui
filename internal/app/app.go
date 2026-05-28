@@ -108,7 +108,6 @@ var (
 	errorCodePattern               = regexp.MustCompile(`^[A-Z0-9_]+$`)
 	maxSkillFrontmatterBytes int64 = 1_000_000
 	errInspectSourceNotFound       = skillpkg.ErrInspectSourceNotFound
-	runInspectForVet               = runInspect
 )
 
 const ruleSkillFrontmatterTooLarge = skillpkg.RuleFrontmatterTooLarge
@@ -199,10 +198,29 @@ usage:
   gokui lock verify [path] [--format human|json|sarif|compact]`)
 }
 
+type vetDeps struct {
+	LoadUserPolicy       func() (policypkg.Config, bool, error)
+	LoadRepositoryPolicy func(string) (policypkg.Config, bool, error)
+	RunInspect           func(args []string, stdout io.Writer, stderr io.Writer) int
+}
+
+func defaultVetDeps() vetDeps {
+	return vetDeps{
+		LoadUserPolicy:       loadUserPolicyConfig,
+		LoadRepositoryPolicy: loadRepositoryPolicyConfig,
+		RunInspect:           runInspect,
+	}
+}
+
 func runVet(args []string, stdout io.Writer, stderr io.Writer) int {
+	return runVetWithDeps(args, stdout, stderr, defaultVetDeps())
+}
+
+func runVetWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps vetDeps) int {
 	requestedJSON := inspectArgsRequestJSON(args)
 	requestedSARIF := inspectArgsRequestSARIF(args)
 	requestedReviewJSON := inspectArgsRequestReviewJSON(args)
+	deps = normalizeVetDeps(deps)
 	input, format, profile, profileSet, err := parseVetArgs(args)
 	if err != nil {
 		sourceArg := extractInspectSourceArg(args)
@@ -251,7 +269,7 @@ func runVet(args []string, stdout io.Writer, stderr io.Writer) int {
 	}
 	profile = normalizePolicyProfile(profile)
 
-	userPolicy, policyLoaded, policyErr := loadUserPolicyConfig()
+	userPolicy, policyLoaded, policyErr := deps.LoadUserPolicy()
 	if policyErr != nil {
 		if emitInspectStructuredError(format, stdout, stderr, inspectErrorReport{
 			SchemaVersion: reportSchemaVersion,
@@ -272,7 +290,7 @@ func runVet(args []string, stdout io.Writer, stderr io.Writer) int {
 	effectivePolicy := userPolicy
 	effectivePolicyLoaded := policyLoaded
 	if shouldApplyRepositoryPolicy(sourceKind) {
-		repoPolicy, repoPolicyFound, repoPolicyErr := loadRepositoryPolicyConfig(input)
+		repoPolicy, repoPolicyFound, repoPolicyErr := deps.LoadRepositoryPolicy(input)
 		if repoPolicyErr != nil {
 			if emitInspectStructuredError(format, stdout, stderr, inspectErrorReport{
 				SchemaVersion: reportSchemaVersion,
@@ -338,7 +356,7 @@ func runVet(args []string, stdout io.Writer, stderr io.Writer) int {
 
 	var inspectStdout bytes.Buffer
 	var inspectStderr bytes.Buffer
-	inspectCode := runInspectForVet([]string{input, "--format", "json"}, &inspectStdout, &inspectStderr)
+	inspectCode := deps.RunInspect([]string{input, "--format", "json"}, &inspectStdout, &inspectStderr)
 	if inspectCode == 1 {
 		errorReport := decodeInspectErrorPayload(inspectStdout.Bytes())
 		if emitInspectStructuredError(format, stdout, stderr, errorReport) {
@@ -394,6 +412,19 @@ func runVet(args []string, stdout io.Writer, stderr io.Writer) int {
 		return exitcode.Rejected.Int()
 	}
 	return exitcode.OK.Int()
+}
+
+func normalizeVetDeps(deps vetDeps) vetDeps {
+	if deps.LoadUserPolicy == nil {
+		deps.LoadUserPolicy = loadUserPolicyConfig
+	}
+	if deps.LoadRepositoryPolicy == nil {
+		deps.LoadRepositoryPolicy = loadRepositoryPolicyConfig
+	}
+	if deps.RunInspect == nil {
+		deps.RunInspect = runInspect
+	}
+	return deps
 }
 
 func buildVetReportFromInspectJSON(raw []byte, input string, sourceKind string, profile string, rejectSet map[string]struct{}) inspectReport {
