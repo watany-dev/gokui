@@ -33,6 +33,8 @@ Recent completed increments:
   output checks, and success-output routing now use the typed constants.
 - structured-error routing now uses typed formats internally, shared JSON/SARIF
   error-report write helpers, and a `lock verify` structured-error emit helper.
+- pre-parse structured format detection is centralized while preserving the
+  existing priority order for ambiguous argument lists.
 
 Validation already run after the latest parser/format increments:
 
@@ -46,6 +48,7 @@ go test ./internal/app -run 'Inspect|Vet|Update|JSON|SARIF|Compact|Review'
 go test ./internal/app -run 'Fetch|Install|LockVerify|JSON|SARIF|Compact'
 go test ./internal/app -run 'Error|JSON|SARIF|Fetch|Install|Update|Inspect|Vet|LockVerify'
 go test ./internal/app -run 'LockVerify|Error|JSON|SARIF'
+go test ./internal/app -run 'Args|Error|JSON|SARIF|Review|Fetch|Inspect|Vet|Install|Update|LockVerify'
 make test
 ```
 
@@ -290,9 +293,10 @@ slice:
 2. Continue #5 by moving command argument parsing toward a shared parser/spec
    shape. Keep current error strings and pre-parse structured-output detection
    stable while doing this.
-3. Continue #4 by extracting command-specific parse-error fallback construction
-   where it can be done without changing current error strings or structured
-   output contracts; defer changing report wire structs until #9.
+3. Continue #4 by extracting command-specific parse-error report construction
+   where it can be done without changing current error strings, fallback
+   source/target fields, or structured output contracts; defer changing report
+   wire structs until #9.
 4. Continue #8 only after #4 has a stable command error path and inspect report
    rendering remains covered by contract tests.
 
