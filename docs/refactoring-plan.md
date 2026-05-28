@@ -454,18 +454,20 @@ make build
 The next work should stay behavior-preserving and commit after each validation
 slice:
 
-1. Audit #7, #10, #12, #13, #15, #16, #17, and #18 against the current code and
-   close or update any issues whose requested implementation is now present.
-2. Continue #5 by extracting any remaining duplicated parser spec declarations
-   only where that stays readable. Keep current error strings and pre-parse
-   structured-output detection stable while doing this.
-3. Continue #4/#10 by extracting any remaining command-specific structured-error
-   branching outside parse-error handling where it can be done without changing
-   current error strings, fallback source/target fields, `review-json`
-   handling, command-specific SARIF properties, or structured output contracts;
-   defer changing report wire structs until #9.
-4. Audit #8 closure criteria now that vet no longer reparses inspect JSON;
-   keep inspect/vet report rendering covered by contract tests.
+1. When GitHub issue write access is available, close or comment on the
+   candidate-complete issues now represented locally: #6, #8, #11, #12, #13,
+   #14, #15, #16, #17, and #18. Keep #7 and #10 open until their boundary
+   decisions below are resolved.
+2. Continue #4/#5 only where common CLI parsing or structured-error helpers can
+   remove duplication without changing error strings, fallback source/target
+   fields, `review-json` handling, SARIF properties, or stream contracts.
+3. Continue #10 by moving only generic SARIF document/property assembly into
+   `internal/report`; keep command-specific note text and wire structs at the
+   app boundary until #9.
+4. Continue #19 by splitting the largest app contract tests along existing
+   command/doc-sync boundaries before moving command packages.
+5. Defer #2/#3/#9 broad package and wire/domain separation until the remaining
+   CLI/report boundaries are explicit and covered by `make check`.
 
 ## Commit Hygiene
 
