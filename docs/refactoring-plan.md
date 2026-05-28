@@ -14,15 +14,46 @@ and use this file to order the refactoring queue.
 - Non-goal: changing CLI behavior, JSON/SARIF contracts, release-check error
   codes, or `ROADMAP.md` in this pass.
 
-## Existing Uncommitted Work
+## Current Local Progress
 
-The following files are already modified in the working tree and should be
-treated as pre-existing work. Do not stage them when committing this plan unless
-the owner explicitly asks for that.
+As of the current local branch, the working tree should be clean between
+increments. Earlier uncommitted validation-test work has been committed, and the
+branch now contains several behavior-preserving extraction commits.
 
-- `internal/app/install_lock_validation_test.go`
-- `internal/app/lock_verify_source_test.go`
-- `internal/app/update_evaluate_lock_validation_test.go`
+Recent completed increments:
+
+- install/update/lock validation helpers split into focused files under
+  `internal/app`.
+- inspect/vet/update/fetch output writers and command dependency defaults split
+  into focused files under `internal/app`.
+- fetch/inspect/vet argument parsing split into focused parser files.
+- supported command format checks centralized in `internal/app/args.go`.
+
+Validation already run after the latest parser/format increments:
+
+```sh
+go test ./internal/app -run 'Fetch|Args'
+go test ./internal/app ./internal/cli/exitcode
+go test ./internal/app -run 'Inspect|Vet|Args'
+go test ./internal/app
+go test ./internal/app -run 'Args|Fetch|Inspect|Vet|Install|Update|LockVerify'
+make test
+```
+
+Current inventory notes:
+
+- #7 is represented by `internal/rule`.
+- #10 is represented by shared SARIF document/types in `internal/report`.
+- #12 is represented by `source.GitHubFetcher` and option-based tests.
+- #13 is represented by split `internal/scan` files.
+- #15 is represented by `internal/safefs` stable/root/path helpers.
+- #16 is represented by `internal/limitio` and related safefs path helpers.
+- #17 is represented by `internal/policy` profile/severity types and
+  `internal/cli/exitcode`.
+- #18 is represented by `internal/policy/override.go`.
+- #3, #5, and #19 are partially represented but still need final audit before
+  closing because `internal/app` remains the compatibility owner for command
+  orchestration and many contract tests.
 
 ## Recommended Order
 
@@ -239,6 +270,20 @@ make build
 | #17 | 2, 6, 8 | Define enums early, thread exit codes through CLI later. |
 | #18 | 2, 4 | Define value type early, adopt in update/lock verification next. |
 | #19 | 3, 9 | Split tests after the related package boundaries settle. |
+
+## Next Concrete Increments
+
+The next work should stay behavior-preserving and commit after each validation
+slice:
+
+1. Audit #7, #10, #12, #13, #15, #16, #17, and #18 against the current code and
+   close or update any issues whose requested implementation is now present.
+2. Continue #5 by moving format parsing toward a typed CLI format value, while
+   preserving current error strings and output routing.
+3. Continue #4 by extracting only the common structured-error routing first;
+   defer changing report wire structs until #9.
+4. Continue #8 only after #4 has a stable command error path and inspect report
+   rendering remains covered by contract tests.
 
 ## Commit Hygiene
 
