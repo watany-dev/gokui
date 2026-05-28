@@ -13,16 +13,12 @@ func parseInspectArgs(args []string) (input string, format string, err error) {
 	format = defaultCommandFormat()
 	for i := 0; i < len(args); i++ {
 		arg := args[i]
-		if arg == "--format" {
-			if i+1 >= len(args) {
-				return "", "", fmt.Errorf("missing value for --format")
+		if formatValue, next, ok, formatErr := parseFormatArg(args, i); ok {
+			if formatErr != nil {
+				return "", "", formatErr
 			}
-			format = args[i+1]
-			i++
-			continue
-		}
-		if strings.HasPrefix(arg, "--format=") {
-			format = strings.TrimPrefix(arg, "--format=")
+			format = formatValue
+			i = next
 			continue
 		}
 		if strings.HasPrefix(arg, "-") {

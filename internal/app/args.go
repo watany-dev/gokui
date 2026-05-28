@@ -1,6 +1,7 @@
 package app
 
 import (
+	"fmt"
 	"strings"
 
 	formatpkg "github.com/watany-dev/gokui/internal/cli/format"
@@ -41,6 +42,20 @@ func supportsReviewCommandFormat(format string) bool {
 
 func defaultCommandFormat() string {
 	return formatpkg.Human.String()
+}
+
+func parseFormatArg(args []string, index int) (value string, nextIndex int, ok bool, err error) {
+	arg := args[index]
+	if arg == "--format" {
+		if index+1 >= len(args) {
+			return "", index, true, fmt.Errorf("missing value for --format")
+		}
+		return args[index+1], index + 1, true, nil
+	}
+	if value, found := strings.CutPrefix(arg, "--format="); found {
+		return value, index, true, nil
+	}
+	return "", index, false, nil
 }
 
 func firstPositionalArg(args []string, valueFlags ...string) string {

@@ -17,6 +17,14 @@ func parseUpdateArgs(args []string) (updateArgs, error) {
 
 	for i := 0; i < len(args); i++ {
 		arg := args[i]
+		if formatValue, next, ok, err := parseFormatArg(args, i); ok {
+			if err != nil {
+				return updateArgs{}, err
+			}
+			out.Format = formatValue
+			i = next
+			continue
+		}
 		switch {
 		case arg == "--dry-run":
 			out.DryRun = true
@@ -28,14 +36,6 @@ func parseUpdateArgs(args []string) (updateArgs, error) {
 			i++
 		case strings.HasPrefix(arg, "--target="):
 			out.Target = strings.TrimPrefix(arg, "--target=")
-		case arg == "--format":
-			if i+1 >= len(args) {
-				return updateArgs{}, fmt.Errorf("missing value for --format")
-			}
-			out.Format = args[i+1]
-			i++
-		case strings.HasPrefix(arg, "--format="):
-			out.Format = strings.TrimPrefix(arg, "--format=")
 		case strings.HasPrefix(arg, "-"):
 			return updateArgs{}, fmt.Errorf("unknown update option: %s", arg)
 		default:
