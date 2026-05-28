@@ -8,7 +8,6 @@ import (
 	"io"
 	"os"
 	"strings"
-	"unicode/utf8"
 
 	"github.com/watany-dev/gokui/internal/cli/exitcode"
 	policypkg "github.com/watany-dev/gokui/internal/policy"
@@ -336,33 +335,6 @@ func normalizeVetDeps(deps vetDeps) vetDeps {
 		deps.RunInspect = runInspect
 	}
 	return deps
-}
-
-func buildVetReportFromInspectJSON(raw []byte, input string, sourceKind string, profile string, rejectSet map[string]struct{}) inspectReport {
-	report := inspectReport{
-		SchemaVersion: reportSchemaVersion,
-		PreRelease:    true,
-		Source: source{
-			Input: input,
-			Kind:  sourceKind,
-		},
-		Decision: reportDecisionRejected,
-		Findings: []inspectFinding{},
-		Note:     "vet failed to parse inspect report; fail-closed rejection applied",
-	}
-	if !utf8.Valid(raw) {
-		report.Note = "vet rejected non-UTF-8 inspect report; fail-closed rejection applied"
-		report.Note = fmt.Sprintf("%s (vet profile=%s)", report.Note, profile)
-		return report
-	}
-	if err := json.Unmarshal(raw, &report); err != nil {
-		report.Note = fmt.Sprintf("vet failed to parse inspect report (%v); fail-closed rejection applied", err)
-		report.Note = fmt.Sprintf("%s (vet profile=%s)", report.Note, profile)
-		return report
-	}
-	report.Decision = decisionForInspectFindings(report.Findings, rejectSet)
-	report.Note = fmt.Sprintf("%s (vet profile=%s)", report.Note, profile)
-	return report
 }
 
 type inspectDeps struct {
