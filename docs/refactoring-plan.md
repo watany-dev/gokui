@@ -163,6 +163,9 @@ Recent completed increments:
 - ROADMAP rule ID implementation sync coverage is split into
   `docs_sync_rule_catalog_test.go`, separating catalog completeness checks from
   the broad docs sync file.
+- obsolete app-level SARIF property helper tests were removed after the
+  property composition moved into `internal/report`, keeping `make check`
+  deadcode-clean.
 - SARIF error document construction now uses a shared helper for structured
   error rule ID resolution while keeping command-specific SARIF properties at
   the output boundary.
