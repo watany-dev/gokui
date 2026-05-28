@@ -62,6 +62,23 @@ func writeInstallSARIFError(stdout io.Writer, stderr io.Writer, report installEr
 	return writeSARIFErrorReport(stdout, stderr, buildInstallSARIFErrorReport(report), "install")
 }
 
+func installArgsErrorReport(args []string, err error) installErrorReport {
+	sourceArg := extractInstallSourceArg(args)
+	return installErrorReport{
+		SchemaVersion: reportSchemaVersion,
+		Status:        reportStatusError,
+		ErrorCode:     installErrorCodeArgsInvalid,
+		Message:       err.Error(),
+		Source: source{
+			Input: sourceArg,
+			Kind:  detectSourceKind(sourceArg),
+		},
+		Target:        extractInstallTargetArg(args),
+		PolicyProfile: extractInstallProfileArg(args),
+		Note:          "install failed before source evaluation",
+	}
+}
+
 func buildInstallSARIFErrorReport(report installErrorReport) reportpkg.SARIFDocument {
 	return reportpkg.SARIFErrorDocument(structuredErrorRuleID(report.ErrorCode, report.RuleID), report.ErrorCode, report.Message, reportpkg.SARIFProperties{
 		SchemaVersion: report.SchemaVersion,

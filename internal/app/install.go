@@ -105,39 +105,12 @@ func runInstallWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps 
 
 	parsed, err := parseInstallArgs(args)
 	if err != nil {
+		report := installArgsErrorReport(args, err)
 		if requestedFormat == formatpkg.JSON {
-			sourceArg := extractInstallSourceArg(args)
-			sourceKind := detectSourceKind(sourceArg)
-			return writeInstallJSONError(stdout, stderr, installErrorReport{
-				SchemaVersion: reportSchemaVersion,
-				Status:        reportStatusError,
-				ErrorCode:     installErrorCodeArgsInvalid,
-				Message:       err.Error(),
-				Source: source{
-					Input: sourceArg,
-					Kind:  sourceKind,
-				},
-				Target:        extractInstallTargetArg(args),
-				PolicyProfile: extractInstallProfileArg(args),
-				Note:          "install failed before source evaluation",
-			})
+			return writeInstallJSONError(stdout, stderr, report)
 		}
 		if requestedFormat == formatpkg.SARIF {
-			sourceArg := extractInstallSourceArg(args)
-			sourceKind := detectSourceKind(sourceArg)
-			return writeInstallSARIFError(stdout, stderr, installErrorReport{
-				SchemaVersion: reportSchemaVersion,
-				Status:        reportStatusError,
-				ErrorCode:     installErrorCodeArgsInvalid,
-				Message:       err.Error(),
-				Source: source{
-					Input: sourceArg,
-					Kind:  sourceKind,
-				},
-				Target:        extractInstallTargetArg(args),
-				PolicyProfile: extractInstallProfileArg(args),
-				Note:          "install failed before source evaluation",
-			})
+			return writeInstallSARIFError(stdout, stderr, report)
 		}
 		_, _ = fmt.Fprintf(stderr, "%s\n\n%s\n", err.Error(), usage())
 		return exitcode.Error.Int()

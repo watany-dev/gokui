@@ -81,19 +81,7 @@ func runFetchWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps fe
 
 	parsed, err := parseFetchArgs(args)
 	if err != nil {
-		sourceArg := extractFetchSourceArg(args)
-		report := fetchErrorReport{
-			SchemaVersion: reportSchemaVersion,
-			Status:        reportStatusError,
-			ErrorCode:     fetchErrorCodeArgsInvalid,
-			Message:       err.Error(),
-			Source: source{
-				Input: sourceArg,
-				Kind:  detectSourceKind(sourceArg),
-			},
-			Output: "",
-			Note:   "fetch failed before source evaluation",
-		}
+		report := fetchArgsErrorReport(args, err)
 		if requestedFormat == formatpkg.JSON {
 			return writeFetchJSONError(stdout, stderr, report)
 		}
@@ -365,6 +353,22 @@ func writeFetchJSONError(stdout io.Writer, stderr io.Writer, report fetchErrorRe
 func writeFetchSARIFError(stdout io.Writer, stderr io.Writer, report fetchErrorReport) int {
 	report.Status, report.ErrorCode, report.RuleID = normalizeStructuredErrorFields(report.ErrorCode, report.RuleID, report.Message, fetchErrorCodeUnknown)
 	return writeSARIFErrorReport(stdout, stderr, buildFetchSARIFErrorReport(report), "fetch")
+}
+
+func fetchArgsErrorReport(args []string, err error) fetchErrorReport {
+	sourceArg := extractFetchSourceArg(args)
+	return fetchErrorReport{
+		SchemaVersion: reportSchemaVersion,
+		Status:        reportStatusError,
+		ErrorCode:     fetchErrorCodeArgsInvalid,
+		Message:       err.Error(),
+		Source: source{
+			Input: sourceArg,
+			Kind:  detectSourceKind(sourceArg),
+		},
+		Output: "",
+		Note:   "fetch failed before source evaluation",
+	}
 }
 
 func emitFetchStructuredError(format string, stdout io.Writer, stderr io.Writer, report fetchErrorReport) bool {
