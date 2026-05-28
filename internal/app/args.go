@@ -18,6 +18,19 @@ func argsRequestFormat(args []string, format formatpkg.Format) bool {
 	return false
 }
 
+func requestedStructuredFormat(args []string, allowReviewJSON bool) (formatpkg.Format, bool) {
+	if argsRequestFormat(args, formatpkg.JSON) {
+		return formatpkg.JSON, true
+	}
+	if argsRequestFormat(args, formatpkg.SARIF) {
+		return formatpkg.SARIF, true
+	}
+	if allowReviewJSON && argsRequestFormat(args, formatpkg.ReviewJSON) {
+		return formatpkg.ReviewJSON, true
+	}
+	return "", false
+}
+
 func supportsCommandFormat(format string) bool {
 	return formatpkg.SupportsCommand(format)
 }

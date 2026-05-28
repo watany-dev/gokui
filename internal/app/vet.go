@@ -30,9 +30,7 @@ func runVet(args []string, stdout io.Writer, stderr io.Writer) int {
 }
 
 func runVetWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps vetDeps) int {
-	requestedJSON := argsRequestFormat(args, formatpkg.JSON)
-	requestedSARIF := argsRequestFormat(args, formatpkg.SARIF)
-	requestedReviewJSON := argsRequestFormat(args, formatpkg.ReviewJSON)
+	requestedFormat, _ := requestedStructuredFormat(args, true)
 	deps = normalizeVetDeps(deps)
 	input, format, profile, profileSet, err := parseVetArgs(args)
 	if err != nil {
@@ -48,13 +46,13 @@ func runVetWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps vetD
 			},
 			Note: "vet failed before source evaluation",
 		}
-		if requestedJSON {
+		if requestedFormat == formatpkg.JSON {
 			return writeInspectJSONError(stdout, stderr, report)
 		}
-		if requestedSARIF {
+		if requestedFormat == formatpkg.SARIF {
 			return writeInspectSARIFError(stdout, stderr, report)
 		}
-		if requestedReviewJSON {
+		if requestedFormat == formatpkg.ReviewJSON {
 			return writeInspectJSONError(stdout, stderr, report)
 		}
 		_, _ = fmt.Fprintf(stderr, "%s\n\n%s\n", err.Error(), usage())

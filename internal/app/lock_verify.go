@@ -85,8 +85,7 @@ type lockVerifyDriftInfo struct {
 type fileInfoStatter = limitio.FileInfoStatter
 
 func runLockVerify(args []string, stdout io.Writer, stderr io.Writer) int {
-	requestedJSON := argsRequestFormat(args, formatpkg.JSON)
-	requestedSARIF := argsRequestFormat(args, formatpkg.SARIF)
+	requestedFormat, _ := requestedStructuredFormat(args, false)
 	parsed, err := parseLockVerifyArgs(args)
 	if err != nil {
 		report := lockVerifyErrorReport{
@@ -97,10 +96,10 @@ func runLockVerify(args []string, stdout io.Writer, stderr io.Writer) int {
 			Message:       err.Error(),
 			Note:          "lock verify failed before path validation",
 		}
-		if requestedJSON {
+		if requestedFormat == formatpkg.JSON {
 			return writeLockVerifyJSONError(stdout, stderr, report)
 		}
-		if requestedSARIF {
+		if requestedFormat == formatpkg.SARIF {
 			return writeLockVerifySARIFError(stdout, stderr, report)
 		}
 		_, _ = fmt.Fprintf(stderr, "%s\n\n%s\n", err.Error(), usage())

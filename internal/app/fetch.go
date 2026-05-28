@@ -76,8 +76,7 @@ func runFetch(args []string, stdout io.Writer, stderr io.Writer) int {
 }
 
 func runFetchWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps fetchDeps) int {
-	requestedJSON := argsRequestFormat(args, formatpkg.JSON)
-	requestedSARIF := argsRequestFormat(args, formatpkg.SARIF)
+	requestedFormat, _ := requestedStructuredFormat(args, false)
 	deps = normalizeFetchDeps(deps)
 
 	parsed, err := parseFetchArgs(args)
@@ -95,10 +94,10 @@ func runFetchWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps fe
 			Output: "",
 			Note:   "fetch failed before source evaluation",
 		}
-		if requestedJSON {
+		if requestedFormat == formatpkg.JSON {
 			return writeFetchJSONError(stdout, stderr, report)
 		}
-		if requestedSARIF {
+		if requestedFormat == formatpkg.SARIF {
 			return writeFetchSARIFError(stdout, stderr, report)
 		}
 		_, _ = fmt.Fprintf(stderr, "%s\n\n%s\n", err.Error(), usage())

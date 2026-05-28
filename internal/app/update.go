@@ -159,13 +159,12 @@ func runUpdate(args []string, stdout io.Writer, stderr io.Writer) int {
 }
 
 func runUpdateWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps updateDeps) int {
-	requestedJSON := argsRequestFormat(args, formatpkg.JSON)
-	requestedSARIF := argsRequestFormat(args, formatpkg.SARIF)
+	requestedFormat, _ := requestedStructuredFormat(args, false)
 	deps = normalizeUpdateDeps(deps)
 
 	parsed, err := parseUpdateArgs(args)
 	if err != nil {
-		if requestedJSON {
+		if requestedFormat == formatpkg.JSON {
 			return writeUpdateJSONError(stdout, stderr, updateErrorReport{
 				SchemaVersion: reportSchemaVersion,
 				Status:        reportStatusError,
@@ -175,7 +174,7 @@ func runUpdateWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps u
 				Note:          "update failed before target resolution",
 			})
 		}
-		if requestedSARIF {
+		if requestedFormat == formatpkg.SARIF {
 			return writeUpdateSARIFError(stdout, stderr, updateErrorReport{
 				SchemaVersion: reportSchemaVersion,
 				Status:        reportStatusError,

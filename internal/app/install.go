@@ -100,13 +100,12 @@ func runInstall(args []string, stdout io.Writer, stderr io.Writer) int {
 }
 
 func runInstallWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps installDeps) int {
-	requestedJSON := argsRequestFormat(args, formatpkg.JSON)
-	requestedSARIF := argsRequestFormat(args, formatpkg.SARIF)
+	requestedFormat, _ := requestedStructuredFormat(args, false)
 	deps = normalizeInstallDeps(deps)
 
 	parsed, err := parseInstallArgs(args)
 	if err != nil {
-		if requestedJSON {
+		if requestedFormat == formatpkg.JSON {
 			sourceArg := extractInstallSourceArg(args)
 			sourceKind := detectSourceKind(sourceArg)
 			return writeInstallJSONError(stdout, stderr, installErrorReport{
@@ -123,7 +122,7 @@ func runInstallWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps 
 				Note:          "install failed before source evaluation",
 			})
 		}
-		if requestedSARIF {
+		if requestedFormat == formatpkg.SARIF {
 			sourceArg := extractInstallSourceArg(args)
 			sourceKind := detectSourceKind(sourceArg)
 			return writeInstallSARIFError(stdout, stderr, installErrorReport{
