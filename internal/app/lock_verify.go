@@ -19,7 +19,6 @@ import (
 	"github.com/watany-dev/gokui/internal/limitio"
 	policypkg "github.com/watany-dev/gokui/internal/policy"
 	reportpkg "github.com/watany-dev/gokui/internal/report"
-	rulepkg "github.com/watany-dev/gokui/internal/rule"
 	"github.com/watany-dev/gokui/internal/safefs"
 	srcpkg "github.com/watany-dev/gokui/internal/source"
 )
@@ -377,11 +376,7 @@ func lockVerifyDriftSARIFResult(ruleID string, path string, reason string) repor
 }
 
 func writeLockVerifyJSONError(stdout io.Writer, stderr io.Writer, report lockVerifyErrorReport) int {
-	report.Status = "ERROR"
-	report.ErrorCode = normalizeJSONErrorCode(report.ErrorCode, lockVerifyErrorCodeUnknown)
-	if report.RuleID == "" {
-		report.RuleID = rulepkg.InferIDForJSONError(report.Message)
-	}
+	report.Status, report.ErrorCode, report.RuleID = normalizeStructuredErrorFields(report.ErrorCode, report.RuleID, report.Message, lockVerifyErrorCodeUnknown)
 	out, err := json.MarshalIndent(report, "", "  ")
 	if err != nil {
 		_, _ = fmt.Fprintln(stderr, "failed to render lock verify error report")
@@ -392,11 +387,7 @@ func writeLockVerifyJSONError(stdout io.Writer, stderr io.Writer, report lockVer
 }
 
 func writeLockVerifySARIFError(stdout io.Writer, stderr io.Writer, report lockVerifyErrorReport) int {
-	report.Status = "ERROR"
-	report.ErrorCode = normalizeJSONErrorCode(report.ErrorCode, lockVerifyErrorCodeUnknown)
-	if report.RuleID == "" {
-		report.RuleID = rulepkg.InferIDForJSONError(report.Message)
-	}
+	report.Status, report.ErrorCode, report.RuleID = normalizeStructuredErrorFields(report.ErrorCode, report.RuleID, report.Message, lockVerifyErrorCodeUnknown)
 	out, err := json.MarshalIndent(buildLockVerifySARIFErrorReport(report), "", "  ")
 	if err != nil {
 		_, _ = fmt.Fprintln(stderr, "failed to render lock verify sarif error report")

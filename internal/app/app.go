@@ -1058,11 +1058,7 @@ func extractInspectSourceArg(args []string) string {
 }
 
 func writeInspectJSONError(stdout io.Writer, stderr io.Writer, report inspectErrorReport) int {
-	report.Status = "ERROR"
-	report.ErrorCode = normalizeJSONErrorCode(report.ErrorCode, inspectErrorCodeUnknown)
-	if report.RuleID == "" {
-		report.RuleID = rulepkg.InferIDForJSONError(report.Message)
-	}
+	report.Status, report.ErrorCode, report.RuleID = normalizeStructuredErrorFields(report.ErrorCode, report.RuleID, report.Message, inspectErrorCodeUnknown)
 	out, err := json.MarshalIndent(report, "", "  ")
 	if err != nil {
 		_, _ = fmt.Fprintln(stderr, "failed to render inspect error report")
@@ -1073,11 +1069,7 @@ func writeInspectJSONError(stdout io.Writer, stderr io.Writer, report inspectErr
 }
 
 func writeInspectSARIFError(stdout io.Writer, stderr io.Writer, report inspectErrorReport) int {
-	report.Status = "ERROR"
-	report.ErrorCode = normalizeJSONErrorCode(report.ErrorCode, inspectErrorCodeUnknown)
-	if report.RuleID == "" {
-		report.RuleID = rulepkg.InferIDForJSONError(report.Message)
-	}
+	report.Status, report.ErrorCode, report.RuleID = normalizeStructuredErrorFields(report.ErrorCode, report.RuleID, report.Message, inspectErrorCodeUnknown)
 	out, err := json.MarshalIndent(buildInspectSARIFErrorReport(report), "", "  ")
 	if err != nil {
 		_, _ = fmt.Fprintln(stderr, "failed to render inspect SARIF error report")
@@ -1129,6 +1121,14 @@ func emitStructuredError(format string, writeJSON func(), writeSARIF func()) boo
 	default:
 		return false
 	}
+}
+
+func normalizeStructuredErrorFields(errorCode string, ruleID string, message string, fallbackCode string) (string, string, string) {
+	errorCode = normalizeJSONErrorCode(errorCode, fallbackCode)
+	if ruleID == "" {
+		ruleID = rulepkg.InferIDForJSONError(message)
+	}
+	return "ERROR", errorCode, ruleID
 }
 
 func normalizeJSONErrorCode(code string, fallback string) string {

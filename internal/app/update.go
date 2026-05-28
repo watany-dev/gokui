@@ -356,11 +356,7 @@ func extractUpdateTargetArg(args []string) string {
 }
 
 func writeUpdateJSONError(stdout io.Writer, stderr io.Writer, report updateErrorReport) int {
-	report.Status = "ERROR"
-	report.ErrorCode = normalizeJSONErrorCode(report.ErrorCode, updateFatalCodeUnknown)
-	if report.RuleID == "" {
-		report.RuleID = rulepkg.InferIDForJSONError(report.Message)
-	}
+	report.Status, report.ErrorCode, report.RuleID = normalizeStructuredErrorFields(report.ErrorCode, report.RuleID, report.Message, updateFatalCodeUnknown)
 	out, err := json.MarshalIndent(report, "", "  ")
 	if err != nil {
 		_, _ = fmt.Fprintln(stderr, "failed to render update error report")
@@ -371,11 +367,7 @@ func writeUpdateJSONError(stdout io.Writer, stderr io.Writer, report updateError
 }
 
 func writeUpdateSARIFError(stdout io.Writer, stderr io.Writer, report updateErrorReport) int {
-	report.Status = "ERROR"
-	report.ErrorCode = normalizeJSONErrorCode(report.ErrorCode, updateFatalCodeUnknown)
-	if report.RuleID == "" {
-		report.RuleID = rulepkg.InferIDForJSONError(report.Message)
-	}
+	report.Status, report.ErrorCode, report.RuleID = normalizeStructuredErrorFields(report.ErrorCode, report.RuleID, report.Message, updateFatalCodeUnknown)
 	out, err := json.MarshalIndent(buildUpdateSARIFErrorReport(report), "", "  ")
 	if err != nil {
 		_, _ = fmt.Fprintln(stderr, "failed to render update sarif error report")

@@ -11,7 +11,6 @@ import (
 
 	"github.com/watany-dev/gokui/internal/cli/exitcode"
 	reportpkg "github.com/watany-dev/gokui/internal/report"
-	rulepkg "github.com/watany-dev/gokui/internal/rule"
 	skillpkg "github.com/watany-dev/gokui/internal/skill"
 	srcpkg "github.com/watany-dev/gokui/internal/source"
 )
@@ -389,11 +388,7 @@ func extractFetchSourceArg(args []string) string {
 }
 
 func writeFetchJSONError(stdout io.Writer, stderr io.Writer, report fetchErrorReport) int {
-	report.Status = "ERROR"
-	report.ErrorCode = normalizeJSONErrorCode(report.ErrorCode, fetchErrorCodeUnknown)
-	if report.RuleID == "" {
-		report.RuleID = rulepkg.InferIDForJSONError(report.Message)
-	}
+	report.Status, report.ErrorCode, report.RuleID = normalizeStructuredErrorFields(report.ErrorCode, report.RuleID, report.Message, fetchErrorCodeUnknown)
 	out, err := json.MarshalIndent(report, "", "  ")
 	if err != nil {
 		_, _ = fmt.Fprintln(stderr, "failed to render fetch error report")
@@ -404,11 +399,7 @@ func writeFetchJSONError(stdout io.Writer, stderr io.Writer, report fetchErrorRe
 }
 
 func writeFetchSARIFError(stdout io.Writer, stderr io.Writer, report fetchErrorReport) int {
-	report.Status = "ERROR"
-	report.ErrorCode = normalizeJSONErrorCode(report.ErrorCode, fetchErrorCodeUnknown)
-	if report.RuleID == "" {
-		report.RuleID = rulepkg.InferIDForJSONError(report.Message)
-	}
+	report.Status, report.ErrorCode, report.RuleID = normalizeStructuredErrorFields(report.ErrorCode, report.RuleID, report.Message, fetchErrorCodeUnknown)
 	out, err := json.MarshalIndent(buildFetchSARIFErrorReport(report), "", "  ")
 	if err != nil {
 		_, _ = fmt.Fprintln(stderr, "failed to render fetch SARIF error report")

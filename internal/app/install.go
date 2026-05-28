@@ -19,7 +19,6 @@ import (
 	"github.com/watany-dev/gokui/internal/limitio"
 	policypkg "github.com/watany-dev/gokui/internal/policy"
 	reportpkg "github.com/watany-dev/gokui/internal/report"
-	rulepkg "github.com/watany-dev/gokui/internal/rule"
 	"github.com/watany-dev/gokui/internal/safefs"
 	"github.com/watany-dev/gokui/internal/scan"
 	srcpkg "github.com/watany-dev/gokui/internal/source"
@@ -773,11 +772,7 @@ func extractInstallProfileArg(args []string) string {
 }
 
 func writeInstallJSONError(stdout io.Writer, stderr io.Writer, report installErrorReport) int {
-	report.Status = "ERROR"
-	report.ErrorCode = normalizeJSONErrorCode(report.ErrorCode, installErrorCodeUnknown)
-	if report.RuleID == "" {
-		report.RuleID = rulepkg.InferIDForJSONError(report.Message)
-	}
+	report.Status, report.ErrorCode, report.RuleID = normalizeStructuredErrorFields(report.ErrorCode, report.RuleID, report.Message, installErrorCodeUnknown)
 	out, err := json.MarshalIndent(report, "", "  ")
 	if err != nil {
 		_, _ = fmt.Fprintln(stderr, "failed to render install error report")
@@ -788,11 +783,7 @@ func writeInstallJSONError(stdout io.Writer, stderr io.Writer, report installErr
 }
 
 func writeInstallSARIFError(stdout io.Writer, stderr io.Writer, report installErrorReport) int {
-	report.Status = "ERROR"
-	report.ErrorCode = normalizeJSONErrorCode(report.ErrorCode, installErrorCodeUnknown)
-	if report.RuleID == "" {
-		report.RuleID = rulepkg.InferIDForJSONError(report.Message)
-	}
+	report.Status, report.ErrorCode, report.RuleID = normalizeStructuredErrorFields(report.ErrorCode, report.RuleID, report.Message, installErrorCodeUnknown)
 	out, err := json.MarshalIndent(buildInstallSARIFErrorReport(report), "", "  ")
 	if err != nil {
 		_, _ = fmt.Fprintln(stderr, "failed to render install sarif error report")
