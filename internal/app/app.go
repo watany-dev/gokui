@@ -8,7 +8,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"regexp"
 	"sort"
 	"strings"
 	"unicode/utf8"
@@ -17,7 +16,6 @@ import (
 	"github.com/watany-dev/gokui/internal/materialize"
 	policypkg "github.com/watany-dev/gokui/internal/policy"
 	reportpkg "github.com/watany-dev/gokui/internal/report"
-	rulepkg "github.com/watany-dev/gokui/internal/rule"
 	"github.com/watany-dev/gokui/internal/scan"
 	skillpkg "github.com/watany-dev/gokui/internal/skill"
 	srcpkg "github.com/watany-dev/gokui/internal/source"
@@ -97,7 +95,6 @@ type inspectFinding struct {
 type severityOverrideAudit = policypkg.SeverityOverrideAudit
 
 var (
-	errorCodePattern               = regexp.MustCompile(`^[A-Z0-9_]+$`)
 	maxSkillFrontmatterBytes int64 = 1_000_000
 	errInspectSourceNotFound       = skillpkg.ErrInspectSourceNotFound
 )
@@ -1086,56 +1083,6 @@ func emitInspectStructuredError(format string, stdout io.Writer, stderr io.Write
 func emitInspectStructuredErrorCode(format string, stdout io.Writer, stderr io.Writer, report inspectErrorReport) int {
 	_ = emitInspectStructuredError(format, stdout, stderr, report)
 	return exitcode.Error.Int()
-}
-
-func emitStructuredError(format string, writeJSON func(), writeSARIF func()) bool {
-	switch format {
-	case "json":
-		writeJSON()
-		return true
-	case "sarif":
-		writeSARIF()
-		return true
-	default:
-		return false
-	}
-}
-
-func normalizeStructuredErrorFields(errorCode string, ruleID string, message string, fallbackCode string) (string, string, string) {
-	errorCode = normalizeJSONErrorCode(errorCode, fallbackCode)
-	if ruleID == "" {
-		ruleID = rulepkg.InferIDForJSONError(message)
-	}
-	return reportStatusError, errorCode, ruleID
-}
-
-func structuredErrorRuleID(errorCode string, ruleID string) string {
-	if ruleID != "" {
-		return ruleID
-	}
-	return errorCode
-}
-
-func writeIndentedJSONLine(stdout io.Writer, stderr io.Writer, payload any, renderError string) int {
-	out, err := json.MarshalIndent(payload, "", "  ")
-	if err != nil {
-		_, _ = fmt.Fprintln(stderr, renderError)
-		return exitcode.Error.Int()
-	}
-	_, _ = fmt.Fprintf(stdout, "%s\n", out)
-	return exitcode.Error.Int()
-}
-
-func normalizeJSONErrorCode(code string, fallback string) string {
-	cleanedCode := strings.TrimSpace(code)
-	if errorCodePattern.MatchString(cleanedCode) {
-		return cleanedCode
-	}
-	cleanedFallback := strings.TrimSpace(fallback)
-	if errorCodePattern.MatchString(cleanedFallback) {
-		return cleanedFallback
-	}
-	return "UNKNOWN_ERROR"
 }
 
 func buildInspectReviewReport(report inspectReport) inspectReviewReport {
