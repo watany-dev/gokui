@@ -213,10 +213,11 @@ Current inventory notes:
 - #6 is represented by `updateLockEvaluationChecks` for lock validation and
   `updateSkillEvaluationSteps` for the broader update source evaluation flow;
   candidate to close after repository write access is available.
-- #11 is partially represented by explicit dependency structs for fetch,
-  inspect, vet, install, update, policy-evaluation source preparation, and lock
-  verify; focused oversized-limit tests no longer mutate package globals, but
-  broader command dependency seams still need a final audit.
+- #11 is represented by explicit dependency structs for fetch, inspect, vet,
+  install, update, policy-evaluation source preparation, and lock verify. The
+  audit found no package-global function variables used for tests; remaining
+  package globals are constants, regex caches, or sentinel errors, so this is a
+  candidate to close after repository write access is available.
 - #8 is represented by direct vet source preparation and scanning; the old
   inspect JSON round trip and fail-closed JSON reparse path have been removed,
   so this is a candidate to close after repository write access is available.
@@ -317,9 +318,10 @@ make test
 
 ### 5. Introduce Dependency Injection
 
-Replace test-only package globals with explicit dependency structs after leaf
-logic is extracted. This lowers risk because the dependency surfaces will be
-smaller and command-specific.
+This stage is locally represented: command dependencies are explicit for the
+current command surfaces, and the GitHub fetcher is a configurable client
+struct. Keep this stage open only for remote issue bookkeeping or newly
+introduced dependency seams.
 
 Primary issues:
 
@@ -356,9 +358,10 @@ make test
 
 ### 7. Split Inspect and Vet Internals
 
-Remove the in-process JSON round trip only after the report rendering and CLI
-error path are centralized. `inspect` and `vet` should share a domain evaluator
-and diverge only at command policy/rendering boundaries.
+This stage is locally represented for the current MVP: `vet` prepares and scans
+sources directly, then applies its policy decision at the command boundary.
+Keep broader evaluator-package extraction under #3/#9 instead of reopening the
+old JSON round-trip path.
 
 Primary issues:
 
@@ -433,7 +436,7 @@ make build
 | #8 | 7 | Direct vet evaluation is implemented; candidate to close after audit/write access. |
 | #9 | 8 | High blast-radius; defer until behavior is well covered. |
 | #10 | 3, 8 | Shared SARIF primitives first, wire cleanup later. |
-| #11 | 5 | Easier after leaf functions have moved out of `internal/app`. |
+| #11 | 5 | Explicit command deps are implemented; candidate to close after audit/write access. |
 | #12 | 5 | Can be paired with #11 but validated in `internal/source` first. |
 | #13 | 3 | File split only; should remain behavior-preserving. |
 | #14 | 2 | Complete after rule registry shape is fixed. |
