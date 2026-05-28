@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	policypkg "github.com/watany-dev/gokui/internal/policy"
 	reportpkg "github.com/watany-dev/gokui/internal/report"
 	rulepkg "github.com/watany-dev/gokui/internal/rule"
 )
@@ -97,7 +98,7 @@ func buildUpdateSARIFReport(report updateReport) reportpkg.SARIFDocument {
 		}
 		findings = append(findings, inspectFinding{
 			ID:       ruleID,
-			Severity: "high",
+			Severity: policypkg.SeverityHigh,
 			File:     filepath.ToSlash(skill.Name),
 			Line:     1,
 			Summary:  summary,

@@ -150,10 +150,11 @@ Current inventory notes:
 - #16 is represented by `internal/limitio` strict copy/hash helpers and related
   `internal/safefs` path helpers; candidate to close after repository write
   access is available.
-- #17 is partially represented by `internal/policy` profile/severity types and
-  `internal/cli/exitcode`; app command returns now use typed exit codes and
-  inspect/scan findings use typed severities internally, but keep open until
-  any remaining wire-boundary severity strings are explicitly classified.
+- #17 is represented by `internal/policy` profile/severity types,
+  `internal/cli/exitcode`, typed app command returns, typed scan findings, and
+  typed app findings. Remaining severity strings are wire-boundary fields or
+  JSON keys, so this is a candidate to close after repository write access is
+  available.
 - #18 is represented by `internal/policy/override.go` and
   `SeverityOverrideAuditSet`; app currently uses an alias to the policy type,
   so this is a candidate to close after repository write access is available.
