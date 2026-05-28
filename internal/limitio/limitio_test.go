@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"testing/quick"
@@ -171,7 +172,7 @@ func TestCopyFileWithModeChecked(t *testing.T) {
 		if err != nil {
 			t.Fatalf("stat dst: %v", err)
 		}
-		if info.Mode().Perm() != 0o640 {
+		if runtime.GOOS != "windows" && info.Mode().Perm() != 0o640 {
 			t.Fatalf("mode = %v, want 0640", info.Mode().Perm())
 		}
 	})

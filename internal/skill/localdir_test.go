@@ -173,6 +173,10 @@ func TestLocalDirPathGuardHelpers(t *testing.T) {
 	})
 
 	t.Run("root-level path component classification", func(t *testing.T) {
+		if runtime.GOOS == "windows" {
+			t.Skip("absolute root-level path layout differs on windows")
+		}
+
 		root := filepath.Clean(string(filepath.Separator))
 		if isRootLevelPathComponent(root) {
 			t.Fatalf("filesystem root should not be treated as root-level child: %q", root)
