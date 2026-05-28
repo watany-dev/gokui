@@ -13,6 +13,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/watany-dev/gokui/internal/cli/exitcode"
+	formatpkg "github.com/watany-dev/gokui/internal/cli/format"
 	"github.com/watany-dev/gokui/internal/limitio"
 	rulepkg "github.com/watany-dev/gokui/internal/rule"
 	"github.com/watany-dev/gokui/internal/safefs"
@@ -122,33 +123,34 @@ func runLockVerify(args []string, stdout io.Writer, stderr io.Writer) int {
 			Message:       verifyErr.Error(),
 			Note:          "lock verify failed before producing drift report",
 		}
-		if parsed.Format == "json" {
+		switch formatpkg.Format(parsed.Format) {
+		case formatpkg.JSON:
 			return writeLockVerifyJSONError(stdout, stderr, errorReport)
-		}
-		if parsed.Format == "sarif" {
+		case formatpkg.SARIF:
 			return writeLockVerifySARIFError(stdout, stderr, errorReport)
 		}
 		_, _ = fmt.Fprintln(stderr, verifyErr.Error())
 		return exitcode.Error.Int()
 	}
 
-	if parsed.Format == "json" {
+	switch formatpkg.Format(parsed.Format) {
+	case formatpkg.JSON:
 		out, err := json.MarshalIndent(report, "", "  ")
 		if err != nil {
 			_, _ = fmt.Fprintln(stderr, "failed to render lock verify report")
 			return exitcode.Error.Int()
 		}
 		_, _ = fmt.Fprintf(stdout, "%s\n", out)
-	} else if parsed.Format == "sarif" {
+	case formatpkg.SARIF:
 		out, err := json.MarshalIndent(buildLockVerifySARIFReport(report), "", "  ")
 		if err != nil {
 			_, _ = fmt.Fprintln(stderr, "failed to render lock verify sarif report")
 			return exitcode.Error.Int()
 		}
 		_, _ = fmt.Fprintf(stdout, "%s\n", out)
-	} else if parsed.Format == "compact" {
+	case formatpkg.Compact:
 		_, _ = fmt.Fprintf(stdout, "%s\n", buildLockVerifyCompactSummary(report))
-	} else {
+	default:
 		_, _ = fmt.Fprintln(stdout, "gokui lock verify report (pre-release)")
 		_, _ = fmt.Fprintf(stdout, "path: %s\n", report.SkillPath)
 		_, _ = fmt.Fprintf(stdout, "status: %s\n", report.Status)

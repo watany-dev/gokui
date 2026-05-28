@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/watany-dev/gokui/internal/cli/exitcode"
+	formatpkg "github.com/watany-dev/gokui/internal/cli/format"
 	policypkg "github.com/watany-dev/gokui/internal/policy"
 	rulepkg "github.com/watany-dev/gokui/internal/rule"
 )
@@ -380,7 +381,8 @@ func runInstallWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps 
 
 	if decision == reportDecisionRejected {
 		report.ErrorCode = installErrorCodePolicyRejected
-		if parsed.Format == "json" {
+		switch formatpkg.Format(parsed.Format) {
+		case formatpkg.JSON:
 			out, err := json.MarshalIndent(report, "", "  ")
 			if err != nil {
 				_, _ = fmt.Fprintln(stderr, "failed to render install report")
@@ -388,13 +390,11 @@ func runInstallWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps 
 			}
 			_, _ = fmt.Fprintf(stdout, "%s\n", out)
 			return exitcode.Rejected.Int()
-		}
-		if parsed.Format == "sarif" {
+		case formatpkg.SARIF:
 			out, _ := json.MarshalIndent(buildInstallSARIFReport(report, parsed.Target), "", "  ")
 			_, _ = fmt.Fprintf(stdout, "%s\n", out)
 			return exitcode.Rejected.Int()
-		}
-		if parsed.Format == "compact" {
+		case formatpkg.Compact:
 			_, _ = fmt.Fprintf(stdout, "%s\n", buildInstallCompactSummary(report, parsed.Target))
 			return exitcode.Rejected.Int()
 		}
@@ -480,7 +480,8 @@ func runInstallWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps 
 	}
 	report.Installed = true
 	report.InstalledPath = installedPath
-	if parsed.Format == "json" {
+	switch formatpkg.Format(parsed.Format) {
+	case formatpkg.JSON:
 		out, err := json.MarshalIndent(report, "", "  ")
 		if err != nil {
 			_, _ = fmt.Fprintln(stderr, "failed to render install report")
@@ -488,13 +489,11 @@ func runInstallWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps 
 		}
 		_, _ = fmt.Fprintf(stdout, "%s\n", out)
 		return exitcode.OK.Int()
-	}
-	if parsed.Format == "sarif" {
+	case formatpkg.SARIF:
 		out, _ := json.MarshalIndent(buildInstallSARIFReport(report, parsed.Target), "", "  ")
 		_, _ = fmt.Fprintf(stdout, "%s\n", out)
 		return exitcode.OK.Int()
-	}
-	if parsed.Format == "compact" {
+	case formatpkg.Compact:
 		_, _ = fmt.Fprintf(stdout, "%s\n", buildInstallCompactSummary(report, parsed.Target))
 		return exitcode.OK.Int()
 	}

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/watany-dev/gokui/internal/cli/exitcode"
+	formatpkg "github.com/watany-dev/gokui/internal/cli/format"
 	reportpkg "github.com/watany-dev/gokui/internal/report"
 	rulepkg "github.com/watany-dev/gokui/internal/rule"
 	skillpkg "github.com/watany-dev/gokui/internal/skill"
@@ -320,17 +321,16 @@ func runFetchWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps fe
 		Note:     "pre-release fetch materializes commit-pinned github source into quarantine",
 	}
 
-	if parsed.Format == "json" {
+	switch formatpkg.Format(parsed.Format) {
+	case formatpkg.JSON:
 		out, _ := json.MarshalIndent(report, "", "  ")
 		_, _ = fmt.Fprintf(stdout, "%s\n", out)
 		return exitcode.OK.Int()
-	}
-	if parsed.Format == "sarif" {
+	case formatpkg.SARIF:
 		out, _ := json.MarshalIndent(buildFetchSARIFReport(report), "", "  ")
 		_, _ = fmt.Fprintf(stdout, "%s\n", out)
 		return exitcode.OK.Int()
-	}
-	if parsed.Format == "compact" {
+	case formatpkg.Compact:
 		_, _ = fmt.Fprintf(stdout, "%s\n", buildFetchCompactSummary(report))
 		return exitcode.OK.Int()
 	}
