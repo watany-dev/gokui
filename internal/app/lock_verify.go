@@ -314,33 +314,19 @@ func buildLockVerifySARIFReport(report lockVerifyReport) reportpkg.SARIFDocument
 		return results[i].Message.Text < results[j].Message.Text
 	})
 
-	return reportpkg.SARIFDocument{
-		Version: reportpkg.SARIFVersion,
-		Schema:  reportpkg.SARIFSchema,
-		Runs: []reportpkg.SARIFRun{
-			{
-				Tool: reportpkg.SARIFTool{
-					Driver: reportpkg.SARIFDriver{
-						Name:    reportpkg.SARIFDriverName,
-						Version: reportpkg.SARIFDriverVersion,
-						Rules:   rules,
-					},
-				},
-				Results: results,
-				Invocations: []reportpkg.SARIFInvocation{
-					{ExecutionSuccessful: report.Status == "VERIFIED"},
-				},
-				Properties: reportpkg.SARIFProperties{
-					SchemaVersion: report.SchemaVersion,
-					PreRelease:    true,
-					SourceInput:   report.SkillPath,
-					SourceKind:    "installed-skill",
-					Decision:      decision,
-					Note:          report.Note,
-				},
-			},
+	return reportpkg.SARIFDocumentForRun(
+		rules,
+		results,
+		report.Status == "VERIFIED",
+		reportpkg.SARIFProperties{
+			SchemaVersion: report.SchemaVersion,
+			PreRelease:    true,
+			SourceInput:   report.SkillPath,
+			SourceKind:    "installed-skill",
+			Decision:      decision,
+			Note:          report.Note,
 		},
-	}
+	)
 }
 
 func lockVerifyDriftSARIFResult(ruleID string, path string, reason string) reportpkg.SARIFResult {

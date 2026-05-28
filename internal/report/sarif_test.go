@@ -46,6 +46,36 @@ func TestSARIFErrorHelpers(t *testing.T) {
 	}
 }
 
+func TestSARIFDocumentForRun(t *testing.T) {
+	rules := []SARIFRule{SARIFRuleForError("RULE_ONE", "ERROR_ONE")}
+	results := []SARIFResult{SARIFResultForError("RULE_ONE", "ok")}
+	properties := SARIFProperties{SchemaVersion: "1", Decision: "PASS"}
+
+	doc := SARIFDocumentForRun(rules, results, true, properties)
+	if doc.Version != SARIFVersion || doc.Schema != SARIFSchema {
+		t.Fatalf("unexpected SARIF metadata: %+v", doc)
+	}
+	if len(doc.Runs) != 1 {
+		t.Fatalf("runs len = %d, want 1", len(doc.Runs))
+	}
+	run := doc.Runs[0]
+	if run.Tool.Driver.Name != SARIFDriverName || run.Tool.Driver.Version != SARIFDriverVersion {
+		t.Fatalf("unexpected driver: %+v", run.Tool.Driver)
+	}
+	if len(run.Tool.Driver.Rules) != 1 || run.Tool.Driver.Rules[0].ID != "RULE_ONE" {
+		t.Fatalf("unexpected rules: %+v", run.Tool.Driver.Rules)
+	}
+	if len(run.Results) != 1 || run.Results[0].Message.Text != "ok" {
+		t.Fatalf("unexpected results: %+v", run.Results)
+	}
+	if len(run.Invocations) != 1 || !run.Invocations[0].ExecutionSuccessful {
+		t.Fatalf("unexpected invocations: %+v", run.Invocations)
+	}
+	if run.Properties != properties {
+		t.Fatalf("properties = %+v, want %+v", run.Properties, properties)
+	}
+}
+
 func TestSARIFErrorDocument(t *testing.T) {
 	properties := SARIFProperties{
 		SchemaVersion: "1",

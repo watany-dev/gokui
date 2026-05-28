@@ -37,7 +37,7 @@ func SARIFResultForError(ruleID string, message string) SARIFResult {
 	}
 }
 
-func SARIFErrorDocument(ruleID string, errorCode string, message string, properties SARIFProperties) SARIFDocument {
+func SARIFDocumentForRun(rules []SARIFRule, results []SARIFResult, executionSuccessful bool, properties SARIFProperties) SARIFDocument {
 	return SARIFDocument{
 		Version: SARIFVersion,
 		Schema:  SARIFSchema,
@@ -47,15 +47,24 @@ func SARIFErrorDocument(ruleID string, errorCode string, message string, propert
 					Driver: SARIFDriver{
 						Name:    SARIFDriverName,
 						Version: SARIFDriverVersion,
-						Rules:   []SARIFRule{SARIFRuleForError(ruleID, errorCode)},
+						Rules:   rules,
 					},
 				},
-				Results: []SARIFResult{SARIFResultForError(ruleID, message)},
+				Results: results,
 				Invocations: []SARIFInvocation{
-					{ExecutionSuccessful: false},
+					{ExecutionSuccessful: executionSuccessful},
 				},
 				Properties: properties,
 			},
 		},
 	}
+}
+
+func SARIFErrorDocument(ruleID string, errorCode string, message string, properties SARIFProperties) SARIFDocument {
+	return SARIFDocumentForRun(
+		[]SARIFRule{SARIFRuleForError(ruleID, errorCode)},
+		[]SARIFResult{SARIFResultForError(ruleID, message)},
+		false,
+		properties,
+	)
 }

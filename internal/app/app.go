@@ -988,33 +988,19 @@ func buildInspectSARIFReport(report inspectReport) reportpkg.SARIFDocument {
 		results = append(results, result)
 	}
 
-	return reportpkg.SARIFDocument{
-		Version: reportpkg.SARIFVersion,
-		Schema:  reportpkg.SARIFSchema,
-		Runs: []reportpkg.SARIFRun{
-			{
-				Tool: reportpkg.SARIFTool{
-					Driver: reportpkg.SARIFDriver{
-						Name:    reportpkg.SARIFDriverName,
-						Version: reportpkg.SARIFDriverVersion,
-						Rules:   rules,
-					},
-				},
-				Results: []reportpkg.SARIFResult(results),
-				Invocations: []reportpkg.SARIFInvocation{
-					{ExecutionSuccessful: report.Decision != reportDecisionRejected},
-				},
-				Properties: reportpkg.SARIFProperties{
-					SchemaVersion: report.SchemaVersion,
-					PreRelease:    report.PreRelease,
-					SourceInput:   report.Source.Input,
-					SourceKind:    report.Source.Kind,
-					Decision:      report.Decision,
-					Note:          report.Note,
-				},
-			},
+	return reportpkg.SARIFDocumentForRun(
+		rules,
+		results,
+		report.Decision != reportDecisionRejected,
+		reportpkg.SARIFProperties{
+			SchemaVersion: report.SchemaVersion,
+			PreRelease:    report.PreRelease,
+			SourceInput:   report.Source.Input,
+			SourceKind:    report.Source.Kind,
+			Decision:      report.Decision,
+			Note:          report.Note,
 		},
-	}
+	)
 }
 
 func inspectSeverityToSARIFLevel(severity string) string {
