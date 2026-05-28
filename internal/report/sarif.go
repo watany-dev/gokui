@@ -1,6 +1,9 @@
 package report
 
-import "sort"
+import (
+	"sort"
+	"strings"
+)
 
 const (
 	SARIFVersion       = "2.1.0"
@@ -119,6 +122,79 @@ func SARIFDocumentForFindings(findings []SARIFFinding, executionSuccessful bool,
 	}
 
 	return SARIFDocumentForRun(rules, results, executionSuccessful, properties)
+}
+
+type LockVerifySARIFCheck struct {
+	Code   string
+	Name   string
+	OK     bool
+	Detail string
+}
+
+type LockVerifySARIFDrift struct {
+	MissingFiles    []string
+	ChangedFiles    []string
+	UnexpectedFiles []string
+}
+
+type LockVerifySARIFInput struct {
+	Status         string
+	VerifiedStatus string
+	FileDigestCode string
+	Checks         []LockVerifySARIFCheck
+	Drift          LockVerifySARIFDrift
+	Properties     SARIFProperties
+}
+
+func SARIFDocumentForLockVerify(input LockVerifySARIFInput) SARIFDocument {
+	decision := "PASS"
+	if input.Status != input.VerifiedStatus {
+		decision = "DRIFTED"
+	}
+	properties := input.Properties
+	properties.Decision = decision
+
+	rules := make([]SARIFRule, 0, len(input.Checks))
+	for _, check := range input.Checks {
+		rules = append(rules, SARIFRuleForFinding(check.Code, "lock verify check: "+check.Name))
+	}
+	SortSARIFRulesByID(rules)
+
+	results := make([]SARIFResult, 0, 32)
+	for _, check := range input.Checks {
+		if check.OK {
+			continue
+		}
+		results = append(results, SARIFResultForFinding(check.Code, "error", check.Detail, nil))
+		if check.Code != input.FileDigestCode {
+			continue
+		}
+		for _, path := range input.Drift.MissingFiles {
+			results = append(results, driftSARIFResult(check.Code, path, "missing file listed in lock"))
+		}
+		for _, path := range input.Drift.ChangedFiles {
+			results = append(results, driftSARIFResult(check.Code, path, "changed file hash or size"))
+		}
+		for _, path := range input.Drift.UnexpectedFiles {
+			results = append(results, driftSARIFResult(check.Code, path, "unexpected file not listed in lock"))
+		}
+	}
+	SortSARIFResultsByRuleLocationMessage(results)
+
+	return SARIFDocumentForRun(rules, results, input.Status == input.VerifiedStatus, properties)
+}
+
+func driftSARIFResult(ruleID string, path string, reason string) SARIFResult {
+	message := reason + ": " + path
+	if strings.TrimSpace(path) == "" {
+		return SARIFResultForFinding(ruleID, "error", message, nil)
+	}
+	return SARIFResultForFinding(
+		ruleID,
+		"error",
+		message,
+		[]SARIFLocation{SARIFLocationForFile(path, 0)},
+	)
 }
 
 func SARIFDocumentForRun(rules []SARIFRule, results []SARIFResult, executionSuccessful bool, properties SARIFProperties) SARIFDocument {

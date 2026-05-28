@@ -118,6 +118,52 @@ func TestSARIFDocumentForFindings(t *testing.T) {
 	}
 }
 
+func TestSARIFDocumentForLockVerify(t *testing.T) {
+	doc := SARIFDocumentForLockVerify(LockVerifySARIFInput{
+		Status:         "DRIFTED",
+		VerifiedStatus: "VERIFIED",
+		FileDigestCode: "FILE_DIGESTS",
+		Checks: []LockVerifySARIFCheck{
+			{Code: "SCHEMA", Name: "schema", OK: true, Detail: "ok"},
+			{Code: "FILE_DIGESTS", Name: "file digests", OK: false, Detail: "missing=1 changed=1 unexpected=1"},
+		},
+		Drift: LockVerifySARIFDrift{
+			MissingFiles:    []string{"missing.md"},
+			ChangedFiles:    []string{"changed.md"},
+			UnexpectedFiles: []string{"extra.md"},
+		},
+		Properties: SARIFProperties{
+			SchemaVersion: "1",
+			PreRelease:    true,
+			SourceInput:   "/tmp/skill",
+			SourceKind:    "installed-skill",
+			Note:          "lock verify",
+		},
+	})
+	run := doc.Runs[0]
+	if len(run.Tool.Driver.Rules) != 2 || run.Tool.Driver.Rules[0].ID != "FILE_DIGESTS" || run.Tool.Driver.Rules[1].ID != "SCHEMA" {
+		t.Fatalf("rules not sorted: %+v", run.Tool.Driver.Rules)
+	}
+	if len(run.Results) != 4 {
+		t.Fatalf("results len = %d, want 4: %+v", len(run.Results), run.Results)
+	}
+	if run.Invocations[0].ExecutionSuccessful {
+		t.Fatal("drifted lock verify should not be execution successful")
+	}
+	if run.Properties.Decision != "DRIFTED" {
+		t.Fatalf("decision = %q, want DRIFTED", run.Properties.Decision)
+	}
+	var foundMissing bool
+	for _, result := range run.Results {
+		if result.Message.Text == "missing file listed in lock: missing.md" && len(result.Locations) == 1 {
+			foundMissing = true
+		}
+	}
+	if !foundMissing {
+		t.Fatalf("missing drift result not found: %+v", run.Results)
+	}
+}
+
 func TestSARIFLocationForFile(t *testing.T) {
 	location := SARIFLocationForFile("path/to/file.md", 7)
 	if got := location.PhysicalLocation.ArtifactLocation.URI; got != "path/to/file.md" {

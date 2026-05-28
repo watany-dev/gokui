@@ -1,9 +1,7 @@
 package app
 
 import (
-	"fmt"
 	"io"
-	"strings"
 
 	reportpkg "github.com/watany-dev/gokui/internal/report"
 )
@@ -27,64 +25,33 @@ func buildLockVerifyCompactSummary(report lockVerifyReport) string {
 }
 
 func buildLockVerifySARIFReport(report lockVerifyReport) reportpkg.SARIFDocument {
-	decision := "PASS"
-	if report.Status != "VERIFIED" {
-		decision = "DRIFTED"
-	}
-
-	rules := make([]reportpkg.SARIFRule, 0, len(report.Checks))
+	checks := make([]reportpkg.LockVerifySARIFCheck, 0, len(report.Checks))
 	for _, check := range report.Checks {
-		rules = append(rules, reportpkg.SARIFRuleForFinding(check.Code, fmt.Sprintf("lock verify check: %s", check.Name)))
+		checks = append(checks, reportpkg.LockVerifySARIFCheck{
+			Code:   check.Code,
+			Name:   check.Name,
+			OK:     check.OK,
+			Detail: check.Detail,
+		})
 	}
-	reportpkg.SortSARIFRulesByID(rules)
-
-	results := make([]reportpkg.SARIFResult, 0, 32)
-	for _, check := range report.Checks {
-		if check.OK {
-			continue
-		}
-		results = append(results, reportpkg.SARIFResultForFinding(check.Code, "error", check.Detail, nil))
-		if check.Code != lockVerifyCodeFileDigests {
-			continue
-		}
-		for _, path := range report.Drift.MissingFiles {
-			results = append(results, lockVerifyDriftSARIFResult(check.Code, path, "missing file listed in lock"))
-		}
-		for _, path := range report.Drift.ChangedFiles {
-			results = append(results, lockVerifyDriftSARIFResult(check.Code, path, "changed file hash or size"))
-		}
-		for _, path := range report.Drift.UnexpectedFiles {
-			results = append(results, lockVerifyDriftSARIFResult(check.Code, path, "unexpected file not listed in lock"))
-		}
-	}
-	reportpkg.SortSARIFResultsByRuleLocationMessage(results)
-
-	return reportpkg.SARIFDocumentForRun(
-		rules,
-		results,
-		report.Status == "VERIFIED",
-		reportpkg.SARIFProperties{
+	return reportpkg.SARIFDocumentForLockVerify(reportpkg.LockVerifySARIFInput{
+		Status:         report.Status,
+		VerifiedStatus: "VERIFIED",
+		FileDigestCode: lockVerifyCodeFileDigests,
+		Checks:         checks,
+		Drift: reportpkg.LockVerifySARIFDrift{
+			MissingFiles:    report.Drift.MissingFiles,
+			ChangedFiles:    report.Drift.ChangedFiles,
+			UnexpectedFiles: report.Drift.UnexpectedFiles,
+		},
+		Properties: reportpkg.SARIFProperties{
 			SchemaVersion: report.SchemaVersion,
 			PreRelease:    true,
 			SourceInput:   report.SkillPath,
 			SourceKind:    "installed-skill",
-			Decision:      decision,
 			Note:          report.Note,
 		},
-	)
-}
-
-func lockVerifyDriftSARIFResult(ruleID string, path string, reason string) reportpkg.SARIFResult {
-	message := fmt.Sprintf("%s: %s", reason, path)
-	if strings.TrimSpace(path) == "" {
-		return reportpkg.SARIFResultForFinding(ruleID, "error", message, nil)
-	}
-	return reportpkg.SARIFResultForFinding(
-		ruleID,
-		"error",
-		message,
-		[]reportpkg.SARIFLocation{reportpkg.SARIFLocationForFile(path, 0)},
-	)
+	})
 }
 
 func writeLockVerifyJSONError(stdout io.Writer, stderr io.Writer, report lockVerifyErrorReport) int {

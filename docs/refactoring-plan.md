@@ -93,6 +93,9 @@ Recent completed increments:
 - lock verify compact summary formatting now lives in `internal/report`;
   app-level lock verification output adapts drift/check counts into the report
   package input shape.
+- lock verify SARIF rule/result assembly now lives in `internal/report`;
+  app-level lock verification output adapts checks, drift lists, and properties
+  into the report package input shape.
 - SARIF error document construction now uses a shared helper for structured
   error rule ID resolution while keeping command-specific SARIF properties at
   the output boundary.
@@ -152,6 +155,7 @@ go test ./internal/report ./internal/app -run 'Review|Inspect|Vet'
 go test ./internal/report ./internal/app -run 'Compact|Install'
 go test ./internal/report ./internal/app -run 'Compact|Update'
 go test ./internal/report ./internal/app -run 'Compact|LockVerify'
+go test ./internal/report ./internal/app -run 'SARIF|LockVerify'
 make test
 ```
 
