@@ -35,6 +35,8 @@ Recent completed increments:
   error-report write helpers, and a `lock verify` structured-error emit helper.
 - pre-parse structured format detection is centralized while preserving the
   existing priority order for ambiguous argument lists.
+- command parse-error report construction is split into command-specific helper
+  functions for fetch, inspect/vet, install, update, and lock verify.
 
 Validation already run after the latest parser/format increments:
 
@@ -49,6 +51,9 @@ go test ./internal/app -run 'Fetch|Install|LockVerify|JSON|SARIF|Compact'
 go test ./internal/app -run 'Error|JSON|SARIF|Fetch|Install|Update|Inspect|Vet|LockVerify'
 go test ./internal/app -run 'LockVerify|Error|JSON|SARIF'
 go test ./internal/app -run 'Args|Error|JSON|SARIF|Review|Fetch|Inspect|Vet|Install|Update|LockVerify'
+go test ./internal/app -run 'Inspect|Vet|Args|Error|JSON|SARIF|Review'
+go test ./internal/app -run 'Update|LockVerify|Args|Error|JSON|SARIF'
+go test ./internal/app -run 'Fetch|Install|Args|Error|JSON|SARIF'
 make test
 ```
 
@@ -293,10 +298,10 @@ slice:
 2. Continue #5 by moving command argument parsing toward a shared parser/spec
    shape. Keep current error strings and pre-parse structured-output detection
    stable while doing this.
-3. Continue #4 by extracting command-specific parse-error report construction
-   where it can be done without changing current error strings, fallback
-   source/target fields, or structured output contracts; defer changing report
-   wire structs until #9.
+3. Continue #4 by extracting any remaining command-specific structured-error
+   branching where it can be done without changing current error strings,
+   fallback source/target fields, or structured output contracts; defer changing
+   report wire structs until #9.
 4. Continue #8 only after #4 has a stable command error path and inspect report
    rendering remains covered by contract tests.
 
