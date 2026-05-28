@@ -203,32 +203,32 @@ func TestParseVetArgs(t *testing.T) {
 }
 
 func TestInspectArgJSONHelpers(t *testing.T) {
-	if !inspectArgsRequestJSON([]string{"./skill", "--format", "json"}) {
-		t.Fatal("inspectArgsRequestJSON() should detect --format json")
+	if !argsRequestFormat([]string{"./skill", "--format", "json"}, "json") {
+		t.Fatal("argsRequestFormat json should detect --format json")
 	}
-	if !inspectArgsRequestJSON([]string{"./skill", "--format=json"}) {
-		t.Fatal("inspectArgsRequestJSON() should detect --format=json")
+	if !argsRequestFormat([]string{"./skill", "--format=json"}, "json") {
+		t.Fatal("argsRequestFormat json should detect --format=json")
 	}
-	if inspectArgsRequestJSON([]string{"./skill", "--format", "human"}) {
-		t.Fatal("inspectArgsRequestJSON() should be false for non-json format")
+	if argsRequestFormat([]string{"./skill", "--format", "human"}, "json") {
+		t.Fatal("argsRequestFormat json should be false for non-json format")
 	}
-	if !inspectArgsRequestSARIF([]string{"./skill", "--format", "sarif"}) {
-		t.Fatal("inspectArgsRequestSARIF() should detect --format sarif")
+	if !argsRequestFormat([]string{"./skill", "--format", "sarif"}, "sarif") {
+		t.Fatal("argsRequestFormat sarif should detect --format sarif")
 	}
-	if !inspectArgsRequestSARIF([]string{"./skill", "--format=sarif"}) {
-		t.Fatal("inspectArgsRequestSARIF() should detect --format=sarif")
+	if !argsRequestFormat([]string{"./skill", "--format=sarif"}, "sarif") {
+		t.Fatal("argsRequestFormat sarif should detect --format=sarif")
 	}
-	if inspectArgsRequestSARIF([]string{"./skill", "--format", "human"}) {
-		t.Fatal("inspectArgsRequestSARIF() should be false for non-sarif format")
+	if argsRequestFormat([]string{"./skill", "--format", "human"}, "sarif") {
+		t.Fatal("argsRequestFormat sarif should be false for non-sarif format")
 	}
-	if !inspectArgsRequestReviewJSON([]string{"./skill", "--format", "review-json"}) {
-		t.Fatal("inspectArgsRequestReviewJSON() should detect --format review-json")
+	if !argsRequestFormat([]string{"./skill", "--format", "review-json"}, "review-json") {
+		t.Fatal("argsRequestFormat review-json should detect --format review-json")
 	}
-	if !inspectArgsRequestReviewJSON([]string{"./skill", "--format=review-json"}) {
-		t.Fatal("inspectArgsRequestReviewJSON() should detect --format=review-json")
+	if !argsRequestFormat([]string{"./skill", "--format=review-json"}, "review-json") {
+		t.Fatal("argsRequestFormat review-json should detect --format=review-json")
 	}
-	if inspectArgsRequestReviewJSON([]string{"./skill", "--format", "human"}) {
-		t.Fatal("inspectArgsRequestReviewJSON() should be false for non-review format")
+	if argsRequestFormat([]string{"./skill", "--format", "human"}, "review-json") {
+		t.Fatal("argsRequestFormat review-json should be false for non-review format")
 	}
 
 	if got := extractInspectSourceArg([]string{"./skill", "--format", "json"}); got != "./skill" {

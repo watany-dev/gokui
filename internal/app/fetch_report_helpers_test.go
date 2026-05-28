@@ -8,22 +8,22 @@ import (
 )
 
 func TestFetchHelperFunctions(t *testing.T) {
-	if !fetchArgsRequestJSON([]string{"--format", "json"}) {
+	if !argsRequestFormat([]string{"--format", "json"}, "json") {
 		t.Fatal("expected json format detection")
 	}
-	if !fetchArgsRequestJSON([]string{"--format=json"}) {
+	if !argsRequestFormat([]string{"--format=json"}, "json") {
 		t.Fatal("expected equals json format detection")
 	}
-	if fetchArgsRequestJSON([]string{"--format", "human"}) {
+	if argsRequestFormat([]string{"--format", "human"}, "json") {
 		t.Fatal("human format should not be detected as json")
 	}
-	if !fetchArgsRequestSARIF([]string{"--format", "sarif"}) {
+	if !argsRequestFormat([]string{"--format", "sarif"}, "sarif") {
 		t.Fatal("expected sarif format detection")
 	}
-	if !fetchArgsRequestSARIF([]string{"--format=sarif"}) {
+	if !argsRequestFormat([]string{"--format=sarif"}, "sarif") {
 		t.Fatal("expected equals sarif format detection")
 	}
-	if fetchArgsRequestSARIF([]string{"--format", "human"}) {
+	if argsRequestFormat([]string{"--format", "human"}, "sarif") {
 		t.Fatal("human format should not be detected as sarif")
 	}
 

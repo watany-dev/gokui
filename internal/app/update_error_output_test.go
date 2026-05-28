@@ -372,23 +372,23 @@ func TestWriteUpdateSARIFErrorRuleID(t *testing.T) {
 }
 
 func TestUpdateArgJSONHelpers(t *testing.T) {
-	if !updateArgsRequestJSON([]string{"--dry-run", "--format", "json"}) {
-		t.Fatal("updateArgsRequestJSON() should detect --format json")
+	if !argsRequestFormat([]string{"--dry-run", "--format", "json"}, "json") {
+		t.Fatal("argsRequestFormat json should detect --format json")
 	}
-	if !updateArgsRequestJSON([]string{"--dry-run", "--format=json"}) {
-		t.Fatal("updateArgsRequestJSON() should detect --format=json")
+	if !argsRequestFormat([]string{"--dry-run", "--format=json"}, "json") {
+		t.Fatal("argsRequestFormat json should detect --format=json")
 	}
-	if updateArgsRequestJSON([]string{"--dry-run", "--format", "human"}) {
-		t.Fatal("updateArgsRequestJSON() should be false for non-json format")
+	if argsRequestFormat([]string{"--dry-run", "--format", "human"}, "json") {
+		t.Fatal("argsRequestFormat json should be false for non-json format")
 	}
-	if !updateArgsRequestSARIF([]string{"--dry-run", "--format", "sarif"}) {
-		t.Fatal("updateArgsRequestSARIF() should detect --format sarif")
+	if !argsRequestFormat([]string{"--dry-run", "--format", "sarif"}, "sarif") {
+		t.Fatal("argsRequestFormat sarif should detect --format sarif")
 	}
-	if !updateArgsRequestSARIF([]string{"--dry-run", "--format=sarif"}) {
-		t.Fatal("updateArgsRequestSARIF() should detect --format=sarif")
+	if !argsRequestFormat([]string{"--dry-run", "--format=sarif"}, "sarif") {
+		t.Fatal("argsRequestFormat sarif should detect --format=sarif")
 	}
-	if updateArgsRequestSARIF([]string{"--dry-run", "--format", "json"}) {
-		t.Fatal("updateArgsRequestSARIF() should be false for non-sarif format")
+	if argsRequestFormat([]string{"--dry-run", "--format", "json"}, "sarif") {
+		t.Fatal("argsRequestFormat sarif should be false for non-sarif format")
 	}
 	if got := extractUpdateTargetArg([]string{"--dry-run", "--target", "custom:/tmp/skills"}); got != "custom:/tmp/skills" {
 		t.Fatalf("extractUpdateTargetArg() = %q", got)

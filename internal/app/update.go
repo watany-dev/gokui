@@ -175,8 +175,8 @@ func runUpdate(args []string, stdout io.Writer, stderr io.Writer) int {
 }
 
 func runUpdateWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps updateDeps) int {
-	requestedJSON := updateArgsRequestJSON(args)
-	requestedSARIF := updateArgsRequestSARIF(args)
+	requestedJSON := argsRequestFormat(args, "json")
+	requestedSARIF := argsRequestFormat(args, "sarif")
 	deps = normalizeUpdateDeps(deps)
 
 	parsed, err := parseUpdateArgs(args)
@@ -324,14 +324,6 @@ func normalizeUpdateDeps(deps updateDeps) updateDeps {
 		deps.PrepareEvaluationSource = preparePolicyEvaluationSource
 	}
 	return deps
-}
-
-func updateArgsRequestJSON(args []string) bool {
-	return argsRequestFormat(args, "json")
-}
-
-func updateArgsRequestSARIF(args []string) bool {
-	return argsRequestFormat(args, "sarif")
 }
 
 func extractUpdateTargetArg(args []string) string {

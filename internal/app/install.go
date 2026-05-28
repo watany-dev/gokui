@@ -150,8 +150,8 @@ func runInstall(args []string, stdout io.Writer, stderr io.Writer) int {
 }
 
 func runInstallWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps installDeps) int {
-	requestedJSON := installArgsRequestJSON(args)
-	requestedSARIF := installArgsRequestSARIF(args)
+	requestedJSON := argsRequestFormat(args, "json")
+	requestedSARIF := argsRequestFormat(args, "sarif")
 	deps = normalizeInstallDeps(deps)
 
 	parsed, err := parseInstallArgs(args)
@@ -699,14 +699,6 @@ func buildInstallCompactSummary(report installReport, target string) string {
 		report.Source.Input,
 		report.ErrorCode,
 	)
-}
-
-func installArgsRequestJSON(args []string) bool {
-	return argsRequestFormat(args, "json")
-}
-
-func installArgsRequestSARIF(args []string) bool {
-	return argsRequestFormat(args, "sarif")
 }
 
 func extractInstallSourceArg(args []string) string {

@@ -90,8 +90,8 @@ type lockVerifyDriftInfo struct {
 type fileInfoStatter = limitio.FileInfoStatter
 
 func runLockVerify(args []string, stdout io.Writer, stderr io.Writer) int {
-	requestedJSON := lockVerifyArgsRequestJSON(args)
-	requestedSARIF := lockVerifyArgsRequestSARIF(args)
+	requestedJSON := argsRequestFormat(args, "json")
+	requestedSARIF := argsRequestFormat(args, "sarif")
 	parsed, err := parseLockVerifyArgs(args)
 	if err != nil {
 		if requestedJSON {
@@ -180,14 +180,6 @@ func runLockVerify(args []string, stdout io.Writer, stderr io.Writer) int {
 		return exitcode.OK.Int()
 	}
 	return exitcode.Rejected.Int()
-}
-
-func lockVerifyArgsRequestJSON(args []string) bool {
-	return argsRequestFormat(args, "json")
-}
-
-func lockVerifyArgsRequestSARIF(args []string) bool {
-	return argsRequestFormat(args, "sarif")
 }
 
 func extractLockVerifyPathArg(args []string) string {

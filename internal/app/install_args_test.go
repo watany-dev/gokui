@@ -166,8 +166,8 @@ func TestResolveInstallTarget(t *testing.T) {
 
 func TestInstallArgExtractionHelpers(t *testing.T) {
 	args := []string{"./skill", "--target", "custom:/tmp/skills", "--profile", "strict", "--format", "json"}
-	if !installArgsRequestJSON(args) {
-		t.Fatal("installArgsRequestJSON() should detect json format")
+	if !argsRequestFormat(args, "json") {
+		t.Fatal("argsRequestFormat json should detect json format")
 	}
 	if got := extractInstallSourceArg(args); got != "./skill" {
 		t.Fatalf("extractInstallSourceArg() = %q", got)
@@ -179,13 +179,13 @@ func TestInstallArgExtractionHelpers(t *testing.T) {
 		t.Fatalf("extractInstallProfileArg() = %q", got)
 	}
 
-	if installArgsRequestJSON([]string{"./skill", "--target", "codex"}) {
-		t.Fatal("installArgsRequestJSON() should be false without json format")
+	if argsRequestFormat([]string{"./skill", "--target", "codex"}, "json") {
+		t.Fatal("argsRequestFormat json should be false without json format")
 	}
 
 	equalsArgs := []string{"--target=custom:/tmp/skills", "--profile=team", "--format=json", "./skill"}
-	if !installArgsRequestJSON(equalsArgs) {
-		t.Fatal("installArgsRequestJSON() should detect --format=json")
+	if !argsRequestFormat(equalsArgs, "json") {
+		t.Fatal("argsRequestFormat json should detect --format=json")
 	}
 	if got := extractInstallSourceArg(equalsArgs); got != "./skill" {
 		t.Fatalf("extractInstallSourceArg(equals) = %q", got)
@@ -202,16 +202,16 @@ func TestInstallArgExtractionHelpers(t *testing.T) {
 	if got := extractInstallProfileArg([]string{"./skill"}); got != "strict" {
 		t.Fatalf("extractInstallProfileArg(default) = %q", got)
 	}
-	if installArgsRequestJSON([]string{"./skill", "--target", "codex", "--format", "sarif"}) {
-		t.Fatal("installArgsRequestJSON() should be false for non-json format")
+	if argsRequestFormat([]string{"./skill", "--target", "codex", "--format", "sarif"}, "json") {
+		t.Fatal("argsRequestFormat json should be false for non-json format")
 	}
-	if !installArgsRequestSARIF([]string{"./skill", "--target", "codex", "--format", "sarif"}) {
-		t.Fatal("installArgsRequestSARIF() should detect sarif format")
+	if !argsRequestFormat([]string{"./skill", "--target", "codex", "--format", "sarif"}, "sarif") {
+		t.Fatal("argsRequestFormat sarif should detect sarif format")
 	}
-	if !installArgsRequestSARIF([]string{"--target=custom:/tmp/skills", "--profile=strict", "--format=sarif", "./skill"}) {
-		t.Fatal("installArgsRequestSARIF() should detect --format=sarif")
+	if !argsRequestFormat([]string{"--target=custom:/tmp/skills", "--profile=strict", "--format=sarif", "./skill"}, "sarif") {
+		t.Fatal("argsRequestFormat sarif should detect --format=sarif")
 	}
-	if installArgsRequestSARIF([]string{"./skill", "--target", "codex", "--format", "json"}) {
-		t.Fatal("installArgsRequestSARIF() should be false for non-sarif format")
+	if argsRequestFormat([]string{"./skill", "--target", "codex", "--format", "json"}, "sarif") {
+		t.Fatal("argsRequestFormat sarif should be false for non-sarif format")
 	}
 }

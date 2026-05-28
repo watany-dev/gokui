@@ -199,9 +199,9 @@ func runVet(args []string, stdout io.Writer, stderr io.Writer) int {
 }
 
 func runVetWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps vetDeps) int {
-	requestedJSON := inspectArgsRequestJSON(args)
-	requestedSARIF := inspectArgsRequestSARIF(args)
-	requestedReviewJSON := inspectArgsRequestReviewJSON(args)
+	requestedJSON := argsRequestFormat(args, "json")
+	requestedSARIF := argsRequestFormat(args, "sarif")
+	requestedReviewJSON := argsRequestFormat(args, "review-json")
 	deps = normalizeVetDeps(deps)
 	input, format, profile, profileSet, err := parseVetArgs(args)
 	if err != nil {
@@ -454,9 +454,9 @@ func runInspect(args []string, stdout io.Writer, stderr io.Writer) int {
 }
 
 func runInspectWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps inspectDeps) int {
-	requestedJSON := inspectArgsRequestJSON(args)
-	requestedSARIF := inspectArgsRequestSARIF(args)
-	requestedReviewJSON := inspectArgsRequestReviewJSON(args)
+	requestedJSON := argsRequestFormat(args, "json")
+	requestedSARIF := argsRequestFormat(args, "sarif")
+	requestedReviewJSON := argsRequestFormat(args, "review-json")
 	deps = normalizeInspectDeps(deps)
 	input, format, err := parseInspectArgs(args)
 	if err != nil {
@@ -991,18 +991,6 @@ func buildInspectSARIFReport(report inspectReport) reportpkg.SARIFDocument {
 			Note:          report.Note,
 		},
 	)
-}
-
-func inspectArgsRequestJSON(args []string) bool {
-	return argsRequestFormat(args, "json")
-}
-
-func inspectArgsRequestSARIF(args []string) bool {
-	return argsRequestFormat(args, "sarif")
-}
-
-func inspectArgsRequestReviewJSON(args []string) bool {
-	return argsRequestFormat(args, "review-json")
 }
 
 func argsRequestFormat(args []string, format string) bool {
