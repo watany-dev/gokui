@@ -145,14 +145,13 @@ func buildInspectSARIFErrorReport(report inspectErrorReport) reportpkg.SARIFDocu
 }
 
 func emitInspectStructuredError(format string, stdout io.Writer, stderr io.Writer, report inspectErrorReport) bool {
-	outputFormat := formatpkg.Format(format)
-	if outputFormat == formatpkg.ReviewJSON {
+	if formatpkg.Format(format) == formatpkg.ReviewJSON {
 		_ = writeInspectJSONError(stdout, stderr, report)
 		return true
 	}
-	return emitStructuredError(outputFormat,
-		func() { _ = writeInspectJSONError(stdout, stderr, report) },
-		func() { _ = writeInspectSARIFError(stdout, stderr, report) },
+	return emitCommandStructuredError(format,
+		func() int { return writeInspectJSONError(stdout, stderr, report) },
+		func() int { return writeInspectSARIFError(stdout, stderr, report) },
 	)
 }
 

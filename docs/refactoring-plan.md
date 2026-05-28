@@ -186,6 +186,14 @@ Recent completed increments:
   empty-summary fallback, and invocation-success assembly now live in
   `internal/report`; app-level update output only adapts command fields into the
   report input shape.
+- inspect structured-error dispatch now routes through the shared
+  `emitCommandStructuredError` helper (matching fetch/install/update/lock verify)
+  while preserving its `review-json` special case and all exit codes.
+- the large deno runtime-pin flag test file was split into focused files
+  (`runtime_pin_deno_allow_flags_test.go`, `runtime_pin_deno_token_flags_test.go`)
+  and the dash-p source-stdin expansion test file was split by expansion family
+  (`source_stdin_special_param_test.go`, `source_stdin_expansion_test.go`,
+  `source_stdin_substring_test.go`) with identical `go test ./internal/scan` results.
 
 Validation already run after the latest refactoring increments:
 
@@ -252,6 +260,8 @@ go test ./internal/app -run 'CommandSetDocumentationSync|CLIUsageSyntaxDocumenta
 go test ./internal/report ./internal/app -run 'SARIF|Update'
 make test
 make check
+go test ./internal/scan   # after deno/source-stdin test-file splits
+go test ./internal/app -run 'Inspect|Vet|Error|JSON|SARIF|Review'  # after inspect dispatch unification
 ```
 
 Current inventory notes:
@@ -259,74 +269,72 @@ Current inventory notes:
 - #7 is represented by `internal/rule`, catalog lookup tests, scan registry
   tests, and guard-rule call sites for GitHub archive/source metadata/fetch
   symlink errors. Command `*_FAILED`, argument, and update status strings remain
-  wire-level error/status codes rather than catalog rules, so this is a
-  candidate to close after repository write access is available.
+  wire-level error/status codes rather than catalog rules. Now closed as
+  completed on GitHub.
 - #10 is represented by shared SARIF document/types, pre-release property
   helpers, findings/update/lock-verify builders, and structured-error input
   builders in `internal/report`. The remaining fetch/inspect/install
   successful-command SARIF code is now an app-boundary adapter from command wire
-  structs into report input shapes, so this is a candidate to close after
-  repository write access is available.
+  structs into report input shapes. Now closed as completed on GitHub.
 - #12 is represented by `source.GitHubFetcher`, option-based configuration, and
-  option-based tests; candidate to close after repository write access is
-  available.
+  option-based tests. Now closed as completed on GitHub.
 - #13 is represented by split `internal/scan` implementation and test files;
-  candidate to close after repository write access is available.
+  now closed as completed on GitHub.
 - #14 is represented by `scan.Finding` creation through `internal/rule` values
-  and registry sync tests; candidate to close after repository write access is
-  available.
+  and registry sync tests. Now closed as completed on GitHub.
 - #15 is partially represented by `internal/safefs` stable/root/path helpers;
   the remaining app-specific `ensure*Stable*` wrappers are now thin policy/error
-  adapters over shared `safefs` helpers, so this is a candidate to close after
-  repository write access is available.
+  adapters over shared `safefs` helpers. Now closed as completed on GitHub.
 - #16 is represented by `internal/limitio` strict copy/hash helpers and related
-  `internal/safefs` path helpers; candidate to close after repository write
-  access is available.
+  `internal/safefs` path helpers. Now closed as completed on GitHub.
 - #17 is represented by `internal/policy` profile/severity types,
   `internal/cli/exitcode`, typed app command returns, typed scan findings, and
   typed app findings. Remaining severity strings are wire-boundary fields or
-  JSON keys, so this is a candidate to close after repository write access is
-  available.
+  JSON keys. Now closed as completed on GitHub.
 - #18 is represented by `internal/policy/override.go` and
   `SeverityOverrideAuditSet`; production app structs/functions use
-  `policy.SeverityOverrideAudit` directly, so this is a candidate to close after
-  repository write access is available.
+  `policy.SeverityOverrideAudit` directly. Now closed as completed on GitHub.
 - #6 is represented by `updateLockEvaluationChecks` for lock validation and
   `updateSkillEvaluationSteps` for the broader update source evaluation flow;
-  candidate to close after repository write access is available.
+  now closed as completed on GitHub.
 - #11 is represented by explicit dependency structs for fetch, inspect, vet,
   install, update, policy-evaluation source preparation, and lock verify. The
   audit found no package-global function variables used for tests; remaining
   package globals are constants, regex caches, or sentinel errors, so this is a
-  candidate to close after repository write access is available.
+  now closed as completed on GitHub.
 - #8 is represented by direct vet source preparation and scanning; the old
   inspect JSON round trip and fail-closed JSON reparse path have been removed,
-  so this is a candidate to close after repository write access is available.
+  so this is a now closed as completed on GitHub.
 - #3, #4, #5, and #19 are partially represented but still need final audit before
   closing because `internal/app` remains the compatibility owner for command
   orchestration and many contract tests.
-- GitHub issue write access was unavailable during the latest audit
-  (`403 Resource not accessible by integration`), so no issue comments or
-  closures were applied remotely.
+- GitHub issue write access is now available; the candidate-complete issues
+  listed above were commented on and closed as completed.
 
 Local checkpoint:
 
-- Candidate-complete locally, pending remote issue write access: #6, #7, #8,
-  #10, #11, #12, #13, #14, #15, #16, #17, and #18.
-- Continue locally only as deliberate follow-up work: #2, #3, #4, #5, #9, and
-  #19. These remain open because command orchestration, CLI common code, and
+- Closed as completed on GitHub (issue write access now available): #6, #7, #8,
+  #10, #11, #12, #13, #14, #15, #16, #17, and #18. Each close includes a comment
+  summarizing how the issue is represented in the current code.
+- Continue locally as deliberate follow-up work: #2, #3, #4, #5, #9, and #19.
+  These remain open because command orchestration, CLI common code, and
   wire/domain separation still have larger blast radius than the completed
-  behavior-preserving increments.
-- Last full validation in this pass: `make check` passed, including
-  `staticcheck`, `deadcode`, and coverage at 95.2% against the 95.0% threshold.
+  behavior-preserving increments. #4 and #19 have received additional
+  behavior-preserving increments (shared inspect error dispatch; scan test-file
+  splits) but stay open for further consolidation.
+- Validation note: in the sandboxed root environment a small set of
+  permission/symlink tests cannot pass (root bypasses file-permission checks),
+  so `make check` cannot go fully green here; each increment was validated by
+  confirming the failing-test set is unchanged from the clean-tree baseline (no
+  new failures) for the touched packages.
 
 ## Recommended Order
 
 ### 1. Confirm Inventory
 
-The inventory pass is complete locally. Update or close candidate-complete
-issues when repository issue write access is available before moving broad
-command packages again.
+The inventory pass is complete locally and the candidate-complete issues have
+been closed as completed on GitHub. Re-audit before moving broad command
+packages again.
 
 Primary issues:
 
@@ -528,19 +536,19 @@ make build
 | #3 | 3, 7, 9 | Extract leaf domain first, then finish command-level leftovers. |
 | #4 | 6 | Do after DI and rendering primitives are stable. |
 | #5 | 6 | Pair with #4 so parse failures and error envelopes share one path. |
-| #6 | 4 | Locally represented; candidate to close after write access. |
-| #7 | 2 | Locally represented; command error codes intentionally remain wire/status codes. |
-| #8 | 7 | Direct vet evaluation is implemented; candidate to close after audit/write access. |
+| #6 | 4 | Closed as completed on GitHub. |
+| #7 | 2 | Command error codes intentionally remain wire/status codes; closed as completed on GitHub. |
+| #8 | 7 | Direct vet evaluation is implemented; closed as completed on GitHub. |
 | #9 | 8 | High blast-radius; defer until behavior is well covered. |
-| #10 | 3, 8 | Locally represented; remaining app code is wire-boundary adaptation. |
-| #11 | 5 | Explicit command deps are implemented; candidate to close after audit/write access. |
-| #12 | 5 | Locally represented in `internal/source`; candidate to close after write access. |
-| #13 | 3 | Locally represented by scan file splits; candidate to close after write access. |
-| #14 | 2 | Locally represented by scan findings through the rule catalog. |
-| #15 | 2 | Locally represented by `internal/safefs` helpers. |
-| #16 | 2 | Locally represented by strict copy/hash/limit helpers. |
-| #17 | 2, 6, 8 | Locally represented for current boundaries; wire strings remain at outputs. |
-| #18 | 2, 4 | Locally represented by `SeverityOverrideAuditSet`. |
+| #10 | 3, 8 | Remaining app code is wire-boundary adaptation; closed as completed on GitHub. |
+| #11 | 5 | Explicit command deps are implemented; closed as completed on GitHub. |
+| #12 | 5 | Locally represented in `internal/source`; closed as completed on GitHub. |
+| #13 | 3 | Locally represented by scan file splits; closed as completed on GitHub. |
+| #14 | 2 | Scan findings route through the rule catalog; closed as completed on GitHub. |
+| #15 | 2 | Represented by `internal/safefs` helpers; closed as completed on GitHub. |
+| #16 | 2 | Represented by strict copy/hash/limit helpers; closed as completed on GitHub. |
+| #17 | 2, 6, 8 | Wire strings remain at outputs by design; closed as completed on GitHub. |
+| #18 | 2, 4 | Represented by `SeverityOverrideAuditSet`; closed as completed on GitHub. |
 | #19 | 3, 9 | Partially represented; continue only for natural test-boundary splits. |
 
 ## Next Concrete Increments
@@ -548,9 +556,8 @@ make build
 The next work should stay behavior-preserving and commit after each validation
 slice:
 
-1. When GitHub issue write access is available, close or comment on the
-   candidate-complete issues now represented locally: #6, #7, #8, #10, #11,
-   #12, #13, #14, #15, #16, #17, and #18.
+1. Done: the candidate-complete issues #6, #7, #8, #10, #11, #12, #13, #14, #15,
+   #16, #17, and #18 were closed as completed on GitHub with summary comments.
 2. Continue #4/#5 only where common CLI parsing or structured-error helpers can
    remove duplication without changing error strings, fallback source/target
    fields, `review-json` handling, SARIF properties, or stream contracts.
