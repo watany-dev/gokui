@@ -65,6 +65,9 @@ Recent completed increments:
 - command parser flag sets now use a reusable parser spec wrapper so each
   command declares value flags, boolean flags, and positional policy separately
   from loop execution.
+- SARIF error document construction now uses a shared helper for structured
+  error rule ID resolution while keeping command-specific SARIF properties at
+  the output boundary.
 
 Validation already run after the latest parser/format increments:
 
@@ -95,6 +98,7 @@ go test ./internal/app -run 'Error|JSON|SARIF|Fetch|Install|Update|LockVerify'
 go test ./internal/app -run 'Args|Fetch|Inspect|Vet|Install|Update|LockVerify|Error|JSON|SARIF|Review'
 go test ./internal/app -run 'Args|Fetch|Inspect|Vet|Install|Update|LockVerify|Error|JSON|SARIF|Review'
 go test ./internal/app -run 'Args|Fetch|Inspect|Vet|Install|Update|LockVerify|Error|JSON|SARIF|Review'
+go test ./internal/app -run 'Error|SARIF|JSON|Fetch|Inspect|Install|Update|LockVerify'
 make test
 ```
 
@@ -359,8 +363,8 @@ slice:
 3. Continue #4 by extracting any remaining command-specific structured-error
    branching outside parse-error handling where it can be done without changing
    current error strings, fallback source/target fields, `review-json`
-   handling, or structured output contracts; defer changing report wire structs
-   until #9.
+   handling, command-specific SARIF properties, or structured output contracts;
+   defer changing report wire structs until #9.
 4. Continue #8 only after #4 has a stable command error path and inspect report
    rendering remains covered by contract tests.
 
