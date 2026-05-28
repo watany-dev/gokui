@@ -211,6 +211,10 @@ Current inventory notes:
 - #6 is represented by `updateLockEvaluationChecks` for lock validation and
   `updateSkillEvaluationSteps` for the broader update source evaluation flow;
   candidate to close after repository write access is available.
+- #11 is partially represented by explicit dependency structs for fetch,
+  inspect, vet, install, update, policy-evaluation source preparation, and lock
+  verify; focused oversized-limit tests no longer mutate package globals, but
+  broader command dependency seams still need a final audit.
 - #3, #4, #5, and #19 are partially represented but still need final audit before
   closing because `internal/app` remains the compatibility owner for command
   orchestration and many contract tests.

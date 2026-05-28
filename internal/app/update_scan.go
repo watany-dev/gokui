@@ -21,7 +21,7 @@ var updateURLPattern = regexp.MustCompile(`(?i)(?:https?://\[[0-9a-z:._%-]+\](?:
 
 const (
 	updateMaxURLScanFileBytes int64 = 1_000_000
-	updateMaxScanFiles              = 10_000
+	updateMaxScanFiles        int   = 10_000
 )
 
 type updateScanLimits struct {
@@ -186,10 +186,6 @@ func collectExecutableFilesWithLimits(root string, limits updateScanLimits) ([]s
 		return nil, err
 	}
 	return mapKeysSorted(set), nil
-}
-
-func readURLScanContent(r io.Reader, path string, root string) (string, error) {
-	return readURLScanContentWithLimit(r, path, root, updateMaxURLScanFileBytes)
 }
 
 func readURLScanContentWithLimit(r io.Reader, path string, root string, limit int64) (string, error) {

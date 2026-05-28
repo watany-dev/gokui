@@ -300,17 +300,17 @@ func TestUpdateHelpers(t *testing.T) {
 		root := t.TempDir()
 		path := filepath.Join(root, "big.md")
 
-		_, err := readURLScanContent(bytes.NewReader([]byte(strings.Repeat("a", int(updateMaxURLScanFileBytes)+1))), path, root)
+		_, err := readURLScanContentWithLimit(bytes.NewReader([]byte(strings.Repeat("a", int(updateMaxURLScanFileBytes)+1))), path, root, updateMaxURLScanFileBytes)
 		if err == nil || !strings.Contains(err.Error(), "exceeds URL scan size limit") {
 			t.Fatalf("expected size-limit error, got %v", err)
 		}
 
-		_, err = readURLScanContent(errorReader{err: errors.New("read fail")}, path, root)
+		_, err = readURLScanContentWithLimit(errorReader{err: errors.New("read fail")}, path, root, updateMaxURLScanFileBytes)
 		if err == nil || !strings.Contains(err.Error(), "failed to read file for URL scan") {
 			t.Fatalf("expected read error, got %v", err)
 		}
 
-		_, err = readURLScanContent(bytes.NewReader([]byte{0xff}), path, root)
+		_, err = readURLScanContentWithLimit(bytes.NewReader([]byte{0xff}), path, root, updateMaxURLScanFileBytes)
 		if err == nil || !strings.Contains(err.Error(), rulepkg.UpdateURLScanInvalidUTF8.ID) {
 			t.Fatalf("expected invalid utf-8 URL scan error, got %v", err)
 		}
