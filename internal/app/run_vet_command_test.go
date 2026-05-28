@@ -728,4 +728,22 @@ func TestRunVetCommands(t *testing.T) {
 		}
 	})
 
+	t.Run("vet compact returns rejected exit code for risky fixture", func(t *testing.T) {
+		var stdout bytes.Buffer
+		var stderr bytes.Buffer
+
+		fixturePath := filepath.FromSlash("../../fixtures/fake-prereq-skill")
+		code := Run([]string{"vet", fixturePath, "--format", "compact"}, &stdout, &stderr, cfg)
+		if code != 2 {
+			t.Fatalf("Run() code = %d, want 2\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
+		}
+		if stderr.Len() != 0 {
+			t.Fatalf("stderr should be empty, got %q", stderr.String())
+		}
+		out := strings.TrimSpace(stdout.String())
+		if !strings.HasPrefix(out, "vet ") || !strings.Contains(out, "decision=REJECTED") {
+			t.Fatalf("compact output should include vet rejected decision, got %q", out)
+		}
+	})
+
 }

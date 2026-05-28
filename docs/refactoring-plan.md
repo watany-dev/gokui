@@ -152,6 +152,9 @@ Recent completed increments:
 - inspect/vet parser and argument helper tests are split into
   `inspect_args_test.go`, narrowing `inspect_test.go` to report and source
   preparation behavior.
+- the remaining vet compact command-output contract moved from the broad
+  inspect/vet command test into `run_vet_command_test.go`, leaving
+  `run_inspect_vet_test.go` focused on inspect command behavior.
 - SARIF error document construction now uses a shared helper for structured
   error rule ID resolution while keeping command-specific SARIF properties at
   the output boundary.
@@ -222,6 +225,7 @@ go test ./internal/report ./internal/app -run 'SARIFError|StructuredError|Error|
 go test ./internal/report ./internal/app -run 'PreReleaseSARIF|StructuredErrorSARIFProperties|SARIFError|StructuredError|Error'
 go test ./internal/report ./internal/app -run 'SARIFError|StructuredError|Error|Fetch|Inspect|Install|Update|LockVerify'
 go test ./internal/app -run 'ParseInspectArgs|ParseVetArgs|InspectArgJSONHelpers|BuildInspect|DetectSourceKind|PrepareInspect'
+go test ./internal/app -run 'TestRunInspectVetCommands|TestRunVetCommands'
 make test
 make check
 ```
