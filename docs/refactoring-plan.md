@@ -96,6 +96,10 @@ Recent completed increments:
 - lock verify SARIF rule/result assembly now lives in `internal/report`;
   app-level lock verification output adapts checks, drift lists, and properties
   into the report package input shape.
+- update skill evaluation now runs through explicit evaluation steps for lock
+  validation, source preparation, policy resolution, findings evaluation, and
+  change/risk evaluation while preserving existing status and error-code
+  behavior.
 - SARIF error document construction now uses a shared helper for structured
   error rule ID resolution while keeping command-specific SARIF properties at
   the output boundary.
@@ -192,6 +196,9 @@ Current inventory notes:
   `SeverityOverrideAuditSet`; production app structs/functions use
   `policy.SeverityOverrideAudit` directly, so this is a candidate to close after
   repository write access is available.
+- #6 is represented by `updateLockEvaluationChecks` for lock validation and
+  `updateSkillEvaluationSteps` for the broader update source evaluation flow;
+  candidate to close after repository write access is available.
 - #3, #4, #5, and #19 are partially represented but still need final audit before
   closing because `internal/app` remains the compatibility owner for command
   orchestration and many contract tests.

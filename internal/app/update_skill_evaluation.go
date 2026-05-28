@@ -7,6 +7,103 @@ import (
 	rulepkg "github.com/watany-dev/gokui/internal/rule"
 )
 
+type updateSkillEvaluationContext struct {
+	item                  updateSkillItem
+	lock                  installLock
+	policyLoaded          bool
+	policyConfig          policypkg.Config
+	deps                  updateDeps
+	inputs                updateEvaluationInputs
+	skillRoot             string
+	cleanup               func()
+	effectivePolicy       policypkg.Config
+	effectivePolicyLoaded bool
+}
+
+type updateSkillEvaluationStep func(*updateSkillEvaluationContext) (*updateSkillFailure, error)
+
+var updateSkillEvaluationSteps = []updateSkillEvaluationStep{
+	validateUpdateSkillEvaluationLock,
+	prepareUpdateSkillEvaluationSource,
+	resolveUpdateSkillEvaluationPolicy,
+	evaluateUpdateSkillEvaluationFindings,
+	evaluateUpdateSkillEvaluationChanges,
+}
+
+func (ctx *updateSkillEvaluationContext) evaluate() (updateSkillItem, error) {
+	ctx.item.RiskScore = computeUpdateRiskScore(ctx.lock.Findings, ctx.lock.Findings, updateRiskSignalInputs{})
+	for _, step := range updateSkillEvaluationSteps {
+		failure, err := step(ctx)
+		if ctx.cleanup != nil {
+			defer ctx.cleanup()
+			ctx.cleanup = nil
+		}
+		if err != nil {
+			return updateSkillItem{}, err
+		}
+		if failure == nil {
+			continue
+		}
+		return failUpdateSkillItem(ctx.item, ctx.lock, failure.status, failure.code, failure.message), nil
+	}
+	return finalizeUpdateSkillStatus(ctx.item), nil
+}
+
+func validateUpdateSkillEvaluationLock(ctx *updateSkillEvaluationContext) (*updateSkillFailure, error) {
+	inputs, failure := validateUpdateLockForEvaluation(ctx.item, ctx.lock)
+	if failure != nil {
+		return failure, nil
+	}
+	ctx.inputs = inputs
+	return nil, nil
+}
+
+func prepareUpdateSkillEvaluationSource(ctx *updateSkillEvaluationContext) (*updateSkillFailure, error) {
+	skillRoot, cleanup, err := ctx.deps.PrepareEvaluationSource(ctx.inputs.sourceInput, ctx.inputs.kind)
+	ctx.cleanup = cleanup
+	if err != nil {
+		message := err.Error()
+		status, code := classifyUpdateSourcePrepareFailure(ctx.inputs.kind, err)
+		return &updateSkillFailure{status: status, code: code, message: message}, nil
+	}
+	ctx.skillRoot = skillRoot
+	return nil, nil
+}
+
+func resolveUpdateSkillEvaluationPolicy(ctx *updateSkillEvaluationContext) (*updateSkillFailure, error) {
+	effectivePolicy, effectivePolicyLoaded, err := resolveUpdateEvaluationPolicyWithDeps(ctx.inputs.kind, ctx.skillRoot, ctx.policyLoaded, ctx.policyConfig, ctx.deps)
+	if err != nil {
+		return &updateSkillFailure{status: reportStatusError, code: updateCodeEvaluationError, message: err.Error()}, nil
+	}
+	ctx.effectivePolicy = effectivePolicy
+	ctx.effectivePolicyLoaded = effectivePolicyLoaded
+	return nil, nil
+}
+
+func evaluateUpdateSkillEvaluationFindings(ctx *updateSkillEvaluationContext) (*updateSkillFailure, error) {
+	evaluation, err := evaluateUpdateSourceFindings(ctx.skillRoot, ctx.inputs.policyProfile, ctx.effectivePolicyLoaded, ctx.effectivePolicy, ctx.lock.Policy.SeverityOverrides)
+	if err != nil {
+		return nil, err
+	}
+	if evaluation.failure != nil {
+		return evaluation.failure, nil
+	}
+	ctx.item.Findings = evaluation.findings
+	ctx.item.Decision = evaluation.decision
+	ctx.item.SeverityOverrides = evaluation.severityOverrides
+	ctx.item.SeverityOverrideDiff = evaluation.severityOverrideDiff
+	return nil, nil
+}
+
+func evaluateUpdateSkillEvaluationChanges(ctx *updateSkillEvaluationContext) (*updateSkillFailure, error) {
+	item, err := evaluateUpdateSourceChanges(ctx.item, ctx.lock, ctx.skillRoot)
+	if err != nil {
+		return nil, err
+	}
+	ctx.item = item
+	return nil, nil
+}
+
 func evaluateUpdateSourceChanges(item updateSkillItem, lock installLock, skillRoot string) (updateSkillItem, error) {
 	excludeMeta := map[string]struct{}{
 		installReportFile: {},

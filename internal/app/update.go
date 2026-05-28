@@ -240,44 +240,12 @@ func runUpdateWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps u
 }
 
 func evaluateUpdateSkillWithDeps(item updateSkillItem, lock installLock, policyLoaded bool, cfg policypkg.Config, deps updateDeps) (updateSkillItem, error) {
-	deps = normalizeUpdateDeps(deps)
-	item.RiskScore = computeUpdateRiskScore(lock.Findings, lock.Findings, updateRiskSignalInputs{})
-	inputs, validationErr := validateUpdateLockForEvaluation(item, lock)
-	if validationErr != nil {
-		return failUpdateSkillItem(item, lock, validationErr.status, validationErr.code, validationErr.message), nil
+	ctx := updateSkillEvaluationContext{
+		item:         item,
+		lock:         lock,
+		policyLoaded: policyLoaded,
+		policyConfig: cfg,
+		deps:         normalizeUpdateDeps(deps),
 	}
-
-	skillRoot, cleanup, err := deps.PrepareEvaluationSource(inputs.sourceInput, inputs.kind)
-	if cleanup != nil {
-		defer cleanup()
-	}
-	if err != nil {
-		message := err.Error()
-		status, code := classifyUpdateSourcePrepareFailure(inputs.kind, err)
-		return failUpdateSkillItem(item, lock, status, code, message), nil
-	}
-
-	effectivePolicy, effectivePolicyLoaded, repoPolicyErr := resolveUpdateEvaluationPolicyWithDeps(inputs.kind, skillRoot, policyLoaded, cfg, deps)
-	if repoPolicyErr != nil {
-		return failUpdateSkillItem(item, lock, reportStatusError, updateCodeEvaluationError, repoPolicyErr.Error()), nil
-	}
-
-	findingsEvaluation, err := evaluateUpdateSourceFindings(skillRoot, inputs.policyProfile, effectivePolicyLoaded, effectivePolicy, lock.Policy.SeverityOverrides)
-	if err != nil {
-		return updateSkillItem{}, err
-	}
-	if findingsEvaluation.failure != nil {
-		return failUpdateSkillItem(item, lock, findingsEvaluation.failure.status, findingsEvaluation.failure.code, findingsEvaluation.failure.message), nil
-	}
-	item.Findings = findingsEvaluation.findings
-	item.Decision = findingsEvaluation.decision
-	item.SeverityOverrides = findingsEvaluation.severityOverrides
-	item.SeverityOverrideDiff = findingsEvaluation.severityOverrideDiff
-
-	item, err = evaluateUpdateSourceChanges(item, lock, skillRoot)
-	if err != nil {
-		return updateSkillItem{}, err
-	}
-
-	return finalizeUpdateSkillStatus(item), nil
+	return ctx.evaluate()
 }
