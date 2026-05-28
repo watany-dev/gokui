@@ -57,6 +57,9 @@ Recent completed increments:
 - JSON/SARIF structured-error emitter plumbing is centralized for fetch,
   install, update, and lock verify; inspect keeps its `review-json` special
   case until the inspect/vet report boundary is refactored.
+- parser positional policy is centralized for single-source commands, optional
+  `lock verify` paths, and commands that reject positionals; per-command loops
+  no longer branch directly on option-vs-positional errors.
 
 Validation already run after the latest parser/format increments:
 
@@ -84,6 +87,7 @@ go test ./internal/app -run 'Args|Error|JSON|SARIF|Review|Fetch|Inspect|Vet|Inst
 go test ./internal/app -run 'Update|Args|Error|JSON|SARIF'
 go test ./internal/app -run 'Args|Error|JSON|SARIF|Review|Fetch|Inspect|Vet|Install|Update|LockVerify'
 go test ./internal/app -run 'Error|JSON|SARIF|Fetch|Install|Update|LockVerify'
+go test ./internal/app -run 'Args|Fetch|Inspect|Vet|Install|Update|LockVerify|Error|JSON|SARIF|Review'
 make test
 ```
 
@@ -342,10 +346,9 @@ slice:
 
 1. Audit #7, #10, #12, #13, #15, #16, #17, and #18 against the current code and
    close or update any issues whose requested implementation is now present.
-2. Continue #5 by moving command parser shape toward a shared parser/spec model
-   or by extracting the remaining command-specific positional policy. Keep
-   current error strings and pre-parse structured-output detection stable while
-   doing this.
+2. Continue #5 by moving command parser shape toward a shared parser/spec model.
+   Keep current error strings and pre-parse structured-output detection stable
+   while doing this.
 3. Continue #4 by extracting any remaining command-specific structured-error
    branching outside parse-error handling where it can be done without changing
    current error strings, fallback source/target fields, `review-json`
