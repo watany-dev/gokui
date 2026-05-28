@@ -117,6 +117,9 @@ Recent completed increments:
 - findings SARIF property assembly now uses a report-level input struct, so app
   code adapts findings and leaves the common SARIF document shape in
   `internal/report`.
+- vet policy/profile contract tests are split into `run_vet_policy_test.go`,
+  reducing the broad `run_vet_command_test.go` command-output test file while
+  preserving existing command behavior.
 - SARIF error document construction now uses a shared helper for structured
   error rule ID resolution while keeping command-specific SARIF properties at
   the output boundary.
