@@ -71,9 +71,6 @@ func TestParseFetchArgs(t *testing.T) {
 }
 
 func TestRunFetch(t *testing.T) {
-	origFetch := fetchGitHubSkill
-	t.Cleanup(func() { fetchGitHubSkill = origFetch })
-
 	t.Run("fetches commit-pinned github source", func(t *testing.T) {
 		sourceDir := createSkillSourceForInstallTest(t, "demo-skill")
 		cleanupCalled := false
@@ -171,9 +168,6 @@ func TestRunFetch(t *testing.T) {
 
 	t.Run("propagates metadata write errors", func(t *testing.T) {
 		sourceDir := createSkillSourceForInstallTest(t, "meta-write-fail-skill")
-		fetchGitHubSkill = func(spec srcpkg.GitHubSpec) (string, func(), error) {
-			return sourceDir, nil, nil
-		}
 
 		var stdout strings.Builder
 		var stderr strings.Builder
@@ -182,6 +176,9 @@ func TestRunFetch(t *testing.T) {
 			&stdout,
 			&stderr,
 			fetchDeps{
+				FetchGitHubSkill: func(spec srcpkg.GitHubSpec) (string, func(), error) {
+					return sourceDir, nil, nil
+				},
 				WriteSourceMetadata: func(skillRoot string, meta sourceMetadata) error {
 					return errors.New("metadata write failed")
 				},
@@ -197,9 +194,6 @@ func TestRunFetch(t *testing.T) {
 
 	t.Run("propagates atomic copy errors", func(t *testing.T) {
 		sourceDir := createSkillSourceForInstallTest(t, "atomic-fail-skill")
-		fetchGitHubSkill = func(spec srcpkg.GitHubSpec) (string, func(), error) {
-			return sourceDir, nil, nil
-		}
 
 		var stdout strings.Builder
 		var stderr strings.Builder
@@ -208,6 +202,9 @@ func TestRunFetch(t *testing.T) {
 			&stdout,
 			&stderr,
 			fetchDeps{
+				FetchGitHubSkill: func(spec srcpkg.GitHubSpec) (string, func(), error) {
+					return sourceDir, nil, nil
+				},
 				FetchSkillAtomic: func(skillRoot string, outRoot string, skillName string) (string, error) {
 					return "", errors.New("atomic copy failed")
 				},
@@ -226,12 +223,18 @@ func TestRunFetch(t *testing.T) {
 		if err := os.WriteFile(filepath.Join(bad, "SKILL.md"), []byte("# no frontmatter"), 0o644); err != nil {
 			t.Fatalf("write bad skill: %v", err)
 		}
-		fetchGitHubSkill = func(spec srcpkg.GitHubSpec) (string, func(), error) {
-			return bad, nil, nil
-		}
 		var stdout strings.Builder
 		var stderr strings.Builder
-		code := runFetch([]string{"github:org/repo//skills/demo@8f3c2d1a4b5c6d7e8f901234567890abcdef1234", "--out", t.TempDir()}, &stdout, &stderr)
+		code := runFetchWithDeps(
+			[]string{"github:org/repo//skills/demo@8f3c2d1a4b5c6d7e8f901234567890abcdef1234", "--out", t.TempDir()},
+			&stdout,
+			&stderr,
+			fetchDeps{
+				FetchGitHubSkill: func(spec srcpkg.GitHubSpec) (string, func(), error) {
+					return bad, nil, nil
+				},
+			},
+		)
 		if code != 1 {
 			t.Fatalf("runFetch(frontmatter error) code = %d, want 1", code)
 		}
@@ -240,12 +243,18 @@ func TestRunFetch(t *testing.T) {
 		}
 
 		sourceDir := createSkillSourceForInstallTest(t, "human-fetch-skill")
-		fetchGitHubSkill = func(spec srcpkg.GitHubSpec) (string, func(), error) {
-			return sourceDir, nil, nil
-		}
 		stdout.Reset()
 		stderr.Reset()
-		code = runFetch([]string{"github:org/repo//skills/human-fetch-skill@8f3c2d1a4b5c6d7e8f901234567890abcdef1234", "--out", t.TempDir()}, &stdout, &stderr)
+		code = runFetchWithDeps(
+			[]string{"github:org/repo//skills/human-fetch-skill@8f3c2d1a4b5c6d7e8f901234567890abcdef1234", "--out", t.TempDir()},
+			&stdout,
+			&stderr,
+			fetchDeps{
+				FetchGitHubSkill: func(spec srcpkg.GitHubSpec) (string, func(), error) {
+					return sourceDir, nil, nil
+				},
+			},
+		)
 		if code != 0 {
 			t.Fatalf("runFetch(human) code = %d, want 0", code)
 		}

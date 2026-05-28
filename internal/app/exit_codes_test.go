@@ -32,21 +32,19 @@ func TestCommandExitCodeContract(t *testing.T) {
 	})
 
 	t.Run("fetch", func(t *testing.T) {
-		origFetch := fetchGitHubSkill
-		t.Cleanup(func() { fetchGitHubSkill = origFetch })
-
 		sourceDir := createSkillSourceForInstallTest(t, "exit-code-fetch")
-		fetchGitHubSkill = func(spec srcpkg.GitHubSpec) (string, func(), error) {
-			return sourceDir, nil, nil
-		}
 
 		var stdout strings.Builder
 		var stderr strings.Builder
-		if code := runFetch([]string{
+		if code := runFetchWithDeps([]string{
 			"github:org/repo//skills/exit-code-fetch@8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
 			"--out", t.TempDir(),
 			"--format", "json",
-		}, &stdout, &stderr); code != 0 {
+		}, &stdout, &stderr, fetchDeps{
+			FetchGitHubSkill: func(spec srcpkg.GitHubSpec) (string, func(), error) {
+				return sourceDir, nil, nil
+			},
+		}); code != 0 {
 			t.Fatalf("fetch success code = %d, want 0\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
 		}
 

@@ -7,8 +7,6 @@ import (
 	"runtime"
 	"strings"
 	"testing"
-
-	srcpkg "github.com/watany-dev/gokui/internal/source"
 )
 
 func TestRunInstallJSONOutput(t *testing.T) {
@@ -244,6 +242,21 @@ func TestRunInstallJSONOutput(t *testing.T) {
 				t.Fatalf("stdout should include error_code %q, got %q", wantCode, stdout.String())
 			}
 		}
+		assertJSONErrorCodeWithDeps := func(t *testing.T, args []string, deps installDeps, wantCode string) {
+			t.Helper()
+			var stdout strings.Builder
+			var stderr strings.Builder
+			code := runInstallWithDeps(args, &stdout, &stderr, deps)
+			if code != 1 {
+				t.Fatalf("runInstallWithDeps(%v) code = %d, want 1\nstdout=%q\nstderr=%q", args, code, stdout.String(), stderr.String())
+			}
+			if stderr.Len() != 0 {
+				t.Fatalf("stderr should be empty for json errors, got %q", stderr.String())
+			}
+			if !strings.Contains(stdout.String(), "\"error_code\": \""+wantCode+"\"") {
+				t.Fatalf("stdout should include error_code %q, got %q", wantCode, stdout.String())
+			}
+		}
 
 		source := createSkillSourceForInstallTest(t, "json-install-failure-codes")
 		assertJSONErrorCode(t, []string{
@@ -370,17 +383,15 @@ func TestRunInstallJSONOutput(t *testing.T) {
 				t.Fatalf("writeSourceMetadata() error = %v", err)
 			}
 
-			origFetch := fetchGitHubSkill
-			t.Cleanup(func() { fetchGitHubSkill = origFetch })
-			fetchGitHubSkill = func(spec srcpkg.GitHubSpec) (string, func(), error) {
-				return metaSource, nil, nil
-			}
-
-			assertJSONErrorCode(t, []string{
+			assertJSONErrorCodeWithDeps(t, []string{
 				"github:org/repo//skills/json-meta-invalid@8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
 				"--target", "custom:" + filepath.Join(t.TempDir(), "skills"),
 				"--profile", "strict",
 				"--format", "json",
+			}, installDeps{
+				PrepareEvaluationSource: func(input string, sourceKind string) (string, func(), error) {
+					return metaSource, nil, nil
+				},
 			}, installErrorCodeSourceMetadataFailed)
 		})
 

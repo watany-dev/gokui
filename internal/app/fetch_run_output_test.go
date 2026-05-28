@@ -11,23 +11,21 @@ import (
 )
 
 func TestRunFetchOutputFormats(t *testing.T) {
-	origFetch := fetchGitHubSkill
-	t.Cleanup(func() { fetchGitHubSkill = origFetch })
-
 	t.Run("compact output is single-line summary", func(t *testing.T) {
 		sourceDir := createSkillSourceForInstallTest(t, "compact-fetch-skill")
-		fetchGitHubSkill = func(spec srcpkg.GitHubSpec) (string, func(), error) {
-			return sourceDir, nil, nil
-		}
 		outRoot := t.TempDir()
 
 		var stdout strings.Builder
 		var stderr strings.Builder
-		code := runFetch([]string{
+		code := runFetchWithDeps([]string{
 			"github:org/repo//skills/compact-fetch-skill@8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
 			"--out", outRoot,
 			"--format", "compact",
-		}, &stdout, &stderr)
+		}, &stdout, &stderr, fetchDeps{
+			FetchGitHubSkill: func(spec srcpkg.GitHubSpec) (string, func(), error) {
+				return sourceDir, nil, nil
+			},
+		})
 		if code != 0 {
 			t.Fatalf("runFetch(compact) code = %d, want 0\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
 		}
@@ -52,18 +50,19 @@ func TestRunFetchOutputFormats(t *testing.T) {
 
 	t.Run("sarif output emits single run with fetched decision", func(t *testing.T) {
 		sourceDir := createSkillSourceForInstallTest(t, "sarif-fetch-skill")
-		fetchGitHubSkill = func(spec srcpkg.GitHubSpec) (string, func(), error) {
-			return sourceDir, nil, nil
-		}
 		outRoot := t.TempDir()
 
 		var stdout strings.Builder
 		var stderr strings.Builder
-		code := runFetch([]string{
+		code := runFetchWithDeps([]string{
 			"github:org/repo//skills/sarif-fetch-skill@8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
 			"--out", outRoot,
 			"--format", "sarif",
-		}, &stdout, &stderr)
+		}, &stdout, &stderr, fetchDeps{
+			FetchGitHubSkill: func(spec srcpkg.GitHubSpec) (string, func(), error) {
+				return sourceDir, nil, nil
+			},
+		})
 		if code != 0 {
 			t.Fatalf("runFetch(sarif) code = %d, want 0\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
 		}
@@ -101,16 +100,22 @@ func TestRunFetchOutputFormats(t *testing.T) {
 		}
 
 		sourceDir := createSkillSourceForInstallTest(t, "mkdir-fail-fetch")
-		fetchGitHubSkill = func(spec srcpkg.GitHubSpec) (string, func(), error) {
-			return sourceDir, nil, nil
-		}
 		stdout.Reset()
 		stderr.Reset()
 		outFile := filepath.Join(t.TempDir(), "not-dir")
 		if err := os.WriteFile(outFile, []byte("x"), 0o644); err != nil {
 			t.Fatalf("write out file: %v", err)
 		}
-		code = runFetch([]string{"github:org/repo//skills/mkdir-fail-fetch@8f3c2d1a4b5c6d7e8f901234567890abcdef1234", "--out", filepath.Join(outFile, "child")}, &stdout, &stderr)
+		code = runFetchWithDeps(
+			[]string{"github:org/repo//skills/mkdir-fail-fetch@8f3c2d1a4b5c6d7e8f901234567890abcdef1234", "--out", filepath.Join(outFile, "child")},
+			&stdout,
+			&stderr,
+			fetchDeps{
+				FetchGitHubSkill: func(spec srcpkg.GitHubSpec) (string, func(), error) {
+					return sourceDir, nil, nil
+				},
+			},
+		)
 		if code != 1 {
 			t.Fatalf("runFetch(out mkdir fail) code = %d, want 1", code)
 		}

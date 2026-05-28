@@ -8,8 +8,6 @@ import (
 	srcpkg "github.com/watany-dev/gokui/internal/source"
 )
 
-var fetchGitHubSkill = srcpkg.FetchGitHubSkill
-
 var errGitHubRefNotPinned = errors.New("github source requires a commit-pinned ref")
 
 type policyEvaluationSourceDeps struct {
@@ -18,7 +16,7 @@ type policyEvaluationSourceDeps struct {
 
 func defaultPolicyEvaluationSourceDeps() policyEvaluationSourceDeps {
 	return policyEvaluationSourceDeps{
-		FetchGitHubSkill: fetchGitHubSkill,
+		FetchGitHubSkill: srcpkg.FetchGitHubSkill,
 	}
 }
 

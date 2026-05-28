@@ -11,9 +11,6 @@ import (
 )
 
 func TestRunFetchJSONErrorCodes(t *testing.T) {
-	origFetch := fetchGitHubSkill
-	t.Cleanup(func() { fetchGitHubSkill = origFetch })
-
 	t.Run("json mode failure codes cover major branches", func(t *testing.T) {
 		sourceDir := createSkillSourceForInstallTest(t, "json-error-skill")
 		var stdout strings.Builder
@@ -127,10 +124,16 @@ func TestRunFetchJSONErrorCodes(t *testing.T) {
 		stderr.Reset()
 
 		// source download/materialize failure
-		fetchGitHubSkill = func(spec srcpkg.GitHubSpec) (string, func(), error) {
-			return "", nil, errors.New("download failed")
-		}
-		code = runFetch([]string{"github:org/repo//skills/x@8f3c2d1a4b5c6d7e8f901234567890abcdef1234", "--out", t.TempDir(), "--format", "json"}, &stdout, &stderr)
+		code = runFetchWithDeps(
+			[]string{"github:org/repo//skills/x@8f3c2d1a4b5c6d7e8f901234567890abcdef1234", "--out", t.TempDir(), "--format", "json"},
+			&stdout,
+			&stderr,
+			fetchDeps{
+				FetchGitHubSkill: func(spec srcpkg.GitHubSpec) (string, func(), error) {
+					return "", nil, errors.New("download failed")
+				},
+			},
+		)
 		if code != 1 || !strings.Contains(stdout.String(), fetchErrorCodeSourceDownloadFailed) {
 			t.Fatalf("expected source-download-failed code, got code=%d stdout=%q stderr=%q", code, stdout.String(), stderr.String())
 		}
@@ -138,10 +141,16 @@ func TestRunFetchJSONErrorCodes(t *testing.T) {
 		stderr.Reset()
 
 		// source download/materialize failure with rule-prefixed error
-		fetchGitHubSkill = func(spec srcpkg.GitHubSpec) (string, func(), error) {
-			return "", nil, errors.New("ARCHIVE_PATH_ESCAPE: archive entry escaped source root")
-		}
-		code = runFetch([]string{"github:org/repo//skills/x@8f3c2d1a4b5c6d7e8f901234567890abcdef1234", "--out", t.TempDir(), "--format", "json"}, &stdout, &stderr)
+		code = runFetchWithDeps(
+			[]string{"github:org/repo//skills/x@8f3c2d1a4b5c6d7e8f901234567890abcdef1234", "--out", t.TempDir(), "--format", "json"},
+			&stdout,
+			&stderr,
+			fetchDeps{
+				FetchGitHubSkill: func(spec srcpkg.GitHubSpec) (string, func(), error) {
+					return "", nil, errors.New("ARCHIVE_PATH_ESCAPE: archive entry escaped source root")
+				},
+			},
+		)
 		if code != 1 || !strings.Contains(stdout.String(), fetchErrorCodeSourceDownloadFailed) {
 			t.Fatalf("expected source-download-failed code for rule-prefixed error, got code=%d stdout=%q stderr=%q", code, stdout.String(), stderr.String())
 		}
@@ -152,10 +161,16 @@ func TestRunFetchJSONErrorCodes(t *testing.T) {
 		stderr.Reset()
 
 		// source download/materialize failure with https rule-prefixed error
-		fetchGitHubSkill = func(spec srcpkg.GitHubSpec) (string, func(), error) {
-			return "", nil, errors.New("GITHUB_ARCHIVE_SCHEME_INVALID: github archive URL must use https")
-		}
-		code = runFetch([]string{"github:org/repo//skills/x@8f3c2d1a4b5c6d7e8f901234567890abcdef1234", "--out", t.TempDir(), "--format", "json"}, &stdout, &stderr)
+		code = runFetchWithDeps(
+			[]string{"github:org/repo//skills/x@8f3c2d1a4b5c6d7e8f901234567890abcdef1234", "--out", t.TempDir(), "--format", "json"},
+			&stdout,
+			&stderr,
+			fetchDeps{
+				FetchGitHubSkill: func(spec srcpkg.GitHubSpec) (string, func(), error) {
+					return "", nil, errors.New("GITHUB_ARCHIVE_SCHEME_INVALID: github archive URL must use https")
+				},
+			},
+		)
 		if code != 1 || !strings.Contains(stdout.String(), fetchErrorCodeSourceDownloadFailed) {
 			t.Fatalf("expected source-download-failed code for https rule-prefixed error, got code=%d stdout=%q stderr=%q", code, stdout.String(), stderr.String())
 		}
@@ -170,10 +185,16 @@ func TestRunFetchJSONErrorCodes(t *testing.T) {
 		if err := os.WriteFile(filepath.Join(badSkill, "SKILL.md"), []byte("# bad"), 0o644); err != nil {
 			t.Fatalf("write bad SKILL.md: %v", err)
 		}
-		fetchGitHubSkill = func(spec srcpkg.GitHubSpec) (string, func(), error) {
-			return badSkill, nil, nil
-		}
-		code = runFetch([]string{"github:org/repo//skills/x@8f3c2d1a4b5c6d7e8f901234567890abcdef1234", "--out", t.TempDir(), "--format", "json"}, &stdout, &stderr)
+		code = runFetchWithDeps(
+			[]string{"github:org/repo//skills/x@8f3c2d1a4b5c6d7e8f901234567890abcdef1234", "--out", t.TempDir(), "--format", "json"},
+			&stdout,
+			&stderr,
+			fetchDeps{
+				FetchGitHubSkill: func(spec srcpkg.GitHubSpec) (string, func(), error) {
+					return badSkill, nil, nil
+				},
+			},
+		)
 		if code != 1 || !strings.Contains(stdout.String(), fetchErrorCodeSkillInvalid) {
 			t.Fatalf("expected skill-invalid code, got code=%d stdout=%q stderr=%q", code, stdout.String(), stderr.String())
 		}
@@ -181,14 +202,20 @@ func TestRunFetchJSONErrorCodes(t *testing.T) {
 		stderr.Reset()
 
 		// output prepare failure
-		fetchGitHubSkill = func(spec srcpkg.GitHubSpec) (string, func(), error) {
-			return sourceDir, nil, nil
-		}
 		outFile := filepath.Join(t.TempDir(), "file")
 		if err := os.WriteFile(outFile, []byte("x"), 0o644); err != nil {
 			t.Fatalf("write out file: %v", err)
 		}
-		code = runFetch([]string{"github:org/repo//skills/json-error-skill@8f3c2d1a4b5c6d7e8f901234567890abcdef1234", "--out", filepath.Join(outFile, "child"), "--format", "json"}, &stdout, &stderr)
+		code = runFetchWithDeps(
+			[]string{"github:org/repo//skills/json-error-skill@8f3c2d1a4b5c6d7e8f901234567890abcdef1234", "--out", filepath.Join(outFile, "child"), "--format", "json"},
+			&stdout,
+			&stderr,
+			fetchDeps{
+				FetchGitHubSkill: func(spec srcpkg.GitHubSpec) (string, func(), error) {
+					return sourceDir, nil, nil
+				},
+			},
+		)
 		if code != 1 || !strings.Contains(stdout.String(), fetchErrorCodeOutputPrepareFailed) {
 			t.Fatalf("expected output-prepare-failed code, got code=%d stdout=%q stderr=%q", code, stdout.String(), stderr.String())
 		}
@@ -201,6 +228,9 @@ func TestRunFetchJSONErrorCodes(t *testing.T) {
 			&stdout,
 			&stderr,
 			fetchDeps{
+				FetchGitHubSkill: func(spec srcpkg.GitHubSpec) (string, func(), error) {
+					return sourceDir, nil, nil
+				},
 				FetchSkillAtomic: func(skillRoot string, outRoot string, skillName string) (string, error) {
 					return "", errors.New("copy failed")
 				},
@@ -218,6 +248,9 @@ func TestRunFetchJSONErrorCodes(t *testing.T) {
 			&stdout,
 			&stderr,
 			fetchDeps{
+				FetchGitHubSkill: func(spec srcpkg.GitHubSpec) (string, func(), error) {
+					return sourceDir, nil, nil
+				},
 				FetchSkillAtomic: func(skillRoot string, outRoot string, skillName string) (string, error) {
 					return filepath.Join(outRoot, "missing-after-copy"), nil
 				},
@@ -235,6 +268,9 @@ func TestRunFetchJSONErrorCodes(t *testing.T) {
 			&stdout,
 			&stderr,
 			fetchDeps{
+				FetchGitHubSkill: func(spec srcpkg.GitHubSpec) (string, func(), error) {
+					return sourceDir, nil, nil
+				},
 				WriteSourceMetadata: func(skillRoot string, meta sourceMetadata) error {
 					return errors.New("meta write failed")
 				},
@@ -252,6 +288,9 @@ func TestRunFetchJSONErrorCodes(t *testing.T) {
 			&stdout,
 			&stderr,
 			fetchDeps{
+				FetchGitHubSkill: func(spec srcpkg.GitHubSpec) (string, func(), error) {
+					return sourceDir, nil, nil
+				},
 				WriteSourceMetadata: func(skillRoot string, meta sourceMetadata) error {
 					return errors.New(ruleSourceMetadataSymlink + ": source metadata file must not be a symlink")
 				},

@@ -66,7 +66,7 @@ type fetchDeps struct {
 
 func defaultFetchDeps() fetchDeps {
 	return fetchDeps{
-		FetchGitHubSkill:    fetchGitHubSkill,
+		FetchGitHubSkill:    srcpkg.FetchGitHubSkill,
 		FetchSkillAtomic:    fetchSkillAtomic,
 		WriteSourceMetadata: writeSourceMetadata,
 		Now:                 time.Now,
@@ -347,7 +347,7 @@ func runFetchWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps fe
 
 func normalizeFetchDeps(deps fetchDeps) fetchDeps {
 	if deps.FetchGitHubSkill == nil {
-		deps.FetchGitHubSkill = fetchGitHubSkill
+		deps.FetchGitHubSkill = srcpkg.FetchGitHubSkill
 	}
 	if deps.FetchSkillAtomic == nil {
 		deps.FetchSkillAtomic = fetchSkillAtomic

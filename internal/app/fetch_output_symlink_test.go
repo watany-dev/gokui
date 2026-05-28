@@ -15,13 +15,10 @@ func TestRunFetchRejectsSymlinkOutputRoot(t *testing.T) {
 		t.Skip("symlink permissions differ on windows")
 	}
 
-	origFetch := fetchGitHubSkill
-	t.Cleanup(func() { fetchGitHubSkill = origFetch })
-
 	sourceDir := createSkillSourceForInstallTest(t, "fetch-symlink-out")
-	fetchGitHubSkill = func(spec srcpkg.GitHubSpec) (string, func(), error) {
+	deps := fetchDeps{FetchGitHubSkill: func(spec srcpkg.GitHubSpec) (string, func(), error) {
 		return sourceDir, nil, nil
-	}
+	}}
 
 	base := t.TempDir()
 	realOut := filepath.Join(base, "real-out")
@@ -35,11 +32,11 @@ func TestRunFetchRejectsSymlinkOutputRoot(t *testing.T) {
 
 	var stdout strings.Builder
 	var stderr strings.Builder
-	code := runFetch([]string{
+	code := runFetchWithDeps([]string{
 		"github:org/repo//skills/fetch-symlink-out@8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
 		"--out", symlinkOut,
 		"--format", "json",
-	}, &stdout, &stderr)
+	}, &stdout, &stderr, deps)
 	if code != 1 {
 		t.Fatalf("runFetch(symlink out) code = %d, want 1\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
 	}
@@ -55,10 +52,10 @@ func TestRunFetchRejectsSymlinkOutputRoot(t *testing.T) {
 
 	stdout.Reset()
 	stderr.Reset()
-	code = runFetch([]string{
+	code = runFetchWithDeps([]string{
 		"github:org/repo//skills/fetch-symlink-out@8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
 		"--out", symlinkOut,
-	}, &stdout, &stderr)
+	}, &stdout, &stderr, deps)
 	if code != 1 {
 		t.Fatalf("runFetch(human symlink out) code = %d, want 1\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
 	}
@@ -75,13 +72,10 @@ func TestRunFetchRejectsSymlinkOutputEntry(t *testing.T) {
 		t.Skip("symlink permissions differ on windows")
 	}
 
-	origFetch := fetchGitHubSkill
-	t.Cleanup(func() { fetchGitHubSkill = origFetch })
-
 	sourceDir := createSkillSourceForInstallTest(t, "fetch-symlink-entry")
-	fetchGitHubSkill = func(spec srcpkg.GitHubSpec) (string, func(), error) {
+	deps := fetchDeps{FetchGitHubSkill: func(spec srcpkg.GitHubSpec) (string, func(), error) {
 		return sourceDir, nil, nil
-	}
+	}}
 
 	base := t.TempDir()
 	outRoot := filepath.Join(base, "out")
@@ -98,11 +92,11 @@ func TestRunFetchRejectsSymlinkOutputEntry(t *testing.T) {
 
 	var stdout strings.Builder
 	var stderr strings.Builder
-	code := runFetch([]string{
+	code := runFetchWithDeps([]string{
 		"github:org/repo//skills/fetch-symlink-entry@8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
 		"--out", outRoot,
 		"--format", "json",
-	}, &stdout, &stderr)
+	}, &stdout, &stderr, deps)
 	if code != 1 {
 		t.Fatalf("runFetch(symlink output entry) code = %d, want 1\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
 	}
@@ -118,10 +112,10 @@ func TestRunFetchRejectsSymlinkOutputEntry(t *testing.T) {
 
 	stdout.Reset()
 	stderr.Reset()
-	code = runFetch([]string{
+	code = runFetchWithDeps([]string{
 		"github:org/repo//skills/fetch-symlink-entry@8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
 		"--out", outRoot,
-	}, &stdout, &stderr)
+	}, &stdout, &stderr, deps)
 	if code != 1 {
 		t.Fatalf("runFetch(human symlink output entry) code = %d, want 1\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
 	}

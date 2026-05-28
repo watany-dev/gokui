@@ -41,13 +41,15 @@ func TestPreparePolicyEvaluationSource(t *testing.T) {
 
 	t.Run("github source uses fetcher and validates result", func(t *testing.T) {
 		sourceDir := createSkillSourceForInstallTest(t, "github-prepare-skill")
-		origFetch := fetchGitHubSkill
-		t.Cleanup(func() { fetchGitHubSkill = origFetch })
-		fetchGitHubSkill = func(spec srcpkg.GitHubSpec) (string, func(), error) {
-			return sourceDir, nil, nil
-		}
-
-		root, cleanup, err := preparePolicyEvaluationSource("github:org/repo//skills/demo@8f3c2d1a4b5c6d7e8f901234567890abcdef1234", "github-source")
+		root, cleanup, err := preparePolicyEvaluationSourceWithDeps(
+			"github:org/repo//skills/demo@8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
+			"github-source",
+			policyEvaluationSourceDeps{
+				FetchGitHubSkill: func(spec srcpkg.GitHubSpec) (string, func(), error) {
+					return sourceDir, nil, nil
+				},
+			},
+		)
 		if err != nil {
 			t.Fatalf("preparePolicyEvaluationSource(github) error = %v", err)
 		}
@@ -87,23 +89,30 @@ func TestPreparePolicyEvaluationSource(t *testing.T) {
 	})
 
 	t.Run("github fetch error and cleanup on validation failure", func(t *testing.T) {
-		origFetch := fetchGitHubSkill
-		t.Cleanup(func() { fetchGitHubSkill = origFetch })
-
-		fetchGitHubSkill = func(spec srcpkg.GitHubSpec) (string, func(), error) {
-			return "", nil, errors.New("fetch failed")
-		}
-		_, _, err := preparePolicyEvaluationSource("github:org/repo//skills/demo@8f3c2d1a4b5c6d7e8f901234567890abcdef1234", "github-source")
+		_, _, err := preparePolicyEvaluationSourceWithDeps(
+			"github:org/repo//skills/demo@8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
+			"github-source",
+			policyEvaluationSourceDeps{
+				FetchGitHubSkill: func(spec srcpkg.GitHubSpec) (string, func(), error) {
+					return "", nil, errors.New("fetch failed")
+				},
+			},
+		)
 		if err == nil || !strings.Contains(err.Error(), "fetch failed") {
 			t.Fatalf("expected fetch error, got %v", err)
 		}
 
 		cleaned := false
 		badSource := t.TempDir()
-		fetchGitHubSkill = func(spec srcpkg.GitHubSpec) (string, func(), error) {
-			return badSource, func() { cleaned = true }, nil
-		}
-		_, _, err = preparePolicyEvaluationSource("github:org/repo//skills/demo@8f3c2d1a4b5c6d7e8f901234567890abcdef1234", "github-source")
+		_, _, err = preparePolicyEvaluationSourceWithDeps(
+			"github:org/repo//skills/demo@8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
+			"github-source",
+			policyEvaluationSourceDeps{
+				FetchGitHubSkill: func(spec srcpkg.GitHubSpec) (string, func(), error) {
+					return badSource, func() { cleaned = true }, nil
+				},
+			},
+		)
 		if err == nil {
 			t.Fatal("expected validation error for missing SKILL.md")
 		}

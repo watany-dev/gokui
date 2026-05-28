@@ -9,7 +9,6 @@ import (
 	"testing"
 
 	policypkg "github.com/watany-dev/gokui/internal/policy"
-	srcpkg "github.com/watany-dev/gokui/internal/source"
 )
 
 func TestRunUpdateDryRunRejectedAndError(t *testing.T) {
@@ -602,15 +601,13 @@ func TestRunUpdateDryRunRejectedAndError(t *testing.T) {
 			t.Fatalf("writeSourceMetadata(installed) error = %v", err)
 		}
 
-		origFetch := fetchGitHubSkill
-		t.Cleanup(func() { fetchGitHubSkill = origFetch })
-		fetchGitHubSkill = func(spec srcpkg.GitHubSpec) (string, func(), error) {
-			return sourceDir, nil, nil
-		}
-
 		var stdout strings.Builder
 		var stderr strings.Builder
-		code := runUpdate([]string{"--dry-run", "--target", "custom:" + targetRoot, "--format", "json"}, &stdout, &stderr)
+		code := runUpdateWithDeps([]string{"--dry-run", "--target", "custom:" + targetRoot, "--format", "json"}, &stdout, &stderr, updateDeps{
+			PrepareEvaluationSource: func(input string, sourceKind string) (string, func(), error) {
+				return sourceDir, nil, nil
+			},
+		})
 		if code != 0 {
 			t.Fatalf("runUpdate(github evaluated) code = %d, want 0\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
 		}

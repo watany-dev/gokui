@@ -6,8 +6,6 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-
-	srcpkg "github.com/watany-dev/gokui/internal/source"
 )
 
 func TestRunInstallUpdateLockCommands(t *testing.T) {
@@ -165,15 +163,14 @@ func TestRunInstallUpdateLockCommands(t *testing.T) {
 		var stdout bytes.Buffer
 		var stderr bytes.Buffer
 
-		origFetch := fetchGitHubSkill
-		t.Cleanup(func() { fetchGitHubSkill = origFetch })
 		fakeSource := createSkillSourceForInstallTest(t, "clean-skill")
-		fetchGitHubSkill = func(spec srcpkg.GitHubSpec) (string, func(), error) {
-			return fakeSource, nil, nil
-		}
 
 		targetRoot := filepath.Join(t.TempDir(), "skills")
-		code := Run([]string{"install", "github:org/repo//skill@8f3c2d1a4b5c6d7e8f901234567890abcdef1234", "--target", "custom:" + targetRoot, "--profile", "strict"}, &stdout, &stderr, cfg)
+		code := runInstallWithDeps([]string{"github:org/repo//skill@8f3c2d1a4b5c6d7e8f901234567890abcdef1234", "--target", "custom:" + targetRoot, "--profile", "strict"}, &stdout, &stderr, installDeps{
+			PrepareEvaluationSource: func(input string, sourceKind string) (string, func(), error) {
+				return fakeSource, nil, nil
+			},
+		})
 		if code != 0 {
 			t.Fatalf("Run() code = %d, want 0", code)
 		}

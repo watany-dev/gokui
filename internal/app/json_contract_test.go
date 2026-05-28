@@ -69,21 +69,19 @@ func TestInspectJSONErrorContract(t *testing.T) {
 }
 
 func TestFetchJSONContract(t *testing.T) {
-	origFetch := fetchGitHubSkill
-	t.Cleanup(func() { fetchGitHubSkill = origFetch })
-
 	sourceDir := createSkillSourceForInstallTest(t, "fetch-json-contract")
-	fetchGitHubSkill = func(spec srcpkg.GitHubSpec) (string, func(), error) {
-		return sourceDir, nil, nil
-	}
 
 	var stdout strings.Builder
 	var stderr strings.Builder
-	code := runFetch([]string{
+	code := runFetchWithDeps([]string{
 		"github:org/repo//skills/fetch-json-contract@8f3c2d1a4b5c6d7e8f901234567890abcdef1234",
 		"--out", t.TempDir(),
 		"--format", "json",
-	}, &stdout, &stderr)
+	}, &stdout, &stderr, fetchDeps{
+		FetchGitHubSkill: func(spec srcpkg.GitHubSpec) (string, func(), error) {
+			return sourceDir, nil, nil
+		},
+	})
 	if code != 0 {
 		t.Fatalf("runFetch() code = %d, want 0\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
 	}

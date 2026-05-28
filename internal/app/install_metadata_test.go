@@ -7,24 +7,21 @@ import (
 	"runtime"
 	"strings"
 	"testing"
-
-	srcpkg "github.com/watany-dev/gokui/internal/source"
 )
 
 func TestInstallUsesAndValidatesSourceMetadata(t *testing.T) {
 	t.Run("github install writes source metadata and verifies cleanly", func(t *testing.T) {
 		src := createSkillSourceForInstallTest(t, "github-install-meta")
-		origFetch := fetchGitHubSkill
-		t.Cleanup(func() { fetchGitHubSkill = origFetch })
-		fetchGitHubSkill = func(spec srcpkg.GitHubSpec) (string, func(), error) {
-			return src, nil, nil
-		}
 
 		targetRoot := filepath.Join(t.TempDir(), "skills")
 		var stdout strings.Builder
 		var stderr strings.Builder
 		input := "github:org/repo//skills/github-install-meta@8f3c2d1a4b5c6d7e8f901234567890abcdef1234"
-		code := runInstall([]string{input, "--target", "custom:" + targetRoot, "--profile", "strict"}, &stdout, &stderr)
+		code := runInstallWithDeps([]string{input, "--target", "custom:" + targetRoot, "--profile", "strict"}, &stdout, &stderr, installDeps{
+			PrepareEvaluationSource: func(input string, sourceKind string) (string, func(), error) {
+				return src, nil, nil
+			},
+		})
 		if code != 0 {
 			t.Fatalf("runInstall() code = %d, want 0\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
 		}
@@ -103,15 +100,18 @@ func TestInstallUsesAndValidatesSourceMetadata(t *testing.T) {
 			t.Fatalf("writeSourceMetadata() error = %v", err)
 		}
 
-		origFetch := fetchGitHubSkill
-		t.Cleanup(func() { fetchGitHubSkill = origFetch })
-		fetchGitHubSkill = func(spec srcpkg.GitHubSpec) (string, func(), error) {
-			return src, nil, nil
-		}
-
 		var stdout strings.Builder
 		var stderr strings.Builder
-		code := runInstall([]string{"github:org/repo//skills/bad-meta-skill@8f3c2d1a4b5c6d7e8f901234567890abcdef1234", "--target", "custom:" + filepath.Join(t.TempDir(), "skills"), "--profile", "strict"}, &stdout, &stderr)
+		code := runInstallWithDeps(
+			[]string{"github:org/repo//skills/bad-meta-skill@8f3c2d1a4b5c6d7e8f901234567890abcdef1234", "--target", "custom:" + filepath.Join(t.TempDir(), "skills"), "--profile", "strict"},
+			&stdout,
+			&stderr,
+			installDeps{
+				PrepareEvaluationSource: func(input string, sourceKind string) (string, func(), error) {
+					return src, nil, nil
+				},
+			},
+		)
 		if code != 1 {
 			t.Fatalf("runInstall() code = %d, want 1", code)
 		}
