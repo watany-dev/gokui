@@ -15,6 +15,7 @@ import (
 	"github.com/watany-dev/gokui/internal/limitio"
 	rulepkg "github.com/watany-dev/gokui/internal/rule"
 	"github.com/watany-dev/gokui/internal/safefs"
+	"github.com/watany-dev/gokui/internal/scan"
 )
 
 var updateURLPattern = regexp.MustCompile(`(?i)(?:https?://\[[0-9a-z:._%-]+\](?::\d+)?[^\s<>"')]*|https?://[^\s<>"')\]]+|//\[[0-9a-z:._%-]+\](?::\d+)?[^\s<>"')]*|//[^\s<>"')\]]+)`)
@@ -172,7 +173,18 @@ func collectExecutableFilesWithLimits(root string, limits updateScanLimits) ([]s
 		if scannedFiles > limits.MaxScanFiles {
 			return fmt.Errorf("executable scan exceeded max file count: %d", limits.MaxScanFiles)
 		}
-		if info.Mode().Perm()&0o111 == 0 {
+		isExecutable := info.Mode().Perm()&0o111 != 0
+		if !isExecutable && scan.HasScriptLikeExtension(d.Name()) {
+			isExecutable = true
+		}
+		if !isExecutable {
+			hasShebang, probeErr := scan.HasScriptShebang(path)
+			if probeErr != nil {
+				return probeErr
+			}
+			isExecutable = hasShebang
+		}
+		if !isExecutable {
 			return nil
 		}
 		rel, err := filepath.Rel(root, path)

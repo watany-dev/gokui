@@ -88,9 +88,9 @@ func TestHasScriptShebang(t *testing.T) {
 		if err := os.WriteFile(path, []byte("#!/bin/sh\necho hi\n"), 0o644); err != nil {
 			t.Fatalf("write shebang file: %v", err)
 		}
-		ok, err := hasScriptShebang(path)
+		ok, err := HasScriptShebang(path)
 		if err != nil {
-			t.Fatalf("hasScriptShebang error: %v", err)
+			t.Fatalf("HasScriptShebang error: %v", err)
 		}
 		if !ok {
 			t.Fatal("expected shebang detection")
@@ -107,16 +107,16 @@ func TestHasScriptShebang(t *testing.T) {
 		if err := os.WriteFile(empty, []byte(""), 0o644); err != nil {
 			t.Fatalf("write empty file: %v", err)
 		}
-		if ok, err := hasScriptShebang(plain); err != nil || ok {
+		if ok, err := HasScriptShebang(plain); err != nil || ok {
 			t.Fatalf("expected non-shebang false, got ok=%v err=%v", ok, err)
 		}
-		if ok, err := hasScriptShebang(empty); err != nil || ok {
+		if ok, err := HasScriptShebang(empty); err != nil || ok {
 			t.Fatalf("expected empty file false, got ok=%v err=%v", ok, err)
 		}
 	})
 
 	t.Run("returns error when file missing", func(t *testing.T) {
-		_, err := hasScriptShebang(filepath.Join(t.TempDir(), "missing"))
+		_, err := HasScriptShebang(filepath.Join(t.TempDir(), "missing"))
 		if err == nil {
 			t.Fatal("expected missing-file error")
 		}
