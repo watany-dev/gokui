@@ -64,8 +64,7 @@ func scanTargets(skillRoot string) ([]scanTarget, error) {
 			})
 			return nil
 		}
-		ext := strings.ToLower(filepath.Ext(lower))
-		if _, ok := scriptLikeExtensions[ext]; ok {
+		if HasScriptLikeExtension(lower) {
 			entries = append(entries, scanTarget{
 				Absolute: path,
 				Relative: rel,
@@ -83,7 +82,7 @@ func scanTargets(skillRoot string) ([]scanTarget, error) {
 			})
 			return nil
 		}
-		isShebangScript, probeErr := hasScriptShebang(path)
+		isShebangScript, probeErr := HasScriptShebang(path)
 		if probeErr != nil {
 			return fmt.Errorf("failed to inspect scan source file type: %w", probeErr)
 		}
@@ -110,7 +109,19 @@ func scanTargets(skillRoot string) ([]scanTarget, error) {
 	return entries, nil
 }
 
-func hasScriptShebang(path string) (bool, error) {
+// HasScriptLikeExtension reports whether name has a script-like file extension
+// (for example .sh, .ps1, .py). It is the cross-platform half of executability
+// detection used where the POSIX execute bit is unavailable.
+func HasScriptLikeExtension(name string) bool {
+	ext := strings.ToLower(filepath.Ext(strings.ToLower(name)))
+	_, ok := scriptLikeExtensions[ext]
+	return ok
+}
+
+// HasScriptShebang reports whether the file at path begins with a "#!" shebang,
+// probing at most the first maxShebangProbeBytes bytes. A short or empty read is
+// treated as "no shebang" rather than an error.
+func HasScriptShebang(path string) (bool, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return false, err

@@ -3,7 +3,6 @@ package app
 import (
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
 
@@ -313,10 +312,6 @@ func TestEvaluateUpdateFileDiff(t *testing.T) {
 }
 
 func TestCollectUpdateSignals(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("executable mode bits differ on windows")
-	}
-
 	installedRoot := filepath.Join(t.TempDir(), "installed")
 	currentRoot := filepath.Join(t.TempDir(), "current")
 	if err := os.MkdirAll(filepath.Join(installedRoot, "scripts"), 0o755); err != nil {
@@ -577,10 +572,6 @@ func TestEvaluateUpdateSourceFindings(t *testing.T) {
 }
 
 func TestEvaluateUpdateSourceChanges(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("executable mode bits differ on windows")
-	}
-
 	installedRoot := filepath.Join(t.TempDir(), "installed")
 	currentRoot := filepath.Join(t.TempDir(), "current")
 	if err := os.MkdirAll(filepath.Join(installedRoot, "scripts"), 0o755); err != nil {

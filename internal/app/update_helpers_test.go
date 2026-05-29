@@ -206,10 +206,6 @@ func TestUpdateHelpers(t *testing.T) {
 	})
 
 	t.Run("collectExecutableFiles returns executable relative paths", func(t *testing.T) {
-		if runtime.GOOS == "windows" {
-			t.Skip("executable mode bits differ on windows")
-		}
-
 		root := t.TempDir()
 		binDir := filepath.Join(root, "bin")
 		if err := os.Mkdir(binDir, 0o755); err != nil {
@@ -228,6 +224,30 @@ func TestUpdateHelpers(t *testing.T) {
 		}
 		if len(got) != 1 || got[0] != "bin/run.sh" {
 			t.Fatalf("collectExecutableFiles() = %+v, want [bin/run.sh]", got)
+		}
+	})
+
+	t.Run("collectExecutableFiles detects scripts without exec bit", func(t *testing.T) {
+		// Windows cannot represent the POSIX execute bit, so detection must
+		// also rely on a shebang or script-like extension. These fixtures omit
+		// the +x bit to exercise exactly the code path Windows depends on.
+		root := t.TempDir()
+		if err := os.WriteFile(filepath.Join(root, "new.sh"), []byte("#!/bin/sh\necho hi\n"), 0o644); err != nil {
+			t.Fatalf("write shebang script: %v", err)
+		}
+		if err := os.WriteFile(filepath.Join(root, "tool.py"), []byte("print('hi')\n"), 0o644); err != nil {
+			t.Fatalf("write extension script: %v", err)
+		}
+		if err := os.WriteFile(filepath.Join(root, "README.md"), []byte("not executable"), 0o644); err != nil {
+			t.Fatalf("write non-executable: %v", err)
+		}
+
+		got, err := collectExecutableFiles(root)
+		if err != nil {
+			t.Fatalf("collectExecutableFiles() error = %v", err)
+		}
+		if strings.Join(got, ",") != "new.sh,tool.py" {
+			t.Fatalf("collectExecutableFiles() = %+v, want [new.sh tool.py]", got)
 		}
 	})
 
