@@ -128,6 +128,8 @@ func TestEvaluateUpdateSkillAdditionalBranches(t *testing.T) {
 				Changed: []string{},
 			},
 		}
+		writeMatchingInstallReportForLockTest(t, item.Path, lock)
+
 		got, err := evaluateUpdateSkill(item, lock, false, policypkg.Config{})
 		if err != nil {
 			t.Fatalf("evaluateUpdateSkill() error = %v", err)

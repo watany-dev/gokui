@@ -500,6 +500,8 @@ func TestValidateUpdateLockForEvaluation(t *testing.T) {
 	}
 	item := updateSkillItem{Name: "skill", Path: installedPath}
 
+	writeMatchingInstallReportForLockTest(t, installedPath, validLock)
+
 	got, failure := validateUpdateLockForEvaluation(item, validLock)
 	if failure != nil {
 		t.Fatalf("validateUpdateLockForEvaluation() failure = %+v", failure)
