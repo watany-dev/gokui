@@ -236,7 +236,7 @@ func (f *GitHubFetcher) downloadGitHubArchive(spec GitHubSpec, archivePath strin
 		_ = os.Remove(archivePath)
 		return fmt.Errorf("failed to close github archive file: %w", err)
 	}
-	if err := validateGzipArchiveFile(archivePath); err != nil {
+	if err := validateGzipArchiveFile(archivePath, maxBytes); err != nil {
 		_ = os.Remove(archivePath)
 		return err
 	}
@@ -291,7 +291,7 @@ func validateGitHubArchiveResponseHeaders(resp *http.Response) error {
 	}
 }
 
-func validateGzipArchiveFile(path string) error {
+func validateGzipArchiveFile(path string, maxDecompressedBytes int64) error {
 	f, err := os.Open(path)
 	if err != nil {
 		return fmt.Errorf("failed to reopen github archive for validation: %w", err)
@@ -311,8 +311,11 @@ func validateGzipArchiveFile(path string) error {
 		return fmt.Errorf("github archive payload must be gzip: %w", err)
 	}
 	gz.Multistream(false)
-	if _, err := io.Copy(io.Discard, gz); err != nil {
+	if _, err := limitio.CopyWithStrictLimit(io.Discard, gz, maxDecompressedBytes); err != nil {
 		_ = gz.Close()
+		if limitio.IsSizeExceeded(err) {
+			return fmt.Errorf("github archive exceeds max decompressed size")
+		}
 		return fmt.Errorf("github archive payload must be valid gzip stream: %w", err)
 	}
 	if err := gz.Close(); err != nil {

@@ -273,13 +273,13 @@ func TestValidateGzipArchiveFile(t *testing.T) {
 		if err := os.WriteFile(path, archive, 0o644); err != nil {
 			t.Fatalf("write archive: %v", err)
 		}
-		if err := validateGzipArchiveFile(path); err != nil {
+		if err := validateGzipArchiveFile(path, defaultMaxGitHubArchiveBytes); err != nil {
 			t.Fatalf("expected valid gzip stream, got %v", err)
 		}
 	})
 
 	t.Run("missing archive file returns reopen error", func(t *testing.T) {
-		err := validateGzipArchiveFile(filepath.Join(t.TempDir(), "missing.tar.gz"))
+		err := validateGzipArchiveFile(filepath.Join(t.TempDir(), "missing.tar.gz"), defaultMaxGitHubArchiveBytes)
 		if err == nil || !strings.Contains(err.Error(), "failed to reopen github archive for validation") {
 			t.Fatalf("expected reopen error, got %v", err)
 		}
@@ -290,7 +290,7 @@ func TestValidateGzipArchiveFile(t *testing.T) {
 		if err := os.WriteFile(path, []byte{0x1f, 0x8b}, 0o644); err != nil {
 			t.Fatalf("write short payload: %v", err)
 		}
-		err := validateGzipArchiveFile(path)
+		err := validateGzipArchiveFile(path, defaultMaxGitHubArchiveBytes)
 		if err == nil || !strings.Contains(err.Error(), "github archive payload must be gzip") {
 			t.Fatalf("expected short payload error, got %v", err)
 		}
@@ -305,9 +305,30 @@ func TestValidateGzipArchiveFile(t *testing.T) {
 		if err := os.WriteFile(path, payload, 0o644); err != nil {
 			t.Fatalf("write trailing payload: %v", err)
 		}
-		err := validateGzipArchiveFile(path)
+		err := validateGzipArchiveFile(path, defaultMaxGitHubArchiveBytes)
 		if err == nil || !strings.Contains(err.Error(), "single gzip stream without trailing bytes") {
 			t.Fatalf("expected trailing-bytes validation error, got %v", err)
+		}
+	})
+
+	t.Run("oversized decompressed payload is rejected", func(t *testing.T) {
+		var compressed bytes.Buffer
+		gz := gzip.NewWriter(&compressed)
+		if _, err := io.CopyN(gz, bytes.NewReader(make([]byte, 4096)), 4096); err != nil {
+			t.Fatalf("write gzip payload: %v", err)
+		}
+		if err := gz.Close(); err != nil {
+			t.Fatalf("close gzip writer: %v", err)
+		}
+
+		path := filepath.Join(t.TempDir(), "large-decompressed.tar.gz")
+		if err := os.WriteFile(path, compressed.Bytes(), 0o644); err != nil {
+			t.Fatalf("write archive: %v", err)
+		}
+
+		err := validateGzipArchiveFile(path, 1024)
+		if err == nil || !strings.Contains(err.Error(), "exceeds max decompressed size") {
+			t.Fatalf("expected decompressed size limit error, got %v", err)
 		}
 	})
 }
