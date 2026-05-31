@@ -17,11 +17,11 @@ func writeMatchingInstallReportForLockTest(t *testing.T, skillPath string, lock 
 			Kind:  lock.Source.Kind,
 		},
 		PolicyProfile:     lock.Policy.Profile,
-		Decision:            "PASS",
-		InstalledPath:       skillPath,
-		Installed:           true,
-		Findings:            nil,
-		SeverityOverrides:   nil,
+		Decision:          "PASS",
+		InstalledPath:     skillPath,
+		Installed:         true,
+		Findings:          nil,
+		SeverityOverrides: nil,
 	}
 	raw, err := json.MarshalIndent(report, "", "  ")
 	if err != nil {
