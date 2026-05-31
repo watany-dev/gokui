@@ -350,7 +350,7 @@ func TestValidateUpdateLockEnvelope(t *testing.T) {
 }
 
 func TestValidateUpdateLockAgainstInstallReport(t *testing.T) {
-	t.Run("missing install report is tolerated", func(t *testing.T) {
+	t.Run("missing install report fails closed", func(t *testing.T) {
 		path := t.TempDir()
 		lock := installLock{
 			Schema:      "gokui.lock/v1",
@@ -372,8 +372,9 @@ func TestValidateUpdateLockAgainstInstallReport(t *testing.T) {
 				},
 			},
 		}
-		if err := validateUpdateLockAgainstInstallReport(path, lock); err != nil {
-			t.Fatalf("validateUpdateLockAgainstInstallReport() error = %v", err)
+		err := validateUpdateLockAgainstInstallReport(path, lock)
+		if err == nil || !strings.Contains(err.Error(), "install report is missing for update baseline") {
+			t.Fatalf("expected missing install report error, got %v", err)
 		}
 	})
 
