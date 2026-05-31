@@ -186,7 +186,6 @@ func extractZip(src, dest string, limits Limits) error {
 	return nil
 }
 
-
 func archiveEntryMaxWrite(declaredSize, maxFileBytes, remainingTotal int64) (int64, error) {
 	if remainingTotal <= 0 {
 		return 0, fmt.Errorf("archive exceeds max total bytes")
