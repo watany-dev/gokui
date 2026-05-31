@@ -322,7 +322,7 @@ func rejectArchiveSourceSymlinkPath(src string) error {
 		info, err := os.Lstat(candidate)
 		if err != nil {
 			if os.IsNotExist(err) || errors.Is(err, syscall.ENOTDIR) {
-				return nil
+				continue
 			}
 			return fmt.Errorf("failed to evaluate archive source path: %w", err)
 		}
