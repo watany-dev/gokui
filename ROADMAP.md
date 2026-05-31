@@ -30,6 +30,7 @@ stable contracts, and clear operational boundaries. Work is now split into:
 - Automate publication with GitHub Actions:
   - beta tags (`vX.Y.Z-beta.N`) publish GitHub pre-releases with auto notes
   - GA tags (`vX.Y.Z`) publish GitHub releases with auto notes
+  - beta publish requires protected `release-beta` environment approval
   - GA publish requires protected `release` environment approval
   - release assets cover all supported targets + `SHA256SUMS`
 
