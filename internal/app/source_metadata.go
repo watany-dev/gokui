@@ -30,8 +30,15 @@ type sourceMetadata struct {
 	SkillRootSHA256 string `json:"skill_root_sha256"`
 }
 
+var marshalSourceMetadata = func(meta sourceMetadata) ([]byte, error) {
+	return json.MarshalIndent(meta, "", "  ")
+}
+
 func writeSourceMetadata(skillRoot string, meta sourceMetadata) error {
-	raw, _ := json.MarshalIndent(meta, "", "  ")
+	raw, err := marshalSourceMetadata(meta)
+	if err != nil {
+		return fmt.Errorf("failed to render source metadata: %w", err)
+	}
 	path := filepath.Join(skillRoot, sourceMetadataFile)
 	if err := rejectSymlinkPath(path, "source metadata file", rulepkg.SourceMetadataSymlink.ID); err != nil {
 		return err
