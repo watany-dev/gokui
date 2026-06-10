@@ -274,6 +274,9 @@ func TestVerifyLockErrorsAndDiff(t *testing.T) {
 		if runtime.GOOS == "windows" {
 			t.Skip("permission behavior differs on windows")
 		}
+		if os.Getuid() == 0 {
+			t.Skip("chmod restrictions do not apply to root")
+		}
 
 		dir := t.TempDir()
 		lockPath := filepath.Join(dir, installLockFile)

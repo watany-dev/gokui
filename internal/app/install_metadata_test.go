@@ -215,6 +215,9 @@ func TestWriteInstallMetadataGitHubSource(t *testing.T) {
 		if runtime.GOOS == "windows" {
 			t.Skip("permission behavior differs on windows")
 		}
+		if os.Getuid() == 0 {
+			t.Skip("chmod restrictions do not apply to root")
+		}
 
 		skillRoot := createSkillSourceForInstallTest(t, "write-meta-digest-error")
 		blocked := filepath.Join(skillRoot, "blocked.md")

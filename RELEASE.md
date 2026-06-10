@@ -141,7 +141,7 @@ make vuln
 ```
 
 with network access and record the result. The default target runs with
-`VULN_GOTOOLCHAIN=go1.26.3+auto` so standard-library checks use a patched
+`VULN_GOTOOLCHAIN=go1.26.4+auto` so standard-library checks use a patched
 toolchain baseline.
 
 ## 5) Contract Spot-Checks

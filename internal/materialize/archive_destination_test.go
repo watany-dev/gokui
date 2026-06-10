@@ -58,6 +58,9 @@ func TestEnsureEmptyDirReadFailure(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("permission model differs on windows")
 	}
+	if os.Getuid() == 0 {
+		t.Skip("chmod restrictions do not apply to root")
+	}
 
 	parent := t.TempDir()
 	locked := filepath.Join(parent, "locked")

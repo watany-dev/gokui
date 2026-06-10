@@ -14,6 +14,46 @@ code in `scripts/`; natural-language Markdown, descriptions, setup steps,
 hidden Unicode, links, and fake prerequisites can also affect what the agent
 does. gokui treats all of those layers as security-relevant.
 
+## Quick Start
+
+Install a prebuilt binary from
+[GitHub Releases](https://github.com/watany-dev/gokui/releases) (binaries for
+darwin/linux on amd64/arm64 and windows/amd64, with `SHA256SUMS`):
+
+```sh
+# Linux amd64 example — pick the asset for your platform
+curl -LO https://github.com/watany-dev/gokui/releases/latest/download/gokui-linux-amd64
+chmod +x gokui-linux-amd64 && mv gokui-linux-amd64 ~/.local/bin/gokui
+```
+
+Or, with a Go toolchain:
+
+```sh
+go install github.com/watany-dev/gokui/cmd/gokui@latest
+```
+
+Then watch gokui reject a malicious skill bundle. This repository ships the
+demo fixture:
+
+```sh
+git clone https://github.com/watany-dev/gokui && cd gokui
+gokui inspect ./fixtures/fake-prereq-skill
+```
+
+```text
+gokui inspect report (pre-release)
+source: ./fixtures/fake-prereq-skill (local-dir)
+decision: REJECTED
+findings: 2
+- [CRITICAL] FAKE_PREREQ_EXECUTION SKILL.md:8 prerequisite text asks to download and run code
+- [HIGH] EXTERNAL_BINARY_DOWNLOAD SKILL.md:8 external binary archive download instruction detected
+```
+
+The process exits `2` (rejected) so CI can gate on it; clean bundles
+(`./fixtures/clean-skill`) exit `0` with decision `PASS`. From there,
+`gokui install <source> --target codex --profile strict` applies the same
+gate before anything reaches your agent's skill directory.
+
 ## Status
 
 gokui is pre-release software under active hardening. Current commands are

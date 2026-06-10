@@ -237,7 +237,7 @@ func TestEvaluateUpdateSkillAdditionalBranches(t *testing.T) {
 		}
 	})
 
-	if runtime.GOOS != "windows" {
+	if runtime.GOOS != "windows" && os.Getuid() != 0 {
 		t.Run("returns error when scan fails on unreadable markdown", func(t *testing.T) {
 			targetRoot := filepath.Join(t.TempDir(), "skills")
 			if err := os.MkdirAll(targetRoot, 0o755); err != nil {

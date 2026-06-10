@@ -376,7 +376,7 @@ func TestRunInstallErrorPaths(t *testing.T) {
 		t.Fatalf("stderr should include mkdir target failure, got %q", stderr.String())
 	}
 
-	if runtime.GOOS != "windows" {
+	if runtime.GOOS != "windows" && os.Getuid() != 0 {
 		stdout.Reset()
 		stderr.Reset()
 		skillRoot := createSkillSourceForInstallTest(t, "scan-error-skill")

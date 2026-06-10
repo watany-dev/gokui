@@ -1,6 +1,9 @@
 package report
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestSARIFLevelForSeverity(t *testing.T) {
 	cases := []struct {
@@ -426,5 +429,32 @@ func TestSARIFErrorDocumentForInput(t *testing.T) {
 	properties := PreReleaseSARIFErrorProperties("1", "src", "local-dir", "ERROR", "note", "ERROR_ONE")
 	if run.Properties != properties {
 		t.Fatalf("properties = %+v, want %+v", run.Properties, properties)
+	}
+}
+
+func TestDriftSARIFResultEmptyPath(t *testing.T) {
+	doc := SARIFDocumentForLockVerify(LockVerifySARIFInput{
+		Status:         "DRIFTED",
+		VerifiedStatus: "VERIFIED",
+		FileDigestCode: "FILE_DIGESTS",
+		Checks: []LockVerifySARIFCheck{
+			{Code: "FILE_DIGESTS", Name: "file digests", OK: false, Detail: "missing=1"},
+		},
+		Drift: LockVerifySARIFDrift{
+			MissingFiles: []string{""},
+		},
+	})
+	run := doc.Runs[0]
+	if len(run.Results) != 2 {
+		t.Fatalf("expected 2 results (summary + drift), got %d: %+v", len(run.Results), run.Results)
+	}
+	var foundEmpty bool
+	for _, result := range run.Results {
+		if strings.HasPrefix(result.Message.Text, "missing file listed in lock:") && len(result.Locations) == 0 {
+			foundEmpty = true
+		}
+	}
+	if !foundEmpty {
+		t.Fatalf("expected drift result with no location for empty path, got: %+v", run.Results)
 	}
 }

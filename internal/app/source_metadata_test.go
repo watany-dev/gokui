@@ -10,6 +10,30 @@ import (
 	rulepkg "github.com/watany-dev/gokui/internal/rule"
 )
 
+func TestReadSourceMetadataWithLimitErrors(t *testing.T) {
+	t.Run("rejects non-directory skill root", func(t *testing.T) {
+		f := filepath.Join(t.TempDir(), "not-a-dir.txt")
+		if err := os.WriteFile(f, []byte("x"), 0o644); err != nil {
+			t.Fatalf("write file: %v", err)
+		}
+		_, _, err := readSourceMetadataWithLimit(f, maxSourceMetadataFileBytes)
+		if err == nil || !strings.Contains(err.Error(), "failed to read source metadata") {
+			t.Fatalf("expected not-a-directory error, got %v", err)
+		}
+	})
+
+	t.Run("rejects oversized source metadata", func(t *testing.T) {
+		dir := t.TempDir()
+		if err := os.WriteFile(filepath.Join(dir, sourceMetadataFile), []byte(`{"schema":"gokui.source/v1"}`), 0o644); err != nil {
+			t.Fatalf("write metadata: %v", err)
+		}
+		_, _, err := readSourceMetadataWithLimit(dir, 5)
+		if err == nil || !strings.Contains(err.Error(), rulepkg.SourceMetadataFileTooLarge.ID) {
+			t.Fatalf("expected too-large error, got %v", err)
+		}
+	})
+}
+
 func TestSourceMetadataHelpers(t *testing.T) {
 	t.Run("read/write and resolve source", func(t *testing.T) {
 		skillRoot := createSkillSourceForInstallTest(t, "metadata-helper-skill")
@@ -228,7 +252,7 @@ func TestSourceMetadataHelpers(t *testing.T) {
 			t.Fatalf("expected oversized metadata error, got %v", err)
 		}
 
-		if runtime.GOOS != "windows" {
+		if runtime.GOOS != "windows" && os.Getuid() != 0 {
 			unreadableDir := t.TempDir()
 			unreadablePath := filepath.Join(unreadableDir, sourceMetadataFile)
 			if err := os.WriteFile(unreadablePath, []byte(`{"schema":"gokui.source/v1"}`), 0o644); err != nil {
@@ -331,7 +355,7 @@ func TestSourceMetadataHelpers(t *testing.T) {
 			t.Fatalf("expected hash mismatch error, got %v", err)
 		}
 
-		if runtime.GOOS != "windows" {
+		if runtime.GOOS != "windows" && os.Getuid() != 0 {
 			lockedDir := createSkillSourceForInstallTest(t, "locked-skill")
 			_, hash, err := buildFileDigestsFiltered(lockedDir, map[string]struct{}{
 				sourceMetadataFile: {},
@@ -396,7 +420,7 @@ func TestSourceMetadataHelpers(t *testing.T) {
 			t.Fatalf("unexpected local resolve result: %+v", resolved)
 		}
 
-		if runtime.GOOS != "windows" {
+		if runtime.GOOS != "windows" && os.Getuid() != 0 {
 			digestErrRoot := createSkillSourceForInstallTest(t, "resolve-digest-error")
 			_, hash, err := buildFileDigestsFiltered(digestErrRoot, map[string]struct{}{
 				sourceMetadataFile: {},

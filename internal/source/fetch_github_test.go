@@ -61,6 +61,14 @@ func TestFetchGitHubSkill(t *testing.T) {
 	}
 }
 
+func TestFetchGitHubSkillPackageFunc(t *testing.T) {
+	spec := GitHubSpec{Owner: "o", Repo: "r", Path: "skills/x", Ref: "main"}
+	_, _, err := FetchGitHubSkill(spec)
+	if err == nil || !strings.Contains(err.Error(), "commit-pinned") {
+		t.Fatalf("expected commit-pinned error, got %v", err)
+	}
+}
+
 func TestFetchGitHubSkillErrors(t *testing.T) {
 	t.Run("requires commit pinned ref", func(t *testing.T) {
 		fetcher := NewGitHubFetcher()

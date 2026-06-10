@@ -72,7 +72,7 @@ func TestUpdateHelpers(t *testing.T) {
 			t.Fatal("collectExecutableFiles should fail for missing root")
 		}
 
-		if runtime.GOOS != "windows" {
+		if runtime.GOOS != "windows" && os.Getuid() != 0 {
 			root := t.TempDir()
 			blocked := filepath.Join(root, "blocked.md")
 			if err := os.WriteFile(blocked, []byte("x"), 0o644); err != nil {
@@ -634,6 +634,9 @@ func TestUpdateHelpers(t *testing.T) {
 	t.Run("buildUpdateReport captures installed-tree evaluation errors", func(t *testing.T) {
 		if runtime.GOOS == "windows" {
 			t.Skip("permission behavior differs on windows")
+		}
+		if os.Getuid() == 0 {
+			t.Skip("chmod restrictions do not apply to root")
 		}
 
 		targetRoot := filepath.Join(t.TempDir(), "skills")
