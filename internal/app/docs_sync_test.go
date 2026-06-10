@@ -230,7 +230,7 @@ func TestMakefileVulnToolchainBaselineSync(t *testing.T) {
 	makefile := string(makefileBytes)
 
 	required := []string{
-		"VULN_GOTOOLCHAIN ?= go1.26.3+auto",
+		"VULN_GOTOOLCHAIN ?= go1.26.4+auto",
 		"BUILD_OUT ?= gokui",
 		"RELEASE_CHECK_ALLOW_EXISTING_OUTPUTS ?= 0",
 		"RELEASE_CHECK_BUILD_OUT ?= $(CACHE_DIR)/gokui-release-check",

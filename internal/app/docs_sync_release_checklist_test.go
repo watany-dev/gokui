@@ -32,7 +32,7 @@ func TestReleaseChecklistDocumentationSync(t *testing.T) {
 		"make release-evidence-beta-selfcheck",
 		"make beta-ready",
 		"make vuln",
-		"VULN_GOTOOLCHAIN=go1.26.3+auto",
+		"VULN_GOTOOLCHAIN=go1.26.4+auto",
 	}
 	for _, line := range required {
 		if !strings.Contains(releaseDoc, line) {
