@@ -1,0 +1,55 @@
+name: Detection report (false positive / false negative)
+description: A rule flagged benign content, or a malicious pattern was missed.
+labels: ["detection"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Detection reports are the highest-value feedback a scanner can receive — thank you.
+
+        **Before filing a false negative:** if the missed pattern *defeats an
+        existing rule* (an evasion/bypass), report it privately via the
+        Security tab instead (see SECURITY.md). Use this template when the
+        pattern would need a brand-new rule.
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Report type
+      options:
+        - False positive (benign content was flagged)
+        - False negative (malicious pattern was not flagged)
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: gokui version
+      placeholder: v0.1.0-beta.1
+    validations:
+      required: true
+  - type: input
+    id: rule
+    attributes:
+      label: Rule ID
+      description: For false positives, the rule that fired (e.g. FAKE_PREREQ_EXECUTION). For false negatives, the closest existing rule if any.
+      placeholder: FAKE_PREREQ_EXECUTION
+  - type: textarea
+    id: content
+    attributes:
+      label: Triggering content
+      description: |
+        The minimal SKILL.md snippet (or file content) that demonstrates the
+        false positive or the missed pattern. Wrap it so it does not execute
+        anywhere, and redact anything sensitive.
+      render: markdown
+    validations:
+      required: true
+  - type: textarea
+    id: analysis
+    attributes:
+      label: Why this is benign / malicious
+      description: |
+        For false positives: what the content actually does and why it is safe.
+        For false negatives: the attack the pattern enables if an agent reads it.
+    validations:
+      required: true
