@@ -53,6 +53,9 @@ func TestRunInspectJSONErrorCodes(t *testing.T) {
 		if runtime.GOOS == "windows" {
 			t.Skip("permission behavior differs on windows")
 		}
+		if os.Getuid() == 0 {
+			t.Skip("chmod restrictions do not apply to root")
+		}
 
 		base := t.TempDir()
 		locked := filepath.Join(base, "locked")
@@ -81,6 +84,9 @@ func TestRunInspectJSONErrorCodes(t *testing.T) {
 	t.Run("local scan failure emits scan-failed code", func(t *testing.T) {
 		if runtime.GOOS == "windows" {
 			t.Skip("permission behavior differs on windows")
+		}
+		if os.Getuid() == 0 {
+			t.Skip("chmod restrictions do not apply to root")
 		}
 
 		skillRoot := createSkillSourceForInstallTest(t, "inspect-local-scan-fail")
@@ -186,6 +192,9 @@ func TestRunInspectJSONErrorCodes(t *testing.T) {
 		if runtime.GOOS == "windows" {
 			t.Skip("permission behavior differs on windows")
 		}
+		if os.Getuid() == 0 {
+			t.Skip("chmod restrictions do not apply to root")
+		}
 
 		skillRoot := createSkillSourceForInstallTest(t, "inspect-local-scan-fail-human")
 		refDir := filepath.Join(skillRoot, "references")
@@ -218,6 +227,9 @@ func TestRunInspectJSONErrorCodes(t *testing.T) {
 	t.Run("github scan failure emits scan-failed code", func(t *testing.T) {
 		if runtime.GOOS == "windows" {
 			t.Skip("permission behavior differs on windows")
+		}
+		if os.Getuid() == 0 {
+			t.Skip("chmod restrictions do not apply to root")
 		}
 
 		skillRoot := createSkillSourceForInstallTest(t, "inspect-github-scan-fail")

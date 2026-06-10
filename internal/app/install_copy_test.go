@@ -86,6 +86,50 @@ func TestCopyTreeNormalizedRejectsSpecialFile(t *testing.T) {
 	}
 }
 
+func TestCopyTreeNormalizedFailsWhenDestSubdirIsFile(t *testing.T) {
+	src := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(src, "subdir"), 0o755); err != nil {
+		t.Fatalf("mkdir subdir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(src, "subdir", "file.txt"), []byte("x"), 0o644); err != nil {
+		t.Fatalf("write subdir/file.txt: %v", err)
+	}
+
+	dst := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dst, "subdir"), []byte("x"), 0o644); err != nil {
+		t.Fatalf("write blocking file: %v", err)
+	}
+
+	err := copyTreeNormalizedWithLimits(src, dst, installCopyLimits{
+		MaxFiles:      installMaxCopyFiles,
+		MaxTotalBytes: installMaxCopyTotalBytes,
+		MaxFileBytes:  installMaxCopyFileBytes,
+	})
+	if err == nil || !strings.Contains(err.Error(), "failed to create install directory") {
+		t.Fatalf("expected directory creation failure, got %v", err)
+	}
+}
+
+func TestCopyTreeNormalizedTightBudgetRemainingLessThanFileLimit(t *testing.T) {
+	src := t.TempDir()
+	if err := os.WriteFile(filepath.Join(src, "a.txt"), []byte("abc"), 0o644); err != nil {
+		t.Fatalf("write a.txt: %v", err)
+	}
+	dst := filepath.Join(t.TempDir(), "copy")
+	err := copyTreeNormalizedWithLimits(src, dst, installCopyLimits{
+		MaxFiles:      installMaxCopyFiles,
+		MaxTotalBytes: 5,
+		MaxFileBytes:  10,
+	})
+	if err != nil {
+		t.Fatalf("expected successful copy with tight budget, got %v", err)
+	}
+	content, readErr := os.ReadFile(filepath.Join(dst, "a.txt"))
+	if readErr != nil || string(content) != "abc" {
+		t.Fatalf("expected copied content 'abc', got %q err=%v", content, readErr)
+	}
+}
+
 func TestCopyTreeNormalizedLimitGuards(t *testing.T) {
 	t.Run("enforces max file count", func(t *testing.T) {
 		src := t.TempDir()

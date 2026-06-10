@@ -42,6 +42,9 @@ func TestScanSkillRootWalkPermissionError(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("permission model differs on windows")
 	}
+	if os.Getuid() == 0 {
+		t.Skip("chmod restrictions do not apply to root")
+	}
 
 	root := t.TempDir()
 	locked := filepath.Join(root, "locked")
@@ -161,6 +164,9 @@ func TestScanSkillRootReadErrorPropagation(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("permission behavior differs on windows")
 	}
+	if os.Getuid() == 0 {
+		t.Skip("chmod restrictions do not apply to root")
+	}
 
 	root := t.TempDir()
 	path := filepath.Join(root, "SKILL.md")
@@ -205,6 +211,9 @@ func TestScanTextFileErrorsAndDedup(t *testing.T) {
 	t.Run("read failure", func(t *testing.T) {
 		if runtime.GOOS == "windows" {
 			t.Skip("permission behavior differs on windows")
+		}
+		if os.Getuid() == 0 {
+			t.Skip("chmod restrictions do not apply to root")
 		}
 		path := filepath.Join(t.TempDir(), "denied.md")
 		if err := os.WriteFile(path, []byte("x"), 0o644); err != nil {

@@ -121,6 +121,9 @@ func TestLoadUserPolicy(t *testing.T) {
 		if runtime.GOOS == "windows" {
 			t.Skip("permission semantics differ on windows")
 		}
+		if os.Getuid() == 0 {
+			t.Skip("chmod restrictions do not apply to root")
+		}
 		p := filepath.Join(t.TempDir(), "policy.toml")
 		if err := os.WriteFile(p, []byte(`default_profile = "strict"`), 0o000); err != nil {
 			t.Fatalf("write unreadable policy file: %v", err)
@@ -212,6 +215,9 @@ func TestRejectSymlinkPath(t *testing.T) {
 	t.Run("returns permission error for unreadable path component", func(t *testing.T) {
 		if runtime.GOOS == "windows" {
 			t.Skip("permission semantics differ on windows")
+		}
+		if os.Getuid() == 0 {
+			t.Skip("chmod restrictions do not apply to root")
 		}
 		root := t.TempDir()
 		blocked := filepath.Join(root, "blocked")

@@ -437,6 +437,9 @@ func TestWriteInstallMetadataAndBuildDigestsErrors(t *testing.T) {
 		if runtime.GOOS == "windows" {
 			t.Skip("permission behavior differs on windows")
 		}
+		if os.Getuid() == 0 {
+			t.Skip("chmod restrictions do not apply to root")
+		}
 
 		stage := createSkillSourceForInstallTest(t, "hash-fail-skill")
 		blocked := filepath.Join(stage, "blocked.bin")
@@ -463,6 +466,9 @@ func TestWriteInstallMetadataAndBuildDigestsErrors(t *testing.T) {
 	t.Run("buildFileDigests fails when file is unreadable", func(t *testing.T) {
 		if runtime.GOOS == "windows" {
 			t.Skip("permission behavior differs on windows")
+		}
+		if os.Getuid() == 0 {
+			t.Skip("chmod restrictions do not apply to root")
 		}
 		root := t.TempDir()
 		file := filepath.Join(root, "blocked.txt")

@@ -142,6 +142,9 @@ func TestExtractArchiveOpenFailures(t *testing.T) {
 
 	if runtime.GOOS != "windows" {
 		t.Run("zip source open denied", func(t *testing.T) {
+			if os.Getuid() == 0 {
+				t.Skip("chmod restrictions do not apply to root")
+			}
 			src := filepath.Join(t.TempDir(), "blocked.zip")
 			createZip(t, src, map[string]string{
 				"SKILL.md": "---\nname: x\ndescription: d\n---\n",
@@ -158,6 +161,9 @@ func TestExtractArchiveOpenFailures(t *testing.T) {
 		})
 
 		t.Run("tar source open denied", func(t *testing.T) {
+			if os.Getuid() == 0 {
+				t.Skip("chmod restrictions do not apply to root")
+			}
 			src := filepath.Join(t.TempDir(), "blocked.tar")
 			createTar(t, src, []tarEntry{
 				{name: "SKILL.md", body: "---\nname: x\ndescription: d\n---\n"},

@@ -396,3 +396,19 @@ func TestNormalizeCommandDepsDefaults(t *testing.T) {
 		t.Fatal("normalizeUpdateDeps should fill all defaults")
 	}
 }
+
+func TestWriteIndentedJSONLineUnmarshalablePayload(t *testing.T) {
+	var stdout strings.Builder
+	var stderr strings.Builder
+	ch := make(chan int)
+	code := writeIndentedJSONLine(&stdout, &stderr, ch, "render failed")
+	if stdout.Len() != 0 {
+		t.Fatalf("expected empty stdout, got %q", stdout.String())
+	}
+	if !strings.Contains(stderr.String(), "render failed") {
+		t.Fatalf("expected render error in stderr, got %q", stderr.String())
+	}
+	if code != 1 {
+		t.Fatalf("expected exit code 1, got %d", code)
+	}
+}

@@ -211,6 +211,9 @@ func TestReleaseCheckFailsClosedWhenCleanupRemovalFails(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("release-check shell contract is exercised on POSIX in CI")
 	}
+	if os.Getuid() == 0 {
+		t.Skip("chmod restrictions do not apply to root")
+	}
 
 	buildDir := releaseCheckCleanupRepoLocalPath(t, "build-dir")
 	sarifDir := releaseCheckCleanupRepoLocalPath(t, "sarif-dir")

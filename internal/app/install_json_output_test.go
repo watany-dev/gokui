@@ -199,6 +199,9 @@ func TestRunInstallJSONOutput(t *testing.T) {
 		if runtime.GOOS == "windows" {
 			t.Skip("permission behavior differs on windows")
 		}
+		if os.Getuid() == 0 {
+			t.Skip("chmod restrictions do not apply to root")
+		}
 
 		base := t.TempDir()
 		locked := filepath.Join(base, "locked")
@@ -491,7 +494,7 @@ func TestRunInstallJSONOutput(t *testing.T) {
 			"--format", "json",
 		}, installErrorCodeWriteFailed)
 
-		if runtime.GOOS != "windows" {
+		if runtime.GOOS != "windows" && os.Getuid() != 0 {
 			evalFailSource := createSkillSourceForInstallTest(t, "json-eval-fail")
 			refDir := filepath.Join(evalFailSource, "references")
 			if err := os.Mkdir(refDir, 0o755); err != nil {
