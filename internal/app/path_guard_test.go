@@ -159,3 +159,32 @@ func rootChildPathForTest(t *testing.T) string {
 	}
 	return filepath.Join(vol+string(os.PathSeparator), "var")
 }
+
+func TestRejectSymlinkPathContinuesWhenIntermediateComponentMissing(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlink permissions differ on windows")
+	}
+
+	root := t.TempDir()
+	base := filepath.Join(root, "base")
+	if err := os.Mkdir(base, 0o755); err != nil {
+		t.Fatalf("mkdir base: %v", err)
+	}
+	link := filepath.Join(root, "link")
+	if err := os.Symlink(base, link); err != nil {
+		t.Fatalf("symlink: %v", err)
+	}
+
+	target := filepath.Join(link, "missing", "skill")
+	if err := rejectSymlinkPath(target, "test path", "TEST_SYMLINK"); err == nil {
+		t.Fatal("expected symlink rejection when existing prefix is a symlink")
+	}
+}
+
+func TestRejectSymlinkPathAllowsMissingLeafUnderExistingPrefix(t *testing.T) {
+	root := t.TempDir()
+	target := filepath.Join(root, "missing", "skill")
+	if err := rejectSymlinkPath(target, "test path", "TEST_SYMLINK"); err != nil {
+		t.Fatalf("rejectSymlinkPath() error = %v, want nil for missing suffix under safe prefix", err)
+	}
+}

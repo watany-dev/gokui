@@ -57,7 +57,7 @@ func rejectSymlinkPath(path string, label string, ruleID string) error {
 		info, err := os.Lstat(candidate)
 		if err != nil {
 			if os.IsNotExist(err) || errors.Is(err, syscall.ENOTDIR) {
-				return nil
+				continue
 			}
 			return fmt.Errorf("failed to evaluate %s: %w", label, err)
 		}
