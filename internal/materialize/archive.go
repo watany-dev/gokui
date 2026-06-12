@@ -165,13 +165,16 @@ func extractZip(src, dest string, limits Limits) error {
 		if declaredSize > remainingTotal {
 			return fmt.Errorf("archive exceeds max total bytes: %d", limits.MaxTotalBytes)
 		}
-		maxWrite := limits.MaxFileBytes
-		if remainingTotal < maxWrite {
-			maxWrite = remainingTotal
+		maxWrite, err := archiveEntryMaxWrite(declaredSize, limits.MaxFileBytes, remainingTotal)
+		if err != nil {
+			return err
 		}
 
 		written, err := writeZipFile(file, path, maxWrite)
 		if err != nil {
+			return err
+		}
+		if err := validateExtractedEntrySize(file.Name, declaredSize, written); err != nil {
 			return err
 		}
 		totalBytes += written
@@ -180,6 +183,27 @@ func extractZip(src, dest string, limits Limits) error {
 		}
 	}
 
+	return nil
+}
+
+func archiveEntryMaxWrite(declaredSize, maxFileBytes, remainingTotal int64) (int64, error) {
+	if remainingTotal <= 0 {
+		return 0, fmt.Errorf("archive exceeds max total bytes")
+	}
+	maxWrite := maxFileBytes
+	if remainingTotal < maxWrite {
+		maxWrite = remainingTotal
+	}
+	if declaredSize < maxWrite {
+		maxWrite = declaredSize
+	}
+	return maxWrite, nil
+}
+
+func validateExtractedEntrySize(name string, declaredSize, written int64) error {
+	if written != declaredSize {
+		return fmt.Errorf("archive entry size mismatch for %s: declared %d bytes, extracted %d bytes", name, declaredSize, written)
+	}
 	return nil
 }
 
@@ -277,13 +301,28 @@ func extractTar(src, dest string, limits Limits) error {
 		if header.Size > limits.MaxFileBytes {
 			return fmt.Errorf("archive file exceeds max file bytes: %s", header.Name)
 		}
-		totalBytes += header.Size
-		if totalBytes > limits.MaxTotalBytes {
+		remainingTotal := limits.MaxTotalBytes - totalBytes
+		if remainingTotal <= 0 {
 			return fmt.Errorf("archive exceeds max total bytes: %d", limits.MaxTotalBytes)
 		}
-
-		if _, err := writeTarFile(header, tarReader, path, limits.MaxFileBytes); err != nil {
+		if header.Size > remainingTotal {
+			return fmt.Errorf("archive exceeds max total bytes: %d", limits.MaxTotalBytes)
+		}
+		maxWrite, err := archiveEntryMaxWrite(header.Size, limits.MaxFileBytes, remainingTotal)
+		if err != nil {
 			return err
+		}
+
+		written, err := writeTarFile(header, tarReader, path, maxWrite)
+		if err != nil {
+			return err
+		}
+		if err := validateExtractedEntrySize(header.Name, header.Size, written); err != nil {
+			return err
+		}
+		totalBytes += written
+		if totalBytes > limits.MaxTotalBytes {
+			return fmt.Errorf("archive exceeds max total bytes: %d", limits.MaxTotalBytes)
 		}
 	}
 
