@@ -27,12 +27,16 @@ jobs:
       - name: Resolve release tag
         id: meta
         shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_TAG: ${{ inputs.tag }}
+          REF_NAME: ${{ github.ref_name }}
         run: |
           set -euo pipefail
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            tag='${{ inputs.tag }}'
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            tag="$INPUT_TAG"
           else
-            tag='${{ github.ref_name }}'
+            tag="$REF_NAME"
           fi
 
           if ! [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+-beta\.[0-9]+$ ]]; then
@@ -65,9 +69,11 @@ jobs:
 
       - name: Build release assets
         shell: bash
+        env:
+          TAG: ${{ steps.meta.outputs.tag }}
         run: |
           set -euo pipefail
-          tag='${{ steps.meta.outputs.tag }}'
+          tag="$TAG"
           commit="$(git rev-parse HEAD)"
           date="$(git log -1 --format=%cI)"
           out_dir="$GITHUB_WORKSPACE/dist/$tag"
@@ -92,10 +98,11 @@ jobs:
       - name: Publish prerelease
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.meta.outputs.tag }}
         shell: bash
         run: |
           set -euo pipefail
-          tag='${{ steps.meta.outputs.tag }}'
+          tag="$TAG"
           out_dir="$GITHUB_WORKSPACE/dist/$tag"
 
           if gh release view "$tag" >/dev/null 2>&1; then
