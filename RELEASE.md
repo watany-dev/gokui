@@ -240,6 +240,7 @@ Workflows:
   - trigger: beta tags (or `workflow_dispatch`)
   - gate: `make beta-ready`
   - publication: GitHub pre-release with auto-generated release notes
+  - publish job requires `release-beta` environment approval
 - `.github/workflows/release-ga.yml`
   - trigger: GA tags (or `workflow_dispatch`)
   - gate: `make release-check` and `make release-evidence-online`

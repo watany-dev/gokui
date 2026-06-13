@@ -672,6 +672,7 @@ GitHub Actions release publication:
 - Beta pre-release: push tag `vX.Y.Z-beta.N` (example `v0.4.0-beta.1`)
   - runs `.github/workflows/release-beta.yml`
   - runs `make beta-ready`
+  - requires manual approval on the `release-beta` environment before publish
   - publishes a GitHub **pre-release** with auto-generated release notes
 - GA release: push tag `vX.Y.Z` (example `v0.4.0`)
   - runs `.github/workflows/release-ga.yml`
