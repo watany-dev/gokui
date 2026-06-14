@@ -169,6 +169,25 @@ func runFetchWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps fe
 		return exitcode.Error.Int()
 	}
 
+	if err := skillpkg.ValidateLocalDirInspectSource(skillRoot, maxSkillFrontmatterBytes); err != nil {
+		if emitFetchStructuredError(parsed.Format, stdout, stderr, fetchErrorReport{
+			SchemaVersion: reportSchemaVersion,
+			Status:        reportStatusError,
+			ErrorCode:     fetchErrorCodeSkillInvalid,
+			Message:       err.Error(),
+			Source: source{
+				Input: parsed.Source,
+				Kind:  sourceKind,
+			},
+			Output: parsed.Out,
+			Note:   "fetched source failed skill local directory validation",
+		}) {
+			return exitcode.Error.Int()
+		}
+		_, _ = fmt.Fprintln(stderr, err.Error())
+		return exitcode.Error.Int()
+	}
+
 	meta, err := skillpkg.ValidateFrontmatter(filepath.Join(skillRoot, "SKILL.md"), maxSkillFrontmatterBytes)
 	if err != nil {
 		if emitFetchStructuredError(parsed.Format, stdout, stderr, fetchErrorReport{

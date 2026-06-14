@@ -121,6 +121,36 @@ func TestRunFetch(t *testing.T) {
 		}
 	})
 
+	t.Run("rejects fetched skill when directory name mismatches frontmatter name", func(t *testing.T) {
+		sourceDir := filepath.Join(t.TempDir(), "wrong-dir")
+		if err := os.MkdirAll(sourceDir, 0o755); err != nil {
+			t.Fatalf("mkdir source: %v", err)
+		}
+		skillMD := "---\nname: expected-name\ndescription: mismatch test\n---\n"
+		if err := os.WriteFile(filepath.Join(sourceDir, "SKILL.md"), []byte(skillMD), 0o644); err != nil {
+			t.Fatalf("write SKILL.md: %v", err)
+		}
+
+		var stdout strings.Builder
+		var stderr strings.Builder
+		code := runFetchWithDeps(
+			[]string{"github:org/repo//skills/expected-name@8f3c2d1a4b5c6d7e8f901234567890abcdef1234", "--out", filepath.Join(t.TempDir(), "q"), "--format", "json"},
+			&stdout,
+			&stderr,
+			fetchDeps{
+				FetchGitHubSkill: func(spec srcpkg.GitHubSpec) (string, func(), error) {
+					return sourceDir, func() {}, nil
+				},
+			},
+		)
+		if code != 1 {
+			t.Fatalf("runFetch() code = %d, want 1\nstdout=%q\nstderr=%q", code, stdout.String(), stderr.String())
+		}
+		if !strings.Contains(stdout.String(), "frontmatter name must match directory name") {
+			t.Fatalf("stdout should include directory/frontmatter mismatch, got %q", stdout.String())
+		}
+	})
+
 	t.Run("propagates fetch and collision errors", func(t *testing.T) {
 		var stdout strings.Builder
 		var stderr strings.Builder
