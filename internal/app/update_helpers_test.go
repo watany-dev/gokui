@@ -557,6 +557,7 @@ func TestUpdateHelpers(t *testing.T) {
 		if err := os.WriteFile(filepath.Join(targetRoot, "broken-source", installLockFile), raw, 0o644); err != nil {
 			t.Fatalf("write lock: %v", err)
 		}
+		writeMatchingInstallReportForLockTest(t, filepath.Join(targetRoot, "broken-source"), lock)
 
 		report, err := buildUpdateReport(targetRoot, false, policypkg.Config{})
 		if err != nil {
@@ -615,6 +616,7 @@ func TestUpdateHelpers(t *testing.T) {
 		if err := os.WriteFile(filepath.Join(targetRoot, "wrapped-rule-source", installLockFile), raw, 0o644); err != nil {
 			t.Fatalf("write lock: %v", err)
 		}
+		writeMatchingInstallReportForLockTest(t, filepath.Join(targetRoot, "wrapped-rule-source"), lock)
 
 		report, err := buildUpdateReport(targetRoot, false, policypkg.Config{})
 		if err != nil {

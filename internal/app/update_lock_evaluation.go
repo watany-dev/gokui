@@ -302,7 +302,7 @@ func validateUpdateLockAgainstInstallReport(skillPath string, lock installLock) 
 	_, statErr := os.Lstat(reportPath)
 	if statErr != nil {
 		if os.IsNotExist(statErr) {
-			return nil
+			return fmt.Errorf("install report is missing for update baseline")
 		}
 		return fmt.Errorf("failed to evaluate install report for update baseline: %w", statErr)
 	}
