@@ -1,6 +1,7 @@
 package app
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -451,4 +452,18 @@ func TestSourceMetadataHelpers(t *testing.T) {
 			}
 		}
 	})
+}
+
+func TestWriteSourceMetadataPropagatesMarshalError(t *testing.T) {
+	skillRoot := createSkillSourceForInstallTest(t, "metadata-marshal-error")
+	restore := marshalSourceMetadata
+	defer func() { marshalSourceMetadata = restore }()
+	marshalSourceMetadata = func(meta sourceMetadata) ([]byte, error) {
+		return nil, errors.New("marshal failed")
+	}
+
+	err := writeSourceMetadata(skillRoot, sourceMetadata{Schema: "gokui.source/v1"})
+	if err == nil || !strings.Contains(err.Error(), "failed to render source metadata") {
+		t.Fatalf("writeSourceMetadata() error = %v, want render failure", err)
+	}
 }
