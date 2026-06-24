@@ -449,8 +449,7 @@ func runInstallWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps 
 		_, _ = fmt.Fprintln(stderr, err.Error())
 		return exitcode.Error.Int()
 	}
-	report.Installed = true
-	report.InstalledPath = installedPath
+	report = resolveInstallOutputReport(installedPath, installResult, report)
 	switch formatpkg.Format(parsed.Format) {
 	case formatpkg.JSON:
 		out, err := json.MarshalIndent(report, "", "  ")
