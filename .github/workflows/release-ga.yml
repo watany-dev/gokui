@@ -100,36 +100,20 @@ jobs:
       name: release
 
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - name: Download validated release assets
+        uses: actions/download-artifact@7a0ff3ceba563ae62824eef99c0d5490a6728ea7 # v4.1.8
         with:
-          ref: ${{ needs.validate-and-package.outputs.ref }}
-          fetch-depth: 0
-          persist-credentials: false
-
-      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
-        with:
-          go-version-file: go.mod
-          check-latest: true
-
-      - run: go mod download
-
-      - name: Rebuild release assets for publish step
-        shell: bash
-        run: |
-          set -euo pipefail
-          tag='${{ needs.validate-and-package.outputs.tag }}'
-          commit="$(git rev-parse HEAD)"
-          date="$(git log -1 --format=%cI)"
-          out_dir="$GITHUB_WORKSPACE/dist/$tag"
-          ./scripts/build-release-assets.sh "$out_dir" "$tag" "$commit" "$date"
+          name: ga-release-assets-${{ needs.validate-and-package.outputs.tag }}
+          path: dist/${{ needs.validate-and-package.outputs.tag }}
 
       - name: Publish GA release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ needs.validate-and-package.outputs.tag }}
         shell: bash
         run: |
           set -euo pipefail
-          tag='${{ needs.validate-and-package.outputs.tag }}'
+          tag="$TAG"
           out_dir="$GITHUB_WORKSPACE/dist/$tag"
 
           if gh release view "$tag" >/dev/null 2>&1; then
